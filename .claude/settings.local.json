@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:exa.ai)",
+      "mcp__exa__web_search_exa",
+      "mcp__exa__deep_search_exa",
+      "mcp__exa__crawling_exa",
+      "mcp__exa__get_code_context_exa",
+      "Bash(ls:*)",
+      "Bash(docker manifest:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:antisimplistic.com)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "exa"
+  ],
+  "sandbox": {
+    "enabled": false,
+    "autoAllowBashIfSandboxed": false
+  }
+}

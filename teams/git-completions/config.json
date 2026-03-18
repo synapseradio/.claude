@@ -1,0 +1,19 @@
+{
+  "name": "git-completions",
+  "description": "Git alias completions, stax integration, fuzzy branch matching",
+  "createdAt": 1772798301132,
+  "leadAgentId": "team-lead@git-completions",
+  "leadSessionId": "a765d659-1404-4ff1-878c-8f9aed160176",
+  "members": [
+    {
+      "agentId": "team-lead@git-completions",
+      "name": "team-lead",
+      "agentType": "team-lead",
+      "model": "claude-opus-4-6",
+      "joinedAt": 1772798301132,
+      "tmuxPaneId": "",
+      "cwd": "/Users/nke/.dotty",
+      "subscriptions": []
+    }
+  ]
+}

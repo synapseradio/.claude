@@ -1,0 +1,19 @@
+{
+  "name": "pkg-manager",
+  "description": "MacPorts as preferred package manager abstraction layer",
+  "createdAt": 1772736187289,
+  "leadAgentId": "team-lead@pkg-manager",
+  "leadSessionId": "8d79c3c0-b9cc-44be-b43b-e460e0293434",
+  "members": [
+    {
+      "agentId": "team-lead@pkg-manager",
+      "name": "team-lead",
+      "agentType": "team-lead",
+      "model": "claude-opus-4-6",
+      "joinedAt": 1772736187289,
+      "tmuxPaneId": "",
+      "cwd": "/Users/nke/.dotty",
+      "subscriptions": []
+    }
+  ]
+}

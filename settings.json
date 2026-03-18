@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "includeCoAuthoredBy": false,
+  "includeGitInstructions": true,
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "Task",
+      "Bash",
+      "Skill",
+      "Read(**/.dotty*)",
+      "mcp__claude_ai_*",
+      "mcp__exa__*",
+      "mcp__tavily_remote_mcp__*",
+      "mcp__plugin_context7_context7__*",
+      "Bash(git status:*)",
+      "Bash(git commit:*)",
+      "Bash(shfmt:*)",
+      "Bash(port installed:*)",
+      "Bash(vendor/bats-core/bin/bats:*)",
+      "Bash(git add:*)",
+      "Bash(bats:*)",
+      "Bash(port search:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git mv:*)"
+    ],
+    "deny": [
+      "Read(~/.kube/**)",
+      "Read(**/.*profile)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.gnupg/**)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/*credentials*)",
+      "Read(**/*secrets*)",
+      "Read(**/.env*)",
+      "Bash(sudo *)",
+      "Bash(rm -rf /*)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard *)",
+      "Bash(chmod 777 *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(curl * | sh)",
+      "Bash(curl * | bash)",
+      "Bash(wget * | sh)"
+    ],
+    "defaultMode": "default"
+  },
+  "enabledPlugins": {
+    "dependency-audit@amboss-skills": true,
+    "expression@seed": true,
+    "moksha@seed": false,
+    "perspectives@seed": true,
+    "software@seed": true,
+    "switchboard@seed": true,
+    "thinkies@seed": true,
+    "visualizer@seed": false,
+    "skill-creator@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "plugin-dev@claude-plugins-official": true,
+    "huggingface-skills@claude-plugins-official": true,
+    "k8s-skills@amboss-skills": true,
+    "nats-skills@amboss-skills": true,
+    "tavily@tavily-plugins": true,
+    "frontend-design@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "seed": {
+      "source": {
+        "source": "github",
+        "repo": "synapseradio/seed"
+      }
+    },
+    "amboss-skills": {
+      "source": {
+        "source": "github",
+        "repo": "amboss-mededu/skills"
+      },
+      "autoUpdate": true
+    },
+    "tavily-plugins": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/tavily-ai/skills.git"
+      }
+    }
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false,
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "*.githubusercontent.com",
+        "registry.npmjs.org",
+        "*.npmjs.org",
+        "pypi.org",
+        "*.pythonhosted.org"
+      ]
+    },
+    "filesystem": {
+      "allowWrite": [
+        "//tmp"
+      ],
+      "denyRead": [
+        "~/.kube",
+        "~/.aws",
+        "~/.gnupg",
+        "~/.ssh",
+        "~/.zshrc",
+        "~/.npmrc"
+      ]
+    },
+    "enableWeakerNetworkIsolation": true,
+    "excludedCommands": [
+      "docker"
+    ]
+  },
+  "autoUpdatesChannel": "latest",
+  "voiceEnabled": true,
+  "Enabledplugins": {
+    "visualizer@seed": true,
+    "expression@seed": true,
+    "moksha@seed": true,
+    "perspectives@seed": true,
+    "software@seed": true,
+    "switchboard@seed": true,
+    "thinkies@seed": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "plugin-dev@claude-plugins-official": true,
+    "hookify@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "php-lsp@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "semgrep@claude-plugins-official": true,
+    "dependency-audit@amboss-skills": true,
+    "context7@claude-plugins-official": true,
+    "lua-lsp@claude-plugins-official": true
+  },
+  "terminalProgressBarEnabled": true,
+  "teammateMode": "auto"
+}

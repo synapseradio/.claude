@@ -1,0 +1,37 @@
+# Ignore everything by default
+*
+
+# Whitelist user-authored configuration
+!.gitignore
+!CLAUDE.md
+!reasoning-principles.md
+!code-principles.md
+!bash-style-guide.md
+!settings.json
+!.mcp.json
+!.claude/
+!.claude/settings.local.json
+
+# Whitelist agents
+!agents/
+!agents/**
+
+# Whitelist workflows
+!workflows/
+!workflows/**
+
+# Whitelist custom skills (not symlinks)
+!skills/
+!skills/stax/
+!skills/stax/**
+
+# Whitelist team config (not inboxes)
+!teams/
+!teams/*/
+!teams/*/config.json
+
+# Whitelist memory files (global + agent, not project-specific)
+!memory/
+!memory/**
+!agent-memory/
+!agent-memory/**
