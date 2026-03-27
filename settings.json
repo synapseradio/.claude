@@ -1,5 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "respectGitignore": false,
   "attribution": {
     "commit": "",
     "pr": ""
@@ -19,8 +20,6 @@
       "Read(**/.dotty*)",
       "mcp__claude_ai_*",
       "mcp__exa__*",
-      "mcp__tavily_remote_mcp__*",
-      "mcp__plugin_context7_context7__*",
       "Bash(git status:*)",
       "Bash(git commit:*)",
       "Bash(shfmt:*)",
@@ -58,35 +57,40 @@
     ],
     "defaultMode": "default"
   },
+  "enableAllProjectMcpServers": true,
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/nke/.claude/statusline-command.sh"
+  },
   "enabledPlugins": {
+    "atlassian@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
     "dependency-audit@amboss-skills": true,
     "expression@seed": true,
-    "moksha@seed": false,
+    "feature-dev@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": true,
+    "hookify@claude-plugins-official": true,
+    "huggingface-skills@claude-plugins-official": true,
+    "jdtls-lsp@claude-plugins-official": true,
+    "k8s-skills@amboss-skills": false,
+    "kotlin-lsp@claude-plugins-official": true,
+    "miro@miro-ai": true,
+    "nats-skills@amboss-skills": false,
     "perspectives@seed": true,
+    "php-lsp@claude-plugins-official": true,
+    "playground@claude-plugins-official": true,
+    "plugin-dev@claude-plugins-official": true,
+    "sentry@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
     "software@seed": true,
     "switchboard@seed": true,
     "thinkies@seed": true,
-    "visualizer@seed": false,
-    "skill-creator@claude-plugins-official": true,
-    "claude-code-setup@claude-plugins-official": true,
-    "plugin-dev@claude-plugins-official": true,
-    "huggingface-skills@claude-plugins-official": true,
-    "k8s-skills@amboss-skills": true,
-    "nats-skills@amboss-skills": true,
-    "tavily@tavily-plugins": true,
-    "frontend-design@claude-plugins-official": true,
-    "context7@claude-plugins-official": true,
-    "feature-dev@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true
+    "visualizer@seed": false
   },
   "extraKnownMarketplaces": {
-    "seed": {
-      "source": {
-        "source": "github",
-        "repo": "synapseradio/seed"
-      }
-    },
     "amboss-skills": {
       "source": {
         "source": "github",
@@ -94,13 +98,20 @@
       },
       "autoUpdate": true
     },
-    "tavily-plugins": {
+    "miro-ai": {
       "source": {
-        "source": "git",
-        "url": "https://github.com/tavily-ai/skills.git"
+        "source": "github",
+        "repo": "miroapp/miro-ai"
+      }
+    },
+    "seed": {
+      "source": {
+        "source": "github",
+        "repo": "synapseradio/seed"
       }
     }
   },
+  "skipWebFetchPreflight": true,
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
@@ -134,28 +145,11 @@
       "docker"
     ]
   },
+  "alwaysThinkingEnabled": true,
+  "showClearContextOnPlanAccept": true,
   "autoUpdatesChannel": "latest",
   "voiceEnabled": true,
-  "Enabledplugins": {
-    "visualizer@seed": true,
-    "expression@seed": true,
-    "moksha@seed": true,
-    "perspectives@seed": true,
-    "software@seed": true,
-    "switchboard@seed": true,
-    "thinkies@seed": true,
-    "typescript-lsp@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true,
-    "plugin-dev@claude-plugins-official": true,
-    "hookify@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": true,
-    "php-lsp@claude-plugins-official": true,
-    "skill-creator@claude-plugins-official": true,
-    "semgrep@claude-plugins-official": true,
-    "dependency-audit@amboss-skills": true,
-    "context7@claude-plugins-official": true,
-    "lua-lsp@claude-plugins-official": true
-  },
-  "terminalProgressBarEnabled": true,
-  "teammateMode": "auto"
+  "autoMemoryEnabled": true,
+  "teammateMode": "auto",
+  "terminalProgressBarEnabled": true
 }

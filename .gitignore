@@ -2,15 +2,16 @@
 *
 
 # Whitelist user-authored configuration
-!.gitignore
-!CLAUDE.md
-!reasoning-principles.md
-!code-principles.md
-!bash-style-guide.md
-!settings.json
-!.mcp.json
 !.claude/
 !.claude/settings.local.json
+!.gitignore
+!.mcp.json
+!CLAUDE.md
+!bash-style-guide.md
+!code-principles.md
+!decompose-reference.md
+!reasoning-principles.md
+!settings.json
 
 # Whitelist agents
 !agents/
@@ -35,3 +36,4 @@
 !memory/**
 !agent-memory/
 !agent-memory/**
+
