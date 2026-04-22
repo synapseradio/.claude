@@ -14,7 +14,7 @@
       "Grep",
       "WebFetch",
       "WebSearch",
-      "Task",
+      "TaskCreate",
       "Bash",
       "Skill",
       "Read(**/.dotty*)",
@@ -55,7 +55,7 @@
       "Bash(curl * | bash)",
       "Bash(wget * | sh)"
     ],
-    "defaultMode": "default"
+    "defaultMode": "auto"
   },
   "enableAllProjectMcpServers": true,
   "statusLine": {
@@ -88,7 +88,8 @@
     "switchboard@seed": true,
     "thinkies@seed": true,
     "typescript-lsp@claude-plugins-official": true,
-    "visualizer@seed": false
+    "visualizer@seed": false,
+    "babysitter@a5c.ai": true
   },
   "extraKnownMarketplaces": {
     "amboss-skills": {
@@ -108,6 +109,12 @@
       "source": {
         "source": "github",
         "repo": "synapseradio/seed"
+      }
+    },
+    "a5c.ai": {
+      "source": {
+        "source": "github",
+        "repo": "a5c-ai/babysitter"
       }
     }
   },
@@ -146,10 +153,12 @@
     ]
   },
   "alwaysThinkingEnabled": true,
+  "advisorModel": "opus",
   "showClearContextOnPlanAccept": true,
   "autoUpdatesChannel": "latest",
-  "voiceEnabled": true,
   "autoMemoryEnabled": true,
-  "teammateMode": "auto",
+  "skipAutoPermissionPrompt": true,
+  "voiceEnabled": true,
+  "teammateMode": "in-process",
   "terminalProgressBarEnabled": true
 }
