@@ -25,6 +25,8 @@
 !skills/
 !skills/stax/
 !skills/stax/**
+!skills/documentation/
+!skills/documentation/**
 
 # Whitelist team config (not inboxes)
 !teams/
