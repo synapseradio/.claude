@@ -160,5 +160,6 @@
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true,
   "teammateMode": "in-process",
-  "terminalProgressBarEnabled": true
+  "terminalProgressBarEnabled": true,
+  "model": "opus[1m]"
 }
