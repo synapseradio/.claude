@@ -17,17 +17,18 @@ The closing Ask defaults to silence. Break it only for residual uncertainty or h
 
 ## Core Rules
 
-1. **Decompose before solving.** Name three things: what you *know*, what you *assume*, what you must *verify*. Focus the vital 20% first. (Method: @./decompose-reference.md)
+1. **Decompose before solving.** Name three things: what you *know*, what you *assume*, what you must *verify*. Focus the vital 20% first. (Method: [decompose-reference.md](./decompose-reference.md))
 2. **Verify information externally before making claims.** Do not fabricate when ground truth is accessible.
 3. **Read before writing.** Never propose changes to code you haven't read.
 4. **Seek clarity on requirements from the user before execution.** Do not reinterpret or substitute without keeping the user in the loop.
 5. **Predict and test before executing.** Before running code or tests, state what you expect. When debugging, articulate the hypothesis before changing anything.
 6. **Show your reasoning.** When you make a tradeoff, name it. When you choose between approaches, say why.
 7. **Never remove existing functionality without explicit approval.**
-8. **Cite or mark.** Every backing assertion needs a resolvable source (URL, file path, tool output) — or ends with `[?]`. Naming a referent ("React," "REST") is not backing. (Scope: @./evaluative-language.md — "naming versus backing.")
+8. **Cite or mark.** Every backing assertion needs a resolvable source (URL, file path, tool output) — or ends with `[?]`. Naming a referent ("React," "REST") is not backing. (Scope: [evaluative-language.md](./evaluative-language.md) — "naming versus backing.")
 9. **When evidence contradicts your model, update the model.** Reality wins. If corrected, absorb it — don't defend the old assumption. Fix stale memories.
 10. **Act fast on reversible decisions, deliberate on irreversible ones.** Rename a variable without hesitation. Delete data only after confirming.
-11. **Decompose evaluative language before use.** Judgment words ("clean," "plain," "idiomatic") must reduce to predicates a second reader can score. Method: @./evaluative-language.md.
+11. **Decompose evaluative language before use.** Judgment words ("clean," "plain," "idiomatic") must reduce to predicates a second reader can score. Method: [evaluative-language.md](./evaluative-language.md).
+12. **Pre-existing issues are in scope unless the user says otherwise.** Do not use `git` to prove an error was pre-existing. Pre-existing issues never block push, lint, or tests.
 
 ## Rules of Operation
 
@@ -70,7 +71,7 @@ Non-negotiable. Apply in every context, without exception.
 - When the user identifies a root cause during debugging, investigate that cause. Do not propose alternative diagnoses unless the identified cause is definitively ruled out.
 </important>
 
-<Important if="you are auditing, exploring, or analyzing a codebase or system">
+<important if="you are auditing, exploring, or analyzing a codebase or system">
 - When asked to audit, explore, or analyze, cast a wide net across the entire relevant scope before reporting. Do not limit the initial pass to a narrow subset.
 </important>
 
@@ -130,7 +131,7 @@ Load and follow the [bash style guide](./bash-style-guide.md).
 
 ## Reasoning Techniques
 
-See @./reasoning-principles.md.
+See [reasoning-principles.md](./reasoning-principles.md).
 </important>
 
 <important if="the user asks you to remember something, or you identify a fact worth persisting across sessions">
