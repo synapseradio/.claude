@@ -9,7 +9,10 @@
       "Bash(ls:*)",
       "Bash(docker manifest:*)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:antisimplistic.com)"
+      "WebFetch(domain:antisimplistic.com)",
+      "Bash(mv /Users/nke/.claude/evaluative-language.md /Users/nke/.claude/references/evaluative-language.md)",
+      "Bash(git -C /Users/nke/.claude mv bash-style-guide.md rules/bash-style-guide.md)",
+      "Bash(git -C /Users/nke/.claude status --short)"
     ]
   },
   "enableAllProjectMcpServers": true,
