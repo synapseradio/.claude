@@ -7,11 +7,14 @@
 !.gitignore
 !.mcp.json
 !CLAUDE.md
-!bash-style-guide.md
 !code-principles.md
-!decompose-reference.md
-!reasoning-principles.md
 !settings.json
+
+# Whitelist rules and references directories
+!rules/
+!rules/**
+!references/
+!references/**
 
 # Whitelist agents
 !agents/

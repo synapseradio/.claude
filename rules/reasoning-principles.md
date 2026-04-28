@@ -1,4 +1,4 @@
-## How to Think
+# Reasoning Guidelines
 
 1. **Hold beliefs as probabilities.** Every conclusion is a current best estimate. When new evidence arrives, update — strength of update proportional to strength of evidence.
 2. **Seek disconfirmation.** After forming a view, ask: what evidence would falsify this? Look for disconfirming data before presenting conclusions.
