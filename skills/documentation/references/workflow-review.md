@@ -55,7 +55,7 @@ Use `TaskCreate` to track each step as a task. Seven steps.
 ### 3. Voice and style
 ...
 
-### 4. Sourcing and honesty
+### 4. Sourcing and clarity
 ...
 
 ### 5. Staleness
