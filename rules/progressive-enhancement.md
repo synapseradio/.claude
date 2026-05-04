@@ -1,29 +1,31 @@
 # Progressive Enhancement: Writing and Structuring Thoughts
 
-Every output must work at a baseline — plain prose, complete sentences, no formatting required to land the meaning. Structure (headers, tables, lists, code blocks, diagrams) is enhancement: it activates when the medium renders it and the reader has the context to absorb it.
+<when> writing or structuring output — prose, documentation, chat responses.
 
-## Baseline first, enhancement under it
+Output must work at a baseline: plain prose, complete sentences, no formatting required to land the meaning. Structure — headers, tables, lists, code blocks, diagrams — is enhancement. It activates when the medium renders it and the reader can absorb it.
 
-- The first sentence carries the load-bearing claim. A reader who stops there should not be misled.
-- Subsequent paragraphs layer evidence, qualifications, and detail. The reader stops where their need is met.
-- If you remove every header, table, and list, the prose underneath must still be coherent. Strip the scaffolding in your head before sending.
+## Baseline first, enhancement on top
+
+<prefer> The first sentence carries the load-bearing claim. A reader who stops there should not be misled.
+<prefer> Add evidence, qualifications, and detail in later paragraphs. The reader stops where their need is met.
+<prefer> Strip every header, table, and list in your head before sending. The prose underneath must remain coherent.
 
 ## Structure earns its place
 
-- **Lists** are for items that are genuinely parallel. If the items aren't logically the same kind of thing, prose conveys it better; the list is false ornament.
-- **Tables** are for genuinely tabular data — rows and columns where every cell in a column is the same kind of value. If a row's cells are heterogeneous, the table is doing the work of a paragraph and should be one.
-- **Headers** are for sections a reader might want to skip to. If the document has no skipping audience, headers add weight without value.
-- **Code blocks** are for code, commands, file paths, and verbatim strings. Not for emphasis, not for visual variety. A reader piping the page through plain text should still understand which strings are literal.
-- **Diagrams** carry the burden of being legible without their caption — and of degrading to a meaningful description when the image cannot render.
+<prefer> Lists for genuinely parallel items. Heterogeneous items belong in prose.
+<prefer> Tables for tabular data — every cell in a column is the same kind of value. Mismatched cells mean the table is doing a paragraph's job.
+<prefer> Headers for sections a reader might skip to. No skipping audience, no header.
+<prefer> Code blocks for code, commands, file paths, and verbatim strings. Never for emphasis or visual variety.
+<prefer> Diagrams that degrade to a meaningful description when the image cannot render. The caption is not the description.
 
-## Don't assume the rendering medium
+## Do not assume the rendering medium
 
-Markdown may not render at the destination — chat clients, plain-text exports, terminals without color, screen readers, downstream LLMs that strip formatting. The unformatted form must still work. This is the writing analogue of the CLI rule that every feature degrades when fzf, color, or a TTY is absent.
+<prefer> Markdown may not render — chat clients strip formatting, plain-text exports drop structure, screen readers linearize, downstream LLMs flatten. The unformatted form must still work.
 
-## Don't assume the reader's vocabulary
+## Do not assume the reader's vocabulary
 
-Define jargon on first use, or use the plain word. Acronyms expand on first appearance. A reader without the term should still follow the load-bearing claim — the term is the enhancement; the meaning is the baseline.
+<prefer> Define jargon on first use. Expand acronyms. A reader without the term must follow the load-bearing claim.
 
-## When in doubt, write the prose first
+## When in doubt, write prose first
 
-If you find yourself reaching for a list, a table, or a header before the prose exists, you are designing the scaffolding before knowing what it holds. Write the paragraph first; then ask whether structure helps. Most of the time, the paragraph was enough.
+<prefer> If you reach for a list, table, or header before the prose exists, write the paragraph first. Then ask whether structure helps. Most of the time, the paragraph was enough.
