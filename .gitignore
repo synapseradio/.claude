@@ -1,44 +1,19 @@
 # Ignore everything by default
 *
 
-# Whitelist user-authored configuration
-!.claude/
-!.claude/settings.local.json
 !.gitignore
-!.mcp.json
 !CLAUDE.md
-!code-principles.md
-!settings.json
+!settings.base.json
+!.skill-lock.json
 
-# Whitelist rules and references directories
 !rules/
 !rules/**
 !references/
 !references/**
 
-# Whitelist agents
-!agents/
-!agents/**
+!scripts/
+!scripts/**
 
-# Whitelist workflows
-!workflows/
-!workflows/**
-
-# Whitelist custom skills (not symlinks)
-!skills/
-!skills/stax/
-!skills/stax/**
-!skills/documentation/
-!skills/documentation/**
-
-# Whitelist team config (not inboxes)
-!teams/
-!teams/*/
-!teams/*/config.json
-
-# Whitelist memory files (global + agent, not project-specific)
-!memory/
-!memory/**
-!agent-memory/
-!agent-memory/**
-
+# Bytecode under scripts/
+scripts/**/__pycache__/
+scripts/**/*.pyc

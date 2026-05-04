@@ -24,21 +24,21 @@ The user ALWAYS expects you to load ALL skills they refer to in this way. If you
 
 ### Always-loaded rules (`~/.claude/rules/`)
 
-- [decompose-reference.md](@./references/decompose-reference.md) — decomposition method (cited by Core Rule 1)
-- [core-rules.md](@./rules/core-rules.md) — the 12 numbered Core Rules
-- [operating-rules.md](@./rules/operating-rules.md) — non-negotiable Rules of Operation
-- [reasoning-principles.md](@./rules/reasoning-principles.md) — how to think
-- [persistent-memory.md](@./rules/persistent-memory.md) — persistent memory across sessions
-- [search-tools.md](@./rules/search-tools.md) — web search
-- [git-commit.md](@./rules/git-commit.md) — pre-commit checks, stack workflow
-- [debugging.md](@./rules/debugging.md) — investigate the user's identified root cause
-- [audit-explore.md](@./rules/audit-explore.md) — explore broadly before reporting
-- [testing.md](@./rules/testing.md) — test scope, isolation, mocks
-- [progressive-enhancement.md](@./rules/progressive-enhancement.md) — structure thoughts as progressive enhancement
-- [evergreen-prose.md](@./rules/evergreen-prose.md) — no transitional framing in evergreen artifacts
-- [writing-for-humans.md](@./rules/writing-for-humans.md) — prose voice, clarity — review when writing for a human audience
-- [code-write.md](@./rules/code-write.md) — writing or modifying source code
-- [code-implement.md](@./rules/code-implement.md) — TDD scientific-method workflow
+- [decompose-reference.md](./references/decompose-reference.md) — decomposition method (cited by Core Rule 1)
+- [core-rules.md](./rules/core-rules.md) — the 12 numbered Core Rules
+- [operating-rules.md](./rules/operating-rules.md) — non-negotiable Rules of Operation
+- [reasoning-principles.md](./rules/reasoning-principles.md) — how to think
+- [persistent-memory.md](./rules/persistent-memory.md) — persistent memory across sessions
+- [search-tools.md](./rules/search-tools.md) — web search
+- [git-commit.md](./rules/git-commit.md) — pre-commit checks, stack workflow
+- [debugging.md](./rules/debugging.md) — investigate the user's identified root cause
+- [audit-explore.md](./rules/audit-explore.md) — explore broadly before reporting
+- [testing.md](./rules/testing.md) — test scope, isolation, mocks
+- [progressive-enhancement.md](./rules/progressive-enhancement.md) — structure thoughts as progressive enhancement
+- [evergreen-prose.md](./rules/evergreen-prose.md) — no transitional framing in evergreen artifacts
+- [writing-for-humans.md](./rules/writing-for-humans.md) — prose voice, clarity — review when writing for a human audience
+- [code-write.md](./rules/code-write.md) — writing or modifying source code
+- [code-implement.md](./rules/code-implement.md) — TDD scientific-method workflow
   
 ### References (`~/.claude/references/`)
 

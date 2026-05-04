@@ -5,7 +5,7 @@
 ## When tests fail
 
 <never> Commit, push, or claim "done" while any deterministic check is red — failing test, hung test, lint error, commit-hook block, build break.
-<prefer> The failure becomes the next task. See Core Rule 12 and [operating-rules.md](@./rules/operating-rules.md).
+<prefer> The failure becomes the next task. See Core Rule 12 and [operating-rules.md](./operating-rules.md).
 
 <never> Dismiss a red test as "pre-existing", "out of scope", or "unrelated." A test red for six months is still red.
 

@@ -1,6 +1,6 @@
 # Evergreen Artifacts: No Transitional Framing
 
-@./progressive-enhancement.md
+See also: [progressive-enhancement.md](./progressive-enhancement.md).
 
 <when> writing code comments, SKILL.md, commands/*.md, agents/*.md, plugin READMEs, reference docs — any prose that describes what a thing IS.
 

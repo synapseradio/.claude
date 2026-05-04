@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "includeCoAuthoredBy": false,
+  "includeGitInstructions": true,
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "TaskCreate",
+      "Bash",
+      "Skill",
+      "Bash(git status:*)",
+      "Bash(git commit:*)",
+      "Bash(git add:*)",
+      "Bash(git mv:*)",
+      "Bash(shfmt:*)",
+      "Bash(bats:*)",
+      "Bash(npx tsc:*)"
+    ],
+    "deny": [
+      "Read(~/.kube/**)",
+      "Read(**/.*profile)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.gnupg/**)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/*credentials*)",
+      "Read(**/*secrets*)",
+      "Read(**/.env*)",
+      "Bash(sudo *)",
+      "Bash(rm -rf /*)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard *)",
+      "Bash(chmod 777 *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(curl * | sh)",
+      "Bash(curl * | bash)",
+      "Bash(wget * | sh)"
+    ],
+    "defaultMode": "default"
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false,
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "*.githubusercontent.com",
+        "registry.npmjs.org",
+        "*.npmjs.org",
+        "pypi.org",
+        "*.pythonhosted.org"
+      ]
+    },
+    "filesystem": {
+      "denyRead": [
+        "~/.kube",
+        "~/.aws",
+        "~/.gnupg",
+        "~/.ssh",
+        "~/.zshrc",
+        "~/.bashrc",
+        "~/.profile",
+        "~/.zshenv",
+        "~/.npmrc",
+        "*secrets*"
+      ]
+    },
+    "enableWeakerNetworkIsolation": true,
+    "excludedCommands": ["docker"]
+  },
+  "alwaysThinkingEnabled": true,
+  "autoCompactWindow": 300000,
+  "showClearContextOnPlanAccept": true,
+  "autoUpdatesChannel": "latest",
+  "autoMemoryEnabled": true
+}
