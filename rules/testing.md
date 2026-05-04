@@ -2,12 +2,20 @@
 
 Applies whenever tests are read, written, or run.
 
+## When tests fail (or hang, or lint, or hook-block)
+
+A red signal is the contract speaking, not a status report. The moment any deterministic check fires red — failing test, hung test, lint error, commit-hook block, build break — stop the original work and create one `TaskCreate` per red item. Investigate. Fix. Then resume. No commit, no push, no "done" claim, no asking the user to bless deferral until the suite is green again.
+
+The label "pre-existing" is irrelevant — a test red for six months is still red right now. The label "unrelated" is irrelevant — your job is the suite, not just your diff. The phrase "out of scope" does not apply to red signals; they expand scope automatically. This is the explicit exception to scope-discipline (Core Rule 12 and the operating rule on deterministic failure signals).
+
+Defer only with explicit per-failure user authorization, requested individually with the concrete reason for that one failure. Never bundle. Never assume.
+
 ## Run scope
 
 - Never run the full test suite by default. Run only the tests covering files you changed. Map source → test (e.g., `lib/foo.sh` → `tests/foo.bats`, `src/Foo.ts` → `src/Foo.test.ts`, `pkg/foo.go` → `pkg/foo_test.go`). The full suite runs only when the user asks, the scope warrants it (release prep, suspected systemic regression), or no narrower mapping exists.
 - If the project provides a "test the changed files" tool (e.g., a `test-changed` script, a watcher with focused mode), use it.
 
-## Failing test first
+## think about and write failing tests before any behavioral change.
 
 When modifying behavior, write the failing test before changing the code. Run it to confirm it fails for the right reason — the absence of the new behavior, not a syntax error or missing import. A test that passes immediately wasn't proving anything.
 

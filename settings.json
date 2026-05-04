@@ -57,35 +57,69 @@
     ],
     "defaultMode": "default"
   },
-  "model": "opus[1m]",
   "enableAllProjectMcpServers": true,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/nke/.claude/hooks/block-secret-leaks.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/nke/.claude/hooks/block-open-questions-on-plan.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/nke/.claude/hooks/block-defer-on-stop.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "bash /Users/nke/.claude/statusline-command.sh"
   },
   "enabledPlugins": {
     "atlassian@claude-plugins-official": true,
-    "babysitter@a5c.ai": true,
-    "claude-code-setup@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true,
+    "babysitter@a5c.ai": false,
+    "claude-code-setup@claude-plugins-official": false,
+    "claude-md-management@claude-plugins-official": false,
     "dependency-audit@amboss-skills": true,
-    "expression@seed": true,
-    "feature-dev@claude-plugins-official": true,
+    "expression@seed": false,
+    "feature-dev@claude-plugins-official": false,
     "frontend-design@claude-plugins-official": true,
-    "gopls-lsp@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": false,
     "hookify@claude-plugins-official": true,
-    "huggingface-skills@claude-plugins-official": true,
-    "jdtls-lsp@claude-plugins-official": true,
+    "huggingface-skills@claude-plugins-official": false,
+    "jdtls-lsp@claude-plugins-official": false,
     "journal@seed": true,
     "k8s-skills@amboss-skills": false,
-    "kotlin-lsp@claude-plugins-official": true,
-    "miro@miro-ai": true,
+    "kotlin-lsp@claude-plugins-official": false,
+    "miro@miro-ai": false,
     "nats-skills@amboss-skills": false,
     "perspectives@seed": true,
     "php-lsp@claude-plugins-official": true,
-    "playground@claude-plugins-official": true,
+    "playground@claude-plugins-official": false,
     "plugin-dev@claude-plugins-official": true,
-    "sentry@claude-plugins-official": true,
+    "sentry@claude-plugins-official": false,
     "skill-creator@claude-plugins-official": true,
     "software@seed": true,
     "switchboard@seed": true,
@@ -139,7 +173,12 @@
     },
     "filesystem": {
       "allowWrite": [
-        "//tmp"
+        "//tmp",
+        "~/.dotty",
+        "~/.config",
+        "~/.dotfiles",
+        "//.tmp",
+        "//.notes"
       ],
       "denyRead": [
         "~/.kube",
@@ -147,7 +186,11 @@
         "~/.gnupg",
         "~/.ssh",
         "~/.zshrc",
-        "~/.npmrc"
+        "~/.bashrc",
+        "~/.profile",
+        "~/.zshenv",
+        "~/.npmrc",
+        "*secrets*"
       ]
     },
     "enableWeakerNetworkIsolation": true,
@@ -164,7 +207,7 @@
   "verbose": true,
   "terminalProgressBarEnabled": true,
   "teammateMode": "auto",
+  "skipAutoPermissionPrompt": true,
   "voiceEnabled": true,
-  "autoAllowBashIfSandboxed": true,
-  "effortLevel": "high"
+  "autoAllowBashIfSandboxed": true
 }

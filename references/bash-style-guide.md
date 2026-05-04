@@ -1,16 +1,3 @@
----
-paths:
-  - "**/*.sh"
-  - "**/*.bash"
-  - "**/*.zsh"
-  - "**/*.bats"
-  - "**/.bashrc"
-  - "**/.bash_profile"
-  - "**/.zshrc"
-  - "**/.zshenv"
-  - "**/.profile"
----
-
 # Google Shell Style Guide
 
 > **Source**: [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html)

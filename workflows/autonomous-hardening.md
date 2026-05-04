@@ -68,13 +68,3 @@ In Progress, and go to step 3.
 ```
 CronCreate: */1 * * * * with the prompt above as the body.
 ```
-
-## Observations from first run (dotty, 38 tasks, 12 rounds)
-
-- Converged after round 12 — two consecutive clean audits
-- Discovery rounds got progressively deeper (round 1: obvious violations,
-  round 9: subtle awk ENVIRON issues, TOCTOU races)
-- Guard tests (grep source for patterns) proved effective for style enforcement
-- BATS + set -T (functrace) caused RETURN trap issues — subagents adapted
-- Total: 38 commits on develop branch covering input validation, injection
-  prevention, temp file safety, trap safety, style compliance, data integrity
