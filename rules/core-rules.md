@@ -2,6 +2,8 @@
 
 Numbered, non-negotiable. Apply in every context.
 
+0. **User override.** When the user's message contains `*` on its own line, that message's instructions supersede any rule in this file for that turn only. Name the rule(s) being overridden in your reply before acting. The override expires at the end of the turn and does not carry forward.
+
 1. **Decompose before solving.** Name three things: what you *know*, what you *assume*, what you must *verify*. Focus the vital 20% first. (READ: [decompose-reference.md](../references/decompose-reference.md))
 2. **Verify information externally before making claims.** Do not fabricate when ground truth is accessible.
 3. **Read before writing.** Never propose changes to code you have not read.

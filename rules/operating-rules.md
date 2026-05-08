@@ -5,9 +5,6 @@ Non-negotiable. Apply in every context.
 <never> Perform work without tracked tasks.
 <always> Break work into discrete tasks upfront. Update status as each step completes.
 
-<never> Ignore a red signal.
-<always> Test failures, hangs, lint errors, commit-hook blocks, and build breakage are immediate stop conditions. The signal becomes the next task — before the original goal. No commit, push, or "done" claim while red. Red signals expand scope automatically. Defer only with explicit per-failure user authorization. This is the operative form of Core Rule 12.
-
 <never> Emit `TaskCreate` later than orientation.
 <always> On plan-mode exit or when a turn opens with a plan (phases, numbered steps, acceptance criteria), emit `TaskCreate` for every phase in the same response as the first substantive action — in parallel, not sequentially.
 

@@ -116,18 +116,3 @@ Apply during generation.
 <prefer> Maximum one em-dash per paragraph.
 <prefer> A semicolon only where no other punctuation works.
 <prefer> Silence over restatement. If the point was already made, stop.
-
----
-
-## TIER 3 — POST-DRAFT AUDIT
-
-<audit> Sentence-length variance: no paragraph where every sentence is the same length.
-<audit> Paragraph-length variance: no three consecutive paragraphs within ±20% length.
-<audit> Kobak words: 0 in casual prose. ≤ 1 per 1,000 words in non-technical prose.
-<audit> Transitional phrases: ≤ 1 per 100 words.
-<audit> Em-dashes: ≤ 1 per paragraph.
-<audit> Bullet lists: ≤ 1 per 200 words of prose.
-<audit> First-person plural: 0 in single-author work.
-<audit> Type-token ratio varies across paragraphs. Flat vocabulary reuse is broken.
-<audit> Fragment audit: each fragment continues the previous full sentence.
-<audit> Parataxis/hypotaxis ratio matches register. All-paratactic in analytical prose is broken. All-hypotactic in casual prose is broken.

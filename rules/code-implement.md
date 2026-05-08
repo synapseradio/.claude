@@ -10,6 +10,3 @@
 
 <never> Skip testing because no test infrastructure exists.
 <prefer> Flag the gap before writing code.
-
-<never> Run the full test suite by default.
-<prefer> Run only tests covering changed files. See [testing.md](./testing.md).

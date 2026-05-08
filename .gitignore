@@ -17,3 +17,5 @@
 # Bytecode under scripts/
 scripts/**/__pycache__/
 scripts/**/*.pyc
+# Thinkies persistence data (local, not committed)
+.thinkies/

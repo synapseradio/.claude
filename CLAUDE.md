@@ -37,10 +37,15 @@ The user ALWAYS expects you to load ALL skills they refer to in this way. If you
 - [progressive-enhancement.md](./rules/progressive-enhancement.md) — structure thoughts as progressive enhancement
 - [evergreen-prose.md](./rules/evergreen-prose.md) — no transitional framing in evergreen artifacts
 - [writing-for-humans.md](./rules/writing-for-humans.md) — prose voice, clarity — review when writing for a human audience
+- [respect-reader-agency.md](./rules/respect-reader-agency.md) — never break the fourth wall, no presumed-experience phrasing, no hyphen-compound prose, no semicolons-for-brevity
 - [code-write.md](./rules/code-write.md) — writing or modifying source code
 - [code-implement.md](./rules/code-implement.md) — TDD scientific-method workflow
+- [graphify.md](./rules/graphify.md) — graph layout, sync, querying, skill override, ownership scope
   
 ### References (`~/.claude/references/`)
 
 - [evaluative-language.md](./references/evaluative-language.md) — five-predicate harness for judgment words (cited by Core Rules 8 and 11)
 - [bash-style-guide.md](./references/bash-style-guide.md) — Google Shell Style Guide verbatim mirror
+# graphify
+- **graphify** (`~/.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
+When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.

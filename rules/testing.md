@@ -2,15 +2,6 @@
 
 <when> tests are read, written, or run.
 
-## When tests fail
-
-<never> Commit, push, or claim "done" while any deterministic check is red — failing test, hung test, lint error, commit-hook block, build break.
-<prefer> The failure becomes the next task. See Core Rule 12 and [operating-rules.md](./operating-rules.md).
-
-<never> Dismiss a red test as "pre-existing", "out of scope", or "unrelated." A test red for six months is still red.
-
-<never> Defer a failure without explicit per-failure user authorization. Never bundle. Never assume.
-
 ## Run scope
 
 <prefer> Run only tests covering changed files. Map source → test (e.g., `lib/foo.sh` → `tests/foo.bats`, `src/Foo.ts` → `src/Foo.test.ts`). The full suite runs only when the user asks, the scope warrants it, or no narrower mapping exists.

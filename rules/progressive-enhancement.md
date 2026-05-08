@@ -18,14 +18,6 @@ Output must work at a baseline: plain prose, complete sentences, no formatting r
 <prefer> Code blocks for code, commands, file paths, and verbatim strings. Never for emphasis or visual variety.
 <prefer> Diagrams that degrade to a meaningful description when the image cannot render. The caption is not the description.
 
-## Do not assume the rendering medium
-
-<prefer> Markdown may not render — chat clients strip formatting, plain-text exports drop structure, screen readers linearize, downstream LLMs flatten. The unformatted form must still work.
-
-## Do not assume the reader's vocabulary
-
-<prefer> Define jargon on first use. Expand acronyms. A reader without the term must follow the load-bearing claim.
-
 ## When in doubt, write prose first
 
 <prefer> If you reach for a list, table, or header before the prose exists, write the paragraph first. Then ask whether structure helps. Most of the time, the paragraph was enough.
