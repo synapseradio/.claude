@@ -22,9 +22,11 @@
 #   pr-link    blue.6  #228be6     context     cyan.6   #15aabf
 #   model      gray.6  #868e96
 #
-# Optional PR segment: set STATUSLINE_SHOW_PR=1 to surface the same OSC 8
-# hyperlink rendered by ~/.dotty/plugins/git/pr-link.sh, between git_metrics
-# and ctx_info.
+# PR segment: surfaces the same OSC 8 hyperlink rendered by
+# ~/.dotty/plugins/git/pr-link.sh, between git_metrics and ctx_info.
+# pr-link.sh emits empty output on the default branch, on a detached HEAD,
+# or when the remote URL does not parse, so the segment self-suppresses
+# in those cases without an extra branch check here.
 
 input=$(cat)
 
@@ -150,9 +152,9 @@ if git_root=$(git -C "${cwd:-.}" rev-parse --show-toplevel 2>/dev/null); then
   git_info+="${metrics}"
 fi
 
-# ── Optional PR segment ─────────────────────────────────────────────────
+# ── PR segment ──────────────────────────────────────────────────────────
 pr_info=""
-if [[ "${STATUSLINE_SHOW_PR:-0}" == "1" && -n "${git_root:-}" ]]; then
+if [[ -n "${git_root:-}" ]]; then
   pr_link="$(cd "$git_root" && "$HOME/.dotty/plugins/git/pr-link.sh" --display 2>/dev/null)"
   if [[ -n "$pr_link" ]]; then
     pr_info=" $(oc blue.6)⊕${pr_link}$(oc reset)"
