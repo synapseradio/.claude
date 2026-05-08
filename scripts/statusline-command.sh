@@ -22,11 +22,16 @@
 #   pr-link    blue.6  #228be6     context     cyan.6   #15aabf
 #   model      gray.6  #868e96
 #
-# PR segment: surfaces the same OSC 8 hyperlink rendered by
-# ~/.dotty/plugins/git/pr-link.sh, between git_metrics and ctx_info.
-# pr-link.sh emits empty output on the default branch, on a detached HEAD,
-# or when the remote URL does not parse, so the segment self-suppresses
-# in those cases without an extra branch check here.
+# PR segment: a single ⊕ icon that hyperlinks to the open PR for this
+# branch, or to the new-PR compare page when no PR exists yet. The URL
+# and state come from ~/.dotty/plugins/git/pr-link.sh --state, which
+# emits "state<TAB>url" with state ∈ open|none|unknown — or empty
+# output on the default branch / detached HEAD / unparseable remote,
+# so the segment self-suppresses in those cases.
+#
+# Color encodes whether a PR is open: blue.6 means an open PR exists
+# (or the resolver could not check), gray.5 means no PR yet and the
+# click drops the user on the compare page to create one.
 
 input=$(cat)
 
@@ -155,9 +160,18 @@ fi
 # ── PR segment ──────────────────────────────────────────────────────────
 pr_info=""
 if [[ -n "${git_root:-}" ]]; then
-  pr_link="$(cd "$git_root" && "$HOME/.dotty/plugins/git/pr-link.sh" --display 2>/dev/null)"
-  if [[ -n "$pr_link" ]]; then
-    pr_info=" $(oc blue.6)⊕${pr_link}$(oc reset)"
+  pr_state=""
+  pr_url=""
+  IFS=$'\t' read -r pr_state pr_url < <(cd "$git_root" \
+    && "$HOME/.dotty/plugins/git/pr-link.sh" --state 2>/dev/null) || true
+  if [[ -n "$pr_url" ]]; then
+    case "$pr_state" in
+      none) icon_color="$(oc gray.5)" ;;
+      *)    icon_color="$(oc blue.6)" ;;  # open or unknown
+    esac
+    osc8_open=$'\e]8;;'
+    osc8_close=$'\e\\'
+    pr_info=" ${icon_color}${osc8_open}${pr_url}${osc8_close}⊕${osc8_open}${osc8_close}$(oc reset)"
   fi
 fi
 
