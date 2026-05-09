@@ -106,6 +106,11 @@ def dispatch(payload: dict, output: IO[str]) -> None:
         return
 
     fired_keys = client.judge_many(scrubbed, framing, verdict_specs, event)
+    if fired_keys is client.JUDGE_COLD:
+        # Daemon is up but the model is still loading. Stay silent so
+        # the cold-load window does not flood the user with the
+        # unreachable-judge fallback.
+        return
     if fired_keys is None:
         emit.emit(event, binding.action, compose.FALLBACK_REPLAN_SLIM, output)
         return

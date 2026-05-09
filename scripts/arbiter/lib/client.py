@@ -24,6 +24,25 @@ circuits the batch with a single labeled failure reason
 errors. That distinguishes "judge truly down" from "one chat call
 flaked" in the log without changing the fail-closed contract the
 dispatcher depends on.
+
+`/health` distinguishes two kinds of unavailability. llama.cpp returns
+HTTP 503 with `{"error":{"message":"Loading model",...}}` while the
+weights are still loading, and HTTP 200 with `{"status":"ok"}` once
+the server can answer chat-completion requests. The probe surfaces the
+loading state as the `JUDGE_COLD` sentinel so the dispatcher can no-op
+silently during the cold-load window — a fail-closed message during
+startup would flood the user the moment they kicked off a session and
+trains them to disable the safety net.
+
+A single chat-completion call that comes back HTTP 400 with
+"exceeds the available context size" gets one retry whose body is
+tail-trimmed to the last `_BODY_TAIL_LINES` lines. The slot context
+in llama-server is roughly `--ctx-size / --parallel`, so a long plan
+or essay-length turn-ending message can overflow without anything
+being wrong with the daemon. The retry preserves a judgment for the
+closing of the message, which is where the verdicts Arbiter cares
+about (open questions, uncommitted alternatives, out-of-scope
+dismissals) tend to live.
 """
 
 import json
@@ -41,6 +60,17 @@ YES_NO_SCHEMA = {
     "properties": {"yes": {"type": "boolean"}},
     "required": ["yes"],
 }
+
+# Sentinel returned by `judge_many` when the daemon is up but the model
+# is still loading. The dispatcher treats this as a no-op rather than a
+# fail-closed signal, so cold start does not produce block messages.
+JUDGE_COLD = object()
+
+# Tail size for the oversize retry. 100 lines of typical prose fits
+# inside the per-slot context window for the daemon's default
+# configuration. Rare cases where 100 lines still overflows fall
+# through to the standard fail-closed path.
+_BODY_TAIL_LINES = 100
 
 # arbiter-config.sh sits two directories above this file:
 #   scripts/arbiter/lib/client.py  →  scripts/arbiter/arbiter-config.sh
@@ -137,6 +167,9 @@ def _probe_health() -> str | None:
     """Return None when the judge is healthy, else a short reason label.
 
     Labels are stable strings the log reader can grep:
+      - `cold`            — HTTP 503 with `Loading model` body. The daemon
+                            is up but the model has not finished loading.
+                            The caller turns this into `JUDGE_COLD`.
       - `health-connect`  — TCP refused / DNS / unreachable host
       - `health-timeout`  — server bound but did not answer in time
       - `health-status`   — non-2xx response from /health
@@ -152,7 +185,17 @@ def _probe_health() -> str | None:
                 body = resp.read(256).decode("utf-8", errors="replace")
             except OSError:
                 return "health-body"
-    except urllib.error.HTTPError:
+    except urllib.error.HTTPError as exc:
+        # llama.cpp returns 503 with `{"error":{"message":"Loading model",...}}`
+        # while the weights are still loading. Treat as cold rather than
+        # outage so the dispatcher can stay silent during the cold-load
+        # window. Any other HTTPError is a real outage.
+        try:
+            err_body = exc.read(256).decode("utf-8", errors="replace")
+        except OSError:
+            err_body = ""
+        if exc.code == 503 and "Loading model" in err_body:
+            return "cold"
         return "health-status"
     except urllib.error.URLError as exc:
         # urllib wraps connect-refused, no-route, and DNS failures as
@@ -169,6 +212,14 @@ def _probe_health() -> str | None:
     if '"status"' not in body or '"ok"' not in body:
         return "health-body"
     return None
+
+
+def _tail_lines(text: str, n: int = _BODY_TAIL_LINES) -> str:
+    """Return the last `n` lines of `text`, or `text` unchanged when shorter."""
+    lines = text.splitlines()
+    if len(lines) <= n:
+        return text
+    return "\n".join(lines[-n:])
 
 
 def log_call(event: str, duration_ms: int, verdicts: str) -> None:
@@ -216,13 +267,14 @@ def _extract_yes(body) -> bool | None:
     return yes
 
 
-def _judge_one(body_text: str, framing: str, verdict_prompt: str) -> bool | None:
-    """One focused yes/no judge call. Returns True/False, or None on error.
+def _post_chat(body_text: str, framing: str, verdict_prompt: str) -> tuple[bool | None, str | None]:
+    """One POST attempt. Returns (yes/no, reason_label).
 
-    None signals an outage or malformed response — the caller treats
-    that as a fail-closed signal across the whole judgment. Uses the
-    OpenAI-compatible /v1/chat/completions endpoint that llama-server
-    exposes; schema is enforced via `response_format.json_schema`.
+    `reason_label` is `None` on success or generic failure, and
+    `"oversize"` when llama-server returned HTTP 400 with the
+    "exceeds the available context size" body. The caller uses that
+    label to decide whether retrying with a tail-trimmed body is
+    worthwhile.
     """
     system_prompt = framing + verdict_prompt + _OUTPUT_INSTRUCTION
     framed = (
@@ -258,28 +310,55 @@ def _judge_one(body_text: str, framing: str, verdict_prompt: str) -> bool | None
     try:
         with urllib.request.urlopen(request, timeout=JUDGE_TIMEOUT_SECONDS) as resp:
             body = json.load(resp)
-    except urllib.error.HTTPError:
-        return None
+    except urllib.error.HTTPError as exc:
+        try:
+            err_body = exc.read(512).decode("utf-8", errors="replace")
+        except OSError:
+            err_body = ""
+        if exc.code == 400 and "exceeds the available context" in err_body:
+            return None, "oversize"
+        return None, None
     except urllib.error.URLError, TimeoutError, OSError, ValueError:
-        return None
+        return None, None
 
-    return _extract_yes(body)
+    return _extract_yes(body), None
 
 
-def judge_many(body_text: str, framing: str, verdict_specs: list, event: str) -> list[str] | None:
+def _judge_one(body_text: str, framing: str, verdict_prompt: str) -> bool | None:
+    """One focused yes/no judge call. Returns True/False, or None on error.
+
+    None signals an outage or malformed response — the caller treats
+    that as a fail-closed signal across the whole judgment. Uses the
+    OpenAI-compatible /v1/chat/completions endpoint that llama-server
+    exposes; schema is enforced via `response_format.json_schema`.
+
+    On HTTP 400 "exceeds the available context size", the call retries
+    once with the body tailed to the last `_BODY_TAIL_LINES` lines.
+    Truncation only happens on retry — the first attempt always sees
+    the full body so short messages are judged in full.
+    """
+    result, reason = _post_chat(body_text, framing, verdict_prompt)
+    if reason == "oversize":
+        result, _ = _post_chat(_tail_lines(body_text), framing, verdict_prompt)
+    return result
+
+
+def judge_many(body_text: str, framing: str, verdict_specs: list, event: str):
     """Run one focused call per verdict in parallel.
 
     Returns:
       - [] when none fired
       - [verdict_key, ...] (snake_case keys) when one or more fired
+      - JUDGE_COLD when the daemon is up but the model is still
+        loading (HTTP 503 + "Loading model" body on /health). The
+        caller should treat this as a no-op rather than fail-closed.
       - None when any call failed (fail-closed signal)
 
     A `/health` probe runs first. If the daemon is unreachable or
     unhealthy, the function logs the specific reason
     (`ERROR:health-<label>`) and returns `None` without making any
-    chat-completions calls. That keeps the log readable and avoids the
-    historical "all four verdicts errored at 30ms" pattern that hid
-    the actual cause.
+    chat-completions calls. The cold-load case is logged as
+    `SKIP:cold` instead, since it is not an error.
     """
     if not verdict_specs:
         log_call(event, 0, _CLEAR)
@@ -288,6 +367,10 @@ def judge_many(body_text: str, framing: str, verdict_specs: list, event: str) ->
     started = time.monotonic()
 
     health_reason = _probe_health()
+    if health_reason == "cold":
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+        log_call(event, elapsed_ms, "SKIP:cold")
+        return JUDGE_COLD
     if health_reason is not None:
         elapsed_ms = int((time.monotonic() - started) * 1000)
         log_call(event, elapsed_ms, f"{_ERROR}:{health_reason}")

@@ -70,6 +70,8 @@ If the response says yes, `compose.compose_message` builds the block message. Th
 
 If the local `llama-server` is unreachable, returns a malformed response, or any single verdict call errors, the dispatcher emits a static fallback message instead. Same `Stop` block shape, but the body is a fixed paragraph naming the four classes of issue Arbiter watches for and explaining how to start the server (`arbiter-up.sh`). Arbiter fails closed by design — a silent disablement on outage would defeat the safety net.
 
+Two narrower failure modes get gentler handling. While the daemon is up but the model is still loading (HTTP 503 with a `Loading model` body on `/health`), the dispatcher stays silent. Cold start is not an outage, and surfacing the unreachable-judge fallback the moment the user starts a session would train them to disable the safety net. Judgments resume the first time `/health` returns 200. And when a single chat-completion call comes back HTTP 400 with `exceeds the available context size` — the body plus framing pushed the request past the per-slot context window the daemon allocates from `--ctx-size / --parallel` — that one call retries with the body tailed to its last 100 lines. Short messages always see a full-body judgment; long ones get a tail-only judgment rather than a fallback.
+
 ## Reference
 
 `bindings.yaml` has three top-level sections.
