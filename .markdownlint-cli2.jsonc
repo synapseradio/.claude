@@ -2,64 +2,33 @@
   "config": {
     "default": false,
 
-    // --- Fixable rules: enabled ---
-    "MD004": true, // ul-style
-    "MD005": true, // list-indent
+    // Whitespace and structural normalization only — rules whose
+    // autofix never touches prose content (emphasis, code spans,
+    // heading text, link text, list numbering, capitalization).
+    // The .md files in this repo are instructional prose. Any rule
+    // whose fix interprets authorial meaning is the wrong kind of
+    // assistance and is left out by design.
+    "MD005": true, // list-indent (within-list consistency)
     "MD007": {
       "indent": 2
-    }, // ul-indent: 2-space convention across rules/, references/, scripts/.
-    //              ai-skills uses 4; this repo's tracked markdown uses 2.
+    }, // ul-indent — 2-space matches the repo convention
     "MD009": true, // no-trailing-spaces
     "MD010": true, // no-hard-tabs
-    "MD011": true, // no-reversed-links
+    "MD011": true, // no-reversed-links (fixes a syntax mistake, not prose)
     "MD012": true, // no-multiple-blanks
-    "MD014": true, // commands-show-output
     "MD018": true, // no-missing-space-atx
     "MD019": true, // no-multiple-space-atx
     "MD020": true, // no-missing-space-closed-atx
     "MD021": true, // no-multiple-space-closed-atx
     "MD022": true, // blanks-around-headings
     "MD023": true, // headings-start-left
-    "MD026": true, // no-trailing-punctuation
     "MD027": true, // no-multiple-space-blockquote
-    "MD029": true, // ol-prefix
-
-    // --- Fixable rules: disabled for this repo ---
-    "MD030": false, // list-marker-space: allow varied spacing for visual separation
     "MD031": true, // blanks-around-fences
     "MD032": true, // blanks-around-lists
-    "MD034": true, // no-bare-urls
-    "MD037": false, // no-space-in-emphasis: load-bearing rule prose under
-    //                rules/ uses literal `___` and `_word_` constructs as
-    //                placeholders for emphasis-marker examples. The auto-fix
-    //                glues adjacent words to the underscores, mangling the
-    //                meaning. Disabled repo-wide.
-    "MD038": false, // no-space-in-code: scripts/arbiter/ docs quote LLM
-    //                prompt strings that contain backticks, producing
-    //                code spans the auto-fix collapses by removing
-    //                semantically meaningful spaces. Disabled repo-wide.
     "MD039": true, // no-space-in-links
-    "MD044": true, // proper-names
     "MD047": true, // single-trailing-newline
-    "MD049": false, // emphasis-style: with MD037 off, literal `___`
-    //                placeholders trip MD049 (asterisk vs underscore).
-    //                The repo intentionally mixes both because some
-    //                examples demonstrate underscore syntax. Disabled
-    //                rather than forcing one style across rule prose.
-    "MD050": true, // strong-style
-    "MD051": true, // link-fragments
-    "MD053": true, // link-image-reference-definitions
-    "MD054": true, // link-image-style
     "MD058": true // blanks-around-tables
   },
-  // markdownlint-cli2 configuration
-  //
-  // Only fixable rules are enabled. The pre-commit hook runs --fix,
-  // so every error it reports is one it can also resolve. Unfixable
-  // rules (MD001, MD003, MD028, etc.) are off — they blocked commits
-  // without offering auto-repair.
-  //
-  // Fixable rule list: https://github.com/DavidAnson/markdownlint/blob/main/lib/constants.mjs
   "ignores": [
     "node_modules/**",
     "**/node_modules/**",
