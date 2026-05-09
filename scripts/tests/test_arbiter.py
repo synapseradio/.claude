@@ -18,6 +18,7 @@ Coverage:
 - Stop / SubagentStop bindings never list `uncommitted_alternatives`
   — locks in the immediate concern that motivated the rewrite
 """
+
 import io
 import json
 import pathlib
@@ -27,7 +28,7 @@ import tempfile
 ARBITER_DIR = pathlib.Path(__file__).resolve().parents[1] / "arbiter"
 sys.path.insert(0, str(ARBITER_DIR))
 
-from lib import compose, dispatcher  # noqa: E402
+from lib import dispatcher  # noqa: E402
 from lib.compose import FALLBACK_REPLAN_SLIM, compose_message  # noqa: E402
 from lib.config import ConfigError, load_bindings  # noqa: E402
 
@@ -56,8 +57,12 @@ def _section(label: str) -> None:
 def test_loader_valid():
     """The shipped bindings.yaml loads cleanly and exposes every verdict."""
     b = load_bindings(BINDINGS_PATH)
-    expected = {"open_questions", "uncommitted_alternatives",
-                "out_of_scope_deferral", "baseline_probe"}
+    expected = {
+        "open_questions",
+        "uncommitted_alternatives",
+        "out_of_scope_deferral",
+        "baseline_probe",
+    }
     if set(b.verdicts) != expected:
         _fail("loader_valid", f"verdicts {set(b.verdicts)} != {expected}")
         return
@@ -75,7 +80,9 @@ def test_loader_invalid():
     cases = [
         ("missing-verdicts", "bindings: []\n"),
         ("missing-bindings", "verdicts: {}\n"),
-        ("unknown-action", """verdicts:
+        (
+            "unknown-action",
+            """verdicts:
   open_questions:
     prompt: hi
     glossary: hi
@@ -86,8 +93,11 @@ bindings:
     tool: ExitPlanMode
     verdicts: [open_questions]
     action: nuke
-"""),
-        ("mismatched-event-action", """verdicts:
+""",
+        ),
+        (
+            "mismatched-event-action",
+            """verdicts:
   open_questions:
     prompt: hi
     glossary: hi
@@ -97,8 +107,11 @@ bindings:
   - event: Stop
     verdicts: [open_questions]
     action: ask
-"""),
-        ("unknown-verdict-ref", """verdicts:
+""",
+        ),
+        (
+            "unknown-verdict-ref",
+            """verdicts:
   open_questions:
     prompt: hi
     glossary: hi
@@ -109,8 +122,11 @@ bindings:
     tool: ExitPlanMode
     verdicts: [does_not_exist]
     action: deny
-"""),
-        ("unknown-remediation-key", """verdicts:
+""",
+        ),
+        (
+            "unknown-remediation-key",
+            """verdicts:
   open_questions:
     prompt: hi
     glossary: hi
@@ -121,8 +137,11 @@ bindings:
     tool: ExitPlanMode
     verdicts: [open_questions]
     action: deny
-"""),
-        ("unknown-field", """verdicts:
+""",
+        ),
+        (
+            "unknown-field",
+            """verdicts:
   open_questions:
     prompt: hi
     glossary: hi
@@ -134,7 +153,8 @@ bindings:
     tool: ExitPlanMode
     verdicts: [open_questions]
     action: deny
-"""),
+""",
+        ),
     ]
     for label, content in cases:
         path = pathlib.Path(tempfile.mkstemp(suffix=".yaml")[1])
@@ -158,11 +178,12 @@ def test_stop_misfire_lockin():
     """Stop / SubagentStop bindings must not subscribe uncommitted_alternatives."""
     b = load_bindings(BINDINGS_PATH)
     for entry in b.bindings:
-        if entry.event in ("Stop", "SubagentStop"):
-            if "uncommitted_alternatives" in entry.verdict_ids:
-                _fail("stop_misfire_lockin",
-                      f"{entry.event} binding lists uncommitted_alternatives")
-                return
+        if (
+            entry.event in ("Stop", "SubagentStop")
+            and "uncommitted_alternatives" in entry.verdict_ids
+        ):
+            _fail("stop_misfire_lockin", f"{entry.event} binding lists uncommitted_alternatives")
+            return
     _ok("stop_misfire_lockin")
 
 
@@ -242,7 +263,7 @@ def _restore_judge_many(original):
 
 
 def _reset_cache():
-    dispatcher._CACHED_BINDINGS = None  # noqa: SLF001
+    dispatcher._CACHED_BINDINGS = None
 
 
 def test_dispatch_pretooluse_deny():
@@ -282,10 +303,22 @@ def test_dispatch_stop_block():
     try:
         # Synthetic transcript: latest assistant entry has text.
         with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False) as fh:
-            fh.write(json.dumps({
-                "type": "assistant",
-                "message": {"content": [{"type": "text", "text": "Tests pass. The TS errors are pre-existing."}]},
-            }) + "\n")
+            fh.write(
+                json.dumps(
+                    {
+                        "type": "assistant",
+                        "message": {
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": "Tests pass. The TS errors are pre-existing.",
+                                }
+                            ]
+                        },
+                    }
+                )
+                + "\n"
+            )
             transcript = fh.name
         out = io.StringIO()
         dispatcher.dispatch(
@@ -370,16 +403,28 @@ def test_dispatch_suppression_drops_uncommitted():
     original = _patch_judge_many({"uncommitted_alternatives"})
     try:
         with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False) as fh:
-            fh.write(json.dumps({
-                "type": "user",
-                "message": {"content": [{"type": "text", "text": "go"}]},
-            }) + "\n")
-            fh.write(json.dumps({
-                "type": "assistant",
-                "message": {"content": [
-                    {"type": "tool_use", "name": "AskUserQuestion", "input": {}},
-                ]},
-            }) + "\n")
+            fh.write(
+                json.dumps(
+                    {
+                        "type": "user",
+                        "message": {"content": [{"type": "text", "text": "go"}]},
+                    }
+                )
+                + "\n"
+            )
+            fh.write(
+                json.dumps(
+                    {
+                        "type": "assistant",
+                        "message": {
+                            "content": [
+                                {"type": "tool_use", "name": "AskUserQuestion", "input": {}},
+                            ]
+                        },
+                    }
+                )
+                + "\n"
+            )
             transcript = fh.name
         out = io.StringIO()
         dispatcher.dispatch(
@@ -392,8 +437,7 @@ def test_dispatch_suppression_drops_uncommitted():
             out,
         )
         if out.getvalue() != "":
-            _fail("dispatch_suppression",
-                  f"expected suppression, got output: {out.getvalue()!r}")
+            _fail("dispatch_suppression", f"expected suppression, got output: {out.getvalue()!r}")
             return
         _ok("dispatch_suppression")
     finally:

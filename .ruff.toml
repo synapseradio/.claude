@@ -1,0 +1,28 @@
+line-length = 100
+target-version = "py315"
+
+[lint]
+# Baseline (E, F, W, I) mirrors ~/projects/ai/ai-skills/.ruff.toml.
+# Each addition below is justified — kept narrow because this is a
+# small Python surface (twelve files under scripts/) and noisy
+# linting on every commit would block real work.
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes — undefined names, unused imports, real-bug catches
+    "W",   # pycodestyle warnings
+    "I",   # isort — stable import ordering across small project files
+    "B",   # flake8-bugbear — catches actual bugs (mutable default args,
+           # B007 unused loop vars, B008 calls in defaults). Worth the
+           # small noise on a tree of this size.
+    "UP",  # pyupgrade — modernize syntax for the declared target-version.
+           # Auto-fixable; keeps the codebase from drifting behind py315.
+    "SIM", # flake8-simplify — pattern simplifications (collapse nested
+           # ifs, reduce ternary verbosity). Mostly opinion-free.
+    "RUF", # ruff's own rules — catches unused noqa directives, unsorted
+           # __all__, and a handful of correctness checks the others miss.
+]
+ignore = [
+    "E501", # Line length: long quoted dialogue and transcript strings in
+            # tests would force awkward continuations. Same call ai-skills
+            # makes; line-length above caps real code at 100.
+]

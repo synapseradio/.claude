@@ -1,0 +1,41 @@
+pre-commit:
+  jobs:
+    - name: lint
+      group:
+        parallel: true
+        jobs:
+          - name: markdownlint
+            glob: "*.md"
+            run: bunx markdownlint-cli2 --fix {staged_files}
+            stage_fixed: true
+          - name: ruff
+            glob: "*.py"
+            run: ruff check --fix {staged_files} && ruff format {staged_files}
+            stage_fixed: true
+          - name: shfmt
+            glob: "*.{sh,bash}"
+            run: shfmt -i 2 -w {staged_files}
+            stage_fixed: true
+          - name: shellcheck
+            glob: "*.{sh,bash}"
+            run: shellcheck {staged_files}
+
+# pre-push gate: re-runs the check-only side of every linter against the
+# diff being pushed. shellcheck and shfmt -d have no autofix; ruff check
+# without --fix matches the same intent. Catches anything that slipped in
+# via --no-verify or commits made before lefthook install.
+pre-push:
+  jobs:
+    - name: lint
+      group:
+        parallel: true
+        jobs:
+          - name: ruff-check
+            glob: "*.py"
+            run: ruff check {push_files}
+          - name: shellcheck
+            glob: "*.{sh,bash}"
+            run: shellcheck {push_files}
+          - name: shfmt-check
+            glob: "*.{sh,bash}"
+            run: shfmt -i 2 -d {push_files}
