@@ -289,6 +289,15 @@ def _post_chat(body_text: str, framing: str, verdict_prompt: str) -> tuple[bool 
             "model": JUDGE_MODEL_FIELD,
             "stream": False,
             "max_tokens": JUDGE_MAX_TOKENS,
+            # llama.cpp extension to /v1/chat/completions. Disables the
+            # slot's prefix KV-cache reuse so each judgment recomputes
+            # the full forward pass from scratch. The cache is a pure
+            # speed optimization, but reuse can introduce floating-point
+            # nondeterminism between batched and non-batched paths, which
+            # in turn can flip a borderline yes/no. The cost of disabling
+            # is one prefill of the framing+verdict prompt per call —
+            # acceptable on a local GPU 4B.
+            "cache_prompt": False,
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {"name": "yes_no", "schema": YES_NO_SCHEMA},
