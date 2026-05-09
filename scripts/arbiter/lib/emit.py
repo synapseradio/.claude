@@ -8,6 +8,7 @@ this module does not need to handle invalid combinations — the
 defensive `RuntimeError` exists only to surface a programming
 mistake if one ever slipped through.
 """
+
 import json
 from typing import IO
 

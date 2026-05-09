@@ -13,13 +13,14 @@ emitted and the binding's action fires. Set `BLOCK_PLAN_NO_JUDGE=1` to
 skip the HTTP call and emit the same fallback — useful only when
 diagnosing the server itself.
 """
+
 import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "arbiter"))
 
-from lib import dispatch  # noqa: E402
+from lib import dispatch
 
 
 def main() -> None:

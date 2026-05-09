@@ -46,6 +46,8 @@ The user ALWAYS expects you to load ALL skills they refer to in this way. If you
 
 - [evaluative-language.md](./references/evaluative-language.md) — five-predicate harness for judgment words (cited by Core Rules 8 and 11)
 - [bash-style-guide.md](./references/bash-style-guide.md) — Google Shell Style Guide verbatim mirror
+
 # graphify
+
 - **graphify** (`~/.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
 When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.

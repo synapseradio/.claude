@@ -14,6 +14,7 @@
 ## Scope tags
 
 <prefer> Tag tests by what they touch, when the framework supports tags or filename conventions:
+
 - **smoke** — does it load and respond?
 - **unit** — one isolated function or module, no I/O
 - **integration** — cross-module flow with controlled fixtures

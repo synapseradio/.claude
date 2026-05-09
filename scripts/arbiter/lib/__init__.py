@@ -11,14 +11,15 @@ hook event. Adding a verdict, wiring it to a new hook target, or
 shipping a new action handler is an edit to the YAML or to one map
 in `lib/`.
 """
+
 from .config import Binding, Bindings, ConfigError, VerdictSpec, load_bindings
 from .dispatcher import dispatch
 
 __all__ = [
+    "Binding",
+    "Bindings",
+    "ConfigError",
+    "VerdictSpec",
     "dispatch",
     "load_bindings",
-    "ConfigError",
-    "Bindings",
-    "VerdictSpec",
-    "Binding",
 ]

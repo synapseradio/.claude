@@ -13,6 +13,7 @@ Validation covers:
 - bindings reference verdicts that exist
 - the `(event, action)` pair is valid for each binding
 """
+
 import dataclasses
 from pathlib import Path
 
@@ -45,6 +46,7 @@ class VerdictSpec:
     refer to. `remediation` is the ordered tuple of remediation keys
     this verdict pulls in when it fires.
     """
+
     name: str
     key: str
     prompt: str
@@ -56,6 +58,7 @@ class VerdictSpec:
 @dataclasses.dataclass(frozen=True)
 class Binding:
     """One row from the `bindings:` list — what to do for a given hook target."""
+
     event: str
     tool: str | None
     verdict_ids: tuple[str, ...]
@@ -66,6 +69,7 @@ class Binding:
 @dataclasses.dataclass(frozen=True)
 class Bindings:
     """Validated bindings.yaml as Python data."""
+
     verdicts: dict[str, VerdictSpec]
     remediation: dict[str, str]
     bindings: tuple[Binding, ...]
@@ -130,8 +134,7 @@ def _parse_verdicts(path: Path, node) -> dict[str, VerdictSpec]:
         prompt = _expect_str(path, fields["prompt"][1], f"verdict '{key}' prompt")
         glossary = _expect_str(path, fields["glossary"][1], f"verdict '{key}' glossary")
 
-        rem_node = _expect_seq(path, fields["remediation"][1],
-                               f"verdict '{key}' remediation")
+        rem_node = _expect_seq(path, fields["remediation"][1], f"verdict '{key}' remediation")
         remediation: list[str] = []
         for item in rem_node.value:
             if not isinstance(item, ScalarNode):
@@ -144,19 +147,25 @@ def _parse_verdicts(path: Path, node) -> dict[str, VerdictSpec]:
             _expect_map(path, sw_node, f"verdict '{key}' suppress_when")
             sw_fields = _map_keys(sw_node)
             if "tools_in_turn" not in sw_fields:
-                _err(path, sw_node,
-                     f"verdict '{key}' suppress_when: only 'tools_in_turn' is supported; missing it")
+                _err(
+                    path,
+                    sw_node,
+                    f"verdict '{key}' suppress_when: only 'tools_in_turn' is supported; missing it",
+                )
             for sk, (sk_node, _) in sw_fields.items():
                 if sk != "tools_in_turn":
-                    _err(path, sk_node,
-                         f"verdict '{key}' suppress_when: unknown key '{sk}'")
-            tit_node = _expect_seq(path, sw_fields["tools_in_turn"][1],
-                                   f"verdict '{key}' suppress_when.tools_in_turn")
+                    _err(path, sk_node, f"verdict '{key}' suppress_when: unknown key '{sk}'")
+            tit_node = _expect_seq(
+                path, sw_fields["tools_in_turn"][1], f"verdict '{key}' suppress_when.tools_in_turn"
+            )
             tools: list[str] = []
             for item in tit_node.value:
                 if not isinstance(item, ScalarNode):
-                    _err(path, item,
-                         f"verdict '{key}' suppress_when.tools_in_turn item must be a string")
+                    _err(
+                        path,
+                        item,
+                        f"verdict '{key}' suppress_when.tools_in_turn item must be a string",
+                    )
                 tools.append(item.value)
             suppress_tools = tuple(tools)
 
@@ -201,13 +210,18 @@ def _parse_bindings(path: Path, node, verdicts: dict[str, VerdictSpec]) -> tuple
         event = _expect_str(path, f["event"][1], "binding event")
         action = _expect_str(path, f["action"][1], "binding action")
         if action not in ALLOWED_ACTIONS:
-            _err(path, f["action"][1],
-                 f"unknown action '{action}'; expected one of {sorted(ALLOWED_ACTIONS)}")
+            _err(
+                path,
+                f["action"][1],
+                f"unknown action '{action}'; expected one of {sorted(ALLOWED_ACTIONS)}",
+            )
         valid_events = ACTION_EVENTS[action]
         if event not in valid_events:
-            _err(path, item,
-                 f"action '{action}' invalid for event '{event}'; "
-                 f"valid for {sorted(valid_events)}")
+            _err(
+                path,
+                item,
+                f"action '{action}' invalid for event '{event}'; valid for {sorted(valid_events)}",
+            )
 
         tool: str | None = None
         if "tool" in f:
@@ -227,13 +241,15 @@ def _parse_bindings(path: Path, node, verdicts: dict[str, VerdictSpec]) -> tuple
             seen.add(vid)
             verdict_ids.append(vid)
 
-        out.append(Binding(
-            event=event,
-            tool=tool,
-            verdict_ids=tuple(verdict_ids),
-            action=action,
-            line=item.start_mark.line + 1,
-        ))
+        out.append(
+            Binding(
+                event=event,
+                tool=tool,
+                verdict_ids=tuple(verdict_ids),
+                action=action,
+                line=item.start_mark.line + 1,
+            )
+        )
     return tuple(out)
 
 
@@ -276,8 +292,11 @@ def load_bindings(path: Path) -> Bindings:
         for r in vspec.remediation:
             if r not in remediation:
                 # Use the verdict node for location since the ref is inside it.
-                _err(path, top["verdicts"][1],
-                     f"verdict '{vkey}' references unknown remediation key '{r}'")
+                _err(
+                    path,
+                    top["verdicts"][1],
+                    f"verdict '{vkey}' references unknown remediation key '{r}'",
+                )
 
     bindings = _parse_bindings(path, top["bindings"][1], verdicts)
 

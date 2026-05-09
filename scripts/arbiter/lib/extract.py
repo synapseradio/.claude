@@ -8,6 +8,7 @@ rather than guessing wrong.
 Code stripping leaves the model judging the assistant's own prose,
 not strings or commands the assistant happened to echo back.
 """
+
 import json
 import re
 
@@ -25,7 +26,7 @@ def _read_transcript_lines(transcript_path: str) -> list[str]:
     if not transcript_path:
         return []
     try:
-        with open(transcript_path, "r", encoding="utf-8") as fh:
+        with open(transcript_path, encoding="utf-8") as fh:
             return fh.readlines()
     except OSError:
         return []

@@ -88,8 +88,8 @@ redirect_hits_path() {
 #######################################
 check_path() {
   local label="$1" path_re="$2" cmd="$3"
-  if read_cmd_hits_path "${path_re}" "${cmd}" \
-    || redirect_hits_path "${path_re}" "${cmd}"; then
+  if read_cmd_hits_path "${path_re}" "${cmd}" ||
+    redirect_hits_path "${path_re}" "${cmd}"; then
     deny "Refused: command would read a secret-shaped path (${label}). If this is intentional, run it yourself."
   fi
 }

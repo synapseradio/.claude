@@ -14,16 +14,16 @@ Cooldown: 1h per repo, tracked via the .last-sync touchfile under
 
 Missing-but-in-scope repos are cloned on demand by `graphify-sync` itself.
 """
+
 from __future__ import annotations
 
 import json
-import os
 import pathlib
 import re
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 HOME = pathlib.Path.home()
 GRAPHIFY_HOME = HOME / ".graphify"
@@ -42,16 +42,30 @@ MIN_NAME_LENGTH = 4
 GH_TIMEOUT_SECONDS = 15
 
 DEFAULT_STOPLIST = [
-    "play", "core", "panda", "dollas", "lingua", "design",
-    "common", "shared", "main", "docs", "test", "tests",
-    "build", "dist", "util", "utils", "skills",
+    "play",
+    "core",
+    "panda",
+    "dollas",
+    "lingua",
+    "design",
+    "common",
+    "shared",
+    "main",
+    "docs",
+    "test",
+    "tests",
+    "build",
+    "dist",
+    "util",
+    "utils",
+    "skills",
 ]
 
 
 def log(msg: str) -> None:
     try:
         LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         with LOG_FILE.open("a", encoding="utf-8") as fh:
             fh.write(f"[{ts}] [prompt-hook] {msg}\n")
     except OSError:
@@ -108,9 +122,11 @@ def _repo_owner_or_none(child: pathlib.Path) -> str | None:
     try:
         result = subprocess.run(
             ["git", "-C", str(child), "remote", "get-url", "origin"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
-    except (OSError, subprocess.SubprocessError):
+    except OSError, subprocess.SubprocessError:
         return None
     if result.returncode != 0:
         return None
@@ -172,9 +188,11 @@ def discover_remote_repos(allowed: list[str]) -> dict[str, list[str]]:
         try:
             result = subprocess.run(
                 ["gh", "repo", "list", owner, "--limit", "1000", "--json", "name"],
-                capture_output=True, text=True, timeout=GH_TIMEOUT_SECONDS,
+                capture_output=True,
+                text=True,
+                timeout=GH_TIMEOUT_SECONDS,
             )
-        except (OSError, subprocess.SubprocessError):
+        except OSError, subprocess.SubprocessError:
             continue
         if result.returncode != 0:
             continue
@@ -191,10 +209,10 @@ def discover_remote_repos(allowed: list[str]) -> dict[str, list[str]]:
 
 def _have_gh() -> bool:
     try:
-        return subprocess.run(
-            ["gh", "auth", "status"], capture_output=True, timeout=5
-        ).returncode == 0
-    except (OSError, subprocess.SubprocessError):
+        return (
+            subprocess.run(["gh", "auth", "status"], capture_output=True, timeout=5).returncode == 0
+        )
+    except OSError, subprocess.SubprocessError:
         return False
 
 
@@ -221,7 +239,7 @@ def rebuild_cache() -> dict:
         else:
             names[name] = {"local_path": None, "remote_owners": owners}
     payload = {
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "allowed_owners": allowed,
         "names": names,
     }
@@ -238,7 +256,7 @@ def load_cache() -> dict:
     if cache_is_fresh():
         try:
             return json.loads(REPO_CACHE.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+        except OSError, ValueError:
             pass
     return rebuild_cache()
 

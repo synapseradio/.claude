@@ -77,14 +77,14 @@ main() {
     --parallel "${ARBITER_PARALLEL}" \
     --log-prefix \
     "${ARBITER_EXTRA_FLAGS[@]}" \
-    >> "${ARBITER_LOG_FILE}" 2>&1 &
+    >>"${ARBITER_LOG_FILE}" 2>&1 &
 
-  echo $! > "${ARBITER_PID_FILE}"
+  echo $! >"${ARBITER_PID_FILE}"
 
   # Brief readiness wait so SessionStart returns only when the server
   # can actually take requests. Bounded: if it never comes up in 30s,
   # log and bail rather than blocking the session indefinitely.
-  for (( i = 0; i < 30; i++ )); do
+  for ((i = 0; i < 30; i++)); do
     if curl -fsS --max-time 1 "http://${ARBITER_HOST}:${ARBITER_PORT}/health" >/dev/null 2>&1; then
       exit 0
     fi

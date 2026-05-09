@@ -42,19 +42,19 @@ used=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 # ── Open Color ANSI (truecolor) ─────────────────────────────────────────
 function oc() {
   case "$1" in
-    blue.6)    printf '\033[38;2;34;139;230m' ;;
-    blue.5)    printf '\033[38;2;51;154;240m' ;;
-    blue.4)    printf '\033[38;2;77;171;247m' ;;
-    teal.5)    printf '\033[38;2;32;201;151m' ;;
-    yellow.6)  printf '\033[38;2;250;176;5m' ;;
-    gray.5)    printf '\033[38;2;173;181;189m' ;;
-    gray.6)    printf '\033[38;2;134;142;150m' ;;
-    cyan.6)    printf '\033[38;2;21;170;191m' ;;
-    green.6)   printf '\033[38;2;64;192;87m' ;;
-    red.6)     printf '\033[38;2;250;82;82m' ;;
-    pink.6)    printf '\033[38;2;230;73;128m' ;;
-    violet.6)  printf '\033[38;2;132;94;247m' ;;
-    reset)     printf '\033[0m' ;;
+  blue.6) printf '\033[38;2;34;139;230m' ;;
+  blue.5) printf '\033[38;2;51;154;240m' ;;
+  blue.4) printf '\033[38;2;77;171;247m' ;;
+  teal.5) printf '\033[38;2;32;201;151m' ;;
+  yellow.6) printf '\033[38;2;250;176;5m' ;;
+  gray.5) printf '\033[38;2;173;181;189m' ;;
+  gray.6) printf '\033[38;2;134;142;150m' ;;
+  cyan.6) printf '\033[38;2;21;170;191m' ;;
+  green.6) printf '\033[38;2;64;192;87m' ;;
+  red.6) printf '\033[38;2;250;82;82m' ;;
+  pink.6) printf '\033[38;2;230;73;128m' ;;
+  violet.6) printf '\033[38;2;132;94;247m' ;;
+  reset) printf '\033[0m' ;;
   esac
 }
 
@@ -62,18 +62,18 @@ function oc() {
 dir=""
 if [[ -n "$cwd" ]]; then
   dir="${cwd/#$HOME/⌂}"
-  IFS='/' read -ra parts <<< "$dir"
+  IFS='/' read -ra parts <<<"$dir"
   count="${#parts[@]}"
-  if (( count > 3 )); then
-    dir="⑂ ${parts[$((count-3))]}/${parts[$((count-2))]}/${parts[$((count-1))]}"
+  if ((count > 3)); then
+    dir="⑂ ${parts[$((count - 3))]}/${parts[$((count - 2))]}/${parts[$((count - 1))]}"
   fi
 fi
 
 # ── Git ─────────────────────────────────────────────────────────────────
 git_info=""
 if git_root=$(git -C "${cwd:-.}" rev-parse --show-toplevel 2>/dev/null); then
-  branch=$(git -C "$git_root" symbolic-ref --short HEAD 2>/dev/null \
-           || git -C "$git_root" rev-parse --short HEAD 2>/dev/null)
+  branch=$(git -C "$git_root" symbolic-ref --short HEAD 2>/dev/null ||
+    git -C "$git_root" rev-parse --short HEAD 2>/dev/null)
 
   staged=$(git -C "$git_root" diff --cached --name-only 2>/dev/null | wc -l | tr -d ' ')
   modified=$(git -C "$git_root" diff --name-only 2>/dev/null | wc -l | tr -d ' ')
@@ -88,41 +88,44 @@ if git_root=$(git -C "${cwd:-.}" rev-parse --show-toplevel 2>/dev/null); then
   # and we want zeros, not noise on the prompt. The triple-
   # dot in `HEAD...@{u}` is the symmetric-difference syntax
   # `--left-right --count` expects; left=ahead, right=behind.
-  ahead=0; behind=0
+  ahead=0
+  behind=0
   if git -C "$git_root" rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
     if read -r ahead behind < <(git -C "$git_root" rev-list --left-right --count 'HEAD...@{u}' 2>/dev/null); then
       :
     fi
   fi
-  ahead=${ahead:-0}; behind=${behind:-0}
+  ahead=${ahead:-0}
+  behind=${behind:-0}
 
   # Sum line metrics across both unstaged and staged diffs.
   # `--shortstat` formats as " N files changed, M insertions(+), K deletions(-)"
   # with insertions or deletions absent when zero, so we
   # extract each independently and tolerate either being
   # missing. Empty scope = unstaged; --cached = staged.
-  added_lines=0; removed_lines=0
+  added_lines=0
+  removed_lines=0
   for scope in "" "--cached"; do
     ss=$(git -C "$git_root" diff $scope --shortstat 2>/dev/null)
     [[ -z "$ss" ]] && continue
     i=$(echo "$ss" | grep -oE '[0-9]+ insertion' | grep -oE '^[0-9]+')
-    d=$(echo "$ss" | grep -oE '[0-9]+ deletion'  | grep -oE '^[0-9]+')
-    added_lines=$(( added_lines + ${i:-0} ))
-    removed_lines=$(( removed_lines + ${d:-0} ))
+    d=$(echo "$ss" | grep -oE '[0-9]+ deletion' | grep -oE '^[0-9]+')
+    added_lines=$((added_lines + ${i:-0}))
+    removed_lines=$((removed_lines + ${d:-0}))
   done
 
   ahead_behind=""
-  (( ahead > 0 ))  && ahead_behind+="$(oc green.6)▴${ahead}$(oc reset) "
-  (( behind > 0 )) && ahead_behind+="$(oc red.6)▿${behind}$(oc reset) "
+  ((ahead > 0)) && ahead_behind+="$(oc green.6)▴${ahead}$(oc reset) "
+  ((behind > 0)) && ahead_behind+="$(oc red.6)▿${behind}$(oc reset) "
 
   indicators=""
-  (( staged > 0 ))     && indicators+="$(oc teal.5)●${staged}$(oc reset) "
-  (( modified > 0 ))   && indicators+="$(oc yellow.6)◐${modified}$(oc reset) "
-  (( untracked > 0 ))  && indicators+="$(oc gray.5)○${untracked}$(oc reset) "
-  (( renamed > 0 ))    && indicators+="$(oc blue.4)◎${renamed}$(oc reset) "
-  (( deleted > 0 ))    && indicators+="$(oc red.6)⊘${deleted}$(oc reset) "
-  (( conflicted > 0 )) && indicators+="$(oc pink.6)⊗${conflicted}$(oc reset) "
-  (( stashed > 0 ))    && indicators+="$(oc violet.6)◉${stashed}$(oc reset) "
+  ((staged > 0)) && indicators+="$(oc teal.5)●${staged}$(oc reset) "
+  ((modified > 0)) && indicators+="$(oc yellow.6)◐${modified}$(oc reset) "
+  ((untracked > 0)) && indicators+="$(oc gray.5)○${untracked}$(oc reset) "
+  ((renamed > 0)) && indicators+="$(oc blue.4)◎${renamed}$(oc reset) "
+  ((deleted > 0)) && indicators+="$(oc red.6)⊘${deleted}$(oc reset) "
+  ((conflicted > 0)) && indicators+="$(oc pink.6)⊗${conflicted}$(oc reset) "
+  ((stashed > 0)) && indicators+="$(oc violet.6)◉${stashed}$(oc reset) "
 
   # ✓ shows only when the working tree is clean AND there
   # is some upstream divergence to bracket alongside it —
@@ -148,12 +151,12 @@ if git_root=$(git -C "${cwd:-.}" rev-parse --show-toplevel 2>/dev/null); then
   ahead_behind="${ahead_behind% }"
 
   metrics=""
-  (( added_lines > 0 ))   && metrics+=" $(oc green.6)▴+${added_lines}$(oc reset)"
-  (( removed_lines > 0 )) && metrics+=" $(oc red.6)▿−${removed_lines}$(oc reset)"
+  ((added_lines > 0)) && metrics+=" $(oc green.6)▴+${added_lines}$(oc reset)"
+  ((removed_lines > 0)) && metrics+=" $(oc red.6)▿−${removed_lines}$(oc reset)"
 
   git_info=" $(oc blue.5)▸${branch}$(oc reset)"
   [[ -n "$ahead_behind" ]] && git_info+=" ${ahead_behind}"
-  [[ -n "$brackets" ]]     && git_info+=" ${brackets}"
+  [[ -n "$brackets" ]] && git_info+=" ${brackets}"
   git_info+="${metrics}"
 fi
 
@@ -162,12 +165,12 @@ pr_info=""
 if [[ -n "${git_root:-}" ]]; then
   pr_state=""
   pr_url=""
-  IFS=$'\t' read -r pr_state pr_url < <(cd "$git_root" \
-    && "$HOME/.dotty/plugins/git/pr-link.sh" --state 2>/dev/null) || true
+  IFS=$'\t' read -r pr_state pr_url < <(cd "$git_root" &&
+    "$HOME/.dotty/plugins/git/pr-link.sh" --state 2>/dev/null) || true
   if [[ -n "$pr_url" ]]; then
     case "$pr_state" in
-      none) icon_color="$(oc gray.5)" ;;
-      *)    icon_color="$(oc blue.6)" ;;  # open or unknown
+    none) icon_color="$(oc gray.5)" ;;
+    *) icon_color="$(oc blue.6)" ;; # open or unknown
     esac
     osc8_open=$'\e]8;;'
     osc8_close=$'\e\\'

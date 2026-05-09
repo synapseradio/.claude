@@ -25,6 +25,7 @@ errors. That distinguishes "judge truly down" from "one chat call
 flaked" in the log without changing the fail-closed contract the
 dispatcher depends on.
 """
+
 import json
 import os
 import pathlib
@@ -33,7 +34,7 @@ import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 YES_NO_SCHEMA = {
     "type": "object",
@@ -90,19 +91,13 @@ def _resolve_endpoint() -> tuple[str, int]:
     host = os.environ.get("ARBITER_HOST") or cfg.get("ARBITER_HOST")
     raw_port = os.environ.get("ARBITER_PORT") or cfg.get("ARBITER_PORT")
     if not host:
-        raise RuntimeError(
-            f"ARBITER_HOST not set in env or {_CONFIG_PATH}"
-        )
+        raise RuntimeError(f"ARBITER_HOST not set in env or {_CONFIG_PATH}")
     if not raw_port:
-        raise RuntimeError(
-            f"ARBITER_PORT not set in env or {_CONFIG_PATH}"
-        )
+        raise RuntimeError(f"ARBITER_PORT not set in env or {_CONFIG_PATH}")
     try:
         port = int(raw_port)
     except ValueError as exc:
-        raise RuntimeError(
-            f"ARBITER_PORT={raw_port!r} is not a valid integer"
-        ) from exc
+        raise RuntimeError(f"ARBITER_PORT={raw_port!r} is not a valid integer") from exc
     return host, port
 
 
@@ -132,10 +127,7 @@ JUDGE_MAX_TOKENS = 32
 
 LOG_PATH = pathlib.Path.home() / ".claude" / "logs" / "arbiter.log"
 
-_OUTPUT_INSTRUCTION = (
-    "\n\nOutput exactly `{\"yes\": true}` or `{\"yes\": false}`. "
-    "JSON only, no prose."
-)
+_OUTPUT_INSTRUCTION = '\n\nOutput exactly `{"yes": true}` or `{"yes": false}`. JSON only, no prose.'
 
 _ERROR = "ERROR"
 _CLEAR = "CLEAR"
@@ -152,9 +144,7 @@ def _probe_health() -> str | None:
       - `health-error`    — anything else urllib raised
     """
     try:
-        with urllib.request.urlopen(
-            JUDGE_HEALTH_URL, timeout=JUDGE_HEALTH_TIMEOUT_SECONDS
-        ) as resp:
+        with urllib.request.urlopen(JUDGE_HEALTH_URL, timeout=JUDGE_HEALTH_TIMEOUT_SECONDS) as resp:
             status = getattr(resp, "status", None) or resp.getcode()
             if status is None or not (200 <= int(status) < 300):
                 return "health-status"
@@ -185,7 +175,7 @@ def log_call(event: str, duration_ms: int, verdicts: str) -> None:
     """Append one line per judge call so the user can `tail` real timings."""
     try:
         LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         with LOG_PATH.open("a", encoding="utf-8") as fh:
             fh.write(f"{ts}  event={event}  duration_ms={duration_ms}  verdicts={verdicts}\n")
     except OSError:
@@ -270,7 +260,7 @@ def _judge_one(body_text: str, framing: str, verdict_prompt: str) -> bool | None
             body = json.load(resp)
     except urllib.error.HTTPError:
         return None
-    except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+    except urllib.error.URLError, TimeoutError, OSError, ValueError:
         return None
 
     return _extract_yes(body)

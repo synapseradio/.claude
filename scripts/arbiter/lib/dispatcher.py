@@ -6,17 +6,13 @@ suppressions declared in `bindings.yaml`, composes the block message,
 and writes the JSON shape Claude Code expects for the matched
 `(event, action)` pair to the output stream.
 """
+
 import os
 import re
 from pathlib import Path
 from typing import IO
 
-from . import client
-from . import compose
-from . import config
-from . import emit
-from . import extract
-from . import frame
+from . import client, compose, config, emit, extract, frame
 
 _BINDINGS_PATH = Path(__file__).resolve().parent.parent / "bindings.yaml"
 
@@ -50,7 +46,7 @@ def _resolve_event_tool(payload: dict) -> tuple[str, str | None]:
     return event, tool
 
 
-def _quick_exit_pattern(verdict_specs) -> "re.Pattern[str]":
+def _quick_exit_pattern(verdict_specs) -> re.Pattern[str]:
     """Match a verdict token literal anywhere in the body.
 
     When the body literally contains a verdict name, the assistant is
@@ -120,10 +116,7 @@ def dispatch(payload: dict, output: IO[str]) -> None:
     turn_tools: set[str] = (
         extract.latest_turn_tool_uses(transcript_path) if transcript_path else set()
     )
-    fired_keys = [
-        k for k in fired_keys
-        if not _is_suppressed(bindings.verdicts[k], turn_tools)
-    ]
+    fired_keys = [k for k in fired_keys if not _is_suppressed(bindings.verdicts[k], turn_tools)]
     if not fired_keys:
         return
 

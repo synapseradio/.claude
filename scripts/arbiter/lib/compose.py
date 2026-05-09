@@ -6,7 +6,8 @@ fired verdicts and includes only the remediation paragraphs those
 verdicts reference, so the body the user reads stays scoped to what
 actually tripped on the body Arbiter just judged.
 """
-from typing import Iterable
+
+from collections.abc import Iterable
 
 from .config import VerdictSpec
 
