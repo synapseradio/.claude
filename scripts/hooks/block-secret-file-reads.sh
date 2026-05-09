@@ -30,6 +30,10 @@ readonly READ_CMDS='(cat|tac|less|more|head|tail|bat|xxd|od|strings|hexdump|grep
 # Path patterns. Each is matched as an extended regex against the command
 # string. Patterns are deliberately anchored to avoid bare-word false
 # positives.
+# Single quotes are intentional: this is a regex matching the
+# literal characters `$HOME` in the user's bash command, not a
+# variable to expand.
+# shellcheck disable=SC2016
 readonly DOTDIR_USERS_PREFIX='(\$HOME|~|/Users/[^/[:space:]]+)'
 readonly SSH_PATH="${DOTDIR_USERS_PREFIX}/\.ssh/"
 readonly AWS_PATH="${DOTDIR_USERS_PREFIX}/\.aws/"
@@ -99,9 +103,15 @@ main() {
     exit 0
   fi
 
+  # The first arg is a display label shown in the deny message — the
+  # tilde is intentional shorthand for the user, not a path to expand.
+  # shellcheck disable=SC2088
   check_path '~/.ssh' "${SSH_PATH}" "${cmd}"
+  # shellcheck disable=SC2088
   check_path '~/.aws' "${AWS_PATH}" "${cmd}"
+  # shellcheck disable=SC2088
   check_path '~/.gnupg' "${GNUPG_PATH}" "${cmd}"
+  # shellcheck disable=SC2088
   check_path '~/.kube' "${KUBE_PATH}" "${cmd}"
   check_path 'SSH private key' "${SSH_KEY_NAME}" "${cmd}"
   check_path '.env / .env.local' "${ENV_FILE}" "${cmd}"
