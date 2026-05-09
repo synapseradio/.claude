@@ -46,6 +46,23 @@ def _emit_inject(event: str, reason: str, output: IO[str]) -> None:
     )
 
 
+def _emit_pretooluse_allow(message: str, output: IO[str]) -> None:
+    """Allow + injected context. The block-once policy uses this on
+    re-emission of `ExitPlanMode` to lift the deny while still handing
+    the assistant a quotable signal (approved on re-eval, or remaining
+    issues called out by name)."""
+    json.dump(
+        {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "allow",
+                "additionalContext": message,
+            }
+        },
+        output,
+    )
+
+
 def emit(event: str, action: str, message: str, output: IO[str]) -> None:
     """Write the JSON shape Claude Code expects for this `(event, action)` pair."""
     if event == "PreToolUse" and action == "deny":
@@ -53,6 +70,9 @@ def emit(event: str, action: str, message: str, output: IO[str]) -> None:
         return
     if event == "PreToolUse" and action == "ask":
         _emit_pretooluse(message, "ask", output)
+        return
+    if event == "PreToolUse" and action == "allow":
+        _emit_pretooluse_allow(message, output)
         return
     if event in ("Stop", "SubagentStop") and action == "block":
         _emit_stop_block(message, output)

@@ -86,11 +86,11 @@ verdicts:
 
 remediation:
   question: |-
-    For any question to the user: classify it before responding. If the answer lives in documentation, types, logs, source, or an exploration you could run, it is empirical — resolve it yourself (spawn `Explore` for code, `general-purpose` with Tavily/Exa for web) and fold the answer in. The answer is a prerequisite, not a question for the user. If the question genuinely depends on user preference, route it through `AskUserQuestion` with concrete options. One question per call.
+    The plan file seems to include questions to the user. A plan must be ready to execute before it can be presented via ExitPlanMode. Is this the case? If the answer lives in code, types, logs, or docs, resolve it yourself before re-emitting. If the answer genuinely depends on user preference, route it through `AskUserQuestion` rather than asking inline.
   alternatives: |-
-    For uncommitted alternatives: pick one and commit. State the tradeoff in one sentence so the discarded path is visible. If the choice genuinely needs the user's input, route it through `AskUserQuestion` instead of asking inline.
+    There seem to be undecided aspects of your plan — please resolve them now. Pick one path and commit. State the tradeoff in one sentence so the discarded path is visible. If the choice genuinely needs the user's input, route it through `AskUserQuestion` instead of asking inline.
   failure: |-
-    For any failure flagged as pre-existing, unrelated, inherited, or out-of-scope: fix it. The answer to "should I leave it" is "no". Drop any baseline probe — the failure observed in the current work is the failure to fix, regardless of whether it also reproduces on main.
+    A failure was named and set aside as pre-existing or unrelated. Please address it now: the failure observed in the current work is the failure to fix, regardless of whether it also reproduces on main.
 
 sets:
   plan_review:

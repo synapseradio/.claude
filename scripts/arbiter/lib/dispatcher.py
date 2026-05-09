@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 from typing import IO
 
-from . import client, compose, config, emit, extract, frame
+from . import client, compose, config, emit, extract, frame, state
 
 _BINDINGS_PATH = Path(__file__).resolve().parent.parent / "bindings.yaml"
 
@@ -105,23 +105,48 @@ def dispatch(payload: dict, output: IO[str]) -> None:
         emit.emit(event, binding.action, compose.FALLBACK_REPLAN_SLIM, output)
         return
 
+    transcript_path = payload.get("transcript_path", "") or ""
+    is_plan_flow = event == "PreToolUse" and tool == "ExitPlanMode"
+    has_prior_block = (
+        state.has_first_block(transcript_path, tool)
+        if is_plan_flow and transcript_path and tool
+        else False
+    )
+
     fired_keys = client.judge_many(scrubbed, framing, verdict_specs, event)
     if fired_keys is client.JUDGE_COLD:
         # Daemon is up but the model is still loading. Stay silent so
         # the cold-load window does not flood the user with the
-        # unreachable-judge fallback.
+        # unreachable-judge fallback. The judge rendered no verdict,
+        # so this is not a "first block" — state stays untouched.
         return
     if fired_keys is None:
+        # Fail-closed deny. The judge could not render a verdict, so
+        # this does not count as the flow's first block — state is
+        # not written. A subsequent re-emission with a healthy judge
+        # will run the first-block logic fresh.
         emit.emit(event, binding.action, compose.FALLBACK_REPLAN_SLIM, output)
         return
-    if not fired_keys:
-        return
 
-    transcript_path = payload.get("transcript_path", "") or ""
     turn_tools: set[str] = (
         extract.latest_turn_tool_uses(transcript_path) if transcript_path else set()
     )
     fired_keys = [k for k in fired_keys if not _is_suppressed(bindings.verdicts[k], turn_tools)]
+
+    if is_plan_flow and has_prior_block:
+        # Block-once policy: the assistant has already absorbed one
+        # deny on this transcript's plan flow within the last 24h.
+        # Lift the deny on the second pass and emit allow with an
+        # injected sentence the assistant can quote into a sub-agent
+        # brief verbatim.
+        if not fired_keys:
+            emit.emit("PreToolUse", "allow", compose.REEVAL_APPROVED, output)
+            return
+        fired_specs = [bindings.verdicts[k] for k in fired_keys]
+        message = compose.reeval_remaining_message(fired_specs)
+        emit.emit("PreToolUse", "allow", message, output)
+        return
+
     if not fired_keys:
         return
 
@@ -130,3 +155,5 @@ def dispatch(payload: dict, output: IO[str]) -> None:
     if not message:
         return
     emit.emit(event, binding.action, message, output)
+    if is_plan_flow and transcript_path and tool:
+        state.record_first_block(transcript_path, tool)

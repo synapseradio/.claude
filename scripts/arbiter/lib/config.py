@@ -27,11 +27,18 @@ class ConfigError(Exception):
 
 # Action vocabulary. Each action is valid only for specific events.
 # Arbiter rejects mismatches at load time so dead paths fail loud.
-ALLOWED_ACTIONS: frozenset[str] = frozenset({"deny", "ask", "block", "inject"})
+#
+# `allow` is a runtime-only action: the dispatcher swaps a `deny`
+# binding to `allow` when block-once policy lifts the deny on a
+# re-emission. Bindings in YAML never declare `allow` directly — but
+# the whitelist accepts it so the emit shape is valid for the
+# `(PreToolUse, allow)` pair the dispatcher constructs at runtime.
+ALLOWED_ACTIONS: frozenset[str] = frozenset({"deny", "ask", "block", "inject", "allow"})
 
 ACTION_EVENTS: dict[str, frozenset[str]] = {
     "deny": frozenset({"PreToolUse"}),
     "ask": frozenset({"PreToolUse"}),
+    "allow": frozenset({"PreToolUse"}),
     "block": frozenset({"Stop", "SubagentStop"}),
     "inject": frozenset({"PostToolUse", "UserPromptSubmit"}),
 }

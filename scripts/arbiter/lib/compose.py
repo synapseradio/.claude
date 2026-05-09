@@ -13,14 +13,35 @@ from .config import VerdictSpec
 
 ORIENTATION_PREFIX = "*\n\n"
 
-# Per-event lead sentence on the remediation block. The plan flow is
-# pre-tool, so the model has not yet emitted the message it needs to
-# revise; the turn flow is post-message, so it has.
+# Per-event lead sentence on the remediation block. Phrased as a
+# second-reader observation rather than a correction notice — the
+# block fires on a single judge pass and may be a false positive on
+# an honest report. The plan flow is pre-tool, so the model has not
+# yet emitted the message it needs to revise; the turn flow is
+# post-message, so it has.
 _REMEDIATION_LEAD: dict[str, str] = {
-    "PreToolUse": "Re-read the plan and address each verdict before re-emitting `ExitPlanMode`.",
-    "Stop": "Re-read your message and address each verdict before ending the turn.",
-    "SubagentStop": "Re-read your message and address each verdict before ending the turn.",
+    "PreToolUse": "A second look at the plan before re-emitting ExitPlanMode:",
+    "Stop": "A second look at the closing message before ending the turn:",
+    "SubagentStop": "A second look at the closing message before ending the turn:",
 }
+
+# Sentences injected on a re-emission of ExitPlanMode after a prior
+# block. The block-once policy lifts the deny on the second pass
+# regardless of fresh verdicts; these strings give the assistant a
+# quotable signal it can hand to a sub-agent prompt. Verbatim
+# wording matters — the user pastes these into Task() briefs.
+REEVAL_APPROVED = "Arbiter approved this plan on re-evaluation; proceed with implementation."
+REEVAL_REMAINING_TEMPLATE = (
+    "Arbiter saw remaining issues on re-evaluation but is no longer blocking: "
+    "{verdicts}. Address them in execution where reasonable."
+)
+
+
+def reeval_remaining_message(fired_specs: list[VerdictSpec]) -> str:
+    """Compose the second-pass-dirty injection sentence with verdict names."""
+    listed = ", ".join(spec.name for spec in fired_specs)
+    return REEVAL_REMAINING_TEMPLATE.format(verdicts=listed)
+
 
 # Static fallback emitted when the local `llama-server` is
 # unreachable. Arbiter fails closed: the binding's action fires with
