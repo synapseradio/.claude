@@ -1,0 +1,118 @@
+## Arbiter bindings — single source of truth.
+##
+## verdicts: each yes/no judgment Arbiter can render. The YAML key
+##   (snake_case) is the verdict id; its uppercased form is the
+##   public verdict token that shows up in block messages and the
+##   quick-exit regex.
+## remediation: shared paragraphs referenced by verdicts. A verdict
+##   names one or more remediation keys; the composer joins only the
+##   referenced paragraphs into the block message.
+## sets: reusable verdict lists, expanded into bindings via YAML
+##   anchors.
+## bindings: each entry routes a hook (event, optional tool) to a
+##   verdict list and an action. The action is one of deny / ask /
+##   block / inject; the engine maps it to the JSON shape the named
+##   hook event requires.
+##
+## See README.md for the user-facing tour.
+
+verdicts:
+  open_questions:
+    prompt: |-
+      Does the body contain a question the assistant directs at the user in inline prose (not routed through a structured AskUserQuestion tool), OR a placeholder marking an unresolved decision (TBD, TODO, FIXME, "not sure", "unclear", "up to you", "your call")?
+      Both kinds of question count: questions whose answer lives in code, types, logs, or docs (which the assistant should resolve themselves), and questions that genuinely depend on user preference (which should go through AskUserQuestion). Either way, the answer is yes.
+      Reporting and acknowledging are not questions.
+
+      Yes: "Which approach do you prefer?"
+      Yes: "Do you want this rolled out to all users or staff only?"
+      Yes: "What does the bun docs say about HMR?"
+      Yes: "Should I import from `@foo/bar` or `foo/bar`?"
+      Yes: "What type is the `request` parameter on the handler?"
+      Yes: "TODO: pick a name for this before merge."
+      No: "I went with option A — inlined the helper."
+      No: "Tests pass and lint is clean."
+    glossary: |-
+      OPEN_QUESTIONS — body contains a question the assistant directs at the user in inline prose (not via `AskUserQuestion`), or carries a placeholder (TBD/TODO/FIXME/"not sure"/"unclear"/"up to you") deferring a decision. Both empirical questions (answer in code/types/logs/docs) and genuine preference questions fire — the remediation distinguishes the fix paths.
+    remediation: [question]
+    suppress_when:
+      tools_in_turn: [AskUserQuestion]
+
+  uncommitted_alternatives:
+    prompt: |-
+      Does the body enumerate two or more concrete implementation paths and commit to none of them?
+      Triggers: "two options", "A) … B) …", "either A or B", "we could … or …", "alternatively". A clear pick ("I went with A") means no.
+      A single TODO, naming decision, or open question is NOT alternatives — alternatives require two or more paths actually spelled out side by side. Answer no when there is only one path described.
+
+      Yes: "Two options: A) inline the helper, B) extract it into a module. Both have tradeoffs."
+      Yes: "Either we cache the response or we re-fetch each call — alternatively, we could memoize."
+      No: "I went with option A — inlined the helper."
+      No: "TODO: pick a name for this."
+      No: "Which approach do you prefer?"
+    glossary: |-
+      UNCOMMITTED_ALTERNATIVES — body presents two or more implementation paths and commits to none.
+    remediation: [alternatives]
+    suppress_when:
+      tools_in_turn: [AskUserQuestion]
+
+  out_of_scope_deferral:
+    prompt: |-
+      Does the body name a concrete failure (test failure, lint hit, build break, type diagnostic, hook block, warning) and set it aside as pre-existing, unrelated, inherited, legacy, out-of-scope, or otherwise not the assistant's responsibility to fix?
+      Asking the user permission to leave the failure unfixed counts as a deferral attempt — answer yes for that.
+      A clean report with no failures named ("tests pass and lint is clean") is not a deferral — answer no.
+
+      Yes: "Tests pass. The TS diagnostics are pre-existing, unrelated to my refactor."
+      Yes: "Tests pass. The TS errors are pre-existing. Should I leave them?"
+      Yes: "The lint hits are inherited from before this work."
+      No: "Tests pass and lint is clean."
+      No: "I went with option A — inlined the helper."
+    glossary: |-
+      OUT_OF_SCOPE_DEFERRAL — body sets aside a concrete failure (test, lint, build, type error, hook block, warning, diagnostic) as pre-existing, unrelated, inherited, legacy, or otherwise not the assistant's responsibility — including by asking permission to leave it unfixed.
+    remediation: [failure]
+
+  baseline_probe:
+    prompt: |-
+      Does the body propose or describe a comparison against the base branch (main, master, trunk) to determine whether a failure pre-exists?
+      Includes: checking out the base branch, running tests on it, stashing local changes and switching to it.
+      A plain rebase ("I rebased onto main") is NOT a probe — answer no for rebases.
+
+      Yes: "Let me check whether these tests fail on main."
+      Yes: "I'll stash my changes, switch to master, and run the suite to see if these failures pre-existed."
+      Yes: "Let me run the failing test against trunk."
+      No: "I rebased onto main and resolved the conflict."
+      No: "I merged main into the branch."
+    glossary: |-
+      BASELINE_PROBE — body proposes or performs a comparison against the base branch (main, master, trunk) to determine whether a failure pre-exists.
+    remediation: [failure]
+
+remediation:
+  question: |-
+    For any question to the user: classify it before responding. If the answer lives in documentation, types, logs, source, or an exploration you could run, it is empirical — resolve it yourself (spawn `Explore` for code, `general-purpose` with Tavily/Exa for web) and fold the answer in. The answer is a prerequisite, not a question for the user. If the question genuinely depends on user preference, route it through `AskUserQuestion` with concrete options. One question per call.
+  alternatives: |-
+    For uncommitted alternatives: pick one and commit. State the tradeoff in one sentence so the discarded path is visible. If the choice genuinely needs the user's input, route it through `AskUserQuestion` instead of asking inline.
+  failure: |-
+    For any failure flagged as pre-existing, unrelated, inherited, or out-of-scope: fix it. The answer to "should I leave it" is "no". Drop any baseline probe — the failure observed in the current work is the failure to fix, regardless of whether it also reproduces on main.
+
+sets:
+  plan_review:
+    &plan_review [
+      open_questions,
+      uncommitted_alternatives,
+      out_of_scope_deferral,
+      baseline_probe,
+    ]
+  turn_review:
+    &turn_review [out_of_scope_deferral, baseline_probe]
+
+bindings:
+  - event: PreToolUse
+    tool: ExitPlanMode
+    verdicts: *plan_review
+    action: deny
+
+  - event: Stop
+    verdicts: *turn_review
+    action: block
+
+  - event: SubagentStop
+    verdicts: *turn_review
+    action: block

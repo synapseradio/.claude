@@ -12,10 +12,10 @@ The host and port the client probes are read from
 `scripts/arbiter/arbiter-config.sh` at module import. That shell file
 is the single source of truth for the running daemon — sourcing it
 here keeps the hook in lockstep with whatever `arbiter-up.sh` last
-spawned. If the file is unreadable or missing the expected
-declarations, the client falls back to the historical literal
-`127.0.0.1:11436` so the hook still has a target rather than crashing
-at import time.
+spawned. If the file is unreadable, missing, or missing the expected
+`ARBITER_HOST` / `ARBITER_PORT` declarations, the import raises a
+`RuntimeError` so config drift surfaces immediately rather than being
+masked by a stale literal.
 
 Before the parallel chat-completions fan-out, `judge_many` runs one
 fast `/health` probe. A non-200 (or connect error) on `/health` short-
@@ -40,13 +40,6 @@ YES_NO_SCHEMA = {
     "properties": {"yes": {"type": "boolean"}},
     "required": ["yes"],
 }
-
-# Default endpoint, used when arbiter-config.sh cannot be parsed. Kept
-# in sync with the values that ship in arbiter-config.sh — so a fresh
-# clone with no local edits behaves identically to one that sources
-# the file successfully.
-_DEFAULT_HOST = "127.0.0.1"
-_DEFAULT_PORT = 11436
 
 # arbiter-config.sh sits two directories above this file:
 #   scripts/arbiter/lib/client.py  →  scripts/arbiter/arbiter-config.sh
@@ -89,15 +82,27 @@ def _resolve_endpoint() -> tuple[str, int]:
       1. `ARBITER_HOST` / `ARBITER_PORT` env vars (live, no restart).
       2. Values parsed out of `arbiter-config.sh` (canonical source of
          truth — what `arbiter-up.sh` consumes).
-      3. The literal default the daemon shipped with.
+
+    Raises `RuntimeError` if neither source yields a value, or if
+    `ARBITER_PORT` does not parse as an integer.
     """
     cfg = _parse_arbiter_config(_CONFIG_PATH)
-    host = os.environ.get("ARBITER_HOST") or cfg.get("ARBITER_HOST") or _DEFAULT_HOST
-    raw_port = os.environ.get("ARBITER_PORT") or cfg.get("ARBITER_PORT") or str(_DEFAULT_PORT)
+    host = os.environ.get("ARBITER_HOST") or cfg.get("ARBITER_HOST")
+    raw_port = os.environ.get("ARBITER_PORT") or cfg.get("ARBITER_PORT")
+    if not host:
+        raise RuntimeError(
+            f"ARBITER_HOST not set in env or {_CONFIG_PATH}"
+        )
+    if not raw_port:
+        raise RuntimeError(
+            f"ARBITER_PORT not set in env or {_CONFIG_PATH}"
+        )
     try:
         port = int(raw_port)
-    except ValueError:
-        port = _DEFAULT_PORT
+    except ValueError as exc:
+        raise RuntimeError(
+            f"ARBITER_PORT={raw_port!r} is not a valid integer"
+        ) from exc
     return host, port
 
 
