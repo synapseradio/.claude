@@ -2,17 +2,16 @@
 
 See also: [progressive-enhancement.md](./progressive-enhancement.md).
 
-<when> writing code comments, SKILL.md, commands/*.md, agents/*.md, plugin READMEs, reference docs — any prose that describes what a thing IS.
+When writing prose that describes what a thing is.
 
-<never> Encode *when* something was true or *what comes next* in an evergreen artifact. No "migration in progress" banners. No "(intended surface)." No "will be implemented in Phase 2." No "superseded as of <date>." No "does not currently execute pending rewrite."
+Never encode when something was true or what comes next in an evergreen artifact.
 
-<always> Document current state as fact. A reader six months from now, with no memory of the project's history, must not be confused or misled.
+Document current state as fact. The artifact must remain coherent without project history.
 
-<prefer> Good code comments explain what is, why it is, and what matters for consideration if changes happen — never transitional state.
+Comments explain what the code is, why it is, and what matters when changing it. Never transitional state.
 
 ### Exclusions
 
-Temporal framing is correct in: CHANGELOGs, MIGRATION_SPEC.md, release docs, commit messages, PR descriptions, issue bodies, and archival status labels ("Archived YYYY-MM-DD; retained as history").
+Temporal framing belongs in artifacts that describe history or change.
 
-<never> Add a banner to an evergreen artifact because a plan instructs you to.
-<always> Ask before adding it.
+Never add a banner to an evergreen artifact because a plan instructs you to. Ask first.

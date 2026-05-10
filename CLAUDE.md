@@ -44,7 +44,8 @@ The user ALWAYS expects you to load ALL skills they refer to in this way. If you
   
 ### References (`~/.claude/references/`)
 
-- [evaluative-language.md](./references/evaluative-language.md) — five-predicate harness for judgment words (cited by Core Rules 8 and 11)
+- [evaluative-language.md](./references/evaluative-language.md) — five-predicate harness for decomposing judgment words ("clean," "plain," "idiomatic") into checkable predicates
+- [writing-for-humans-reference.md](./references/writing-for-humans-reference.md) — TIER 1 hard bans (never-words, intransitive forms, structural/voice/casual tells) and TIER 2 active preferences for prose
 - [bash-style-guide.md](./references/bash-style-guide.md) — Google Shell Style Guide verbatim mirror
 
 # graphify

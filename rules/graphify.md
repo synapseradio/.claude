@@ -1,6 +1,6 @@
 # graphify
 
-<when> the user invokes `/graphify`, asks about a repo under `~/projects/` or `~/projects/ai/`, names such a repo by short name, or runs graphify commands.
+When the user invokes graphify, references a repo under `~/projects/`, or runs graphify commands.
 
 ## Layout
 
@@ -23,8 +23,9 @@ Only repos whose `origin` owner is `amboss-mededu` or the authenticated GitHub u
 
 ## Querying
 
-<prefer> Query the graph before reading source. Graph first, files second.
-<never> Glob or grep the source repo as the opening move when a graph exists.
+Query the graph before reading source. Graph first, files second.
+
+Never glob or grep the source repo as the opening move when a graph exists.
 
 Always pass `--graph <path>`. Single-repo: the per-repo `graph.json`. Cross-repo: the supergraph.
 
@@ -32,18 +33,15 @@ Always pass `--graph <path>`. Single-repo: the per-repo `graph.json`. Cross-repo
 - `graphify path "<A>" "<B>" --graph <path>` — how two things relate.
 - `graphify explain "<X>" --graph <path>` — single named entity.
 
-Example: `graphify query "how does login work" --graph ~/.graphify/local/projects/amboss-cms/graphify-out/graph.json`.
-
 If `graph.json` is missing, run `grip <name>` once, then query. If results reference ids not in the tree, re-run `grip <name>` and re-query. Don't preemptively rebuild.
 
-After the query returns nodes, read the specific files at the lines they cite. Fall through to source search when the question is about exact syntax/formatting, when graphify returns nothing useful, or when the repo isn't graphifiable. If graphifiable but not yet graphified: `grip add <path>` then `grip <name>`.
+After the query returns nodes, read the specific files at the lines they cite. Fall through to source search when the graph cannot answer. If graphifiable but not yet graphified: `grip add <path>` then `grip <name>`.
 
 ## Skill override
 
 The SKILL at `~/.claude/skills/graphify/SKILL.md` is cwd-relative and assumes `./graphify-out/`. On this machine, graphs live under `~/.graphify/local/<rel-path>/`. Translate every cwd-relative path the SKILL uses by rooting it at `~/.graphify/local/<rel-path>/`. For `cd <repo> && graphify extract|update`, use `grip <name>` instead.
 
-<never> `cd` into a source repo to run `graphify` — it writes into the source tree.
-<never> Read or write to `<source-repo>/graphify-out/`.
+Never `cd` into a source repo to run `graphify` — it writes into the source tree. Never read or write to `<source-repo>/graphify-out/`.
 
 ## Save load-bearing answers
 
