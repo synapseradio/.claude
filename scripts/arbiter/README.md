@@ -176,7 +176,7 @@ Arbiter fails loud on configuration problems. Common failure messages:
 
 If the local `llama-server` is unreachable, Arbiter fails closed: the binding's action fires with the static fallback message, which explains how to start the server (`arbiter-up.sh`). Set `BLOCK_PLAN_NO_JUDGE=1` to force the fallback message without making any HTTP calls — useful only when diagnosing the server itself.
 
-The per-call log lives at `~/.claude/logs/arbiter.log`. Each line records the event, duration in milliseconds, and the fired verdict names. `tail -f` it during development to watch judgments arrive in real time.
+The per-call log lives at `~/.claude/arbiter/logs/arbiter.log`. Each line records the event, duration in milliseconds, and the fired verdict names. `tail -f` it during development to watch judgments arrive in real time.
 
 ### What ships in this directory
 

@@ -23,16 +23,17 @@ readonly ARBITER_MODEL_LABEL="qwen3:4b"
 readonly ARBITER_HOST="127.0.0.1"
 readonly ARBITER_PORT="11436"
 
-# Inference. ctx=16384 split across 4 parallel slots gives 4096
+# Inference. ctx=8192 split across 4 parallel slots gives 2048
 # tokens per slot. Each focused yes/no judge call sends 300-1500
 # tokens (framing + verdict prompt + body wrapped between BEGIN/END
-# markers), so 4096 absorbs the rare ~16k ExitPlanMode plan without
-# spilling into the tail-100 retry path. Parallel=4 fits the full
-# plan_review fan-out (4 verdicts) in one batch with no queueing,
-# and turn_review (2 verdicts) in one batch as well — no flow ever
-# needs a 5th slot. Cost: ~2.3 GiB Metal/unified KV cache (up from
-# ~1.26 GiB at the old 8192/5 setting).
-readonly ARBITER_CTX="16384"
+# markers), so 2048 covers typical traffic. Multi-kilobyte bodies —
+# large ExitPlanMode plans, big file edits — fall through to the
+# tail-100 retry path, which trims the body to its last 100 lines
+# and resends. Parallel=4 fits the full plan_review fan-out (4
+# verdicts) in one batch with no queueing, and turn_review (2
+# verdicts) in one batch as well — no flow ever needs a 5th slot.
+# Cost: ~1.15 GiB Metal/unified KV cache.
+readonly ARBITER_CTX="8192"
 readonly ARBITER_PARALLEL="4"
 
 # Reasoning is off because Qwen3 burns 200-400 tokens of <think>
@@ -51,5 +52,5 @@ readonly ARBITER_EXTRA_FLAGS
 # entries written by lib/client.py) live in arbiter.log. Keeping the
 # two streams separate prevents interleaved writes when the daemon
 # is busy.
-readonly ARBITER_LOG_FILE="${HOME}/.claude/logs/arbiter-server.log"
-readonly ARBITER_PID_FILE="${HOME}/.claude/state/arbiter.pid"
+readonly ARBITER_LOG_FILE="${HOME}/.claude/arbiter/logs/arbiter-server.log"
+readonly ARBITER_PID_FILE="${HOME}/.claude/arbiter/state/arbiter.pid"

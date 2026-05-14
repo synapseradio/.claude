@@ -5,7 +5,7 @@ that subsequent re-emissions of `ExitPlanMode` for the same
 transcript are allowed through with an injected context sentence
 rather than blocked again.
 
-State lives at `~/.claude/state/arbiter-flows/<hash>.json`, where
+State lives at `~/.claude/arbiter/state/arbiter-flows/<hash>.json`, where
 `<hash>` is `sha256(transcript_path + "|" + tool).hexdigest()[:16]`.
 Each entry records a UTC timestamp and the tool name. Entries older
 than `STATE_TTL_SECONDS` (24h) are pruned on read so a stale
@@ -37,13 +37,13 @@ import os
 import pathlib
 from datetime import UTC, datetime
 
-STATE_DIR = pathlib.Path.home() / ".claude" / "state" / "arbiter-flows"
+STATE_DIR = pathlib.Path.home() / ".claude" / "arbiter" / "state" / "arbiter-flows"
 STATE_TTL_SECONDS = 24 * 60 * 60
 
 # Same log file the judge client writes to. State entries land under
 # `event=state` so existing log readers (which key on `event=`) pick
 # them up without changes.
-LOG_PATH = pathlib.Path.home() / ".claude" / "logs" / "arbiter.log"
+LOG_PATH = pathlib.Path.home() / ".claude" / "arbiter" / "logs" / "arbiter.log"
 
 
 def _log_state_error(reason: str) -> None:

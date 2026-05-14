@@ -155,7 +155,7 @@ JUDGE_HEALTH_TIMEOUT_SECONDS = 2
 # whitespace with margin.
 JUDGE_MAX_TOKENS = 32
 
-LOG_PATH = pathlib.Path.home() / ".claude" / "logs" / "arbiter.log"
+LOG_PATH = pathlib.Path.home() / ".claude" / "arbiter" / "logs" / "arbiter.log"
 
 _OUTPUT_INSTRUCTION = '\n\nOutput exactly `{"yes": true}` or `{"yes": false}`. JSON only, no prose.'
 
