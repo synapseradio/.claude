@@ -43,14 +43,14 @@ def reeval_remaining_message(fired_specs: list[VerdictSpec]) -> str:
     return REEVAL_REMAINING_TEMPLATE.format(verdicts=listed)
 
 
-# Static fallback emitted when the local `llama-server` is
+# Static fallback emitted when the local judge daemon is
 # unreachable. Arbiter fails closed: the binding's action fires with
 # this text so a server outage cannot silently disable the safety
 # net. Keep it to one paragraph — the user reads this inline as the
 # binding's deny / block reason.
 FALLBACK_REPLAN_SLIM = """*
 
-The local llama-server judge is unavailable. Re-read the body for: (1) direct questions to the user — route them through `AskUserQuestion`; (2) uncommitted alternatives — pick one and commit, or lift the choice into `AskUserQuestion`; (3) deterministic failures dismissed as out-of-scope, pre-existing, or unrelated — fix or request explicit per-failure permission to defer; (4) baseline probes against main/master/trunk to check whether a failure is pre-existing — skip the probe. Run `~/.claude/scripts/arbiter/arbiter-up.sh` to start the judge, then continue. The judge runs on every turn, so this hook fails closed when it cannot reach the server.
+The local arbiter judge is unavailable. Re-read the body for: (1) direct questions to the user — route them through `AskUserQuestion`; (2) uncommitted alternatives — pick one and commit, or lift the choice into `AskUserQuestion`; (3) deterministic failures dismissed as out-of-scope, pre-existing, or unrelated — fix or request explicit per-failure permission to defer; (4) baseline probes against main/master/trunk to check whether a failure is pre-existing — skip the probe. Run `~/.claude/scripts/arbiter/arbiter-up.sh` to start the judge, then continue. The judge runs on every turn, so this hook fails closed when it cannot reach the server.
 """
 
 

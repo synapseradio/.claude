@@ -1,0 +1,36 @@
+# Phase 1 iteration: MLX-LM + Qwen3-1.7B with sharpened verdict prompts.
+#
+# Same server, model, weights, and output mode as mlx-qwen3-1.7b.yaml.
+# The only change is the bindings path — points at the small-model
+# variant in the eval directory (../bindings-1.7b.yaml relative to
+# this configs/ file).
+#
+# Goal: see whether prompt sharpening alone can recover quality on
+# the 1.7B before falling back to a larger model.
+
+name: mlx-qwen3-1.7b-4bit-v2
+description: |-
+  mlx_lm.server + Qwen3-1.7B-4bit + small-model bindings v2.
+  Verdict prompts rewritten with negative examples that anchor the
+  1.7B away from the FP/FN patterns it confused on v1.
+
+server:
+  base_url: http://127.0.0.1:8081
+  model: mlx-community/Qwen3-1.7B-4bit
+  pid_file: ~/.claude/arbiter/state/mlx-server.pid
+  health_path: /health
+  chat_path: /v1/chat/completions
+
+output:
+  type: free_form
+  max_tokens: 24
+  cache_prompt: false
+  system_suffix: "\n\n/no_think"
+
+prompts:
+  bindings: ../bindings-1.7b.yaml
+
+run:
+  parallel_fanout: false
+  warmup: true
+  timeout_seconds: 60

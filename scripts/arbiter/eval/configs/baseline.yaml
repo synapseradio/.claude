@@ -1,0 +1,37 @@
+# Baseline configuration: the current production setup. The harness
+# uses this as the reference point that later configurations are
+# compared against (Phase 1 MLX-LM + Qwen3-1.7B + choice grammar, etc.).
+
+name: baseline-llama-cpp-qwen3-4b
+description: |-
+  llama.cpp llama-server, Qwen3-4B Q4_K_M, ctx=8192 parallel=4,
+  JSON-schema-forced {"yes": bool} output. Matches what
+  arbiter-up.sh launches today.
+
+server:
+  base_url: http://127.0.0.1:11436
+  model: judge
+  pid_file: ~/.claude/arbiter/state/arbiter.pid
+  health_path: /health
+  chat_path: /v1/chat/completions
+
+output:
+  type: json_schema
+  max_tokens: 32
+  cache_prompt: false
+
+prompts:
+  # Path to bindings.yaml relative to this config file. Verdicts and
+  # framings are loaded from there so harness measurements reflect the
+  # exact prompts the production daemon would use.
+  bindings: ../../bindings.yaml
+
+run:
+  # Verdicts are evaluated serially per record so per-verdict latency
+  # is clean. Flip to true to mirror the production parallel fan-out.
+  parallel_fanout: false
+  # Warm-up call before measurement so the first-call cold cost does
+  # not skew p50.
+  warmup: true
+  # Hard timeout per call.
+  timeout_seconds: 60

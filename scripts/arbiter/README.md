@@ -1,6 +1,6 @@
 # Arbiter
 
-Arbiter turns qualitative judgments about Claude's output into Claude Code hook blocks. A judgment is a yes/no question declared in `bindings.yaml` — for example, "Did the assistant ask the user a question in inline prose?" — paired with a remediation paragraph that explains how to handle the case Arbiter just caught. On every matching hook event, Arbiter sends each declared question to a local `llama-server`, in parallel, and when any answer comes back yes it composes one block message naming the fired judgments and the remediation that goes with them. The rules are data. The engine is a router.
+Arbiter turns qualitative judgments about Claude's output into Claude Code hook blocks. A judgment is a yes/no question declared in `bindings.yaml` — for example, "Did the assistant ask the user a question in inline prose?" — paired with a remediation paragraph that explains how to handle the case Arbiter just caught. On every matching hook event, Arbiter sends each declared question to a local `mlx_lm.server`, in parallel, and when any answer comes back yes it composes one block message naming the fired judgments and the remediation that goes with them. The rules are data. The engine is a router.
 
 The judgments live in `bindings.yaml` next to this `README.md`. The runtime under `lib/` reads that file fresh on every hook invocation, so editing a judgment, adding a new one, or wiring one to a different hook event is a YAML save away.
 
@@ -50,7 +50,7 @@ bindings:
     action: block
 ```
 
-Save the file. On the next assistant turn that ends with a direct question to the user in inline prose, the `Stop` hook fires, Arbiter calls the local `llama-server`, and Claude Code surfaces a block reason that names `OPEN_QUESTIONS` and tells the assistant how to handle the question correctly. The assistant produces a new turn under the constraint.
+Save the file. On the next assistant turn that ends with a direct question to the user in inline prose, the `Stop` hook fires, Arbiter calls the local `mlx_lm.server`, and Claude Code surfaces a block reason that names `OPEN_QUESTIONS` and tells the assistant how to handle the question correctly. The assistant produces a new turn under the constraint.
 
 If the assistant routes the question through the `AskUserQuestion` tool, the verdict's `suppress_when.tools_in_turn` clause drops the verdict before it fires. Listing options inside an `AskUserQuestion` call is the right behavior, not a verdict to flag.
 
@@ -64,13 +64,13 @@ The dispatcher loads `bindings.yaml`, reads `Stop` from the payload's `hook_even
 
 The dispatcher then runs a quick-exit regex over the scrubbed body. If the body literally contains a verdict name like `OPEN_QUESTIONS`, the assistant is discussing the rule rather than tripping it, and the dispatcher returns silently. Otherwise the dispatcher hands the body, the framing for the `Stop` event ("You judge an assistant's turn-ending message ..."), and the `[open_questions]` verdict list to `client.judge_many`.
 
-`judge_many` fans one HTTP POST per verdict in parallel to the local `llama-server` on `127.0.0.1:11436`. Each call sends the framing, the verdict prompt, and the body wrapped between BEGIN and END markers. The response shape is constrained by JSON schema to `{"yes": <bool>}`. With one verdict in the binding the parallelism is moot, but the same call returns a list of every fired verdict for bindings that subscribe several at once.
+`judge_many` fans one HTTP POST per verdict in parallel to the local `mlx_lm.server` on `127.0.0.1:11436`. Each call sends the framing, the verdict prompt, and the body wrapped between BEGIN and END markers. The model answers with a single `yes` or `no` and a strict-first-word parser at the boundary turns the response into a bool. With one verdict in the binding the parallelism is moot, but the same call returns a list of every fired verdict for bindings that subscribe several at once.
 
 If the response says yes, `compose.compose_message` builds the block message. The message has an orientation prefix, the line `Arbiter fired: \`OPEN_QUESTIONS\``, the glossary line for `OPEN_QUESTIONS`, the per-event remediation lead ("Re-read your message and address each verdict ..."), and the `question` remediation paragraph. `emit.emit` writes a `Stop` block JSON decision to stdout, and Claude Code surfaces it as the block reason for the assistant's next turn.
 
-If the local `llama-server` is unreachable, returns a malformed response, or any single verdict call errors, the dispatcher emits a static fallback message instead. Same `Stop` block shape, but the body is a fixed paragraph naming the four classes of issue Arbiter watches for and explaining how to start the server (`arbiter-up.sh`). Arbiter fails closed by design — a silent disablement on outage would defeat the safety net.
+If the local `mlx_lm.server` is unreachable, returns a malformed response, or any single verdict call errors, the dispatcher emits a static fallback message instead. Same `Stop` block shape, but the body is a fixed paragraph naming the four classes of issue Arbiter watches for and explaining how to start the server (`arbiter-up.sh`). Arbiter fails closed by design — a silent disablement on outage would defeat the safety net.
 
-Two narrower failure modes get gentler handling. While the daemon is up but the model is still loading (HTTP 503 with a `Loading model` body on `/health`), the dispatcher stays silent. Cold start is not an outage, and surfacing the unreachable-judge fallback the moment the user starts a session would train them to disable the safety net. Judgments resume the first time `/health` returns 200. And when a single chat-completion call comes back HTTP 400 with `exceeds the available context size` — the body plus framing pushed the request past the per-slot context window the daemon allocates from `--ctx-size / --parallel` — that one call retries with the body tailed to its last 100 lines. Short messages always see a full-body judgment; long ones get a tail-only judgment rather than a fallback.
+`mlx_lm.server` allocates its KV cache dynamically — there is no per-slot context window to overflow, and the first call after startup pays the warm-up cost rather than failing with a cold-load signal. `/health` returns `{"status": "ok"}` as soon as the server is accepting requests.
 
 ## Reference
 
@@ -146,9 +146,9 @@ Add a binding for the new event and tool. If the target already has an extractor
 
 ### Cost
 
-Every verdict in the matched binding becomes one HTTP POST to the local `llama-server`. The calls run in parallel through a `ThreadPoolExecutor`, so total wall time is roughly the slowest single call. Steady-state warm calls finish well under a second. The first call after the server starts pays the cold start cost of loading model weights into memory.
+Every verdict in the matched binding becomes one HTTP POST to the local `mlx_lm.server`. The calls run in parallel through a `ThreadPoolExecutor`, so total wall time is roughly the slowest single call. Steady-state warm calls finish well under a second. The first call after the server starts pays the cold start cost of loading model weights into memory.
 
-The `llama-server` is local. There are no external API calls and no per-call dollar cost — only CPU and RAM on the same machine.
+The daemon is local. There are no external API calls and no per-call dollar cost — only CPU and RAM on the same machine. Peak resident set sits around 2.6 GiB at the default Qwen3-4B-4bit model.
 
 ### Suppression
 
@@ -174,17 +174,19 @@ Arbiter fails loud on configuration problems. Common failure messages:
 - `<file>:<line>:<col>: verdict 'foo' references unknown remediation key 'bar'` — a verdict's `remediation` list names a key that is not declared under the top-level `remediation:` section. Add the paragraph or fix the reference.
 - `verdict 'foo': unknown field 'baz'` — the verdict has a field Arbiter does not recognize. The supported fields are `prompt`, `glossary`, `remediation`, and `suppress_when`.
 
-If the local `llama-server` is unreachable, Arbiter fails closed: the binding's action fires with the static fallback message, which explains how to start the server (`arbiter-up.sh`). Set `BLOCK_PLAN_NO_JUDGE=1` to force the fallback message without making any HTTP calls — useful only when diagnosing the server itself.
+If the local `mlx_lm.server` is unreachable, Arbiter fails closed: the binding's action fires with the static fallback message, which explains how to start the server (`arbiter-up.sh`). Set `BLOCK_PLAN_NO_JUDGE=1` to force the fallback message without making any HTTP calls — useful only when diagnosing the server itself.
 
 The per-call log lives at `~/.claude/arbiter/logs/arbiter.log`. Each line records the event, duration in milliseconds, and the fired verdict names. `tail -f` it during development to watch judgments arrive in real time.
 
 ### What ships in this directory
 
 - `bindings.yaml` — the verdicts, remediation paragraphs, sets, and bindings.
-- `arbiter-up.sh` and `arbiter-config.sh` — idempotent startup for the local `llama-server`. The Claude Code `SessionStart` hook calls `arbiter-up.sh`, and subsequent starts find the server already up and exit silently.
+- `arbiter-up.sh` and `arbiter-config.sh` — idempotent startup for the local `mlx_lm.server`. The Claude Code `SessionStart` hook calls `arbiter-up.sh`, and subsequent starts find the server already up and exit silently.
 - `lib/` — the Python engine. `dispatch(payload, output)` is the one entry point a hook script needs to call.
 - `docs/system-design.md` — the engine walk-through for someone touching the code under `lib/`.
 
 ### Dependencies
 
-PyYAML (any 5+ release). Arbiter imports it from the system Python that runs the hook script. The check at `lib/config.py` import time fails loud if the module is missing.
+PyYAML (any 5+ release) and `mlx-lm` (any release that ships `mlx_lm.server`, installed with `pip install --user mlx-lm`). Both are imported from the system Python that runs the hook script; import failures surface loudly. The 4-bit Qwen3-4B weights are pulled on first run; pre-pull with `huggingface-cli download mlx-community/Qwen3-4B-4bit` to avoid a startup wait. Peak resident set sits around 2.6 GiB once weights are warm.
+
+The `mlx` backend additionally requires `mlx-lm` in the same Python that runs `mlx_lm.server`.

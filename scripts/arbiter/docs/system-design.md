@@ -2,7 +2,7 @@
 
 This doc is the engine walk-through for someone touching the code under `lib/`. The reader-facing tour lives in `../README.md`.
 
-Arbiter routes a Claude Code hook payload through a small, configuration-driven pipeline. Parse the YAML, derive `(event, tool)` from the payload, judge the body via the local `llama-server`, compose a block message from whichever verdicts fired, and write the JSON shape Claude Code expects for the matched hook event to stdout. Each step is a plain function call. There is no daemon, no shared state across hook invocations, and no global verdict registry that grows or stales.
+Arbiter routes a Claude Code hook payload through a small, configuration-driven pipeline. Parse the YAML, derive `(event, tool)` from the payload, judge the body via the local `mlx_lm.server`, compose a block message from whichever verdicts fired, and write the JSON shape Claude Code expects for the matched hook event to stdout. Each step is a plain function call. There is no daemon, no shared state across hook invocations, and no global verdict registry that grows or stales.
 
 ## Concept diagram
 
@@ -57,9 +57,9 @@ A maintainer reading at the file level can match each step below to a `lib/` sym
 
 **7. Quick-exit check.** The dispatcher scrubs code from the body via `extract.strip_code(body)`, then builds a quick-exit regex from the binding's verdict names. If the scrubbed body literally contains a verdict name like `OPEN_QUESTIONS`, the assistant is discussing the rules rather than tripping them, the dispatcher logs `CLEAR:quick-exit` and returns silently. The pattern is built fresh per dispatch from the matched binding's verdict list, so there is no global pattern that grows or stales.
 
-**8. Diagnostic short-circuit.** If `BLOCK_PLAN_NO_JUDGE=1` is set in the environment, the dispatcher emits the static `compose.FALLBACK_REPLAN_SLIM` message via the binding's action shape and returns. This is the only way to exercise the fallback path without taking the `llama-server` down.
+**8. Diagnostic short-circuit.** If `BLOCK_PLAN_NO_JUDGE=1` is set in the environment, the dispatcher emits the static `compose.FALLBACK_REPLAN_SLIM` message via the binding's action shape and returns. This is the only way to exercise the fallback path without taking the `mlx_lm.server` down.
 
-**9. Judge the body.** Otherwise the dispatcher calls `client.judge_many(body, framing, verdict_specs, event)` (`lib/client.py`). `judge_many` opens a `ThreadPoolExecutor` with one worker per verdict and submits one `_judge_one` call per spec. Each `_judge_one` POSTs `{model, stream: false, max_tokens, response_format, messages}` to `http://127.0.0.1:11436/v1/chat/completions`, with the system message set to `framing + verdict.prompt + _OUTPUT_INSTRUCTION` and the user message wrapping the body between BEGIN and END markers. Schema-forced output keeps the response shape `{"yes": <bool>}` deterministic; any deviation returns `None` from `_judge_one` and propagates up as a fail-closed signal. `judge_many` appends one line to `~/.claude/arbiter/logs/arbiter.log` recording event, elapsed milliseconds, and either the fired verdict names, `CLEAR`, or `ERROR:<keys>`.
+**9. Judge the body.** Otherwise the dispatcher calls `client.judge_many(body, framing, verdict_specs, event)` (`lib/client.py`). `judge_many` opens a `ThreadPoolExecutor` with one worker per verdict and submits one `_judge_one` call per spec. Each `_judge_one` POSTs `{model, stream: false, max_tokens, messages}` to `http://127.0.0.1:11436/v1/chat/completions`, with the system message set to `framing + verdict.prompt + _OUTPUT_INSTRUCTION` and the user message wrapping the body between BEGIN and END markers. The model is instructed to answer `yes` or `no` with the Qwen3 `/no_think` directive appended; the response is parsed with a strict-first-word reader at the boundary (after stripping the empty `<think></think>` block). Any deviation returns `None` from `_judge_one` and propagates up as a fail-closed signal. `judge_many` appends one line to `~/.claude/arbiter/logs/arbiter.log` recording event, elapsed milliseconds, and either the fired verdict names, `CLEAR`, or `ERROR:<keys>`.
 
 The return value is `None` if any single call failed, `[]` if no verdicts fired, or `[verdict_key, ...]` if some did.
 
@@ -128,7 +128,7 @@ Built-in map keyed on `(event, action)`. The `(event, action)` pair is validated
 | Mismatched `(event, action)` | `ConfigError` rejecting the binding at load time |
 | Body extractor missing for an `(event, tool)` | Dispatcher returns silently — no false block |
 | Framing missing for an event | Dispatcher returns silently — no false block |
-| `llama-server` unreachable or malformed response | Dispatcher emits `FALLBACK_REPLAN_SLIM` via the binding's action shape — fail closed |
+| `mlx_lm.server` unreachable or malformed response | Dispatcher emits `FALLBACK_REPLAN_SLIM` via the binding's action shape — fail closed |
 | `BLOCK_PLAN_NO_JUDGE=1` set | Same fallback emission, no HTTP calls — for diagnosing the server |
 
 ## Pipeline summary

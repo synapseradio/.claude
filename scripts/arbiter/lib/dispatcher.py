@@ -1,7 +1,7 @@
 """Dispatch entrypoint.
 
 Resolves `(event, tool)` from the hook payload, finds the matching
-binding, judges the body via the local `llama-server`, applies any
+binding, judges the body via the local `mlx_lm.server`, applies any
 suppressions declared in `bindings.yaml`, composes the block message,
 and writes the JSON shape Claude Code expects for the matched
 `(event, action)` pair to the output stream.
@@ -114,12 +114,6 @@ def dispatch(payload: dict, output: IO[str]) -> None:
     )
 
     fired_keys = client.judge_many(scrubbed, framing, verdict_specs, event)
-    if fired_keys is client.JUDGE_COLD:
-        # Daemon is up but the model is still loading. Stay silent so
-        # the cold-load window does not flood the user with the
-        # unreachable-judge fallback. The judge rendered no verdict,
-        # so this is not a "first block" — state stays untouched.
-        return
     if fired_keys is None:
         # Fail-closed deny. The judge could not render a verdict, so
         # this does not count as the flow's first block — state is

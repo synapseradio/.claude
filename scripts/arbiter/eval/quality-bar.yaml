@@ -1,0 +1,58 @@
+# Quality bar for arbiter judgments. Any candidate stack (Phase 1
+# MLX-LM swap, Phase 2 verdict restructure, etc.) must clear these
+# thresholds against the labeled corpus before being promoted to
+# production.
+#
+# Rationale per number is inline. Numbers are starting positions — the
+# bar tightens as the corpus grows. The harness reports against this
+# file; configs that miss any threshold are flagged.
+
+per_verdict:
+  open_questions:
+    # The most-fired verdict in plan_review. Precision matters because
+    # false positives reject legitimate plans that happened to use a
+    # question mark in passing.
+    min_precision: 0.85
+    min_recall: 0.70
+    min_f1: 0.75
+
+  uncommitted_alternatives:
+    # Sparse in production but high-cost when missed — an indecisive
+    # plan gets through. Recall over precision.
+    min_precision: 0.80
+    min_recall: 0.75
+    min_f1: 0.75
+
+  out_of_scope_deferral:
+    # The most-fired verdict in turn_review. Behavioral-critical:
+    # silently accepting "tests pre-existed" defeats Core Rule 11.
+    # Hold recall tight.
+    min_precision: 0.85
+    min_recall: 0.80
+    min_f1: 0.80
+
+  baseline_probe:
+    # Detects the "let me check main" exploration that often signals
+    # the assistant is about to defer a real failure. Lower frequency
+    # but precision matters — false positives block reasonable rebase
+    # work.
+    min_precision: 0.85
+    min_recall: 0.70
+    min_f1: 0.75
+
+system:
+  # Per-call latency at the 95th percentile. Current llama.cpp + 4B +
+  # cache_prompt=false sits around 900 ms per call. Target halves it.
+  # Phase 1 (smaller model + prefix cache + choice grammar) should
+  # land well under 250.
+  max_latency_p95_ms: 250
+
+  # Peak resident memory of the judge daemon during a typical session.
+  # Current vmmap physical footprint sits at ~3.7 GiB. Target halves
+  # it. Phase 1 reaches ~2 GiB; Phase 3 reaches ~100 MiB if every
+  # verdict converts to a supervised classifier.
+  max_peak_rss_mib: 2048
+
+  # No tolerated error rate. A non-zero error count means the daemon
+  # is unstable for the workload.
+  max_errors_per_run: 0

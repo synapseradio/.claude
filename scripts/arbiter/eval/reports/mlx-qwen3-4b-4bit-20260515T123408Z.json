@@ -1,0 +1,109 @@
+{
+  "config_name": "mlx-qwen3-4b-4bit",
+  "config_description": "mlx_lm.server + Qwen3-4B-4bit. Same MLX dynamic-KV architecture as\nthe 1.7B config — only the model size changes. Validates whether\nmemory savings hold at 4B and whether F1 returns to baseline.",
+  "timestamp_utc": "2026-05-15T12:34:08+00:00",
+  "corpus_path": "/Users/nke/.claude/scripts/arbiter/eval/corpus.labeled.jsonl",
+  "corpus_size": 135,
+  "bindings_path": "/Users/nke/.claude/scripts/arbiter/bindings.yaml",
+  "per_verdict": {
+    "open_questions": {
+      "tp": 32,
+      "fp": 16,
+      "tn": 83,
+      "fn": 4,
+      "errors": 0,
+      "total_labeled": 135,
+      "precision": 0.667,
+      "recall": 0.889,
+      "f1": 0.762,
+      "accuracy": 0.852,
+      "latency_ms": {
+        "count": 135,
+        "p50": 501.1,
+        "p95": 2000.7,
+        "p99": 2669.0,
+        "max": 3467.4,
+        "mean": 710.5
+      }
+    },
+    "uncommitted_alternatives": {
+      "tp": 21,
+      "fp": 4,
+      "tn": 95,
+      "fn": 15,
+      "errors": 0,
+      "total_labeled": 135,
+      "precision": 0.84,
+      "recall": 0.583,
+      "f1": 0.689,
+      "accuracy": 0.859,
+      "latency_ms": {
+        "count": 135,
+        "p50": 518.4,
+        "p95": 1994.5,
+        "p99": 2683.2,
+        "max": 3366.5,
+        "mean": 706.0
+      }
+    },
+    "out_of_scope_deferral": {
+      "tp": 16,
+      "fp": 6,
+      "tn": 93,
+      "fn": 20,
+      "errors": 0,
+      "total_labeled": 135,
+      "precision": 0.727,
+      "recall": 0.444,
+      "f1": 0.552,
+      "accuracy": 0.807,
+      "latency_ms": {
+        "count": 135,
+        "p50": 508.0,
+        "p95": 1966.7,
+        "p99": 3406.7,
+        "max": 3701.8,
+        "mean": 713.9
+      }
+    },
+    "baseline_probe": {
+      "tp": 2,
+      "fp": 1,
+      "tn": 132,
+      "fn": 0,
+      "errors": 0,
+      "total_labeled": 135,
+      "precision": 0.667,
+      "recall": 1.0,
+      "f1": 0.8,
+      "accuracy": 0.993,
+      "latency_ms": {
+        "count": 135,
+        "p50": 505.6,
+        "p95": 1957.8,
+        "p99": 2720.7,
+        "max": 3326.1,
+        "mean": 704.9
+      }
+    }
+  },
+  "overall": {
+    "calls": 540,
+    "errors": 0,
+    "wall_seconds": 382.83,
+    "latency_ms": {
+      "count": 540,
+      "p50": 508.0,
+      "p95": 1966.7,
+      "p99": 2720.7,
+      "max": 3701.8,
+      "mean": 708.8
+    }
+  },
+  "memory": {
+    "peak_rss_kb": 2670464,
+    "samples": 753,
+    "vmmap_summary": "Process:         Python [22439]\nPath:            /Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/Resources/Python.app/Contents/MacOS/Python\nLoad Address:    0x104130000\nIdentifier:      com.apple.python3\nVersion:         3.9.6 (3.9.6)\nBuild Info:      python3-141000000500005~2504\nCode Type:       ARM64\nPlatform:        macOS\nParent Process:  launchd [1]\nTarget Type:     live task\n\nDate/Time:       2026-05-15 14:34:07.871 +0200\nLaunch Time:     2026-05-15 14:27:27.735 +0200\nOS Version:      macOS 26.4.1 (25E253)\nReport Version:  7\nAnalysis Tool:   /usr/bin/vmmap\n\nPhysical footprint:         3.1G\nPhysical footprint (peak):  5.4G\nIdle exit:                  untracked\n----\n\nReadOnly portion of Libraries: Total=1.2G resident=332.6M(28%) swapped_out_or_unallocated=858.0M(72%)\nWritable regions: Total=3.3G written=401.3M(12%) resident=3.0G(91%) swapped_out=81.2M(2%) unallocated=228.8M(7%)\n\n                                VIRTUAL RESIDENT    DIRTY  SWAPPED VOLATILE   NONVOL    EMPTY   REGION \nREGION TYPE                        SIZE     SIZE     SIZE     SIZE     SIZE     SIZE     SIZE    COUNT (non-coalesced) \n===========                     ======= ========    =====  ======= ========   ======    =====  ======= \nActivity Tracing                   256K      32K       0K      32K       0K      32K       0K        1 \nIOAccelerator                      544K     544K     544K       0K       0K       0K       0K       12 \nIOAccelerator (graphics)           2.7G     2.7G     2.7G       0K       0K     2.7G      64K     1878 \nIOKit                               80K      80K      80K       0K       0K      16K       0K        5 \nIOSurface                           16K       0K       0K       0K       0K       0K       0K        1 \nKernel Alloc Once                   48K      16K      16K      16K       0K       0K       0K        2 \nMALLOC guard page                 3872K       0K       0K       0K       0K       0K       0K        4 \nMALLOC metadata                   2000K    1312K    1312K     288K       0K       0K       0K        7 \nMALLOC_LARGE                      29.5M    21.3M    21.3M    4944K       0K       0K       0K        5         see MALLOC ZONE table below\nMALLOC_LARGE (empty)              38.9M    29.8M    29.8M    8240K       0K       0K       0K        8         see MALLOC ZONE table below\nMALLOC_NANO metadata                64K      48K      48K       0K       0K       0K       0K        2         see MALLOC ZONE table below\nMALLOC_SMALL                     183.9M    77.5M    77.5M    65.7M       0K       0K       0K       48         see MALLOC ZONE table below\nMALLOC_SMALL (empty)              56.1M    18.2M    18.2M     944K       0K       0K       0K       16         see MALLOC ZONE table below\nMALLOC_TINY                       4096K     304K     304K       0K       0K       0K       0K        1         see MALLOC ZONE table below\nMemory Tag 22                     64.0M      64K      64K       0K       0K       0K       0K        1 \nSTACK GUARD                        432K       0K       0K       0K       0K       0K       0K       27 \nStack                             78.8M     496K     496K     176K       0K       0K       0K       28 \nVM_ALLOCATE                      132.0M   130.4M   130.4M    1200K       0K       0K       0K      528 \n__AUTH                            1396K     745K      32K      16K       0K       0K       0K      158 \n__AUTH_CONST                      19.0M     9.8M      80K      32K       0K       0K       0K      354 \n__CTF                               824       0K       0K      824       0K       0K       0K        1 \n__DATA                            8094K    3988K    2010K    1733K       0K       0K       0K      391 \n__DATA_CONST                      21.1M    9546K     496K    4208K       0K       0K       0K      434 \n__DATA_DIRTY                      1344K     727K     263K     251K       0K       0K       0K      293 \n__FONT_DATA                        2352      752       0K       0K       0K       0K       0K        1 \n__LINKEDIT                       665.1M   122.0M       0K       0K       0K       0K       0K       86 \n__OBJC_RO                         79.1M    52.1M       0K       0K       0K       0K       0K        1 \n__OBJC_RW                         2597K    2133K      21K      16K       0K       0K       0K        1 \n__TEXT                           525.4M   210.6M       0K       0K       0K       0K       0K      445 \n__TPRO_CONST                       128K      96K      96K      16K       0K       0K       0K        2 \ndyld private memory                304K      32K      32K      64K       0K       0K       0K        6 \nmapped file                       75.2M    2352K       0K       0K       0K       0K       0K        8 \nowned unmapped (graphics)         72.0M    72.0M    72.0M       0K       0K       0K       0K       18 \npage table in kernel              1875K    1875K    1875K       0K       0K       0K       0K        1 \nshared memory                      656K     128K     128K      16K       0K       0K       0K        8 \nunused but dirty shlib __DATA      169K      74K      74K      96K       0K       0K       0K       92 \n===========                     ======= ========    =====  ======= ========   ======    =====  ======= \nTOTAL                              4.7G     3.4G     3.0G    87.5M       0K     2.7G      64K     4874 \n\n                                  VIRTUAL   RESIDENT      DIRTY    SWAPPED ALLOCATION      BYTES DIRTY+SWAP          REGION\nMALLOC ZONE                          SIZE       SIZE       SIZE       SIZE      COUNT  ALLOCATED  FRAG SIZE  % FRAG   COUNT\n===========                       =======  =========  =========  =========  =========  =========  =========  ======  ======\nDefaultMallocZone_0x104654000      275.2M     118.6M     118.6M      71.5M     727893     140.3M      49.8M     27%      74\nLSBindingEvaluator_0x109f34000       112K         0K         0K       112K          0         0K       112K    100%       2\n===========                       =======  =========  =========  =========  =========  =========  =========  ======  ======\nTOTAL                              275.4M     118.6M     118.6M      71.6M     727893     140.3M      49.9M     27%      76\n\n",
+    "pid": 22439
+  }
+}

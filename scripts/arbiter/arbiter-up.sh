@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# Idempotent startup for the local llama-server backing Arbiter.
+# Idempotent startup for the local mlx_lm.server backing Arbiter.
 #
 # If a process is already listening on ARBITER_PORT, exit 0 silently.
-# Otherwise spawn llama-server in the background with the config from
-# arbiter-config.sh. Writes pid to ARBITER_PID_FILE and stdout/stderr
-# to ARBITER_LOG_FILE. Designed to be safe under parallel invocation:
-# multiple Claude Code SessionStart hooks racing each other will all
-# converge on a single running server.
+# Otherwise spawn mlx_lm.server in the background with the config
+# from arbiter-config.sh. Writes pid to ARBITER_PID_FILE and
+# stdout/stderr to ARBITER_LOG_FILE. Designed to be safe under
+# parallel invocation: multiple Claude Code SessionStart hooks racing
+# each other will all converge on a single running server.
 
 set -euo pipefail
 
@@ -31,22 +31,16 @@ port_in_use() {
 }
 
 #######################################
-# Spawn the llama-server backing Arbiter if not already running, then
-# wait for the /health endpoint to respond.
+# Spawn the mlx_lm.server backing Arbiter if not already running,
+# then wait for the /health endpoint to respond.
 # Globals:
-#   ARBITER_CTX
-#   ARBITER_EXTRA_FLAGS
-#   ARBITER_HOST
-#   ARBITER_LOG_FILE
-#   ARBITER_MODEL_PATH
-#   ARBITER_PARALLEL
-#   ARBITER_PID_FILE
-#   ARBITER_PORT
+#   ARBITER_BIN, ARBITER_HOST, ARBITER_LOG_FILE, ARBITER_MODEL,
+#   ARBITER_PID_FILE, ARBITER_PORT
 # Arguments:
 #   None
 # Returns:
-#   0 once the server accepts requests; 1 if prerequisites are missing
-#   or the server fails to come up within 30s.
+#   0 once the server accepts requests; 1 if prerequisites are
+#   missing or the server fails to come up within 30s.
 #######################################
 main() {
   mkdir -p "$(dirname "${ARBITER_LOG_FILE}")" "$(dirname "${ARBITER_PID_FILE}")"
@@ -55,28 +49,22 @@ main() {
     exit 0
   fi
 
-  # Sanity: the model file must exist before we spawn — otherwise
-  # llama-server fails late with an opaque error after binding the port.
-  if [[ ! -f "${ARBITER_MODEL_PATH}" ]]; then
-    echo "arbiter-up: model file missing: ${ARBITER_MODEL_PATH}" >&2
-    exit 1
-  fi
-
-  if ! command -v llama-server >/dev/null 2>&1; then
-    echo "arbiter-up: llama-server not found in PATH" >&2
+  if [[ ! -x "${ARBITER_BIN}" ]]; then
+    echo "arbiter-up: mlx_lm.server not found or not executable at ${ARBITER_BIN}" >&2
+    echo "          install with: pip install --user mlx-lm" >&2
     exit 1
   fi
 
   # Spawn detached so the server outlives this script (and the
-  # Claude Code session that triggered it).
-  nohup llama-server \
-    -m "${ARBITER_MODEL_PATH}" \
+  # Claude Code session that triggered it). --temp 0.0 pins decoding
+  # to greedy; the Qwen3 /no_think directive lives in the system
+  # prompt (lib/client.py) since mlx_lm.server has no CLI reasoning
+  # toggle.
+  nohup "${ARBITER_BIN}" \
+    --model "${ARBITER_MODEL}" \
     --host "${ARBITER_HOST}" \
     --port "${ARBITER_PORT}" \
-    --ctx-size "${ARBITER_CTX}" \
-    --parallel "${ARBITER_PARALLEL}" \
-    --log-prefix \
-    "${ARBITER_EXTRA_FLAGS[@]}" \
+    --temp 0.0 \
     >>"${ARBITER_LOG_FILE}" 2>&1 &
 
   echo $! >"${ARBITER_PID_FILE}"

@@ -1,0 +1,58 @@
+# Phase 1 candidate: MLX-LM serving Qwen3-1.7B in 4-bit MLX format.
+#
+# Backend swap: from llama.cpp llama-server (static slot pre-allocation,
+# 3.7 GiB physical footprint) to mlx_lm.server (dynamic KV allocation,
+# Apple Silicon native). The expected memory win is two-fold — smaller
+# model and no slot pre-allocation.
+#
+# Output mode: free_form. mlx_lm.server does not implement
+# response_format=json_schema or grammar enforcement. The prompt
+# instructs the model to answer with exactly "yes" or "no" and the
+# parser tolerates leading whitespace, trailing punctuation, and
+# capitalization. Error rate on small models with sharp prompts is
+# typically a few percent; the harness will surface the actual rate.
+#
+# Startup (manual, until arbiter-up.sh is updated):
+#   ~/Library/Python/3.9/bin/mlx_lm.server \
+#     --model mlx-community/Qwen3-1.7B-4bit \
+#     --host 127.0.0.1 \
+#     --port 8081 \
+#     --temp 0.0
+#
+# Pull the weights once before first run:
+#   huggingface-cli download mlx-community/Qwen3-1.7B-4bit
+
+name: mlx-qwen3-1.7b-4bit
+description: |-
+  mlx_lm.server with Qwen3-1.7B 4-bit MLX weights. Free-form yes/no
+  output parsed by the harness. Dynamic KV allocation removes the
+  static ctx*parallel ceiling that dominates the llama.cpp footprint.
+
+server:
+  base_url: http://127.0.0.1:8081
+  model: mlx-community/Qwen3-1.7B-4bit
+  # mlx_lm.server does not write a pid file; capture it from the
+  # startup command if memory measurement is wanted.
+  pid_file: ~/.claude/arbiter/state/mlx-server.pid
+  health_path: /health
+  chat_path: /v1/chat/completions
+
+output:
+  type: free_form
+  # Qwen3 emits `<think>\n\n</think>\n\n` even with /no_think (about 8
+  # tokens of empty reasoning block) before the answer token. The parser
+  # strips the tag span, but the budget must hold both halves.
+  max_tokens: 24
+  cache_prompt: false   # not applicable on mlx_lm.server; ignored
+  # Appended to the system prompt. `/no_think` is a Qwen3 directive that
+  # collapses the reasoning block to an empty pair of <think></think>
+  # tags instead of a multi-hundred-token chain of thought.
+  system_suffix: "\n\n/no_think"
+
+prompts:
+  bindings: ../../bindings.yaml
+
+run:
+  parallel_fanout: false
+  warmup: true
+  timeout_seconds: 60

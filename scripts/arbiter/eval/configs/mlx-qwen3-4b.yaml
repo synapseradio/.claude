@@ -1,0 +1,43 @@
+# Fallback: MLX-LM + Qwen3-4B-4bit on port 8081.
+#
+# Same backend architecture as mlx-qwen3-1.7b.yaml (mlx_lm.server,
+# dynamic KV allocation, free-form yes/no with /no_think). Only the
+# model is larger. Goal: validate that the MLX memory architecture
+# win is durable at 4B and that quality returns to baseline parity.
+#
+# Startup (manual, until arbiter-up.sh learns about MLX):
+#   ~/Library/Python/3.9/bin/mlx_lm.server \
+#     --model mlx-community/Qwen3-4B-4bit \
+#     --host 127.0.0.1 \
+#     --port 8081 \
+#     --temp 0.0
+#
+# Pull the weights once:
+#   huggingface-cli download mlx-community/Qwen3-4B-4bit
+
+name: mlx-qwen3-4b-4bit
+description: |-
+  mlx_lm.server + Qwen3-4B-4bit. Same MLX dynamic-KV architecture as
+  the 1.7B config — only the model size changes. Validates whether
+  memory savings hold at 4B and whether F1 returns to baseline.
+
+server:
+  base_url: http://127.0.0.1:8081
+  model: mlx-community/Qwen3-4B-4bit
+  pid_file: ~/.claude/arbiter/state/mlx-server.pid
+  health_path: /health
+  chat_path: /v1/chat/completions
+
+output:
+  type: free_form
+  max_tokens: 24
+  cache_prompt: false
+  system_suffix: "\n\n/no_think"
+
+prompts:
+  bindings: ../../bindings.yaml   # production bindings, not the 1.7B variant
+
+run:
+  parallel_fanout: false
+  warmup: true
+  timeout_seconds: 60

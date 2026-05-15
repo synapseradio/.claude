@@ -1,0 +1,42 @@
+# Output-contract variant of the baseline. Same backend (in principle),
+# same model, same prompts. Replaces the json_schema response_format
+# with a GBNF grammar that restricts output to exactly "yes" or "no".
+# Two-token decode is determinism-safe under prefix cache reuse, so
+# cache_prompt is re-enabled.
+#
+# BLOCKED on current llama.cpp build (libllama 0.0.8950): the GBNF
+# sampler raises "Unexpected empty grammar stack after accepting piece"
+# on Qwen3 tokenizer output during sampling, crashing llama-server.
+# This is a known llama.cpp issue with chat-templated grammars on
+# certain tokenizers. This config is held for Phase 1, where the
+# backend swaps to mlx_lm.server and grammar enforcement runs through
+# outlines instead of llama.cpp's GBNF sampler.
+#
+# Until then: run baseline.yaml only. To re-test against a newer
+# llama.cpp build, restart the server and re-run with this config.
+
+name: choice-grammar-llama-cpp-qwen3-4b
+description: |-
+  llama.cpp llama-server, Qwen3-4B Q4_K_M, ctx=8192 parallel=4.
+  Output narrowed from json_schema to GBNF yes|no grammar.
+  cache_prompt re-enabled (safe with two-token decode).
+
+server:
+  base_url: http://127.0.0.1:11436
+  model: judge
+  pid_file: ~/.claude/arbiter/state/arbiter.pid
+  health_path: /health
+  chat_path: /v1/chat/completions
+
+output:
+  type: choice_grammar
+  max_tokens: 4         # "yes" or "no" plus a token of slack
+  cache_prompt: true    # safe under two-token decode
+
+prompts:
+  bindings: ../../bindings.yaml
+
+run:
+  parallel_fanout: false
+  warmup: true
+  timeout_seconds: 60

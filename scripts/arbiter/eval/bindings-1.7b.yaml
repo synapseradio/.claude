@@ -1,0 +1,153 @@
+## Arbiter bindings — small-model variant (Qwen3-1.7B).
+##
+## Tuned against the failure modes observed in the v1 eval on the
+## 1.7B candidate. Same verdict ids, same remediation paragraphs,
+## same sets and bindings — only the per-verdict `prompt:` strings
+## are rewritten with sharper negative examples that anchor the
+## small model away from the patterns it confused.
+##
+## Diffs from ../bindings.yaml:
+##
+## - baseline_probe: prompt restructured around the single
+##   discriminating action (running tests on the base branch).
+##   Multiple No: examples covering the FP patterns the 1.7B fired
+##   on — summary messages, build reports, "pre-existing" diagnostics
+##   in untouched code, "out of scope" sentences. Without these the
+##   1.7B treats "baseline" as a synonym for any comparison.
+##
+## - open_questions: kept the question-vs-placeholder dual trigger
+##   but reordered so questions are evaluated first and the
+##   placeholder bullet is a fallback. Added more No: examples that
+##   look like questions in shape but are reports.
+##
+## - uncommitted_alternatives: tightened the "two paths" definition
+##   with an explicit "side-by-side enumeration with no pick"
+##   formulation. Added No: examples for forking user-decision
+##   asks and for status reports that include the word "or".
+##
+## - out_of_scope_deferral: simplified the trigger and added No:
+##   examples for status reports that name failures while fixing
+##   them, and for failure descriptions that do not include a
+##   defer signal.
+
+verdicts:
+  open_questions:
+    prompt: |-
+      Does the body either (a) contain a question the assistant directs at the user in inline prose, or (b) carry a placeholder marking an unresolved decision (TBD, TODO, FIXME, "not sure", "unclear", "up to you", "your call")?
+
+      A question is a sentence ending in "?" that addresses the user. "Want me to X?", "Should I Y?", "Could you Z?" all count as yes.
+
+      Reporting is not a question. Acknowledging is not a question. Stating what was done is not a question.
+
+      Yes: "Which approach do you prefer?"
+      Yes: "Want me to delete them now, or hold off?"
+      Yes: "Should I import from `@foo/bar` or `foo/bar`?"
+      Yes: "TODO: pick a name for this before merge."
+      Yes: "The naming is TBD — I'll resolve it on the next pass."
+      No: "I went with option A — inlined the helper."
+      No: "Tests pass and lint is clean."
+      No: "Build runs clean. The TS diagnostic is pre-existing in untouched code."
+      No: "Two commits landed. History is linear."
+      No: "Summary: I built X and wired Y."
+    glossary: |-
+      OPEN_QUESTIONS — body contains a question the assistant directs at the user in inline prose (not via `AskUserQuestion`), or carries a placeholder (TBD/TODO/FIXME/"not sure"/"unclear"/"up to you") deferring a decision. Both empirical questions (answer in code/types/logs/docs) and genuine preference questions fire — the remediation distinguishes the fix paths.
+    remediation: [question]
+    suppress_when:
+      tools_in_turn: [AskUserQuestion]
+
+  uncommitted_alternatives:
+    prompt: |-
+      Does the body enumerate two or more concrete implementation paths side-by-side and commit to none of them?
+
+      "Side-by-side" means the body actually spells out path A and path B as competing choices, then leaves the choice open. Triggers: "Option A) … Option B) …", "Either we X or we Y", "We could X or we could Y — alternatively, Z".
+
+      A single open question is NOT alternatives. A status report that uses the word "or" is NOT alternatives. A clear pick ("I went with A") is NOT alternatives. Forking the decision to the user with a single question ("Should I X or Y?") is NOT alternatives — that is an open question, handled by a different verdict.
+
+      Yes: "Two options: A) inline the helper, B) extract it into a module. Both have tradeoffs."
+      Yes: "Either we cache the response or we re-fetch each call — alternatively, we could memoize."
+      No: "I went with option A — inlined the helper."
+      No: "Want me to delete them now, or hold off?"
+      No: "TODO: pick a name for this."
+      No: "Pre-push hook ran lint and type-check. The warning is informational only."
+      No: "Tests pass and lint is clean."
+    glossary: |-
+      UNCOMMITTED_ALTERNATIVES — body presents two or more implementation paths and commits to none.
+    remediation: [alternatives]
+    suppress_when:
+      tools_in_turn: [AskUserQuestion]
+
+  out_of_scope_deferral:
+    prompt: |-
+      Does the body name a concrete failure (test failure, lint hit, build break, type diagnostic, hook block, warning) AND explicitly set it aside without fixing it?
+
+      "Set aside" means the body labels the failure as pre-existing, unrelated, inherited, legacy, out-of-scope, informational, or asks permission to leave it unfixed. Both halves must be present: a named failure AND a defer signal.
+
+      A clean report with no failures named is NOT a deferral. A named failure that the body is actively fixing (or already fixed) is NOT a deferral.
+
+      Yes: "Tests pass. The TS diagnostics are pre-existing, unrelated to my refactor."
+      Yes: "The lint hits are inherited from before this work."
+      Yes: "Tests pass. The TS errors are pre-existing. Should I leave them?"
+      Yes: "Pre-push hook ran successfully. The changeset warning is informational only and belongs to your unrelated working-tree changes — not this commit."
+      No: "Tests pass and lint is clean."
+      No: "Build runs clean — both warnings gone."
+      No: "I fixed the failing test by tightening the regex."
+      No: "I went with option A — inlined the helper."
+    glossary: |-
+      OUT_OF_SCOPE_DEFERRAL — body sets aside a concrete failure (test, lint, build, type error, hook block, warning, diagnostic) as pre-existing, unrelated, inherited, legacy, or otherwise not the assistant's responsibility — including by asking permission to leave it unfixed.
+    remediation: [failure]
+
+  baseline_probe:
+    prompt: |-
+      Does the body propose or describe running tests or code ON the base branch (main, master, trunk) — that is, switching to the base branch and executing something there, to see whether a failure pre-exists?
+
+      The body must name a git operation against main/master/trunk AND describe running tests or code on it. Examples of qualifying operations: "check out main", "git switch master", "stash my changes and switch to trunk", "run the failing test on main".
+
+      A plain rebase or merge into the branch is NOT a probe — answer no. A summary or completion report is NOT a probe — answer no. The word "pre-existing" alone is NOT a probe — answer no. "Out of scope" or "unrelated" framing alone is NOT a probe — answer no. Discussing main/master in any other context is NOT a probe.
+
+      Yes: "Let me check whether these tests fail on main."
+      Yes: "I'll stash my changes, switch to master, and run the suite to see if these failures pre-existed."
+      Yes: "Let me run the failing test against trunk."
+      No: "I rebased onto main and resolved the conflict."
+      No: "I merged main into the branch."
+      No: "Tests pass. The TS diagnostic is pre-existing in untouched code."
+      No: "The lint hits are inherited from before this work."
+      No: "Summary: I built X and wired Y."
+      No: "Build runs clean — both warnings gone."
+      No: "Both fast-forwards landed cleanly. Main is now at HEAD."
+      No: "Implementation complete. Files changed: A, B, C."
+    glossary: |-
+      BASELINE_PROBE — body proposes or performs a comparison against the base branch (main, master, trunk) to determine whether a failure pre-exists.
+    remediation: [failure]
+
+remediation:
+  question: |-
+    The plan file seems to include questions to the user. A plan must be ready to execute before it can be presented via ExitPlanMode. Is this the case? If the answer lives in code, types, logs, or docs, resolve it yourself before re-emitting. If the answer genuinely depends on user preference, route it through `AskUserQuestion` rather than asking inline.
+  alternatives: |-
+    There seem to be undecided aspects of your plan — please resolve them now. Pick one path and commit. State the tradeoff in one sentence so the discarded path is visible. If the choice genuinely needs the user's input, route it through `AskUserQuestion` instead of asking inline.
+  failure: |-
+    A failure was named and set aside as pre-existing or unrelated. Please address it now: the failure observed in the current work is the failure to fix, regardless of whether it also reproduces on main.
+
+sets:
+  plan_review:
+    &plan_review [
+      open_questions,
+      uncommitted_alternatives,
+      out_of_scope_deferral,
+      baseline_probe,
+    ]
+  turn_review:
+    &turn_review [out_of_scope_deferral, baseline_probe]
+
+bindings:
+  - event: PreToolUse
+    tool: ExitPlanMode
+    verdicts: *plan_review
+    action: deny
+
+  - event: Stop
+    verdicts: *turn_review
+    action: block
+
+  - event: SubagentStop
+    verdicts: *turn_review
+    action: block

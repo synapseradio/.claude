@@ -1,12 +1,12 @@
-"""HTTP client for the local `llama-server`.
+"""HTTP client for the local `mlx_lm.server`.
 
 One focused yes/no call per verdict, dispatched in parallel via a
-`ThreadPoolExecutor`. Schema-forced JSON output keeps the response
-shape `{"yes": <bool>}` deterministic. Any deviation is treated as a
-judge failure: `judge_many` returns `None` for the whole batch and
-the dispatcher fails closed, emitting `compose.FALLBACK_REPLAN_SLIM`
-via the binding's action shape instead of a verdict-derived block
-reason.
+`ThreadPoolExecutor`. The model answers free-form `yes` or `no` and a
+strict-first-word parser at the boundary turns the response into a
+bool. Any deviation is treated as a judge failure: `judge_many`
+returns `None` for the whole batch and the dispatcher fails closed,
+emitting `compose.FALLBACK_REPLAN_SLIM` via the binding's action
+shape instead of a verdict-derived block reason.
 
 The host and port the client probes are read from
 `scripts/arbiter/arbiter-config.sh` at module import. That shell file
@@ -25,24 +25,10 @@ errors. That distinguishes "judge truly down" from "one chat call
 flaked" in the log without changing the fail-closed contract the
 dispatcher depends on.
 
-`/health` distinguishes two kinds of unavailability. llama.cpp returns
-HTTP 503 with `{"error":{"message":"Loading model",...}}` while the
-weights are still loading, and HTTP 200 with `{"status":"ok"}` once
-the server can answer chat-completion requests. The probe surfaces the
-loading state as the `JUDGE_COLD` sentinel so the dispatcher can no-op
-silently during the cold-load window — a fail-closed message during
-startup would flood the user the moment they kicked off a session and
-trains them to disable the safety net.
-
-A single chat-completion call that comes back HTTP 400 with
-"exceeds the available context size" gets one retry whose body is
-tail-trimmed to the last `_BODY_TAIL_LINES` lines. The slot context
-in llama-server is roughly `--ctx-size / --parallel`, so a long plan
-or essay-length turn-ending message can overflow without anything
-being wrong with the daemon. The retry preserves a judgment for the
-closing of the message, which is where the verdicts Arbiter cares
-about (open questions, uncommitted alternatives, out-of-scope
-dismissals) tend to live.
+mlx_lm.server returns HTTP 200 with `{"status": "ok"}` once it can
+answer chat-completion requests. Weights are mapped lazily, so the
+first `/v1/chat/completions` call pays the warm-up cost and
+subsequent calls are fast.
 """
 
 import json
@@ -55,33 +41,17 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
-YES_NO_SCHEMA = {
-    "type": "object",
-    "properties": {"yes": {"type": "boolean"}},
-    "required": ["yes"],
-}
-
-# Sentinel returned by `judge_many` when the daemon is up but the model
-# is still loading. The dispatcher treats this as a no-op rather than a
-# fail-closed signal, so cold start does not produce block messages.
-JUDGE_COLD = object()
-
-# Tail size for the oversize retry. 100 lines of typical prose fits
-# inside the per-slot context window for the daemon's default
-# configuration. Rare cases where 100 lines still overflows fall
-# through to the standard fail-closed path.
-_BODY_TAIL_LINES = 100
-
 # arbiter-config.sh sits two directories above this file:
 #   scripts/arbiter/lib/client.py  →  scripts/arbiter/arbiter-config.sh
 _CONFIG_PATH = pathlib.Path(__file__).resolve().parent.parent / "arbiter-config.sh"
 
 # `readonly NAME="value"` or `NAME="value"` — quotes optional, value
-# must be a literal (no command substitution, no $-expansion). Anything
-# fancier means the operator stepped outside what this loader handles
-# and the fallback kicks in.
+# must be a literal. `$` and `` ` `` are forbidden in the captured
+# value so `${VAR:-default}`, `$(cmd)`, and `\`cmd\`` all leak through
+# to the env/default fallback rather than being captured as a literal
+# string.
 _BASH_ASSIGN = re.compile(
-    r"""^\s*(?:readonly\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*"?(?P<value>[^"\n#]+?)"?\s*(?:#.*)?$"""
+    r"""^\s*(?:readonly\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*"?(?P<value>[^"\n#$`]+?)"?\s*(?:#.*)?$"""
 )
 
 
@@ -106,58 +76,72 @@ def _parse_arbiter_config(path: pathlib.Path) -> dict[str, str]:
     return out
 
 
-def _resolve_endpoint() -> tuple[str, int]:
-    """Resolve `(host, port)` from arbiter-config.sh, with env override.
+def _resolve_endpoint() -> tuple[str, int, str]:
+    """Resolve `(host, port, model)` from arbiter-config.sh, with env override.
 
-    Override order:
-      1. `ARBITER_HOST` / `ARBITER_PORT` env vars (live, no restart).
-      2. Values parsed out of `arbiter-config.sh` (canonical source of
-         truth — what `arbiter-up.sh` consumes).
+    Override order (same for all three):
+      1. Matching env var (live, no restart).
+      2. Value parsed out of `arbiter-config.sh`.
 
-    Raises `RuntimeError` if neither source yields a value, or if
+    Raises `RuntimeError` if host, port, or model is missing or if
     `ARBITER_PORT` does not parse as an integer.
     """
     cfg = _parse_arbiter_config(_CONFIG_PATH)
     host = os.environ.get("ARBITER_HOST") or cfg.get("ARBITER_HOST")
     raw_port = os.environ.get("ARBITER_PORT") or cfg.get("ARBITER_PORT")
+    model = os.environ.get("ARBITER_MODEL") or cfg.get("ARBITER_MODEL")
     if not host:
         raise RuntimeError(f"ARBITER_HOST not set in env or {_CONFIG_PATH}")
     if not raw_port:
         raise RuntimeError(f"ARBITER_PORT not set in env or {_CONFIG_PATH}")
+    if not model:
+        raise RuntimeError(f"ARBITER_MODEL not set in env or {_CONFIG_PATH}")
     try:
         port = int(raw_port)
     except ValueError as exc:
         raise RuntimeError(f"ARBITER_PORT={raw_port!r} is not a valid integer") from exc
-    return host, port
+    return host, port, model
 
 
-_HOST, _PORT = _resolve_endpoint()
+_HOST, _PORT, _MODEL = _resolve_endpoint()
 JUDGE_BASE_URL = f"http://{_HOST}:{_PORT}"
 JUDGE_HEALTH_URL = f"{JUDGE_BASE_URL}/health"
 JUDGE_URL = f"{JUDGE_BASE_URL}/v1/chat/completions"
+# mlx_lm.server validates the OpenAI `model` field against the loaded
+# model id and 404s on a mismatch, so the real HuggingFace id must be
+# sent on every request.
+JUDGE_MODEL_FIELD = _MODEL
 
-# llama-server doesn't dispatch by model name when only one model is
-# loaded, but the OpenAI schema requires the field. The actual model
-# is whatever scripts/arbiter/arbiter-up.sh pinned at startup.
-JUDGE_MODEL_FIELD = "judge"
-# Generous ceiling: tolerates cold weights load on first call after
-# the server starts. Steady-state warm calls finish well under one
-# second.
+# Generous ceiling: tolerates the first call after the server starts,
+# which warms the weights into memory. Steady-state warm calls finish
+# well under one second.
 JUDGE_TIMEOUT_SECONDS = 90
 # The /health probe is a yes/no liveness check, not an inference call.
-# llama-server's /health endpoint returns instantly when the server is
-# accepting requests; 2 seconds covers loopback + any kernel-level
-# scheduling jitter without making the hook feel sluggish when the
-# daemon really is down.
+# 2 seconds covers loopback + any kernel-level scheduling jitter
+# without making the hook feel sluggish when the daemon really is
+# down.
 JUDGE_HEALTH_TIMEOUT_SECONDS = 2
-# Each focused yes/no call should decide quickly. Schema-forced
-# output keeps decode short; 32 tokens covers `{"yes": false}` plus
-# whitespace with margin.
-JUDGE_MAX_TOKENS = 32
+# Each focused yes/no call should decide quickly. Qwen3 emits an
+# empty `<think>\n\n</think>\n\n` block (~8 tokens) before the answer
+# even with /no_think. 24 tokens holds both halves with margin.
+JUDGE_MAX_TOKENS = 24
 
 LOG_PATH = pathlib.Path.home() / ".claude" / "arbiter" / "logs" / "arbiter.log"
 
-_OUTPUT_INSTRUCTION = '\n\nOutput exactly `{"yes": true}` or `{"yes": false}`. JSON only, no prose.'
+# /no_think collapses Qwen3's reasoning block to an empty pair of
+# <think></think> tags instead of a multi-hundred-token chain of
+# thought. Combined with the strict-first-word parser below, this
+# keeps the call sub-second.
+_OUTPUT_INSTRUCTION = (
+    "\n\nAnswer with exactly one word: `yes` or `no`. Nothing else, no punctuation.\n\n/no_think"
+)
+
+# Qwen3 emits `<think>...</think>` reasoning even when the prompt
+# requests a single-word answer. The /no_think directive collapses
+# the block to an empty tag pair, but the tags themselves still
+# appear in the response. Strip them before parsing so the parser
+# sees only the answer.
+_THINK_BLOCK = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
 
 _ERROR = "ERROR"
 _CLEAR = "CLEAR"
@@ -167,9 +151,6 @@ def _probe_health() -> str | None:
     """Return None when the judge is healthy, else a short reason label.
 
     Labels are stable strings the log reader can grep:
-      - `cold`            — HTTP 503 with `Loading model` body. The daemon
-                            is up but the model has not finished loading.
-                            The caller turns this into `JUDGE_COLD`.
       - `health-connect`  — TCP refused / DNS / unreachable host
       - `health-timeout`  — server bound but did not answer in time
       - `health-status`   — non-2xx response from /health
@@ -185,17 +166,7 @@ def _probe_health() -> str | None:
                 body = resp.read(256).decode("utf-8", errors="replace")
             except OSError:
                 return "health-body"
-    except urllib.error.HTTPError as exc:
-        # llama.cpp returns 503 with `{"error":{"message":"Loading model",...}}`
-        # while the weights are still loading. Treat as cold rather than
-        # outage so the dispatcher can stay silent during the cold-load
-        # window. Any other HTTPError is a real outage.
-        try:
-            err_body = exc.read(256).decode("utf-8", errors="replace")
-        except OSError:
-            err_body = ""
-        if exc.code == 503 and "Loading model" in err_body:
-            return "cold"
+    except urllib.error.HTTPError:
         return "health-status"
     except urllib.error.URLError as exc:
         # urllib wraps connect-refused, no-route, and DNS failures as
@@ -214,14 +185,6 @@ def _probe_health() -> str | None:
     return None
 
 
-def _tail_lines(text: str, n: int = _BODY_TAIL_LINES) -> str:
-    """Return the last `n` lines of `text`, or `text` unchanged when shorter."""
-    lines = text.splitlines()
-    if len(lines) <= n:
-        return text
-    return "\n".join(lines[-n:])
-
-
 def log_call(event: str, duration_ms: int, verdicts: str) -> None:
     """Append one line per judge call so the user can `tail` real timings."""
     try:
@@ -236,10 +199,12 @@ def log_call(event: str, duration_ms: int, verdicts: str) -> None:
 def _extract_yes(body) -> bool | None:
     """Pull the boolean from an OpenAI-compatible chat-completions response.
 
-    Schema-forced output is `{"yes": <bool>}` inside
-    `choices[0].message.content`. Any deviation returns None so the
-    caller treats the response as a judge failure and falls back
-    closed.
+    The model is instructed to answer with exactly `yes` or `no`. The
+    parser tolerates leading whitespace, code-fence backticks, and
+    trailing punctuation, but treats prose like "the answer is yes"
+    as None — we asked for one word and got a sentence, which is a
+    judge failure. Any malformed response shape returns None so the
+    caller treats it as fail-closed.
     """
     if not isinstance(body, dict):
         return None
@@ -255,27 +220,22 @@ def _extract_yes(body) -> bool | None:
     content = message.get("content")
     if not isinstance(content, str) or not content.strip():
         return None
-    try:
-        parsed = json.loads(content)
-    except ValueError:
+
+    cleaned = _THINK_BLOCK.sub("", content)
+    tok = cleaned.strip().lower().lstrip("`'\"")
+    words = tok.split() if tok else []
+    if not words:
         return None
-    if not isinstance(parsed, dict):
-        return None
-    yes = parsed.get("yes")
-    if not isinstance(yes, bool):
-        return None
-    return yes
+    head = words[0].rstrip("`.,!?;:'\"")
+    if head.startswith("yes"):
+        return True
+    if head.startswith("no"):
+        return False
+    return None
 
 
-def _post_chat(body_text: str, framing: str, verdict_prompt: str) -> tuple[bool | None, str | None]:
-    """One POST attempt. Returns (yes/no, reason_label).
-
-    `reason_label` is `None` on success or generic failure, and
-    `"oversize"` when llama-server returned HTTP 400 with the
-    "exceeds the available context size" body. The caller uses that
-    label to decide whether retrying with a tail-trimmed body is
-    worthwhile.
-    """
+def _post_chat(body_text: str, framing: str, verdict_prompt: str) -> bool | None:
+    """One POST attempt. Returns the yes/no judgment or None on any failure."""
     system_prompt = framing + verdict_prompt + _OUTPUT_INSTRUCTION
     framed = (
         "Below, between BEGIN and END markers, is the body to judge.\n\n"
@@ -289,19 +249,6 @@ def _post_chat(body_text: str, framing: str, verdict_prompt: str) -> tuple[bool 
             "model": JUDGE_MODEL_FIELD,
             "stream": False,
             "max_tokens": JUDGE_MAX_TOKENS,
-            # llama.cpp extension to /v1/chat/completions. Disables the
-            # slot's prefix KV-cache reuse so each judgment recomputes
-            # the full forward pass from scratch. The cache is a pure
-            # speed optimization, but reuse can introduce floating-point
-            # nondeterminism between batched and non-batched paths, which
-            # in turn can flip a borderline yes/no. The cost of disabling
-            # is one prefill of the framing+verdict prompt per call —
-            # acceptable on a local GPU 4B.
-            "cache_prompt": False,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {"name": "yes_no", "schema": YES_NO_SCHEMA},
-            },
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": framed},
@@ -319,18 +266,10 @@ def _post_chat(body_text: str, framing: str, verdict_prompt: str) -> tuple[bool 
     try:
         with urllib.request.urlopen(request, timeout=JUDGE_TIMEOUT_SECONDS) as resp:
             body = json.load(resp)
-    except urllib.error.HTTPError as exc:
-        try:
-            err_body = exc.read(512).decode("utf-8", errors="replace")
-        except OSError:
-            err_body = ""
-        if exc.code == 400 and "exceeds the available context" in err_body:
-            return None, "oversize"
-        return None, None
-    except urllib.error.URLError, TimeoutError, OSError, ValueError:
-        return None, None
+    except urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError, ValueError:
+        return None
 
-    return _extract_yes(body), None
+    return _extract_yes(body)
 
 
 def _judge_one(body_text: str, framing: str, verdict_prompt: str) -> bool | None:
@@ -338,18 +277,10 @@ def _judge_one(body_text: str, framing: str, verdict_prompt: str) -> bool | None
 
     None signals an outage or malformed response — the caller treats
     that as a fail-closed signal across the whole judgment. Uses the
-    OpenAI-compatible /v1/chat/completions endpoint that llama-server
-    exposes; schema is enforced via `response_format.json_schema`.
-
-    On HTTP 400 "exceeds the available context size", the call retries
-    once with the body tailed to the last `_BODY_TAIL_LINES` lines.
-    Truncation only happens on retry — the first attempt always sees
-    the full body so short messages are judged in full.
+    OpenAI-compatible /v1/chat/completions endpoint that mlx_lm.server
+    exposes.
     """
-    result, reason = _post_chat(body_text, framing, verdict_prompt)
-    if reason == "oversize":
-        result, _ = _post_chat(_tail_lines(body_text), framing, verdict_prompt)
-    return result
+    return _post_chat(body_text, framing, verdict_prompt)
 
 
 def judge_many(body_text: str, framing: str, verdict_specs: list, event: str):
@@ -358,16 +289,12 @@ def judge_many(body_text: str, framing: str, verdict_specs: list, event: str):
     Returns:
       - [] when none fired
       - [verdict_key, ...] (snake_case keys) when one or more fired
-      - JUDGE_COLD when the daemon is up but the model is still
-        loading (HTTP 503 + "Loading model" body on /health). The
-        caller should treat this as a no-op rather than fail-closed.
       - None when any call failed (fail-closed signal)
 
     A `/health` probe runs first. If the daemon is unreachable or
     unhealthy, the function logs the specific reason
     (`ERROR:health-<label>`) and returns `None` without making any
-    chat-completions calls. The cold-load case is logged as
-    `SKIP:cold` instead, since it is not an error.
+    chat-completions calls.
     """
     if not verdict_specs:
         log_call(event, 0, _CLEAR)
@@ -376,10 +303,6 @@ def judge_many(body_text: str, framing: str, verdict_specs: list, event: str):
     started = time.monotonic()
 
     health_reason = _probe_health()
-    if health_reason == "cold":
-        elapsed_ms = int((time.monotonic() - started) * 1000)
-        log_call(event, elapsed_ms, "SKIP:cold")
-        return JUDGE_COLD
     if health_reason is not None:
         elapsed_ms = int((time.monotonic() - started) * 1000)
         log_call(event, elapsed_ms, f"{_ERROR}:{health_reason}")
