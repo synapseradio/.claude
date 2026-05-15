@@ -59,6 +59,7 @@ def test_loader_valid():
     b = load_bindings(BINDINGS_PATH)
     expected = {
         "open_questions",
+        "empirical_question",
         "uncommitted_alternatives",
         "out_of_scope_deferral",
         "baseline_probe",
@@ -66,7 +67,7 @@ def test_loader_valid():
     if set(b.verdicts) != expected:
         _fail("loader_valid", f"verdicts {set(b.verdicts)} != {expected}")
         return
-    if set(b.remediation) != {"question", "alternatives", "failure"}:
+    if set(b.remediation) != {"question", "alternatives", "failure", "empirical"}:
         _fail("loader_valid", f"remediation keys {set(b.remediation)} unexpected")
         return
     if len(b.bindings) != 3:
@@ -175,15 +176,30 @@ bindings:
 
 
 def test_stop_misfire_lockin():
-    """Stop / SubagentStop bindings must not subscribe uncommitted_alternatives."""
+    """Stop / SubagentStop bindings subscribe the full predecessor-coverage set.
+
+    The predecessor `block-open-questions-on-plan.py` ran five verdicts on
+    every Stop event. The declarative engine must keep parity on the four
+    user-locked verdicts plus `empirical_question`, which the user decided
+    runs on turn_review only.
+    """
+    required = {
+        "empirical_question",
+        "open_questions",
+        "uncommitted_alternatives",
+        "out_of_scope_deferral",
+        "baseline_probe",
+    }
     b = load_bindings(BINDINGS_PATH)
     for entry in b.bindings:
-        if (
-            entry.event in ("Stop", "SubagentStop")
-            and "uncommitted_alternatives" in entry.verdict_ids
-        ):
-            _fail("stop_misfire_lockin", f"{entry.event} binding lists uncommitted_alternatives")
-            return
+        if entry.event in ("Stop", "SubagentStop"):
+            missing = required - set(entry.verdict_ids)
+            if missing:
+                _fail(
+                    "stop_misfire_lockin",
+                    f"{entry.event} binding missing required verdicts: {sorted(missing)}",
+                )
+                return
     _ok("stop_misfire_lockin")
 
 
@@ -212,27 +228,27 @@ def test_compose_scoping():
     if "For uncommitted alternatives:" in msg:
         _fail("compose_scoping", "non-referenced alternatives remediation leaked in")
         return
-    if "For any question to the user:" not in msg:
+    if "The plan file seems to include questions to the user." not in msg:
         _fail("compose_scoping", "question remediation missing")
         return
-    if "For any failure flagged as pre-existing" not in msg:
+    if "A failure was named and set aside as pre-existing" not in msg:
         _fail("compose_scoping", "failure remediation missing")
         return
-    if "Re-read your message" not in msg:
+    if "A second look at the closing message before ending the turn:" not in msg:
         _fail("compose_scoping", "Stop remediation lead missing")
         return
     _ok("compose_scoping")
 
 
 def test_compose_plan_event_lead():
-    """Plan binding gets the 'Re-read the plan' lead, not the turn lead."""
+    """Plan binding gets the plan-event lead, not the turn-event lead."""
     b = load_bindings(BINDINGS_PATH)
     fired = [b.verdicts["open_questions"]]
     msg = compose_message(fired, b.remediation, "PreToolUse")
-    if "Re-read the plan and address each verdict" not in msg:
+    if "A second look at the plan before re-emitting ExitPlanMode:" not in msg:
         _fail("compose_plan_lead", "plan-event lead missing")
         return
-    if "Re-read your message" in msg:
+    if "A second look at the closing message before ending the turn:" in msg:
         _fail("compose_plan_lead", "turn-event lead leaked into plan message")
         return
     _ok("compose_plan_lead")

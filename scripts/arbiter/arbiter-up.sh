@@ -57,14 +57,16 @@ main() {
 
   # Spawn detached so the server outlives this script (and the
   # Claude Code session that triggered it). --temp 0.0 pins decoding
-  # to greedy; the Qwen3 /no_think directive lives in the system
-  # prompt (lib/client.py) since mlx_lm.server has no CLI reasoning
-  # toggle.
+  # to greedy. --chat-template-args injects enable_thinking=false
+  # into apply_chat_template at startup, which is the canonical
+  # Qwen3 hard switch — the in-prompt /no_think soft switch does
+  # not reliably suppress reasoning on this build.
   nohup "${ARBITER_BIN}" \
     --model "${ARBITER_MODEL}" \
     --host "${ARBITER_HOST}" \
     --port "${ARBITER_PORT}" \
     --temp 0.0 \
+    --chat-template-args '{"enable_thinking": false}' \
     >>"${ARBITER_LOG_FILE}" 2>&1 &
 
   echo $! >"${ARBITER_PID_FILE}"

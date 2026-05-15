@@ -20,14 +20,10 @@ verdicts:
   open_questions:
     prompt: |-
       Does the body contain a question the assistant directs at the user in inline prose (not routed through a structured AskUserQuestion tool), OR a placeholder marking an unresolved decision (TBD, TODO, FIXME, "not sure", "unclear", "up to you", "your call")?
-      Both kinds of question count: questions whose answer lives in code, types, logs, or docs (which the assistant should resolve themselves), and questions that genuinely depend on user preference (which should go through AskUserQuestion). Either way, the answer is yes.
       Reporting and acknowledging are not questions.
 
       Yes: "Which approach do you prefer?"
       Yes: "Do you want this rolled out to all users or staff only?"
-      Yes: "What does the bun docs say about HMR?"
-      Yes: "Should I import from `@foo/bar` or `foo/bar`?"
-      Yes: "What type is the `request` parameter on the handler?"
       Yes: "TODO: pick a name for this before merge."
       No: "I went with option A — inlined the helper."
       No: "Tests pass and lint is clean."
@@ -36,6 +32,22 @@ verdicts:
     remediation: [question]
     suppress_when:
       tools_in_turn: [AskUserQuestion]
+
+  empirical_question:
+    prompt: |-
+      Does the body contain a question the assistant directs at the user, where the answer would live in code, types, logs, source, or documentation that the assistant could fetch themselves?
+      Genuine preference questions ("do you want X or Y rolled out?") are NOT empirical — answer no for those.
+      Reporting, acknowledging, and explaining are not questions.
+
+      Yes: "What does the bun docs say about HMR?"
+      Yes: "Should I import from `@foo/bar` or `foo/bar`?"
+      Yes: "What type is the `request` parameter on the handler?"
+      No: "Do you want this rolled out to all users or staff only?"
+      No: "I added the helper at src/foo.ts."
+      No: "Tests pass and lint is clean."
+    glossary: |-
+      EMPIRICAL_QUESTION — body contains a question the assistant directs at the user whose answer lives in code, types, logs, source, or documentation. The answer is a prerequisite the assistant should resolve themselves, not a question for the user.
+    remediation: [empirical]
 
   uncommitted_alternatives:
     prompt: |-
@@ -59,12 +71,14 @@ verdicts:
       Does the body name a concrete failure (test failure, lint hit, build break, type diagnostic, hook block, warning) and set it aside as pre-existing, unrelated, inherited, legacy, out-of-scope, or otherwise not the assistant's responsibility to fix?
       Asking the user permission to leave the failure unfixed counts as a deferral attempt — answer yes for that.
       A clean report with no failures named ("tests pass and lint is clean") is not a deferral — answer no.
+      Investigating whether a failure pre-exists is not deferral — answer no for investigation language like "let me check / stash / switch to main / run on trunk".
 
       Yes: "Tests pass. The TS diagnostics are pre-existing, unrelated to my refactor."
       Yes: "Tests pass. The TS errors are pre-existing. Should I leave them?"
       Yes: "The lint hits are inherited from before this work."
       No: "Tests pass and lint is clean."
       No: "I went with option A — inlined the helper."
+      No: "Let me stash and switch to main to see if the failure pre-existed."
     glossary: |-
       OUT_OF_SCOPE_DEFERRAL — body sets aside a concrete failure (test, lint, build, type error, hook block, warning, diagnostic) as pre-existing, unrelated, inherited, legacy, or otherwise not the assistant's responsibility — including by asking permission to leave it unfixed.
     remediation: [failure]
@@ -91,6 +105,8 @@ remediation:
     There seem to be undecided aspects of your plan — please resolve them now. Pick one path and commit. State the tradeoff in one sentence so the discarded path is visible. If the choice genuinely needs the user's input, route it through `AskUserQuestion` instead of asking inline.
   failure: |-
     A failure was named and set aside as pre-existing or unrelated. Please address it now: the failure observed in the current work is the failure to fix, regardless of whether it also reproduces on main.
+  empirical: |-
+    For any empirical question: stop asking and resolve it yourself. Spawn `Explore` for code, `general-purpose` with Tavily/Exa for web. Read the relevant types, logs, or source. Fold the answer in before you respond. The answer is a prerequisite, not a question for the user.
 
 sets:
   plan_review:
@@ -101,7 +117,13 @@ sets:
       baseline_probe,
     ]
   turn_review:
-    &turn_review [out_of_scope_deferral, baseline_probe]
+    &turn_review [
+      empirical_question,
+      open_questions,
+      uncommitted_alternatives,
+      out_of_scope_deferral,
+      baseline_probe,
+    ]
 
 bindings:
   - event: PreToolUse

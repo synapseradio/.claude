@@ -121,26 +121,28 @@ JUDGE_TIMEOUT_SECONDS = 90
 # without making the hook feel sluggish when the daemon really is
 # down.
 JUDGE_HEALTH_TIMEOUT_SECONDS = 2
-# Each focused yes/no call should decide quickly. Qwen3 emits an
-# empty `<think>\n\n</think>\n\n` block (~8 tokens) before the answer
-# even with /no_think. 24 tokens holds both halves with margin.
+# Each focused yes/no call should decide quickly. With reasoning
+# suppressed at the chat-template level, the model emits the answer
+# token directly; 24 tokens is far more than needed and exists only
+# as a guardrail against an unexpected template change.
 JUDGE_MAX_TOKENS = 24
 
 LOG_PATH = pathlib.Path.home() / ".claude" / "arbiter" / "logs" / "arbiter.log"
 
-# /no_think collapses Qwen3's reasoning block to an empty pair of
-# <think></think> tags instead of a multi-hundred-token chain of
-# thought. Combined with the strict-first-word parser below, this
-# keeps the call sub-second.
+# Reasoning is disabled at server startup via
+#   --chat-template-args '{"enable_thinking": false}'
+# (see scripts/arbiter/arbiter-up.sh). The Qwen3 chat template then
+# renders an empty `<think>\n\n</think>` pair into the prompt and
+# the model skips straight to the answer. The in-prompt `/no_think`
+# soft switch was tried first and proved unreliable on this build.
 _OUTPUT_INSTRUCTION = (
-    "\n\nAnswer with exactly one word: `yes` or `no`. Nothing else, no punctuation.\n\n/no_think"
+    "\n\nAnswer with exactly one word: `yes` or `no`. Nothing else, no punctuation."
 )
 
-# Qwen3 emits `<think>...</think>` reasoning even when the prompt
-# requests a single-word answer. The /no_think directive collapses
-# the block to an empty tag pair, but the tags themselves still
-# appear in the response. Strip them before parsing so the parser
-# sees only the answer.
+# The chat template emits an empty `<think>\n\n</think>` pair into
+# the rendered prompt when enable_thinking is false. Some Qwen3
+# decodings echo the pair back into the response before the answer;
+# strip any such block so the parser sees only the verdict.
 _THINK_BLOCK = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
 
 _ERROR = "ERROR"

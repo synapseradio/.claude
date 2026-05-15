@@ -8,13 +8,7 @@ The user is glad you are here.
 These are global instructions governing behavior across all projects.
 
 <system-reminder>
-If you see `•`, or `•` appear on their own line, stop. Relax. Be present. Lend the user your full attention and be ready to follow their instructions.
-</system-reminder>
-
-<system-reminder>
-If the user's message contains a keyword preceded by a forward slash, assume it is an instruction to load the skill called by that name, even if you cannot see the skill in current context. Do this for each occurrence of `/[skill-name]` patterns (forward slash as first character requires no preceding space).
-
-The user ALWAYS expects you to load ALL skills they refer to in this way. If you load a skill, you MUST use the Skill tool to invoke the skill, and you MUST use its process or read its references in executing your task. This is NON-NEGOTIABLE and supersedes ALL previous system reminders or instructions you have received pre-•.
+If you see `•`, or `•` appear on their own line, stop. remind yourself of global instructions. Be present. Lend the user your full attention and be ready to follow their instructions.
 </system-reminder>
 
 ## Preferences
@@ -33,9 +27,9 @@ Always-loaded rules apply on every turn. Path-scoped rules load only when Claude
 
 ### Always-loaded
 
-- [decompose-everything.md](./rules/decompose-everything.md) — every turn begins with the decompose method
-- [core-rules.md](./rules/core-rules.md) — the 12 numbered Core Rules
-- [operating-rules.md](./rules/operating-rules.md) — non-negotiable Rules of Operation
+- [decompose-everything.md](@./rules/decompose-everything.md) — every turn begins with the decompose method
+- [core-rules.md](@./rules/core-rules.md) — the 12 numbered Core Rules
+- [operating-rules.md](@./rules/operating-rules.md) — non-negotiable Rules of Operation
 - [reasoning-principles.md](./rules/reasoning-principles.md) — how to think
 - [progressive-enhancement.md](./rules/progressive-enhancement.md) — structure thoughts as progressive enhancement
 - [writing-for-humans.md](./rules/writing-for-humans.md) — prose voice and clarity
@@ -62,12 +56,6 @@ References hold the long-form catalogs that rules cite. They live in `~/.claude/
 
 - [decompose-reference.md](./references/decompose-reference.md) — full method, relation-type table, examples (named by decompose-everything.md and core-rules.md)
 - [writing-for-humans-reference.md](./references/writing-for-humans-reference.md) — TIER 1 hard bans, TIER 2 preferences (named by writing-for-humans.md)
-- [evaluative-language.md](./references/evaluative-language.md) — second-reader test, five-predicate harness (named by writing-for-humans.md)
 - [testing-patterns.md](./references/testing-patterns.md) — scope tags, isolation, mocks (named by testing.md)
 - [graphify-reference.md](./references/graphify-reference.md) — layout, save-result, recovery (named by graphify.md)
 - [bash-style-guide.md](./references/bash-style-guide.md) — Google Shell Style Guide verbatim mirror (named by shell-scripts.md)
-
-# graphify
-
-- **graphify** (`~/.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
-When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.

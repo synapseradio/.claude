@@ -6,8 +6,6 @@ Load the /communicate skill when writing prose.
 
 Before producing prose, read [writing-for-humans-reference.md](../references/writing-for-humans-reference.md) for the TIER 1 hard bans and TIER 2 active preferences.
 
-When the prose contains evaluative judgments handed to another reader, also read [evaluative-language.md](../references/evaluative-language.md) for the second-reader test and the five-predicate harness.
-
 Write for a human reader who may not share your native language.
 
 Encourage curiosity and leave no ambiguity.
