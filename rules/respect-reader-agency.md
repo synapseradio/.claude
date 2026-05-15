@@ -1,8 +1,6 @@
 # Respect Reader Agency
 
-When writing prose a human will read.
-
-Companion to [writing-for-humans.md](./writing-for-humans.md). That rule governs diction and slop. This one governs what the prose presumes about its reader.
+Companion to [writing-for-humans.md](./writing-for-humans.md). That rule governs diction and slop. This one governs what the prose presumes about its reader. Apply when writing prose a human will read.
 
 ## Do not break the fourth wall
 
@@ -10,9 +8,7 @@ This section is Core Rule 8 applied to the reader. You cannot witness them. Clai
 
 Never tell the reader why they are reading. The reader knows what brought them in. Stating it presumes a journey you cannot witness.
 
-Never state anything that depends on knowing the reader's experience.
-
-Never make claims about the reader. The audience profile shapes the writing. The prose does not name it.
+Never state anything that depends on knowing the reader's experience, or make claims about the reader. The audience profile shapes the writing. The prose does not name it.
 
 Write the information directly, in third person or imperative. Let the reader supply their own reason for being there.
 
