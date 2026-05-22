@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Claude Code status line — mirrors the Starship prompt style configured in
-# ~/.dotty/config/starship/starship.toml. Receives JSON on stdin; writes a
+# ~/.dotfiles/.config/starship/starship.toml. Receives JSON on stdin; writes a
 # single line to stdout.
 #
 # Layout
-#   <dir>  ▸<branch> ▴<ahead> ▿<behind> ⎡<status>⎤ ▴+<adds> ▿−<dels> [⊕<pr>] ctx:<n>% <model>
+#   <dir>  ▸<branch> ▴<ahead> ▿<behind> ⎡<status>⎤ ▴<adds> ▿<dels> [⎇<pr>] ctx:<n>% <model>
 #
-# Status indicators (circle family, matches [git_status] in starship.toml:217):
+# Status indicators (circle family, matches [git_status] in starship.toml:221):
 #   ●staged   ◐modified  ○untracked  ◎renamed  ⊘deleted  ⊗conflicted  ◉stashed
 #   ✓ shows alone when the working tree is clean. Brackets are dropped
 #   entirely on a clean repo with no upstream divergence.
@@ -15,16 +15,16 @@
 #   directory  blue.6  #228be6     git branch  blue.5   #339af0
 #   ahead      green.6 #40c057     behind      red.6    #fa5252
 #   staged     teal.5  #20c997     modified    yellow.6 #fab005
-#   untracked  gray.5  #adb5bd     renamed     blue.4   #4dabf7
+#   untracked  gray.5  #adb5bd     renamed     blue.5   #339af0
 #   deleted    red.6   #fa5252     conflicted  pink.6   #e64980
 #   stashed    violet.6 #845ef7    brackets    gray.6   #868e96
 #   added      green.6 #40c057     removed     red.6    #fa5252
 #   pr-link    blue.6  #228be6     context     cyan.6   #15aabf
 #   model      gray.6  #868e96
 #
-# PR segment: a single ⊕ icon that hyperlinks to the open PR for this
+# PR segment: a single ⎇ icon that hyperlinks to the open PR for this
 # branch, or to the new-PR compare page when no PR exists yet. The URL
-# and state come from ~/.dotty/plugins/git/pr-link.sh --state, which
+# and state come from ~/.dotfiles/tools/pr-link/pr-link.sh --state, which
 # emits "state<TAB>url" with state ∈ open|none|unknown — or empty
 # output on the default branch / detached HEAD / unparseable remote,
 # so the segment self-suppresses in those cases.
@@ -44,7 +44,6 @@ function oc() {
   case "$1" in
   blue.6) printf '\033[38;2;34;139;230m' ;;
   blue.5) printf '\033[38;2;51;154;240m' ;;
-  blue.4) printf '\033[38;2;77;171;247m' ;;
   teal.5) printf '\033[38;2;32;201;151m' ;;
   yellow.6) printf '\033[38;2;250;176;5m' ;;
   gray.5) printf '\033[38;2;173;181;189m' ;;
@@ -122,7 +121,7 @@ if git_root=$(git -C "${cwd:-.}" rev-parse --show-toplevel 2>/dev/null); then
   ((staged > 0)) && indicators+="$(oc teal.5)●${staged}$(oc reset) "
   ((modified > 0)) && indicators+="$(oc yellow.6)◐${modified}$(oc reset) "
   ((untracked > 0)) && indicators+="$(oc gray.5)○${untracked}$(oc reset) "
-  ((renamed > 0)) && indicators+="$(oc blue.4)◎${renamed}$(oc reset) "
+  ((renamed > 0)) && indicators+="$(oc blue.5)◎${renamed}$(oc reset) "
   ((deleted > 0)) && indicators+="$(oc red.6)⊘${deleted}$(oc reset) "
   ((conflicted > 0)) && indicators+="$(oc pink.6)⊗${conflicted}$(oc reset) "
   ((stashed > 0)) && indicators+="$(oc violet.6)◉${stashed}$(oc reset) "
@@ -151,8 +150,8 @@ if git_root=$(git -C "${cwd:-.}" rev-parse --show-toplevel 2>/dev/null); then
   ahead_behind="${ahead_behind% }"
 
   metrics=""
-  ((added_lines > 0)) && metrics+=" $(oc green.6)▴+${added_lines}$(oc reset)"
-  ((removed_lines > 0)) && metrics+=" $(oc red.6)▿−${removed_lines}$(oc reset)"
+  ((added_lines > 0)) && metrics+=" $(oc green.6)▴${added_lines}$(oc reset)"
+  ((removed_lines > 0)) && metrics+=" $(oc red.6)▿${removed_lines}$(oc reset)"
 
   git_info=" $(oc blue.5)▸${branch}$(oc reset)"
   [[ -n "$ahead_behind" ]] && git_info+=" ${ahead_behind}"
@@ -166,7 +165,7 @@ if [[ -n "${git_root:-}" ]]; then
   pr_state=""
   pr_url=""
   IFS=$'\t' read -r pr_state pr_url < <(cd "$git_root" &&
-    "$HOME/.dotty/plugins/git/pr-link.sh" --state 2>/dev/null) || true
+    "$HOME/.dotfiles/tools/pr-link/pr-link.sh" --state 2>/dev/null) || true
   if [[ -n "$pr_url" ]]; then
     case "$pr_state" in
     none) icon_color="$(oc gray.5)" ;;
@@ -174,7 +173,7 @@ if [[ -n "${git_root:-}" ]]; then
     esac
     osc8_open=$'\e]8;;'
     osc8_close=$'\e\\'
-    pr_info=" ${icon_color}${osc8_open}${pr_url}${osc8_close}⊕${osc8_open}${osc8_close}$(oc reset)"
+    pr_info=" ${icon_color}${osc8_open}${pr_url}${osc8_close}⎇${osc8_open}${osc8_close}$(oc reset)"
   fi
 fi
 

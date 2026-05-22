@@ -255,13 +255,15 @@
     "allowUnsandboxedCommands": false,
     "network": {
       "allowedDomains": [
-        "github.com",
         "api.github.com",
+        "api.linkup.so",
+        "api.tavily.com",
+        "github.com",
         "*.githubusercontent.com",
-        "registry.npmjs.org",
         "*.npmjs.org",
         "pypi.org",
-        "*.pythonhosted.org"
+        "*.pythonhosted.org",
+        "registry.npmjs.org"
       ]
     },
     "filesystem": {
@@ -284,7 +286,8 @@
         "~/.m2",
         "~/go",
         "~/.gem",
-        "~/.local"
+        "~/.local",
+        "~/.visualizations"
       ],
       "denyRead": [
         "~/.kube",

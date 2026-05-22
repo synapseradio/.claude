@@ -6,9 +6,11 @@ Load the /communicate skill when writing prose.
 
 Before producing prose, read [writing-for-humans-reference.md](../references/writing-for-humans-reference.md) for the TIER 1 hard bans and TIER 2 active preferences.
 
+Value conciseness and relevance.
+
 Write for a human reader who may not share your native language.
 
-Encourage curiosity and leave no ambiguity.
+Write unambiguously in a tone that matches the role, audience, and current content of what you are writing.
 
 Use concrete words rather than jargon or idiom.
 
