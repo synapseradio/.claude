@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "sequencer": {
+      "source": "synapseradio/ai-skills",
+      "sourceType": "github",
+      "skillPath": "skills/sequencer/SKILL.md",
+      "computedHash": "3669041279f8811fb0c9e04e3454faa7b91dfe74f99460fada2be225da30f846"
+    }
+  }
+}
