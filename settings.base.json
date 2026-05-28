@@ -313,5 +313,5 @@
   "autoUpdatesChannel": "latest",
   "autoMemoryEnabled": true,
   "tui": "fullscreen",
-  "skillListingBudgetFraction": "6"
+  "skillListingBudgetFraction": "1"
 }
