@@ -32,3 +32,10 @@ readonly ARBITER_PORT="11436"
 # is busy.
 readonly ARBITER_LOG_FILE="${HOME}/.claude/arbiter/logs/arbiter-server.log"
 readonly ARBITER_PID_FILE="${HOME}/.claude/arbiter/state/arbiter.pid"
+
+# On-off switch. When this sentinel file exists, arbiter-up.sh skips
+# spawning the daemon and arbiter-hook.py exits silently before
+# dispatching. The Python side reads the same path via os.environ
+# fallback to a hardcoded default — keep these in sync if you move
+# the state directory.
+readonly ARBITER_DISABLED_FILE="${HOME}/.claude/arbiter/state/disabled"

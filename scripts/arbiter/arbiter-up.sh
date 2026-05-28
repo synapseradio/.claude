@@ -34,8 +34,8 @@ port_in_use() {
 # Spawn the mlx_lm.server backing Arbiter if not already running,
 # then wait for the /health endpoint to respond.
 # Globals:
-#   ARBITER_BIN, ARBITER_HOST, ARBITER_LOG_FILE, ARBITER_MODEL,
-#   ARBITER_PID_FILE, ARBITER_PORT
+#   ARBITER_BIN, ARBITER_DISABLED_FILE, ARBITER_HOST, ARBITER_LOG_FILE,
+#   ARBITER_MODEL, ARBITER_PID_FILE, ARBITER_PORT
 # Arguments:
 #   None
 # Returns:
@@ -44,6 +44,13 @@ port_in_use() {
 #######################################
 main() {
   mkdir -p "$(dirname "${ARBITER_LOG_FILE}")" "$(dirname "${ARBITER_PID_FILE}")"
+
+  # Master on-off switch. When the sentinel exists the operator has
+  # explicitly disabled Arbiter; do not spawn the daemon. arbiter-hook.py
+  # reads the same sentinel and short-circuits hook dispatch.
+  if [[ -e "${ARBITER_DISABLED_FILE}" ]]; then
+    exit 0
+  fi
 
   if port_in_use; then
     exit 0
