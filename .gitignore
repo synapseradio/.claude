@@ -5,6 +5,7 @@
 !CLAUDE.md
 !settings.base.json
 !.skill-lock.json
+!skills-lock.json
 !lefthook.yml
 !.ruff.toml
 !.markdownlint-cli2.jsonc
