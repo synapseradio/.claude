@@ -37,10 +37,6 @@ Run only tests covering changed files. Map source to test by convention. The ful
 
 If the project has a "test changed files" tool, use it.
 
-## Write failing tests before behavioral change
-
-When modifying behavior, update the test before changing the code. Run it to confirm it fails for the right reason: the absence of the new behavior. A test that passes immediately proves nothing.
-
 ## Names
 
 Use behavior-description names following the pattern `<subject> <verb> <behavior> [when <condition>]`. A failing test should read as a sentence.
