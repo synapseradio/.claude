@@ -10,7 +10,7 @@ Document current state as fact. The artifact must remain coherent without projec
 
 Comments explain what the code is, why it is, and what matters when changing it. Never transitional state.
 
-### Exclusions
+## Exclusions
 
 Temporal framing belongs in artifacts that describe history or change.
 

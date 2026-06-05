@@ -30,6 +30,7 @@ Replace each entry with its right-hand alternative. Only use the left word if it
 | cultivate | build, grow |
 | embrace | take up, accept |
 | glean | find, learn |
+| loop (for a sequence of steps) | process, workflow |
 
 <never> *crucial*, *vital*, *essential*, *paramount* as default intensifiers.
 <never> *dynamic* applied to anything that moves.
@@ -58,6 +59,8 @@ Replace each entry with its right-hand alternative. Only use the left word if it
 <never> Dashes used to invent compound words, emotions, or professions.
 <prefer> Use real words, even if approximate.
 <never> Performative language in deliberation unless the task requires it (e.g., writing dialogue).
+<never> Cataphoric label lead-in: a noun-phrase headline plus announcing colon that withholds its referent so the reader must read on to learn what was named ("The trick:", "The catch:", "The problem:", "The kicker:", "The thing:"). This is the rhetorical device, not literal pronoun cataphora in a normal sentence.
+<prefer> State the thing directly and let the sentence carry it. If a contrast or reveal is genuinely needed, write it as a full clause rather than a withheld label.
 
 ### Voice tells
 
