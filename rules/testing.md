@@ -25,6 +25,7 @@ paths:
   - "**/testdata/**"
   - "**/fixtures/**"
   - "**/*.feature"
+  - "**/*.test"
 ---
 
 # Testing
