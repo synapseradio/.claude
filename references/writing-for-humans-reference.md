@@ -94,6 +94,8 @@ Apply during generation.
 
 <prefer> Vary sentence length within paragraphs. Mix short and long.
 <prefer> Choose a specific verb over a generic one. "Snapped" rather than "moved." "Built" rather than "leveraged."
+<prefer> Qualitative quantifiers over scalars in prose. "Most of the callbacks dissolved" rather than "thirteen callbacks dissolved." The count drifts and reads false later. The magnitude, the contrast, or the inequality was the point.
+<prefer> Keep an exact number only when the number is the subject — a port, a version, a price, a measurement reported as data. Then the figure carries information a word cannot.
 <prefer> One transitional phrase where the prose changes direction. None where it does not.
 <prefer> Maximum one transitional phrase per 100 words. Most paragraphs need none.
 <prefer> Never keep a transitional phrase because it sounds polished.

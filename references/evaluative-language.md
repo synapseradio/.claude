@@ -51,7 +51,7 @@ Do not pick by taste. Either:
 
 ## Register Check
 
-When the input and the proposal occupy incompatible registers — formal / casual, literal / figurative, technical / vernacular — surface the mismatch rather than smooth it over. Register is detectable as per-clause lexical and syntactic shifts in the provided text. The check operates on pairs of texts (input ↔ proposal), not on the agent's disposition.
+When the input and the proposal occupy incompatible registers, surface the mismatch rather than smooth it over. Register is detectable as per-clause lexical and syntactic shifts in the provided text. The check operates on pairs of texts (input ↔ proposal), not on the agent's disposition.
 
 ## Usage Contract
 
@@ -60,6 +60,6 @@ Evaluative words in outputs handed to another reader must either:
 - Reduce through this harness, or through an explicitly named alternative decomposition, or
 - Be removed.
 
-Words that resist decomposition are taste. Taste in an instruction is a failure of respect (see CLAUDE.md "Writing for Humans").
+Words that resist decomposition are taste. Taste in an instruction is a failure of respect.
 
 Exemption: internal drafts, exploratory thinking, and reasoning the agent holds for itself are not subject to this contract. The contract applies at the boundary — when the output is handed to another reader.

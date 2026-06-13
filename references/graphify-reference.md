@@ -9,17 +9,18 @@ Companion to [../rules/graphify.md](../rules/graphify.md). Read this when the ru
 
 ## Refreshing the graph in detail
 
-`grip` is `~/.graphify/sync.sh` on PATH. Idempotent, transactional, preserves uncommitted state.
+`lodestar` is `~/.dotfiles/tools/lodestar/bin/lodestar`, reaching PATH through the `tools/*/bin` glob in `shell/profile`. Idempotent, transactional, preserves uncommitted state.
 
-- `grip` — sweep all in-scope repos plus extras.
-- `grip <name>` — sync one repo (clones first if it matches an in-scope GH repo and isn't local).
-- `grip add <path|owner/name|url>` / `grip remove <name>` / `grip prune` / `grip viz [<name>]`.
+- `lodestar` — sweep all in-scope repos plus extras.
+- `lodestar <name>` — sync one repo (clones first if it matches an in-scope GH repo and isn't local).
+- `lodestar bulk <org> [count]` — clone and graph the top `count` most-active repos in an org (default 40, most-recent push first), then merge once. Concurrency is `LODESTAR_JOBS` or `-J N` (default 8); sweep and bulk both run parallel by default.
+- `lodestar add <path|owner/name|url>` / `lodestar remove <name>` / `lodestar prune` / `lodestar viz [<name>]`.
 
-A `UserPromptSubmit` hook fires `grip <name>` in the background when a prompt names an in-scope or extras repo (1h cooldown). Each in-scope repo also has post-commit / post-checkout hooks plus a merge driver for `graph.json`.
+A `UserPromptSubmit` hook fires `lodestar <name>` in the background when a prompt names an in-scope or extras repo (1h cooldown). Each in-scope repo also has post-commit / post-checkout hooks plus a merge driver for `graph.json`.
 
 ## SKILL override
 
-The SKILL at `~/.claude/skills/graphify/SKILL.md` is cwd-relative and assumes `./graphify-out/`. On this machine, graphs live under `~/.graphify/local/<rel-path>/`. Translate every cwd-relative path the SKILL uses by rooting it at `~/.graphify/local/<rel-path>/`. For `cd <repo> && graphify extract|update`, use `grip <name>` instead.
+The SKILL at `~/.claude/skills/graphify/SKILL.md` is cwd-relative and assumes `./graphify-out/`. On this machine, graphs live under `~/.graphify/local/<rel-path>/`. Translate every cwd-relative path the SKILL uses by rooting it at `~/.graphify/local/<rel-path>/`. For `cd <repo> && graphify extract|update`, use `lodestar <name>` instead.
 
 Never `cd` into a source repo to run `graphify` — it writes into the source tree. Never read or write to `<source-repo>/graphify-out/`.
 
@@ -34,4 +35,4 @@ Use `--type path_query` for `path` results, `--type explain` for `explain`.
 
 ## Forced-reset recovery
 
-If `grip` finds local trunk diverged from `origin/<trunk>`, it tags `grip/pre-reset/<sha>/<utc-timestamp>` before resetting. Recover with `git reset --hard <tag>`.
+If `lodestar` finds local trunk diverged from `origin/<trunk>`, it tags `lodestar/pre-reset/<sha>/<utc-timestamp>` before resetting. Recover with `git reset --hard <tag>`.

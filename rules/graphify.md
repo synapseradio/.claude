@@ -18,10 +18,10 @@ Always pass `--graph <path>`. Single-repo: the per-repo `graph.json`. Cross-repo
 - `graphify path "<A>" "<B>" --graph <path>` — how two things relate.
 - `graphify explain "<X>" --graph <path>` — single named entity.
 
-If `graph.json` is missing, run `grip <name>` once, then query. If results reference ids not in the tree, re-run `grip <name>` and re-query. Don't preemptively rebuild.
+If `graph.json` is missing, run `lodestar <name>` once, then query. If results reference ids not in the tree, re-run `lodestar <name>` and re-query. Don't preemptively rebuild.
 
-After the query returns nodes, read the specific files at the lines they cite. Fall through to source search when the graph cannot answer. If graphifiable but not yet graphified: `grip add <path>` then `grip <name>`.
+After the query returns nodes, read the specific files at the lines they cite. Fall through to source search when the graph cannot answer. If graphifiable but not yet graphified: `lodestar add <path>` then `lodestar <name>`.
 
 ## Reference
 
-For layout, the `grip` command surface, the SKILL override, save-result mechanics, and forced-reset recovery, see [../references/graphify-reference.md](../references/graphify-reference.md).
+For layout, the `lodestar` command surface, the SKILL override, save-result mechanics, and forced-reset recovery, see [../references/graphify-reference.md](../references/graphify-reference.md).

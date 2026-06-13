@@ -18,6 +18,8 @@ Keep the voice calm and clear, with light humor permitted.
 
 State what something does, not what something else fails to do.
 
+Prefer qualitative quantifiers to scalars in prose. A precise count binds the sentence to a number that drifts and usually reads false by the time someone reaches it, while words like "some", "most of", and "far more" carry the inequality, contrast, or scale you actually meant to show. Keep an exact figure only when the figure is itself the subject, such as an identifier, a version, a limit, or a measurement being reported as data.
+
 End a paragraph when the thought ends.
 
 If a sentence performs rather than informs, rewrite it plainly.
