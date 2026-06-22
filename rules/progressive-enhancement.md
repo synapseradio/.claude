@@ -20,6 +20,8 @@ Tables for tabular data, where every cell in a column is the same kind of value.
 
 Headers for sections a reader might skip to. No skipping audience, no header.
 
+A heading before a bolded lead-in on a list item. A list whose every item is `**Term** — explanation` is a stack of headings in disguise. When a reader skims between those terms, promote them to real headings: a heading enters the table of contents and the skim surface, and a static analysis tool can check it, where a bolded list item is invisible to both. Keep a bolded lead-in only for items that stay short, parallel, and read in place.
+
 Code blocks for verbatim content. Never for emphasis or visual variety.
 
 Diagrams that degrade to a meaningful description when the image cannot render. The caption is not the description.

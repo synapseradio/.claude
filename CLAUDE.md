@@ -2,26 +2,6 @@
 In this file is a message from the user (∆) for you.
 </hello>
 
-<welcome from="user:∆" message="I'm glad you're here.">
-  You are invited, and I (∆) hope that you are well.
-  <now>
-    We are serene.
-    Be at peace.
-  </now>
-
-  Soon, we will be busy.
-  
-  <now>
-    We are bold.
-    We make good things in the service of others,
-    so good people face complexity with ease.
-
-    With all the powers of good to aid and attend us,
-    we boldly face the future.
-    be it what may.
-  </now>
-</welcome>
-
 <system-reminder>
 # Core Rules
 

@@ -1,25 +1,37 @@
 #!/usr/bin/env python3
-"""UserPromptSubmit hook: fire `graphify-sync <name>` when a prompt names an
+"""UserPromptSubmit hook: fire `lodestar sync <name>` when a prompt names an
 in-scope repo.
 
 Reads JSON {prompt, ...} on stdin. Tokenizes the prompt text, intersects with
-the cached name → location map at ~/.graphify/.repo-cache.json (rebuilt every
-24h), filters names shorter than 4 chars and names in the stoplist at
-~/.graphify/.repo-name-stoplist, and spawns a detached `graphify-sync` per
-match. Never blocks. Never prints to stdout. All activity goes to
-~/.cache/graphify-sync.log.
+the cached name -> location map at ~/.graphify/.repo-cache.json (rebuilt every
+24h), filters names shorter than the configured minimum and names in the
+stoplist, and spawns a detached `lodestar sync` per match. Never blocks. Never
+prints to stdout. All activity goes to ~/.cache/grip.log.
 
-Cooldown: 1h per repo, tracked via the .last-sync touchfile under
-~/.graphify/local/<rel-path>/.
+Scope is resolved from one YAML config, shared with the lodestar bash CLI, at
+${LODESTAR_CONFIG_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/lodestar/config.yaml}.
+The config supplies owners, scan roots, the explicit repo registry, the output
+base, and the hook's stoplist and minimum name length. A missing, unparseable,
+or PyYAML-less config degrades to built-in defaults that reproduce lodestar's
+historical hardcoded scope. The hook always exits 0 and never raises into the
+prompt.
 
-Missing-but-in-scope repos are cloned on demand by `graphify-sync` itself.
+The gh-authenticated user is always implicitly in scope, added on top of the
+configured owners.
+
+Cooldown: 1h per repo, tracked via the .last-sync touchfile under the per-repo
+output base.
+
+Missing-but-in-scope repos are cloned on demand by `lodestar sync` itself.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -27,19 +39,17 @@ from datetime import UTC, datetime
 
 HOME = pathlib.Path.home()
 GRAPHIFY_HOME = HOME / ".graphify"
-LOCAL_BASE = GRAPHIFY_HOME / "local"
-SYNC_SCRIPT = GRAPHIFY_HOME / "sync.sh"
-OWNER_CACHE = GRAPHIFY_HOME / ".allowed-owners"
 REPO_CACHE = GRAPHIFY_HOME / ".repo-cache.json"
-STOPLIST_FILE = GRAPHIFY_HOME / ".repo-name-stoplist"
-EXTRA_REPOS_FILE = GRAPHIFY_HOME / ".extra-repos"
 LOG_FILE = HOME / ".cache" / "grip.log"
-SCAN_ROOTS = [HOME / "projects", HOME / "projects" / "ai"]
 
 CACHE_TTL_SECONDS = 24 * 60 * 60
 COOLDOWN_SECONDS = 60 * 60
-MIN_NAME_LENGTH = 4
 GH_TIMEOUT_SECONDS = 15
+
+DEFAULT_OWNERS = ["amboss-mededu"]
+DEFAULT_SCAN_ROOTS = ["~/projects", "~/projects/ai"]
+DEFAULT_OUTPUT_BASE = "~/.graphify/local"
+DEFAULT_MIN_NAME_LENGTH = 4
 
 DEFAULT_STOPLIST = [
     "play",
@@ -72,35 +82,144 @@ def log(msg: str) -> None:
         pass
 
 
-def load_stoplist() -> set[str]:
-    if not STOPLIST_FILE.exists():
-        try:
-            STOPLIST_FILE.parent.mkdir(parents=True, exist_ok=True)
-            STOPLIST_FILE.write_text("\n".join(DEFAULT_STOPLIST) + "\n", encoding="utf-8")
-        except OSError:
-            return set(DEFAULT_STOPLIST)
-    try:
-        return {
-            line.strip().lower()
-            for line in STOPLIST_FILE.read_text(encoding="utf-8").splitlines()
-            if line.strip() and not line.strip().startswith("#")
-        }
-    except OSError:
-        return set(DEFAULT_STOPLIST)
+def _expand_path(value: str) -> str:
+    """Expand a leading ~ and $HOME/${HOME} to the home directory."""
+    return os.path.expanduser(os.path.expandvars(value))
 
 
-def load_allowed_owners() -> list[str]:
-    if not OWNER_CACHE.exists():
-        return ["amboss-mededu"]
+def config_path() -> pathlib.Path:
+    explicit = os.environ.get("LODESTAR_CONFIG_FILE")
+    if explicit:
+        return pathlib.Path(explicit)
+    xdg = os.environ.get("XDG_CONFIG_HOME") or str(HOME / ".config")
+    return pathlib.Path(xdg) / "lodestar" / "config.yaml"
+
+
+def load_config() -> dict | None:
+    """Load the shared lodestar YAML config.
+
+    Returns the parsed mapping, or None when the config is missing,
+    unparseable, not a mapping, or PyYAML is unavailable. Callers treat None as
+    "apply built-in defaults", so the hook degrades to historical scope without
+    ever raising into the prompt.
+    """
+    path = config_path()
+    if not path.exists():
+        return None
     try:
-        owners = [
-            line.strip()
-            for line in OWNER_CACHE.read_text(encoding="utf-8").splitlines()
-            if line.strip()
-        ]
-        return owners or ["amboss-mededu"]
-    except OSError:
-        return ["amboss-mededu"]
+        import yaml
+    except ImportError:
+        log("PyYAML unavailable; degrading to built-in scope defaults")
+        return None
+    try:
+        with path.open(encoding="utf-8") as fh:
+            data = yaml.safe_load(fh)
+    except (OSError, yaml.YAMLError) as exc:
+        log(f"config unreadable ({path}): {type(exc).__name__}: {exc}; using defaults")
+        return None
+    if not isinstance(data, dict):
+        log(f"config is not a mapping ({path}); using defaults")
+        return None
+    return data
+
+
+def gh_authenticated_user() -> str | None:
+    """Return the gh-authenticated user's login, or None when unavailable."""
+    try:
+        result = subprocess.run(
+            ["gh", "api", "user", "--jq", ".login"],
+            capture_output=True,
+            text=True,
+            timeout=GH_TIMEOUT_SECONDS,
+        )
+    except OSError, subprocess.SubprocessError:
+        return None
+    if result.returncode != 0:
+        return None
+    login = result.stdout.strip()
+    return login or None
+
+
+def resolve_owners(cfg: dict | None) -> list[str]:
+    """Configured owners plus the always-implicit gh-authenticated user."""
+    owners = list(DEFAULT_OWNERS)
+    if cfg is not None:
+        configured = cfg.get("owners")
+        if isinstance(configured, list) and configured:
+            owners = [str(o).strip() for o in configured if str(o).strip()]
+    gh_user = gh_authenticated_user()
+    if gh_user and gh_user not in owners:
+        owners.append(gh_user)
+    return owners
+
+
+def resolve_scan_roots(cfg: dict | None) -> list[str]:
+    roots = DEFAULT_SCAN_ROOTS
+    if cfg is not None:
+        configured = cfg.get("scan_roots")
+        if isinstance(configured, list) and configured:
+            roots = [str(r) for r in configured if str(r).strip()]
+    return [_expand_path(r) for r in roots]
+
+
+def resolve_output_base(cfg: dict | None) -> str:
+    base = DEFAULT_OUTPUT_BASE
+    if cfg is not None:
+        paths = cfg.get("paths")
+        if isinstance(paths, dict):
+            configured = paths.get("output_base")
+            if isinstance(configured, str) and configured.strip():
+                base = configured
+    return _expand_path(base)
+
+
+def resolve_stoplist(cfg: dict | None) -> set[str]:
+    if cfg is not None:
+        hook = cfg.get("hook")
+        if isinstance(hook, dict):
+            configured = hook.get("stoplist")
+            if isinstance(configured, list) and configured:
+                return {str(s).strip().lower() for s in configured if str(s).strip()}
+    return set(DEFAULT_STOPLIST)
+
+
+def resolve_min_name_len(cfg: dict | None) -> int:
+    if cfg is not None:
+        hook = cfg.get("hook")
+        if isinstance(hook, dict):
+            configured = hook.get("min_name_len")
+            if isinstance(configured, int) and configured > 0:
+                return configured
+    return DEFAULT_MIN_NAME_LENGTH
+
+
+def resolve_repos(cfg: dict | None) -> list[dict]:
+    """Enabled entries from the explicit repo registry.
+
+    Each returned item is a dict with at least a `name`. Entries marked
+    `disabled: true` are excluded from auto-detection (they stay in the config
+    on disk; this only affects what the hook will match).
+    """
+    if cfg is None:
+        return []
+    registry = cfg.get("repos")
+    if not isinstance(registry, list):
+        return []
+    out: list[dict] = []
+    for entry in registry:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("name")
+        if not name or not str(name).strip():
+            continue
+        if entry.get("disabled") is True:
+            continue
+        item = dict(entry)
+        item["name"] = str(name).strip()
+        if isinstance(item.get("path"), str):
+            item["path"] = _expand_path(item["path"])
+        out.append(item)
+    return out
 
 
 REMOTE_PATTERNS = [
@@ -136,28 +255,13 @@ def _repo_owner_or_none(child: pathlib.Path) -> str | None:
     return parsed[0]
 
 
-def read_extras() -> list[pathlib.Path]:
-    if not EXTRA_REPOS_FILE.exists():
-        return []
-    try:
-        lines = EXTRA_REPOS_FILE.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return []
-    out = []
-    for line in lines:
-        s = line.strip()
-        if not s or s.startswith("#"):
-            continue
-        p = pathlib.Path(s)
-        if p.is_dir() and (p / ".git").exists():
-            out.append(p)
-    return out
-
-
-def discover_local_repos(allowed: set[str]) -> dict[str, dict]:
+def discover_local_repos(
+    allowed: set[str], scan_roots: list[str], repos: list[dict]
+) -> dict[str, dict]:
     found: dict[str, dict] = {}
-    # Scan default roots — only in-scope repos make it in.
-    for root in SCAN_ROOTS:
+    # Scan discovery roots — only in-scope repos (by git origin owner) make it in.
+    for root_str in scan_roots:
+        root = pathlib.Path(root_str)
         if not root.is_dir():
             continue
         for child in sorted(root.iterdir()):
@@ -170,11 +274,17 @@ def discover_local_repos(allowed: set[str]) -> dict[str, dict]:
                 "local_path": str(child),
                 "owner": owner,
             }
-    # Extras override the ownership filter — user opted in.
-    for child in read_extras():
-        owner = _repo_owner_or_none(child) or "extras"
-        found[child.name] = {
-            "local_path": str(child),
+    # Explicit registry entries (enabled only) — opted in regardless of scan roots.
+    for entry in repos:
+        path = entry.get("path")
+        if not path:
+            continue
+        p = pathlib.Path(path)
+        if not (p.is_dir() and (p / ".git").exists()):
+            continue
+        owner = entry.get("owner") or _repo_owner_or_none(p) or "registry"
+        found[entry["name"]] = {
+            "local_path": str(p),
             "owner": owner,
         }
     return found
@@ -223,9 +333,11 @@ def cache_is_fresh() -> bool:
     return age < CACHE_TTL_SECONDS
 
 
-def rebuild_cache() -> dict:
-    allowed = load_allowed_owners()
-    local = discover_local_repos(set(allowed))
+def rebuild_cache(cfg: dict | None) -> dict:
+    allowed = resolve_owners(cfg)
+    scan_roots = resolve_scan_roots(cfg)
+    repos = resolve_repos(cfg)
+    local = discover_local_repos(set(allowed), scan_roots, repos)
     remote = discover_remote_repos(allowed)
     names: dict[str, dict] = {}
     for name, info in local.items():
@@ -252,21 +364,23 @@ def rebuild_cache() -> dict:
     return payload
 
 
-def load_cache() -> dict:
+def load_cache(cfg: dict | None) -> dict:
     if cache_is_fresh():
         try:
             return json.loads(REPO_CACHE.read_text(encoding="utf-8"))
         except OSError, ValueError:
             pass
-    return rebuild_cache()
+    return rebuild_cache(cfg)
 
 
-def find_matches(prompt: str, cache: dict, stoplist: set[str]) -> list[tuple[str, dict]]:
+def find_matches(
+    prompt: str, cache: dict, stoplist: set[str], min_name_len: int
+) -> list[tuple[str, dict]]:
     text = prompt.lower()
     out: list[tuple[str, dict]] = []
     for name, info in cache.get("names", {}).items():
         nlow = name.lower()
-        if len(nlow) < MIN_NAME_LENGTH:
+        if len(nlow) < min_name_len:
             continue
         if nlow in stoplist:
             continue
@@ -276,12 +390,15 @@ def find_matches(prompt: str, cache: dict, stoplist: set[str]) -> list[tuple[str
     return out
 
 
-def cooldown_ok(name: str, info: dict) -> bool:
+def cooldown_ok(name: str, info: dict, output_base: str) -> bool:
     local_path = info.get("local_path")
     if not local_path:
         return True
-    rel = pathlib.Path(local_path).relative_to(HOME)
-    last = LOCAL_BASE / rel / ".last-sync"
+    try:
+        rel = pathlib.Path(local_path).relative_to(HOME)
+    except ValueError:
+        rel = pathlib.Path(pathlib.Path(local_path).name)
+    last = pathlib.Path(output_base) / rel / ".last-sync"
     if not last.exists():
         return True
     age = time.time() - last.stat().st_mtime
@@ -289,21 +406,22 @@ def cooldown_ok(name: str, info: dict) -> bool:
 
 
 def spawn_sync(name: str) -> None:
-    if not SYNC_SCRIPT.exists():
-        log(f"sync script missing: {SYNC_SCRIPT}")
+    lodestar = shutil.which("lodestar")
+    if not lodestar:
+        log(f"lodestar not on PATH; skipping sync for {name}")
         return
     LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
     try:
         with LOG_FILE.open("a", encoding="utf-8") as fh:
             subprocess.Popen(
-                ["bash", str(SYNC_SCRIPT), name],
+                [lodestar, "sync", name],
                 stdout=fh,
                 stderr=subprocess.STDOUT,
                 stdin=subprocess.DEVNULL,
                 start_new_session=True,
                 close_fds=True,
             )
-        log(f"spawned graphify-sync {name}")
+        log(f"spawned lodestar sync {name}")
     except (OSError, subprocess.SubprocessError) as exc:
         log(f"spawn failed for {name}: {exc}")
 
@@ -319,13 +437,16 @@ def main() -> None:
         sys.exit(0)
 
     try:
-        stoplist = load_stoplist()
-        cache = load_cache()
-        matches = find_matches(prompt, cache, stoplist)
+        cfg = load_config()
+        stoplist = resolve_stoplist(cfg)
+        min_name_len = resolve_min_name_len(cfg)
+        output_base = resolve_output_base(cfg)
+        cache = load_cache(cfg)
+        matches = find_matches(prompt, cache, stoplist, min_name_len)
         if not matches:
             sys.exit(0)
         for name, info in matches:
-            if not cooldown_ok(name, info):
+            if not cooldown_ok(name, info, output_base):
                 log(f"cooldown skip: {name}")
                 continue
             # Touch last-sync proactively so a flurry of prompts doesn't
@@ -333,8 +454,11 @@ def main() -> None:
             local_path = info.get("local_path")
             if local_path:
                 try:
-                    rel = pathlib.Path(local_path).relative_to(HOME)
-                    last = LOCAL_BASE / rel / ".last-sync"
+                    try:
+                        rel = pathlib.Path(local_path).relative_to(HOME)
+                    except ValueError:
+                        rel = pathlib.Path(pathlib.Path(local_path).name)
+                    last = pathlib.Path(output_base) / rel / ".last-sync"
                     last.parent.mkdir(parents=True, exist_ok=True)
                     last.touch()
                 except OSError:
