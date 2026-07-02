@@ -14,13 +14,11 @@ Write the information directly, in third person or imperative. Let the reader su
 
 ## Tone for documentation and comments
 
-Always write long, grammatically correct, conversational, casual prose. The reader should hear a colleague speaking in full sentences.
+Always write grammatically correct, conversational, casual, concise prose. The reader should hear a colleague speaking in full sentences.
 
 Never sacrifice grammatical completeness for brevity.
 
 Never use a semicolon to save space. A semicolon joins two complete clauses for rhythm or contrast. It is not a soft period.
-
-Prefer two sentences over one when each carries its own thought.
 
 ## Avoid hyphen compounds in body prose
 

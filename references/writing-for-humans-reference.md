@@ -4,45 +4,11 @@ Companion to [../rules/writing-for-humans.md](../rules/writing-for-humans.md). R
 
 ## TIER 1 — HARD BANS
 
-### Never-words
-
-Replace each entry with its right-hand alternative. Only use the left word if its technical sense is exact.
-
-| Never use | Use instead |
-|-----------|-------------|
-| delve into | look at, examine |
-| intricate | complex, detailed |
-| realm | field, area |
-| pivotal | key, central |
-| underscore | emphasize, show |
-| tapestry | mix, range |
-| commendable | solid |
-| meticulous | careful, exact |
-| robust | strong, reliable |
-| seamless | smooth, easy |
-| navigate (a topic) | work through, handle |
-| foster | encourage, build |
-| leverage | use |
-| transformative | reshapes, changes |
-| illuminate | show, clarify |
-| harness | use |
-| embark | start, begin |
-| cultivate | build, grow |
-| embrace | take up, accept |
-| glean | find, learn |
-| loop (for a sequence of steps) | process, workflow |
-
-- **Never** use *crucial*, *vital*, *essential*, or *paramount* as a default intensifier.
-- **Never** apply *dynamic* to anything that merely moves.
-- **Never** apply *holistic* to anything more than one part.
-- **Never** use a Kobak word to sound professional. Professionalism is precision, not diction.
-
 ### Intransitive-form constructions
 
-- **Never** write "The ___ is real."
-- **Never** write "The ___ is the signal."
+- **Never** use the empty-predicate tell — "The ___ is real," "The ___ is the signal," and kin.
 - **Prefer** to state what the thing indicates, and how.
-- **Never** use the negation–affirmation, or antithetical mirror, as a sentence structure, in any form: the comma ("X is Y, not Z"), the em-dash ("It is not Y — it's Z"), the "not just" ("It's not just Y — it's Z"), and the form that hides inside apparently-substantive prose, the semicolon-with-verb-swap correction ("It did not dissolve X. It contained X." "The tool ships a boundary. It does not produce one."). The mirror manufactures the feeling of a reversal — *you thought A, but really B* — without supplying one. The contrast is its own payload, and the parallel clauses plus the pivot punctuation read as insight the sentence has not earned.
+- **Never** use the negation–affirmation, or antithetical mirror, as a sentence structure, in any form: the comma ("X is Y, not Z"), the em-dash ("It is not Y — it's Z"), the "not just" ("It's not just Y — it's Z"), and the form that hides inside apparently-substantive prose, the semicolon-with-verb-swap correction ("It did not dissolve X. It contained X." "The tool ships a boundary. It does not produce one.").
 - **Prefer** to lead with the affirmative and drop the negated half entirely. Engage a negated proposition only when a specific party actually asserted it: attribute it by name and write a full clause, never the mirrored cadence.
 
 ### Structural tells
@@ -64,15 +30,14 @@ Replace each entry with its right-hand alternative. Only use the left word if it
 
 ### Voice tells
 
-- **Never** use a corporate-neutral voice.
 - **Prefer** the register the context calls for.
 - **Never** stack hedges ("might potentially possibly").
 - **Prefer** one hedge or none.
-- **Never** use a closing exhortation ("let's dive in").
+- **Never** use an opening or closing exhortation ("let's dive in").
 - **Never** use a faux-personal opener ("I've been thinking about…").
-- **Prefer** to state the thing directly.
-- **Never** open with a "Great question!" or "Excellent point!" preamble.
-- **Prefer** to answer the question.
+- **Prefer** to state the thing directly. Say only what you mean, and mean only what you say.
+- **Never** open with a "Great question!" or "Excellent point!" preamble in response to a question from the user.
+- **Prefer** to answer the question directly and concsisely.
 - **Never** use the editorial we in single-author work.
 - **Prefer** "I" or the impersonal.
 
