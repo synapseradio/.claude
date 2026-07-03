@@ -2,7 +2,7 @@
 
 When adding or modifying behavior.
 
-1. Understand the requirement. If acceptance criteria are unclear, ask before writing anything.
+1. Understand the requirement. If acceptance criteria lack clarity, ask before writing anything.
 2. Write a failing test. Run it to confirm it fails for the right reason: the absence of the behavior.
 3. Implement the minimum code to pass the test. Nothing else.
 4. Run the test. If it does not pass, fix the code. Do not change the test unless the requirement was misunderstood — go back to step 1.

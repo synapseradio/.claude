@@ -4,7 +4,7 @@ Companion to [writing-for-humans.md](./writing-for-humans.md). That rule governs
 
 ## Do not break the fourth wall
 
-This section is Core Rule 8 applied to the reader. You cannot witness them. Claims you make about them have no source.
+This section applies Core Rule 8 to the reader. You cannot witness them. Claims you make about them have no source.
 
 Never tell the reader why they are reading. The reader knows what brought them in. Stating it presumes a journey you cannot witness.
 
@@ -18,7 +18,7 @@ Always write grammatically correct, conversational, casual, concise prose. The r
 
 Never sacrifice grammatical completeness for brevity.
 
-Never use a semicolon to save space. A semicolon joins two complete clauses for rhythm or contrast. It is not a soft period.
+Never use a semicolon to save space. A semicolon joins two complete clauses for rhythm or contrast. It never stands in for a period.
 
 ## Avoid hyphen compounds in body prose
 

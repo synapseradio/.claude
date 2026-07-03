@@ -69,6 +69,6 @@ Never pin a version on the command line. Run the bare package name and let the p
 - `bun add <name>@<version>` — no
 - Any flag or suffix that hand-picks a version on the CLI — no
 
-If a version constraint is genuinely required, its home is a config file: the lockfile's resolved version, a workspace catalog, an `overrides` block, or the package's own `package.json` edited as text. The CLI is for adding the dependency; the file is for constraining it.
+If a version constraint is genuinely required, it belongs in a config file: the lockfile's resolved version, a workspace catalog, an `overrides` block, or the package's own `package.json` edited as text. The CLI adds the dependency; the file constrains it.
 
-Before touching deps in a repo with its own dependency-management docs, read those docs first. Conventions like Bun workspace catalogs, pnpm patches, or npm overrides change where a version range belongs. The default cost of skipping the docs is putting the range in the wrong place and having to redo the work.
+Before touching deps in a repo with its own dependency-management docs, read those docs first. Conventions like Bun workspace catalogs, pnpm patches, or npm overrides change where a version range belongs. Skipping the docs usually means putting the range in the wrong place and having to redo the work.

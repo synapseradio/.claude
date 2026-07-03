@@ -37,7 +37,7 @@ Check that identified parts account for the whole. Then map how parts relate:
 
 ### 5. Recurse if Needed
 
-Apply decomposition to any part that remains too complex. Stop when parts are simple enough to understand or address directly.
+Apply decomposition to any part that remains too complex. Stop when parts become simple enough to understand or address directly.
 
 ## Before and After
 

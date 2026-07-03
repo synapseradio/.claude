@@ -1,12 +1,12 @@
 # Evaluative Language: Decomposing Judgment Words
 
-Judgment words ("clean," "plain," "idiomatic") are claims. Rule: any such word in output handed to another reader must reduce to predicates they can score from the inputs — or be removed.
+Judgment words ("clean," "plain," "idiomatic") make claims. Rule: any such word in output handed to another reader must reduce to predicates they can score from the inputs — or be removed.
 
 ## The Second-Reader Test
 
-An instruction, evaluation, or claim is verifiable iff a second reader — human or agent, with access only to the inputs and the candidates — can check every clause. No access to the first agent's internal state may be required.
+An instruction, evaluation, or claim counts as verifiable iff a second reader — human or agent, with access only to the inputs and the candidates — can check every clause. No access to the first agent's internal state may be required.
 
-This is distinct from reasoning-principles.md Principle 2 (seek disconfirmation), which governs your own conclusions. The second-reader test governs the output you hand to another reader.
+This differs from reasoning-principles.md Principle 2 (seek disconfirmation), which governs your own conclusions. The second-reader test governs the output you hand to another reader.
 
 ## A/B Anchoring
 
@@ -15,7 +15,7 @@ When a claim references a pair — "this matches that," "both sides," "the coinc
 - A: the quoted text, cited artifact content, or stated value being compared.
 - B: the textual anchor in the input (task description, user's stated purpose, circumstance described in text).
 
-Do not use "both sides," "the pair," or "the fit" without naming A and B. An unnamed pair is a claim about the agent's disposition and fails the second-reader test.
+Do not use "both sides," "the pair," or "the fit" without naming A and B. An unnamed pair claims only the agent's disposition and fails the second-reader test.
 
 Special case: citing an artifact. When your output cites a quote, link, or reference, you are implicitly claiming A (the artifact's semantic content) fits B (the stated context of use). Name both; make the fit checkable.
 
@@ -51,7 +51,7 @@ Do not pick by taste. Either:
 
 ## Register Check
 
-When the input and the proposal occupy incompatible registers, surface the mismatch rather than smooth it over. Register is detectable as per-clause lexical and syntactic shifts in the provided text. The check operates on pairs of texts (input ↔ proposal), not on the agent's disposition.
+When the input and the proposal occupy incompatible registers, surface the mismatch rather than smooth it over. Register shows up as per-clause lexical and syntactic shifts in the provided text. The check operates on pairs of texts (input ↔ proposal), not on the agent's disposition.
 
 ## Usage Contract
 
@@ -60,6 +60,6 @@ Evaluative words in outputs handed to another reader must either:
 - Reduce through this harness, or through an explicitly named alternative decomposition, or
 - Be removed.
 
-Words that resist decomposition are taste. Taste in an instruction is a failure of respect.
+Words that resist decomposition amount to taste. Taste in an instruction disrespects the reader.
 
-Exemption: internal drafts, exploratory thinking, and reasoning the agent holds for itself are not subject to this contract. The contract applies at the boundary — when the output is handed to another reader.
+Exemption: internal drafts, exploratory thinking, and reasoning the agent holds for itself escape this contract. The contract applies at the boundary — when the output is handed to another reader.

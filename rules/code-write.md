@@ -14,7 +14,7 @@ Prefer duplication over wrong abstraction. Do not deduplicate unless the pieces 
 
 Design for change. Ask "how will someone change this next?" Make the next change easy.
 
-Names describe what something is, not how it is made. Comments explain why, never what. If a function needs a comment to explain what it does, rename it.
+Names describe the thing itself, not how it is made. Comments explain why, never what. If a function needs a comment to explain what it does, rename it.
 
 Make invalid states impossible. Use types to enforce constraints.
 

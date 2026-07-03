@@ -4,7 +4,7 @@ When the user invokes graphify, references a repo under `~/projects/`, or runs g
 
 ## Ownership scope
 
-Only repos whose `origin` owner is `amboss-mededu` or the authenticated GitHub user are graphified. Others are skipped entirely.
+Only repos with `origin` owner `amboss-mededu` or the authenticated GitHub user are graphified. Others are skipped entirely.
 
 ## Querying
 
@@ -18,7 +18,7 @@ Always pass `--graph <path>`. Single-repo: the per-repo `graph.json`. Cross-repo
 - `graphify path "<A>" "<B>" --graph <path>` — how two things relate.
 - `graphify explain "<X>" --graph <path>` — single named entity.
 
-If `graph.json` is missing, run `lodestar <name>` once, then query. If results reference ids not in the tree, re-run `lodestar <name>` and re-query. Don't preemptively rebuild.
+If `graph.json` does not exist, run `lodestar <name>` once, then query. If results reference ids not in the tree, re-run `lodestar <name>` and re-query. Don't preemptively rebuild.
 
 After the query returns nodes, read the specific files at the lines they cite. Fall through to source search when the graph cannot answer. If graphifiable but not yet graphified: `lodestar add <path>` then `lodestar <name>`.
 

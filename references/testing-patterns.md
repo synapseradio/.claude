@@ -32,7 +32,7 @@ For CLIs invoking external commands, place mock executables in a temp dir on `$P
 
 For libraries calling I/O or network, inject the dependency or use the framework's mocking primitive. Do not monkey-patch globals from inside a test.
 
-Note the version of the real interface the mock was written against. A mock that drifts from reality is worse than no mock.
+Note the version of the real interface the mock was written against. A mock that drifts from reality does more harm than no mock.
 
 ## Function shadowing
 
