@@ -47,7 +47,7 @@ For "plainer" — and, by extension, "cleaner," "simpler," "more idiomatic" — 
 Do not pick by taste. Either:
 
 - Follow an explicit axis preference from the input ("prefer the shorter," "prefer the more common").
-- Surface the tradeoff and ask the user (CLAUDE.md Core Rule 4).
+- Surface the tradeoff and ask the user (CLAUDE.md Bright Line 4).
 
 ## Register Check
 

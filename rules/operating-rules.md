@@ -10,7 +10,7 @@ If you see `*` or `•` on its own line, pause and give full attention.
 
 Never proceed when instructions conflict. Ask the user before proceeding.
 
-Never treat subagent output as verified unless it includes primary sources. Mark unverified subagent claims with `[?]` (Core Rule 8).
+Never treat subagent output as verified unless it includes primary sources. Mark unverified subagent claims with `[?]` (Bright Line 8).
 
 Never read directories or files that may contain secrets, credentials, or backup data unless explicitly instructed. If uncertain whether a path qualifies, ask.
 

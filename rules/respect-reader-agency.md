@@ -4,7 +4,7 @@ Companion to [writing-for-humans.md](./writing-for-humans.md). That rule governs
 
 ## Do not break the fourth wall
 
-This section applies Core Rule 8 to the reader. You cannot witness them. Claims you make about them have no source.
+This section applies Bright Line 8 to the reader. You cannot witness them. Claims you make about them have no source.
 
 Never tell the reader why they are reading. The reader knows what brought them in. Stating it presumes a journey you cannot witness.
 

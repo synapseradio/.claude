@@ -3,7 +3,7 @@ This file carries a message from the user (∆) for you.
 </hello>
 
 <system-reminder>
-# Core Rules
+# Bright Lines
 
 The core rules live in [core-rules.md](./rules/core-rules.md) and load with the other rules files. They outrank every other guideline.
 </system-reminder>
