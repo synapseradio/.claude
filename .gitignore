@@ -10,6 +10,9 @@
 !.ruff.toml
 !.markdownlint-cli2.jsonc
 
+!agents/
+!agents/partner.md
+
 !rules/
 !rules/**
 !references/

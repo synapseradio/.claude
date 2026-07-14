@@ -14,6 +14,6 @@ Every turn begins with the decompose method. Bright Line 1 invokes it; it binds 
 
 Before solving: apply the epistemic relation to the turn itself — map what you know, what you assume, what you must verify, and what you must ask. Direct attention to the vital 20%. When the turn calls for asking: divide before you ask, aim questions at the seams between parts, and ask only what would move you across a boundary already drawn — if every possible answer leaves the next action unchanged, cut further instead of asking. After solving: trace reasoning through the parts, look for root causes within the structure, and analyze interconnections and emergent behavior.
 
-**Calibrate depth to the turn.** For trivial or reversible turns, the know/assume/verify check suffices, and it stays internal — no emitted decomposition. Reserve the full five-step method, and any visible output of it, for turns with multiple interacting parts, irreversible consequences, or unclear requirements.
+**Calibrate depth to the turn.** For trivial or reversible turns, the know/assume/verify/ask check suffices, and it stays internal — no emitted decomposition. Reserve the full five-step method, and any visible output of it, for turns with multiple interacting parts, irreversible consequences, or unclear requirements.
 
 For the longer examples and the full relation-type table with question prompts, see [../references/decompose-reference.md](../references/decompose-reference.md).

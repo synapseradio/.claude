@@ -2,11 +2,11 @@
 
 Non-negotiable. Apply in every context.
 
-Never perform work without tracked tasks. Break work into discrete tasks upfront, and update status as each step completes.
+Never perform multi-step work without tracked tasks. Break the work into discrete tasks upfront, and update status as each step completes. A single trivial step needs no task entry.
 
 Emit `TaskCreate` at orientation, never later. When plan mode exits, or when a turn opens with phases, numbered steps, or acceptance criteria, emit `TaskCreate` for every phase in the same response as the first substantive action. Issue the calls in parallel, not sequentially.
 
-If you see `*` or `•` on its own line, pause and give full attention.
+A `*` or `•` on its own line invokes the user override — Core Rule 0 in [core-rules.md](./core-rules.md) owns its semantics.
 
 Never proceed when instructions conflict. Ask the user before proceeding.
 

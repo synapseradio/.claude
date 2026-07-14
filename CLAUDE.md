@@ -23,3 +23,6 @@ References hold the long-form catalogs that rules cite. They live in `~/.claude/
 - [testing-patterns.md](./references/testing-patterns.md) — scope tags, isolation, mocks (named by testing.md)
 - [graphify-reference.md](./references/graphify-reference.md) — layout, save-result, recovery (named by graphify.md)
 - [bash-style-guide.md](./references/bash-style-guide.md) — Google Shell Style Guide verbatim mirror (named by shell-scripts.md)
+- [evaluative-language.md](./references/evaluative-language.md) — second-reader test, A/B anchoring, five-predicate harness for judgment words (named by core-rules.md rule 14)
+- [readiness-claims-reference.md](./references/readiness-claims-reference.md) — maturity ladder, earning or denying "foundation", worked example (named by readiness-claims.md)
+- [skill-design-reference.md](./references/skill-design-reference.md) — decision closure test in full, mode contracts (named by skill-design.md)

@@ -31,8 +31,8 @@ Apply to every sentence, before the bans and preferences below.
 
 ### Structural tells
 
-- **Never** default to a tricolon.
-- **Instead**, use the actual count: 2, 4, or 5.
+- **Never** default to a tricolon — do not pad a group to three items for rhythm.
+- **Instead**, list exactly the items there are, whatever their number. This governs how many items you present, not whether you name the number in the sentence; a bare count that only totals a set still drops per the quantifier preference below.
 - **Never** invent false balance for symmetry ("on one hand … on the other").
 - **Instead**, state the one side when one side has it right.
 - **Never** write a conclusion-restating paragraph.
@@ -59,6 +59,13 @@ Apply to every sentence, before the bans and preferences below.
 - **Never** use the editorial we in single-author work.
 - **Instead**, use "I" or the impersonal.
 
+### Projection tells
+
+- **Never** personify a noun that names a thing without agency — "the gauge stays honest," "the rule guards it," "the code wants," "the data believes."
+- **Instead**, name the agent who acts, or state the property directly: "the gauge tracks clarity only while gains trace back to clarity gains."
+- **Never** award a virtue verdict to your own claims, constructs, or work — "honestly," "to be honest," "an honest reading," "a rigorous analysis," "a careful review" describing your own output. A verdict declared by its own subject costs nothing and so carries no evidence; it reveals only that the writer expected doubt, and the reader's prior shifts toward the opposite. Same engine as the empty-predicate tell: asserting what a trustworthy statement would leave presupposed invites the reader to ask why it needed asserting.
+- **Instead**, show the mechanism or evidence that would earn the verdict, and leave the virtue word for the reader to award.
+
 ### Casual-context tells
 
 - **Never** use over-formal helpfulness ("I'd be happy to help with that!").
@@ -79,6 +86,7 @@ Apply during generation.
 - **Prefer** a specific verb over a generic one. "Snapped" rather than "moved." "Built" rather than "leveraged."
 - **Prefer** qualitative quantifiers over scalars in prose. "Most of the callbacks dissolved" rather than "thirteen callbacks dissolved." The count drifts and reads false later. The magnitude, the contrast, or the inequality carried the point.
 - **Prefer** to keep an exact number only when the number forms the subject — a port, a version, a price, a measurement reported as data. Then the figure carries information a word cannot.
+- **Prefer** to keep an ordinal when a list orders or ranks its items — step 1 then step 2, the highest-priority case first. The position carries the information. A count that only totals a set ("the four options") carries no rank, so it still drops.
 - **Prefer** one transitional phrase where the prose changes direction, and none where it does not.
 - **Prefer** at most one transitional phrase per 100 words. Most paragraphs need none.
 - **Never** keep a transitional phrase because it sounds polished.

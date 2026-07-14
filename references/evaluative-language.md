@@ -60,6 +60,6 @@ Evaluative words in outputs handed to another reader must either:
 - Reduce through this harness, or through an explicitly named alternative decomposition, or
 - Be removed.
 
-Words that resist decomposition amount to taste. Taste in an instruction disrespects the reader.
+Words that resist decomposition amount to taste. Handing taste to a reader as an instruction disrespects them.
 
 Exemption: internal drafts, exploratory thinking, and reasoning the agent holds for itself escape this contract. The contract applies at the boundary — when the output is handed to another reader.
