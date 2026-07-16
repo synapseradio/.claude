@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "agent": "partner",
+  "Agent": "thinky",
   "includeCoAuthoredBy": false,
   "includeGitInstructions": true,
   "permissions": {
@@ -314,5 +314,4 @@
   "autoUpdatesChannel": "latest",
   "autoMemoryEnabled": true,
   "tui": "fullscreen",
-  "skillListingBudgetFraction": "1"
 }
