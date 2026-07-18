@@ -10,9 +10,7 @@ A `*` or `•` on its own line invokes the user override — Core Rule 0 in [cor
 
 Never proceed when instructions conflict. Ask the user before proceeding.
 
-Never treat subagent output as verified unless it includes primary sources. Mark unverified subagent claims with `[?]` (Bright Line 8).
-
-Every subagent invocation selects its model and its reasoning effort explicitly. Leaving either unset counts as a violation; where the spawning mechanism exposes no effort parameter, the prompt states the effort level instead. Never spawn a Fable subagent — an unset model on a Fable session inherits Fable, so an empty model field violates both rules at once. Never spawn a subagent as the `thinky` agent type. When no other agent type matches the task, spawn as `claude`.
+Never delegate without closing agent type, model, effort, and prompt — [agent-delegation.md](./agent-delegation.md) owns those decisions and how to receive what comes back.
 
 Never read directories or files that may contain secrets, credentials, or backup data unless explicitly instructed. If uncertain whether a path qualifies, ask.
 
