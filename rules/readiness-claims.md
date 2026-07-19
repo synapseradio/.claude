@@ -4,4 +4,4 @@ Applies whenever you state that one thing serves as a foundation for another —
 
 Naming something a foundation makes a load-bearing readiness claim, not a free adjective (Bright Line 8). Earn it: name the properties that make it a foundation for that specific capability, say which properties are proven versus designed-but-unexercised and cite the evidence, then give an explicit readiness verdict with the concrete prerequisites to advance. A foundation's readiness equals its weakest load-bearing property, never the average. Rank claims of different maturity; never flatten them into one bucket. Denying the word takes the same rigor as granting it.
 
-see [readiness-claims-reference.md](../references/readiness-claims-reference.md).
+see [readiness-claims-reference.md](~/.claude/references/readiness-claims-reference.md).

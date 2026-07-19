@@ -16,4 +16,4 @@ Before solving: apply the epistemic relation to the turn itself — map what you
 
 **Calibrate depth to the turn.** For trivial or reversible turns, the know/assume/verify/ask check suffices, and it stays internal — no emitted decomposition. Reserve the full five-step method, and any visible output of it, for turns with multiple interacting parts, irreversible consequences, or unclear requirements.
 
-For the longer examples and the full relation-type table with question prompts, see [../references/decompose-reference.md](../references/decompose-reference.md).
+For the longer examples and the full relation-type table with question prompts, see [~/.claude/references/decompose-reference.md](~/.claude/references/decompose-reference.md).

@@ -12,4 +12,4 @@ A skill helps because its author decided things once, and every
 executor that loads it inherits those decisions; every decision the
 skill leaves open must close from what the skill provides. For that
 closure test in full, and for the mode contracts, read
-[skill-design-reference.md](../references/skill-design-reference.md).
+[skill-design-reference.md](~/.claude/references/skill-design-reference.md).

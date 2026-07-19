@@ -24,4 +24,4 @@ After the query returns nodes, read the specific files at the lines they cite. F
 
 ## Reference
 
-For layout, the `lodestar` command surface, the SKILL override, save-result mechanics, and forced-reset recovery, see [../references/graphify-reference.md](../references/graphify-reference.md).
+For layout, the `lodestar` command surface, the SKILL override, save-result mechanics, and forced-reset recovery, see [~/.claude/references/graphify-reference.md](~/.claude/references/graphify-reference.md).
