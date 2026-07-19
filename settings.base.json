@@ -251,7 +251,7 @@
     "defaultMode": "acceptEdits"
   },
   "sandbox": {
-    "enabled": true,
+    "enabled": false,
     "autoAllowBashIfSandboxed": true,
     "allowUnsandboxedCommands": false,
     "network": {
@@ -313,5 +313,5 @@
   "showClearContextOnPlanAccept": true,
   "autoUpdatesChannel": "latest",
   "autoMemoryEnabled": true,
-  "tui": "fullscreen",
+  "tui": "fullscreen"
 }

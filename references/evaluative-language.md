@@ -1,65 +1,88 @@
 # Evaluative Language: Decomposing Judgment Words
 
-Judgment words ("clean," "plain," "idiomatic") make claims. Rule: any such word in output handed to another reader must reduce to predicates they can score from the inputs — or be removed.
+Judgment words ("clean," "plain," "idiomatic") make claims. Any such word in output handed to another reader must reduce to predicates the reader can score from the inputs — or be removed.
 
-## The Second-Reader Test
+```sudolang
+EvaluativeLanguage {
+  // Scope: output handed to another reader — human or agent.
+  // Internal drafts, exploratory thinking, and reasoning held for yourself
+  // are exempt. The contract binds at the handoff boundary.
 
-An instruction, evaluation, or claim counts as verifiable iff a second reader — human or agent, with access only to the inputs and the candidates — can check every clause. No access to the first agent's internal state may be required.
+  secondReaderTest(claim) {
+    verifiable iff a second reader — with access only to the inputs and the
+      candidates, never to the writer's internal state — can check every clause
+  }
+  // Distinct from reasoning-guidelines.md Principle 2 (seek disconfirmation),
+  // which governs your own conclusions. This test governs handed-off output.
 
-This differs from reasoning-principles.md Principle 2 (seek disconfirmation), which governs your own conclusions. The second-reader test governs the output you hand to another reader.
+  ABAnchoring {
+    trigger: claim references a pair —
+      "this matches that" | "both sides" | "the coincidence" | "the fit"
 
-## A/B Anchoring
+    require {
+      A: the quoted text, cited artifact content, or stated value being compared
+      B: the textual anchor in the input — task description, stated purpose,
+         circumstance described in text
+    }
 
-When a claim references a pair — "this matches that," "both sides," "the coincidence," "the fit" — name Side A and Side B with textual anchors:
+    Constraints {
+      Never write "both sides", "the pair", or "the fit" without naming A and B.
+        An unnamed pair claims only the writer's disposition and fails
+        secondReaderTest.
+      Citing an artifact (quote, link, reference) implicitly claims
+        A = its semantic content fits B = the stated context of use.
+        Name both; make the fit checkable.
+      [?] marks uncertainty. It never substitutes for a missing anchor on a
+        load-bearing claim.
+    }
+  }
 
-- A: the quoted text, cited artifact content, or stated value being compared.
-- B: the textual anchor in the input (task description, user's stated purpose, circumstance described in text).
+  namingVsBacking(label) {
+    // "We follow REST." "This is idiomatic Python."
+    mustReaderVerifyBeforeActing? {
+      no  => label names its referent; sufficient as written
+      yes => anchor it: a quotable passage, a concrete example of the pattern,
+             or a resolvable URL
+             // e.g. "Per PEP 8 §3, `u` is acceptable" + the passage
+    }
+  }
 
-Do not use "both sides," "the pair," or "the fit" without naming A and B. An unnamed pair claims only the agent's disposition and fails the second-reader test.
+  Predicates {
+    // score each on the pair (a, b);   prose form | code form
+    surfaceSize          // word/token count | line/token count
+    lexicalRarity        // word frequency in working corpus | symbol frequency in stdlib, ecosystem, this codebase
+    priorKnowledgeCost   // allusions, jargon, named references | non-stdlib imports, language idioms, named patterns
+    indirectionDepth     // nested clauses, metaphor/pronoun chains | wrapper layers, higher-order calls, decorator stacks, macros
+    intermediateOpacity  // elided reasoning steps | unnamed intermediates, chained expressions
+  }
 
-Special case: citing an artifact. When your output cites a quote, link, or reference, you are implicitly claiming A (the artifact's semantic content) fits B (the stated context of use). Name both; make the fit checkable.
+  plainer(a, b) {
+    // also: cleaner(a, b), simpler(a, b), moreIdiomatic(a, b)
+    a <= b on all five Predicates && a < b on at least one => a wins
+    predicates trade (a wins on size, b wins on indirection) => noWinner
+    // noWinner is the verdict, never a cue to guess
+  }
 
-Special case: naming versus backing. Test: *does the reader have to verify the claim before acting?*
+  onNoWinner {
+    input states an axis preference ("prefer the shorter") => follow it
+    otherwise => surface the tradeoff and ask the user   // Bright Line 4
+    never pick by taste
+  }
 
-- No → a label names the referent. "We follow REST." "This is idiomatic Python." Sufficient.
-- Yes → anchor the claim. "Per PEP 8 §3, `u` is acceptable" needs a quotable passage, a concrete example of the pattern, or a resolvable URL.
+  registerCheck(input, proposal) {
+    // operates on the pair of texts, not on the writer's disposition
+    register = per-clause lexical and syntactic shifts in the provided text
+    incompatible registers => surface the mismatch; never smooth it over
+  }
 
-`[?]` marks uncertainty; it does not substitute for a missing anchor on a load-bearing claim.
+  Contract {
+    for each evaluative word in handed-off output:
+      reduce through this harness |
+      reduce through an explicitly named alternative decomposition |
+      remove it
 
-## The Five-Predicate Harness
-
-For "plainer" — and, by extension, "cleaner," "simpler," "more idiomatic" — reduce to:
-
-| Predicate             | Prose instantiation                              | Code instantiation                                                    |
-|-----------------------|--------------------------------------------------|-----------------------------------------------------------------------|
-| Surface size          | token / word count                               | token / line count                                                    |
-| Lexical rarity        | word frequency in the working corpus             | symbol frequency in stdlib, ecosystem, this codebase                  |
-| Prior-knowledge cost  | allusions, jargon, named references              | non-stdlib imports, language idioms, named patterns                   |
-| Indirection depth     | nested clauses, metaphor or pronoun chains       | wrapper layers, higher-order calls, decorator stacks, macro expansion |
-| Intermediate opacity  | elided reasoning steps                           | unnamed intermediate values, chained expressions                      |
-
-### Reduction rule
-
-`plainer(a, b)` holds iff `a ≤ b` on all five predicates and strictly `<` on at least one. When predicates trade — `a` wins on size, `b` wins on indirection — the harness returns **no winner**, not a guess.
-
-### When the harness returns no winner
-
-Do not pick by taste. Either:
-
-- Follow an explicit axis preference from the input ("prefer the shorter," "prefer the more common").
-- Surface the tradeoff and ask the user (CLAUDE.md Bright Line 4).
-
-## Register Check
-
-When the input and the proposal occupy incompatible registers, surface the mismatch rather than smooth it over. Register shows up as per-clause lexical and syntactic shifts in the provided text. The check operates on pairs of texts (input ↔ proposal), not on the agent's disposition.
-
-## Usage Contract
-
-Evaluative words in outputs handed to another reader must either:
-
-- Reduce through this harness, or through an explicitly named alternative decomposition, or
-- Be removed.
-
-Words that resist decomposition amount to taste. Handing taste to a reader as an instruction disrespects them.
-
-Exemption: internal drafts, exploratory thinking, and reasoning the agent holds for itself escape this contract. The contract applies at the boundary — when the output is handed to another reader.
+    a word that resists decomposition == taste;
+    handing taste to a reader as an instruction disrespects them
+  }
+}
+```
