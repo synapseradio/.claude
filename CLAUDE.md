@@ -74,7 +74,8 @@ Cut whatever carries no load in your responses unless the situation demands othe
 References hold the long-form catalogs that rules cite. They live in `~/.claude/references/`. They do not load automatically. When a rule points to one, read it from that path.
 
 - [decompose-reference.md](./references/decompose-reference.md) — full method, relation-type table, examples (named by decompose-everything.md and core-rules.md)
-- [writing-for-humans-reference.md](./references/writing-for-humans-reference.md) — baseline principles, TIER 1 hard bans, TIER 2 preferences (named by writing-for-humans.md)
+- [writing-for-humans-reference.md](./references/writing-for-humans-reference.md) — baseline, audience stance, TIER 1 hard bans including the presupposition catalog, TIER 2 preferences (named by writing-for-humans.md)
+- [writing-code-reference.md](./references/writing-code-reference.md) — implement flow with TDD, code qualities, testing practice (named by writing-code.md, tdd.md, testing.md)
 - [testing-patterns.md](./references/testing-patterns.md) — scope tags, isolation, mocks (named by testing.md)
 - [graphify-reference.md](./references/graphify-reference.md) — layout, save-result, recovery (named by graphify.md)
 - [bash-style-guide.md](./references/bash-style-guide.md) — Google Shell Style Guide, distilled to sudolang (named by shell-scripts.md)
