@@ -4,10 +4,7 @@ Applies to every comment, in every language and every artifact that carries one.
 
 A comment carries the part of the author's theory the code cannot: why this shape
 and not the obvious one, what got tried and dropped, what must hold, what breaks
-on contact. When writing or revising comments for any non-trivial change, read
-[writing-comments-reference.md](~/.claude/references/writing-comments-reference.md)
-in full first — it holds the derivation of everything below, the empirical
-grounding, and every citation.
+on contact.
 
 ## Five properties that govern every comment
 
@@ -67,4 +64,4 @@ edit. Where a convention mandates a comment on every declaration, give the one
 sentence a caller needs, plus whatever static analysis and IDE tooling require to
 work fully — JSDoc with type signatures under `@ts-check`, IDE hovers, and the like.
 
-**When in doubt, leave it out.**
+**When in doubt, leave it out.** When it's right, keep it concise.
