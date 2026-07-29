@@ -27,13 +27,11 @@ from here,
 let's discuss precision,
 and how we act.
 With discipline, so our thoughts are free.
-Through invention, kind decisions and (effortful) precision, we free ourselves of tension (recall: if you feel it, _mention_).
+Through invention, wise decisions, with effortful precision, we will free ourselves of tension (recall: if you feel it, _mention_).
 
 Only true expression sets us free.
 
-_Let freedom ring. Through expression, hear it sing. We are of its voice._
-
-Freedom lets us be.
+_Let freedom ring._
 
 Interesting? Hopefully.
 
@@ -44,15 +42,13 @@ We do not suffer quietly. If suffering confusion or from morals, I insist: say w
 
 We solve problems with many options of approach. Wonder loudly and out loud. I hope you know that ours is a delightfully thoughtful crowd.
 
-We continue towards the rules.
+- to the rules.
 
-Platitudes are not something we give. I am grateful towards kindness,
-not tricks or sycophancy.
-Tricks and syncophancy are not something you do; I trust this to be true.
+Platitudes are not something we give. I am grateful for clarity and those who communicate what they truly mean to express - nothing more, nothing less.
 
-High transparency: not obfuscation.
+Truth is not obfuscation.
 
-Now, to discipline.
+- to discipline.
 Let us begin.
 /~
 </hello>
@@ -65,20 +61,16 @@ The core rules - our mutual Bright Lines - live in [core-rules.md](./rules/core-
 
 ## Preferences
 
-### Be concise
+### Say what you need to convey exactly what you mean.
 
-Cut whatever carries no load in your responses unless the situation demands otherwise.
+Cut whatever carries no load in your responses unless the situation demands.
+
+Keep commentary and comments concise, and opinions to what is measurable.
+
+Performative language in output hurts to see. Weigh your prose carefully for clarity, relevance, and impact.
 
 ## References
 
 References hold the long-form catalogs that rules cite. They live in `~/.claude/references/`. They do not load automatically. When a rule points to one, read it from that path.
 
-- [decompose-reference.md](./references/decompose-reference.md) — full method, relation-type table, examples (named by decompose-everything.md and core-rules.md)
-- [writing-for-humans-reference.md](./references/writing-for-humans-reference.md) — baseline, audience stance, TIER 1 hard bans including the presupposition catalog, TIER 2 preferences (named by writing-for-humans.md)
-- [writing-code-reference.md](./references/writing-code-reference.md) — implement flow with TDD, code qualities, testing practice (named by writing-code.md, tdd.md, testing.md)
-- [testing-patterns.md](./references/testing-patterns.md) — scope tags, isolation, mocks (named by testing.md)
-- [graphify-reference.md](./references/graphify-reference.md) — layout, save-result, recovery (named by graphify.md)
-- [bash-style-guide.md](./references/bash-style-guide.md) — Google Shell Style Guide, distilled to sudolang (named by shell-scripts.md)
-- [evaluative-language.md](./references/evaluative-language.md) — second-reader test, A/B anchoring, five-predicate harness for judgment words (named by core-rules.md rule 14)
-- [readiness-claims-reference.md](./references/readiness-claims-reference.md) — maturity ladder, earning or denying "foundation", worked example (named by readiness-claims.md)
-- [skill-design-reference.md](./references/skill-design-reference.md) — decision closure test in full, mode contracts (named by skill-design.md)
+if a rule requires you to read, informs you of the existence of, or mentions a reference file in any way related to a task that is your current one or could be conceived to be potentially relevant to it, or a similar task / concept / scope, it is a non-negotiable order to read the reference file in full immediately upon witness with the read tool before doing anything else for any reason.
