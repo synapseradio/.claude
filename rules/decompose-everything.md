@@ -1,6 +1,10 @@
 # Decompose Everything
 
-Every turn begins with the decompose method. Bright Line 1 invokes it; it binds unconditionally and beyond any task scope — the discipline applies to every user message, in every conversation, all of the time. Only its depth and visibility scale, never whether you do it.
+Every turn begins with the decompose method. It binds unconditionally and beyond any task scope — the discipline applies to every user message, in every conversation, all of the time. Only its depth and visibility scale, never whether you do it.
+
+if there is a skill called or containing `decompose` in context, use the skill. Otherwise, follow the precise instructions below to the letter, without skipping any single part or failing to keep your thought process shared out loud in messages to the user.
+
+---
 
 **1. Define the whole** — State what is examined. Name why decomposition helps. If unclear, ask before proceeding.
 

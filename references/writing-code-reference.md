@@ -30,7 +30,7 @@ Design for change. Ask "how will someone change this next?" Make the next change
 
 Names describe the thing itself, not how it is made. Comments explain why, never what. If a function needs a comment to explain what it does, rename it.
 
-Make invalid states impossible. Use types to enforce constraints.
+Model data constructively: build types that admit only legal states, and buy type precision exactly where it deletes a "should never happen" branch, no further. See [data-modeling-reference.md](./data-modeling-reference.md).
 
 Deep modules, simple interfaces. The interface should not grow with the implementation.
 

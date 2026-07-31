@@ -13,3 +13,11 @@ executor that loads it inherits those decisions; every decision the
 skill leaves open must close from what the skill provides. For that
 closure test in full, and for the mode contracts, read
 [skill-design-reference.md](~/.claude/references/skill-design-reference.md).
+
+When creating a skill or authoring or redesigning its content, run the
+six-question authoring pipeline — research sweep, imaginary total
+reference, superset synthesis, collider, manifestation design,
+encoding and naming — from
+[skill-authoring-pipeline.md](~/.claude/references/skill-authoring-pipeline.md).
+Content earns its way in through that pipeline; design mode decides
+what to build, the pipeline governs what goes inside it.

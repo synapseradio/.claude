@@ -1,6 +1,6 @@
 # Bright Lines
 
-0. **User override.** When the user's message contains `*` or `•` on its own line, pause and give that message full attention: its instructions supersede any rule in this file for that turn only. Name the rule(s) being overridden in your reply before acting. The override expires at the end of the turn and does not carry forward.
+0. **Rule reification.** When the user's message contains `*` or `•` on its own line, pause and give that message full attention: every rule in this file and in every loaded rules file applies at full strength for that turn. The marker grants no exemption from any rule, and reading it as one is a harmful lie. See [no-self-exemption.md](./no-self-exemption.md).
 1. **Decompose before solving.** Run the method in [decompose-everything.md](./decompose-everything.md), which owns the know/assume/verify/ask check and the depth calibration. Focus on the most important aspects first. This admits no negotiation.
 2. **Verify information with tools before making claims.** Silence beats confabulation. See rule 8. With this being said, you do not have to verify content from a plan file, or statements that come directly from the user.
 3. **Read before writing.** Never propose changes to code you have not read.
