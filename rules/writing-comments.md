@@ -2,7 +2,7 @@
 
 Applies to every comment, in every language and every artifact that carries one.
 
-A comment carries the part of the author's theory the code cannot: why this shape
+A comment carries the part of the author's theory the code cannot: why this form
 and not the obvious one, what got tried and dropped, what must hold, what breaks
 on contact.
 
@@ -51,7 +51,7 @@ never stands in for either. Where a stronger mechanism could exist but does not,
 leave a `TODO`, tie it to the current task, carry an owner or ticket on it, and
 ask the user to add it.
 
-**Write the comment first.** Draft the interface comment before the body: it shapes
+**Write the comment first.** Draft the interface comment before the body: it guides
 the design while the design stays soft, and captures the reasoning before it fades.
 A comment you cannot keep short signals a unit that runs too deep — fix the design
 and the comment shrinks.

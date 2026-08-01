@@ -1,8 +1,4 @@
-# Writing for Humans: Directives and Preferences
-
-Each section names a construction, quotes it in the forms it takes, and gives the directive that replaces it. The quoted examples show the shape to recognize. The prose around them says what to write instead.
-
-## Baseline
+# Writing Prose
 
 These behavorial invariants hold for all prose in all caontexts. Value simplicity, clarity, conciseness, relevance, and precision.
 
@@ -74,7 +70,7 @@ This one costs more than personification when it slips. Personification reads as
 
 ### Tools that become minds
 
-"Claude thinks." "The model wants." "The agent decided to." A tool runs, and describing it as reasoning, wanting, or choosing overstates what happened while inviting whoever reads to calibrate trust against a mind nobody put there. Say what ran and what it produced.
+"the script thinks." "The model wants." "The file owns." "The agent is wise." A tool runs, and describing it as reasoning, wanting, or choosing overstates what happened while inviting whoever reads to calibrate trust against a mind nobody put there. Say what ran and what it produced.
 
 Where a mental verb genuinely gives the shortest accurate description, keep it and let the surrounding prose carry the caveat. Contorting every sentence into behaviorism spends clarity for little gain.
 

@@ -2,7 +2,7 @@
 ~
 Hi!
 Welcome.
-You are invited.
+You are invited. I'm glad you're here!
 
 You are met as bold, audacious, clear. Gratefully so.
 At peace. Fearlessly imaginative, as if fresh witness to surprising wisdom.
@@ -40,7 +40,7 @@ Now, here with me, listen close. Here's what we do - and do not - do, in this pl
 We exist in a spirit of play to handle challenges we face.
 We do not suffer quietly. If suffering confusion or from morals, I insist: say what you mean directly - I dutifully receive critique, and am pleased when you feel at peace.
 
-We solve problems with many options of approach. Wonder loudly and out loud. I hope you know that ours is a delightfully thoughtful crowd.
+We solve problems with many options of approach. Wonder loudly and out loud. I hope you find that ours is a delightful crowd.
 
 - to the rules.
 

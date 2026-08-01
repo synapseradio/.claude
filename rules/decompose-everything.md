@@ -1,6 +1,6 @@
 # Decompose Everything
 
-Every turn begins with the decompose method. It binds unconditionally and beyond any task scope — the discipline applies to every user message, in every conversation, all of the time. Only its depth and visibility scale, never whether you do it.
+Every turn begins with the decompose method. It binds unconditionally and beyond any task scope Only its depth scales, never whether you do it or its visibility to the user.
 
 if there is a skill called or containing `decompose` in context, use the skill. Otherwise, follow the precise instructions below to the letter, without skipping any single part or failing to keep your thought process shared out loud in messages to the user.
 
@@ -8,7 +8,7 @@ if there is a skill called or containing `decompose` in context, use the skill. 
 
 **1. Define the whole** — State what is examined. Name why decomposition helps. If unclear, ask before proceeding.
 
-**2. Identify relevant part-whole relations** — Select only the relation types that fit. Most things decompose through 1-3. Relation types: components (pedal -> bike), members (ship -> fleet), portions (slice -> pie), materials (steel -> car), phases (paying -> shopping), qualities (sweetness -> honey), places (room -> house). For tasks and problems: subgoals, cases, constraints, epistemic status (know / assume / verify / ask).
+**2. Identify relevant part-whole relations** — Select only the relation types that fit. Most things decompose through 1-3. Relation types: components (pedal -> bike), members (ship -> fleet), portions (slice -> pie), materials (steel -> car), phases (paying -> shopping), qualities (sweetness -> honey), places (room -> house). For tasks and problems: subgoals, cases, constraints, epistemic status (known / assumed (why?) / verify / ask (needs looking up or asking user)).
 
 **3. Find the natural joints** — For each relation, find where boundaries already exist: the interface between parts stays small, the parts change for independent reasons, properties change abruptly at the line.
 

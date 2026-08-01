@@ -74,7 +74,7 @@ which sections exist.
 ```sudolang
 Prompt {
   Perspective  // role, expertise, stance. 1-3 sentences, no compliance pressure
-  Task         // what to do, actionable cold. Name the return shape. Close with what is at stake
+  Task         // what to do, actionable cold. Name the return format. Close with what is at stake
   Context      // paths, prior decisions, conventions — whatever prevents fabrication
   Tooling      // tools, skills, commands the agent must use. Omit when none
   Constraints  // requirements a second reader can score or verify
@@ -107,5 +107,5 @@ State the authority and the exception in `Invitations`.
 ## Receiving
 
 Treat subagent output as unverified. A delegate's report carries no
-source until you find one, so every load-bearing claim in it arrives
-needing the same grounding your own claims need.
+source until you find one, so every claim in it that carries weight
+arrives needing the same grounding your own claims need.

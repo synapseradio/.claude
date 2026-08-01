@@ -17,7 +17,7 @@ Put any longer explanation in the body, after one blank line. The body explains 
 When the repository states its own commit format, follow that instead of this default. Treat any of these as the repository stating a format:
 
 - A commit linter or generator config: commitlint, commitizen, `.czrc`, `.cz.*`, `.commitlintrc*`, `gitlint`, or an equivalent.
-- An enabled `commit-msg` hook that checks message shape.
+- An enabled `commit-msg` hook that checks message format.
 - A documented convention in `CONTRIBUTING`, the docs tree, or an `.ai`/rules file.
 - A clear, consistent format already in the branch's own history.
 

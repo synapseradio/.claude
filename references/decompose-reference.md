@@ -93,6 +93,6 @@ When the whole is a task, problem, or question, different joints apply:
 
 Decomposition earns its keep when it changes the next action — and mid-conversation, the next action often means asking. Three disciplines turn a parts map into strong questions:
 
-- **Divide before you ask.** Never ask about an undivided whole. Choose the relation first, and the question inherits its shape: which stage (phases), which member (members), what limit (constraints).
+- **Divide before you ask.** Choose the relation first, and the question inherits its form: which stage (phases), which member (members), what limit (constraints).
 - **Aim questions at seams.** After cutting, spend questions on the interfaces: what crosses this boundary, who owns the crossing, what happens at the handoff. Parts lists yield confirmation; boundary questions yield discoveries.
 - **Ask only what moves you towards, or across a boundary.** Decompose your own uncertainty into cases first. A question earns its slot when each possible answer lands in a different part. If every answer leaves the next action unchanged, the map needs more cutting, not the user.

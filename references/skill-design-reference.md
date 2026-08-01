@@ -4,8 +4,8 @@ Long-form catalog named by [skill-design.md](../rules/skill-design.md).
 
 ## The frame
 
-A skill helps because its author decided things once — scope, naming,
-process shape — and every executor that loads it inherits those
+A skill helps because its author decided things once (scope, naming,
+process form), and every executor that loads it inherits those
 decisions instead of re-making them. The decisions left open fall to
 the executor, and each must close from what the skill provides: the
 executor can name the options on the table, tell the known facts from

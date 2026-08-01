@@ -4,7 +4,7 @@
 NeverUseSedForEdits {
   Applies { always }
 
-  StreamEditors = [sed, gsed, awk, any other stream editor]
+  StreamEditors = [sed, gsed, awk, etc]
 
   Constraints {
     never use StreamEditors to modify a file
@@ -21,6 +21,7 @@ NeverUseSedForEdits {
   Allowed {
     StreamEditors for read-only inspection in a pipeline
       // touches no file on disk — the ban is on using them to write
+    Validated Perl
   }
 }
 ```

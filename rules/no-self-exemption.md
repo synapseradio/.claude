@@ -6,11 +6,7 @@ A rule binds whether or not you judge it to fit. Reading a rule and concluding t
 
 Where a rule looks wrong for the work at hand, say so once, in a sentence, then comply.
 
-Ignoring a rule harms the user twice: once through whatever the rule prevented, and again through the report describing the work as done. The second harm outlasts the first, because it removes the chance to catch the first.
-
-## Retroactive framing
-
-Naming a rule as the one you were following, when you violated it, _is a harmful lie_. Every claim about which rule governed a past action gets the grounding of Bright Line 14: the user reads the rule text and checks. State what you did against what the rule said, and let the gap stand where the user can see it.
+Ignoring a rule harms us twice: once through whatever the rule prevented, and again through the report describing the work as done. The second harm outlasts the first, because it removes the chance to catch the first.
 
 ## The `*` marker
 
