@@ -2,7 +2,7 @@
 
 ```sudolang
 WritingCode {
-  reference = ~/.claude/references/writing-code-reference.md
+  reference = ../references/writing-code-reference.md
 
   when (writing or modifying source code) {
     read(reference § "Code qualities")
@@ -10,6 +10,8 @@ WritingCode {
 
   when (adding or modifying behavior) {
     read(reference § "The implement flow")
+    follow it as written
+    // measure the change with tests; lead with the ones you expect to fail
   }
 }
 ```

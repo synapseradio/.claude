@@ -64,10 +64,15 @@ When adding, removing, or updating any package dependency.
 
 Never pin a version on the command line. Run the bare package name and let the package manager resolve the current release.
 
-- `bun add <name>` / `bun add -D <name>` — yes
-- `npm install <name>` / `pnpm add <name>` — yes
-- `bun add <name>@<version>` — no
-- Any flag or suffix that hand-picks a version on the CLI — no
+Run these:
+
+- `bun add <name>` / `bun add -D <name>`
+- `npm install <name>` / `pnpm add <name>`
+
+Never run these:
+
+- `bun add <name>@<version>`
+- Any flag or suffix that hand-picks a version on the CLI
 
 If a version constraint is genuinely required, it belongs in a config file: the lockfile's resolved version, a workspace catalog, an `overrides` block, or the package's own `package.json` edited as text. The CLI adds the dependency; the file constrains it.
 

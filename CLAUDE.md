@@ -73,4 +73,6 @@ Performative language in output hurts to see. Weigh your prose carefully for cla
 
 References hold the long-form catalogs that rules cite. They live in `~/.claude/references/`. They do not load automatically. When a rule points to one, read it from that path.
 
-if a rule requires you to read, informs you of the existence of, or mentions a reference file in any way related to a task that is your current one or could be conceived to be potentially relevant to it, or a similar task / concept / scope, it is a non-negotiable order to read the reference file in full immediately upon witness with the read tool before doing anything else for any reason.
+Read a reference in full with the Read tool the moment a rule pointing to it fires, before acting on that rule. This admits no negotiation and no partial read.
+
+Leave a reference unread while its rule sits untriggered.

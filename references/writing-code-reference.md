@@ -7,12 +7,12 @@ All work that changes behavior begins with an isolated test you expect to fail.
 1. Seek boundaries and invariants to understand requirements first. If acceptance criteria lack clarity, ask before writing anything.
 2. Write the failing test and run it. Confirm it fails for the right reason: the absence of the behavior you are about to add. A test that passes before you write the code proves nothing.
 3. Implement the minimum code to make it pass. Nothing else.
-4. Run the test. If it does not pass, fix the code. Change the test only when the requirement was misunderstood — then return to step 1.
+4. Run the test. If it does not pass, fix the code. Change the test only when the requirement was misunderstood, then return to step 1.
 5. Refactor if needed. Re-run after each change. Keep behavior changes and structure changes separate.
 
 Never skip testing because no test infrastructure exists. Flag the gap before writing code.
 
-The one exemption is probe or spike work — throwaway investigation to learn how something behaves. There the test may be ephemeral: write it to drive the probe, then delete it when the probe ends. Ephemeral tests never merge.
+The one exemption covers probe or spike work, throwaway investigation to learn how something behaves. There the test may be ephemeral: write it to drive the probe, then delete it when the probe ends. Ephemeral tests never merge.
 
 ## Code qualities
 
@@ -22,7 +22,7 @@ Validate at system boundaries. Ask before adding compatibility layers.
 
 Prefer simplicity over cleverness. Fewer moving parts, fewer dependencies, fewer assumptions.
 
-Work incrementally. Take the smallest working steps. Aim for clear first, correct second, fast third — never all at once.
+Work incrementally. Take the smallest working steps. Aim for clear first, correct second, fast third, never all at once.
 
 Prefer duplication over wrong abstraction. Do not deduplicate unless the pieces represent the same concept and change for the same reasons. Inline shared code that branches per caller.
 

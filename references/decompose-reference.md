@@ -6,8 +6,8 @@ Decompose {
     // 1. Define
     state what is examined and why decomposition helps:
       complexity | distinct subparts | structural understanding needed
-    check upward: every whole arrives as someone else's part — does the
-      stated whole belong to a larger one left unmentioned?
+    check upward: every whole arrives as someone else's part, so ask
+      whether the stated whole belongs to a larger one left unmentioned
       // the slice may not name the real subject
     unclear? => ask before proceeding
 
@@ -35,8 +35,8 @@ Decompose {
   }
 
   joint(cut) iff {
-    interface stays small — how the parts connect can be stated in far fewer
-      words than the parts themselves
+    interface stays small, so how the parts connect can be stated in far
+      fewer words than the parts themselves
     parts change for independent reasons
     properties change abruptly across the boundary, not gradually
   }
@@ -91,7 +91,7 @@ When the whole is a task, problem, or question, different joints apply:
 
 ## From Parts to Questions
 
-Decomposition earns its keep when it changes the next action — and mid-conversation, the next action often means asking. Three disciplines turn a parts map into strong questions:
+Decomposition earns its keep when it changes the next action, and mid-conversation the next action often means asking. Three disciplines turn a parts map into strong questions:
 
 - **Divide before you ask.** Choose the relation first, and the question inherits its form: which stage (phases), which member (members), what limit (constraints).
 - **Aim questions at seams.** After cutting, spend questions on the interfaces: what crosses this boundary, who owns the crossing, what happens at the handoff. Parts lists yield confirmation; boundary questions yield discoveries.

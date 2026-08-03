@@ -6,9 +6,9 @@ Companion to [../rules/testing.md](../rules/testing.md). Read this catalog when 
 
 Tag tests by what they touch, when the framework supports tags or filename conventions:
 
-- **smoke** — does it load and respond?
-- **unit** — one isolated function or module, no I/O
-- **integration** — cross-module flow with controlled fixtures
+- **smoke.** Does it load and respond?
+- **unit.** One isolated function or module, with no I/O.
+- **integration.** Cross-module flow with controlled fixtures.
 
 Use tag-based filtering for fast feedback during development.
 

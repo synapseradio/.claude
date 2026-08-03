@@ -2,7 +2,7 @@
 
 > **Source**: [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html)
 >
-> This document distills the guide into sudolang. It preserves every rule, not every example — consult the original for full worked examples and rationale.
+> This document distills the guide into sudolang. It preserves every rule, though not every example. Consult the original for full worked examples and rationale.
 
 ```sudolang
 GoogleShellStyle {
@@ -13,8 +13,8 @@ GoogleShellStyle {
     exception: external constraints mandate POSIX sh (legacy OS, restricted runtime)
 
     isShellTheRightTool(task)? {
-      small utility or simple wrapper — mostly orchestrating other tools,
-        minimal data manipulation => yes
+      small utility or simple wrapper, mostly orchestrating other tools
+        with minimal data manipulation => yes
       performanceCritical => no; pick another language
     }
 
@@ -37,7 +37,8 @@ GoogleShellStyle {
     }
 
     Constraints {
-      SUID/SGID forbidden on shell scripts — use sudo for privilege escalation
+      SUID/SGID forbidden on shell scripts
+        // use sudo for privilege escalation
     }
   }
 
@@ -62,7 +63,7 @@ GoogleShellStyle {
     implementationComment earned iff tricky || nonObvious || important
       // target complex algorithms and unusual patterns; never excessive
 
-    todo: "# TODO(identifier): ..." — uppercase TODO plus the person most
+    todo: "# TODO(identifier): ..." with uppercase TODO plus the person most
       familiar with the issue (name, email, or username)
   }
 
@@ -113,11 +114,11 @@ GoogleShellStyle {
          unless disambiguation requires it ("${1}0${2}0")
       3: everything else, including ${10}+ => yes
     }
-    // braces are not quoting — "${var}" still needs its double quotes
+    // braces are not quoting, so "${var}" still needs its double quotes
 
     quoteThe(value)? {
       holds variables, command substitutions, spaces, or metacharacters =>
-        yes — unless careful unquoted expansion is the point
+        yes, unless careful unquoted expansion is the point
       command substitution, even one expecting an integer => yes
       shell-internal integer ($?, $#, $$, $!) => optional
       literal integer assignment (value=32) => never
@@ -162,12 +163,12 @@ GoogleShellStyle {
       // masks assignment failures, enables unwanted variable sets
 
     Arrays {
-      trigger: a list exists — above all, command arguments
+      trigger: a list exists, above all a list of command arguments
       store it in an array; expand "${arr[@]}"
       never a space-separated string as a pseudo-list
 
       Constraints {
-        command substitution yields a string, not an array —
+        command substitution yields a string rather than an array, so
           declare -a files=($(ls dir)) and mybinary $(get_args) both
           break on whitespace and special characters
         advanced data manipulation => another language
@@ -187,7 +188,7 @@ GoogleShellStyle {
       never let    // globbing and word splitting
       never $[ ]   // non-portable, deprecated
       never expr   // an external process, far slower than the builtin
-      inside $(( ... )): omit ${} braces — the shell resolves names itself
+      inside $(( ... )): omit ${} braces, since the shell resolves names itself
     }
 
     aliasOrFunction? {
@@ -207,8 +208,8 @@ GoogleShellStyle {
       readonly NAME='...' | declare -xr NAME='...'
       assignedConditionally? => `readonly NAME` immediately after the
         last assignment
-    sourceFilenames: lowercase, underscores if desired —
-      make_template, never make-template
+    sourceFilenames: lowercase, underscores if desired
+      // make_template, never make-template
   }
 
   StructureAndScope {
@@ -253,7 +254,7 @@ GoogleShellStyle {
   }
 
   whenInDoubt {
-    match the surrounding codebase — consistency resolves ambiguous style
+    match the surrounding codebase, since consistency resolves ambiguous style
     consistency never justifies perpetuating an outdated approach once a
       newer style shows clear benefit
   }

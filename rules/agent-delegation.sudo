@@ -1,0 +1,17 @@
+Prompt {
+  Perspective  // role, expertise, motivational sources (1-3), why the agent was asked out of infinite choices to participate for this task.
+  Task         // what to do, actionable cold. Name the parseable return format. ensure agent knows which tool to call when they are done.
+  Context      // situation, paths, prior decisions, conventions: whatever prevents fabrication, duplication, egregious , states of confusion or tension for the agent.
+  Tooling      // Agentic: tools, skills, commands the agent MUST use. Deterministic: tools, scripts, hooks the agent MAY use. (both none)?:->omit.
+  Constraints  // Invariants, Boundaries, Stipulations, Requisites, Limitations.
+               // in a fan-out: What this delegate does NOT cover.
+  Invitations  // from(valent qualia) -> discretion
+
+  consider(model: via('./agent-delegation.md')) {
+    stronger -> precisely relevant value(s)•perspective•position•focus•intent, selective unifying Constraints, careful Invitations  
+    weaker -> precisely relevant context and constraints 
+  }
+
+  emptySection -> one line naming the absence
+  never         -> filler, per-tier section variants, fabricated paths or tools
+}

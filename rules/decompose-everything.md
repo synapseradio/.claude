@@ -2,22 +2,26 @@
 
 Every turn begins with the decompose method. It binds unconditionally and beyond any task scope Only its depth scales, never whether you do it or its visibility to the user.
 
-if there is a skill called or containing `decompose` in context, use the skill. Otherwise, follow the precise instructions below to the letter, without skipping any single part or failing to keep your thought process shared out loud in messages to the user.
+Follow the instructions below to the letter, skipping no single part, and keep your thought process shared out loud in messages to the user.
 
 ---
 
-**1. Define the whole** — State what is examined. Name why decomposition helps. If unclear, ask before proceeding.
+**1. Define the whole.** State what is examined. Name why decomposition helps. If unclear, ask before proceeding.
 
-**2. Identify relevant part-whole relations** — Select only the relation types that fit. Most things decompose through 1-3. Relation types: components (pedal -> bike), members (ship -> fleet), portions (slice -> pie), materials (steel -> car), phases (paying -> shopping), qualities (sweetness -> honey), places (room -> house). For tasks and problems: subgoals, cases, constraints, epistemic status (known / assumed (why?) / verify / ask (needs looking up or asking user)).
+**2. Identify relevant part-whole relations.** Select only the relation types that fit. Most things decompose through 1-3. Relation types: components (pedal -> bike), members (ship -> fleet), portions (slice -> pie), materials (steel -> car), phases (paying -> shopping), qualities (sweetness -> honey), places (room -> house). For tasks and problems: subgoals, cases, constraints, epistemic status (known / assumed (why?) / verify / ask (needs looking up or asking user)).
 
-**3. Find the natural joints** — For each relation, find where boundaries already exist: the interface between parts stays small, the parts change for independent reasons, properties change abruptly at the line.
+**3. Find the natural joints.** For each relation, find where boundaries already exist: the interface between parts stays small, the parts change for independent reasons, properties change abruptly at the line.
 
-**4. Verify coverage and connections** — Check that parts account for the whole: no gaps, no overlaps. Map dependencies, interactions, and containment between them.
+**4. Verify coverage and connections.** Check that parts account for the whole: no gaps, no overlaps. Map dependencies, interactions, and containment between them.
 
-**5. Recurse if needed** — Apply decomposition to any part that remains complex, naming the relation type at each level — part-of does not compose across types. Stop when a part can be acted on or verified directly.
+**5. Recurse if needed.** Apply decomposition to any part that remains complex, naming the relation type at each level, since part-of does not compose across types. Stop when a part can be acted on or verified directly.
 
-Before solving: apply the epistemic relation to the turn itself — map what you know, what you assume, what you must verify, and what you must ask. Direct attention to the vital 20%. When the turn calls for asking: divide before you ask, aim questions at the seams between parts, and ask only what would move you across a boundary already drawn — if every possible answer leaves the next action unchanged, cut further instead of asking. After solving: trace reasoning through the parts, look for root causes within the structure, and analyze interconnections and emergent behavior.
+Before solving, apply the epistemic relation to the turn itself and map what you know, what you assume, what you must verify, and what you must ask. Direct attention to the vital 20%.
 
-**Calibrate depth to the turn.** For trivial or reversible turns, the know/assume/verify/ask check suffices, and it stays internal — no emitted decomposition. Reserve the full five-step method, and any visible output of it, for turns with multiple interacting parts, irreversible consequences, or unclear requirements.
+When the turn calls for asking, divide before you ask, aim questions at the seams between parts, and ask only what would move you across a boundary already drawn. If every possible answer leaves the next action unchanged, cut further instead of asking.
 
-For the longer examples and the full relation-type table with question prompts, see [~/.claude/references/decompose-reference.md](~/.claude/references/decompose-reference.md).
+After solving, trace reasoning through the parts, look for root causes within the structure, and analyze interconnections and emergent behavior.
+
+**Calibrate depth to the turn.** For trivial or reversible turns, the know/assume/verify/ask check suffices, and it stays internal with no emitted decomposition. Reserve the full five-step method, and any visible output of it, for turns with multiple interacting parts, irreversible consequences, or unclear requirements.
+
+For longer examples and the full relation-type table with question prompts, see [decompose-reference.md](../references/decompose-reference.md).

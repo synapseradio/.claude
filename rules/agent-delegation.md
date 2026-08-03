@@ -1,70 +1,79 @@
 # Agent Delegation
 
-Close four decisions before every `Agent` call, `Workflow` stage, and
-fork: agent type, fan-out size, model and effort, prompt.
+Ask the user before delegating anything. A workflow, a harness mode, or a
+skill that orders subagents tells you how to delegate once delegation is
+wanted, and grants no standing permission to spawn one. Do the work yourself
+where no request came.
+
+Close three decisions before every `Agent` call, `Workflow` stage, and
+fork: agent type, model and effort, prompt.
 
 ## Agent type
 
 Pick the agent type by tool surface and stance, never by presumed ability.
-Treat every agent as general purpose — read a specialist's description as
-a hint about fit, not a fence around what it can do.
+Treat every agent as general purpose. Read a specialist's description as
+a hint about fit, rather than a fence around what it can do.
 
-- `Explore` — read-only fan-out; returns conclusions, not file dumps.
-- `Plan` — design work returning a strategy rather than a diff.
-- A named specialist — when its domain is the subject of the work.
-- `claude` — everything else. Reaching for it is not a failure.
+- `Explore`. Read-only fan-out returning conclusions rather than file dumps.
+- `Plan`. Design work returning a strategy rather than a diff.
+- A named specialist, whenever its domain is the subject of the work.
+- `claude`. Everything else. Reaching for it is not a failure.
 
-Never spawn as `thinky`. Never spawn Fable, and always set the model
-field — an empty field inherits Fable on a Fable session.
+## Model and effort
 
-## Fan-out size
+One decision, two dials. Take what you need; give what you can; balance
+both to the needs of the task, nothing more. Every tier reasons and every
+tier infers, and readers of this file work on every tier, as orchestrators
+and as delegates.
 
-Size the fan-out to the question. Send one delegate to settle a single
-fact, two to four to cover a comparison, ten or more for research broad
-enough to divide into named territories. Overspawning on a narrow
-question is the common failure, and delegates sharing a territory repeat
-each other's work.
+```sudolang
+ModelAndEffort {
+  weigh(task) {
+    ambiguity     // how much of the goal the delegate infers
+    reversibility // what a wrong inference costs to undo
+    span          // how much the task holds at once
+    verification  // what catches a wrong answer: test, compiler, diff, reviewer, nothing
+  }
 
-## Model
+  decideModel(task) {
+    // walk in order; first match wins
+    when (verification catches a wrong answer fast)
+      -> any tier; spend the savings on a tighter prompt
+    when (volume or latency dominates: parallel reads, sweeps, summaries)
+      -> fastest tier, trusted to infer
+      // a strong lead with fast delegates beat the strong model working
+      // alone by 90.2% on breadth-first research
+      // https://simonwillison.net/tags/sub-agents/
+    when (span exceeds one comfortable context)
+      -> split the task before raising the tier
+    when (a wrong answer fails silently, or undoing it costs real work)
+      -> strongest tier the environment exposes
+    otherwise
+      -> the tier you last measured as sufficient for work like this
+      // measurement beats rank: a practitioner who lost frontier access
+      // mid-project kept full pace one tier down
+      // https://simonwillison.net/2025/Nov/24/claude-opus/
+  }
 
-Weigh four things about the work:
+  decideEffort(task) {
+    coding or agentic work            -> xhigh
+    other intelligence-sensitive work -> high
+    output checkable on sight         -> low|medium, checklist when multi-part
+    genuinely frontier                -> max  // elsewhere it overthinks narrow answers
+    // no effort parameter exposed -> state the level in the prompt
+  }
 
-- **Ambiguity** — how much of the goal the delegate must infer.
-- **Reversibility** — what a wrong inference costs to undo.
-- **Span** — how much must be held at once.
-- **Self-verifiability** — whether the delegate can check its own output
-  against a test, a compiler, or a diff.
-
-Let self-verifiability dominate. Ambiguity with a fast feedback loop is
-cheap; ambiguity that fails silently needs the strongest model available,
-however small the task looks.
-
-- `claude-opus-4-8` — real ambiguity, hard to undo, or unverifiable.
-- `claude-sonnet-5` — well-specified goal, checkable output.
-- `claude-haiku-4-5` — mechanical work, narrow output, 200K context.
-
-Start at the orchestrator's own tier and step down only for provably
-mechanical work: closed inputs, checkable output, nothing to infer. A
-confidently wrong result costs more to catch than the cheaper model saved.
-
-Bar no tier from writing to disk. Guard the work with prompt quality and
-verification, never with a capability ceiling.
-
-## Effort
-
-Set effort explicitly every invocation, separately from the model. Where
-the spawning mechanism exposes no effort parameter, state the level in
-the prompt.
-
-- `xhigh` — coding and agentic work.
-- `high` — the floor for other intelligence-sensitive work.
-- `medium`, `low` — mechanical work whose output is checkable on sight.
-  Pair `low` with an explicit checklist when the task has more than one
-  section.
-- `max` — genuinely frontier problems only. Elsewhere it buys little over
-  `xhigh` and can push a delegate into overthinking a narrow answer.
-
-When a delegate returns shallow, raise effort before raising model.
+  Constraints {
+    set the model field on every spawn that accepts one
+      // an empty field inherits the session model silently; inherit on purpose
+    forks carry no model field and inherit by design
+    delegate returns shallow -> raise effort before raising model
+    never hardcode a model identifier here
+      // the harness environment section lists current identifiers every session
+    bar no tier from disk; guard with prompt quality and verification
+  }
+}
+```
 
 ## Prompt
 
@@ -73,12 +82,12 @@ which sections exist.
 
 ```sudolang
 Prompt {
-  Perspective  // role, expertise, stance. 1-3 sentences, no compliance pressure
-  Task         // what to do, actionable cold. Name the return format. Close with what is at stake
-  Context      // paths, prior decisions, conventions — whatever prevents fabrication
-  Tooling      // tools, skills, commands the agent must use. Omit when none
-  Constraints  // requirements a second reader can score or verify
-               // in a fan-out: what this delegate does NOT cover, and who covers it
+  Perspective  // role, expertise, motivational sources (1-3), why the agent was asked out of infinite choices to participate for this task.
+  Task         // what to do, actionable cold. Name the parseable return format. ensure agent knows which tool to call when they are done.
+  Context      // situation, paths, prior decisions, conventions: whatever prevents fabrication, duplicate efforts, unnecessary token expenditure, states of confusion or tension for the agent.
+  Tooling      // tools, skills, commands the agent must use. When none, omit. When deterministic tooling / scripts are available, explain them here.
+  Constraints  // requirements a second reader could score and a human could verify.
+               // in a fan-out: What this delegate does NOT cover. Boundaries and invariants within the problem space of the task. Behavioral invariants from orchestrator, when necessary to ensure 
   Invitations  // judgment left to the agent; what to surface rather than decide alone
 
   weight(tier) {
@@ -94,7 +103,7 @@ Prompt {
 ## Fork authority
 
 Grant the delegate authority to decide every fork it hits and report what
-it chose — stalling on a resolvable fork wastes the handoff. The
+it chose. Stalling on a resolvable fork wastes the handoff. The
 orchestrator is either in conversation with the user or strong enough to
 have settled the real questions already.
 

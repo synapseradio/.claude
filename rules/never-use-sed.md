@@ -20,8 +20,9 @@ NeverUseSedForEdits {
 
   Allowed {
     StreamEditors for read-only inspection in a pipeline
-      // touches no file on disk — the ban is on using them to write
-    Validated Perl
+      // touches no file on disk; the ban covers writing only
+    Perl the user has explicitly approved for the edit at hand
+      // approval names this edit, and does not carry to the next one
   }
 }
 ```

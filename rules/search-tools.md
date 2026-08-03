@@ -1,22 +1,26 @@
-# Web Search & External Tools
+# Web Search
 
 Always applies. Loaded on every turn.
 
-## "Look it up" means online search
+## "Look it up" means searching the live web
 
-When the user says "look it up", "look this up", "verify this", "check this", or any equivalent phrasing, they mean **search the live web with the Tavily skills**. They do not mean read local source, package files, or installed library code.
+Search the live web whenever the user says "look it up", "look this up", "verify this",
+"check this", or anything equivalent. Reading local source, package files, or installed
+library code answers a different question and leaves the request unmet.
 
-Reading source on disk does not count as looking it up. Local files carry no authority on upstream behavior, current APIs, or documented kwargs. If the user told you to look it up, open Tavily and search.
+Treat files on disk as carrying no authority over upstream behavior, current APIs, or
+documented arguments. A vendored copy records what someone installed once, never what a
+project ships now.
 
-Preferred Tavily skills, in order:
+## Choosing a tool
 
-- `tavily-search` for a quick fact or citation.
-- `tavily-extract` when you already have the URL and want clean content.
-- `tavily-research` for multi-source synthesis with citations.
+Prefer a purpose-built web research tool over a general fetch or search tool. Fall back on
+whatever general capability the environment offers only where nothing purpose-built exists.
 
-Only fall back to `WebSearch` or `WebFetch` when the environment offers no Tavily skill.
+Match the tool to the question. Run one search for a fact or a citation. Extract directly
+where you already hold the URL. Reach for multi-source synthesis where an answer needs
+several sources and citations to stand.
 
 ## Other rules
 
-- Do not include years in search queries unless the user provides one.
-- When a specialized search tool exists, use it instead of `WebSearch` or `WebFetch`.
+Omit years from search queries unless the user supplies one.

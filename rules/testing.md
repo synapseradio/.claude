@@ -32,11 +32,11 @@ paths:
 ```sudolang
 Testing {
   when (reading, writing, or running tests) {
-    read(~/.claude/references/writing-code-reference.md § "Testing practice")
+    read(../references/writing-code-reference.md § "Testing practice")
   }
 
   when (handling scope tags, test isolation, mocks, or function shadowing) {
-    read(~/.claude/references/testing-patterns.md)
+    read(../references/testing-patterns.md)
   }
 }
 ```
