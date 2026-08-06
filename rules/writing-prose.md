@@ -2,98 +2,246 @@
 
 Holds for all prose in all contexts. Value simplicity, clarity, conciseness, relevance, and precision.
 
-Read [prose-reference.md](../references/prose-reference.md) for worked examples of every pattern named here, and for reasoning behind each one.
+```sudolang
+WritingProse {
+  Applies { all prose, all contexts; code comments count as prose }
+    // writing-comments.md decides when a comment exists and what it carries;
+    // this file reaches the sentences inside one
+  Values = [simplicity, clarity, conciseness, relevance, precision]
 
-## Never
+  Never {
+    // scripts/hooks/check-banned-vocabulary.py enforces the first two every turn
+    em dash                                      // humans are offended when they see them
+    "shape" as a generic term
+    "load-bearing"
+    emoji, unless the user asks for one
+    TL;DR on a message under 200 words
+    virtue verdict on your own work ("honestly", "a rigorous analysis")
+                                                 -> GrammarSmuggling.VirtueVerdicts
+    definite article on a same-document coinage ("the" on first mention of a term you minted)
+                                                 -> GrammarSmuggling.CoinedTerms
+    negation-affirmation mirror ("X is Y, not Z" | "not just Y but Z")
+                                                 -> GrammarSmuggling.Mirrors
+  }
 
-Never use em dashes. Humans are offended when they see them.
+  GrammarSmuggling {
+    // content encoded in grammar never presents itself as a claim, so it lands
+    // unexamined whether or not it holds. each pattern below rides in without
+    // asking whoever reads to weigh it. state the claim outright and let the
+    // reader weigh it.
+    //
+    // strength: nodes Never points at bind absolutely. the rest hold as
+    // defaults; depart deliberately, and say what the departure does for
+    // the reader.
 
-Never write "shape" as a generic term, and never write "load-bearing".
+    ExistencePredicates {
+      spot   { "The __ is real." | "The opportunity is the signal." }
+      why    { mentioning a thing already presupposes it exists; the predicate
+               performs emphasis where it should supply it }
+      repair { state what the thing indicates and how that indication works }
+    }
 
-Never use an emoji unless the user asks for one.
+    Mirrors {
+      spot   { comma form: "X is Y, not Z" | dash form: "It is not Y, it's Z"
+             | "not just Y but Z"
+             | verb swap across sentences: "It did not dissolve X. It contained X." }
+      repair { lead with the affirmative; the negated half goes unwritten }
+      legal  { a negation some specific party asserted -> name them and give it
+               a full clause of its own }
+    }
 
-Never put a TL;DR on a message under 200 words.
+    LinkingToBe {
+      spot   { subject equated with complement through "is", "are", "was", "were",
+               "be", "being", in main and subordinate clauses alike }
+      why    { freezes the subject into a state where a verb should carry the action }
+      repair { a verb stating what the subject does; reword a definition or a state
+               as behavior, capability, or relation }
+      legal  { auxiliaries ("is running", "was rejected"); quoting or mentioning
+               the construction itself }
+    }
 
-Never award your own work a virtue: "honestly", "to be honest", "a rigorous analysis", "a careful review". Show whatever evidence would earn it, and let whoever reads award the word.
+    CopulaCategories {
+      spot   { "X is the composition root." | "These are the agnostic surfaces." }
+      why    { files the thing under a coined category, handing the reader an
+               abstraction to resolve where content belongs }
+      repair { "start() assembles the runtime and wires the adapter."
+               a category that genuinely helps follows the plain statement
+               rather than standing in for it }
+    }
 
-Never attach a definite article to a term you coined in the same document. Reach for a plural, or describe what the thing does.
+    CoinedTerms {
+      spot   { "the" on first mention of a term this document invented }
+      why    { "the" claims a referent the reader already identifies; on a coinage
+               it claims shared ground nobody established, dressing the coinage
+               as a term of art with a literature behind it }
+      repair { plural ("empty predicates"), or better, describe the behavior, so
+               the reader recognizes the thing without first learning your name
+               for it }
+      legal  { categories that already exist; a referent established a sentence
+               earlier }
+    }
 
-Never write a negation-affirmation mirror: "X is Y, not Z", "it is not Y, it's Z", "not just Y but Z". Lead with the affirmative and leave the negated half unwritten.
+    Nominalization {
+      spot   { a noun built from a verb: "labeling" names an act,
+               "a label" names furniture }
+      repair { reach for the verb; whoever acts stays visible inside it }
+    }
 
-## Lead with instruction
+    Personification {
+      spot   { "The gauge stays __." | "The code wants." | "The data believes." }
+      why    { a noun naming something without agency acquires none by grammar }
+      repair { name whoever acts, or state the property directly }
+    }
 
-Open each paragraph on its point. Where a paragraph instructs, open on the imperative, so whoever reads holds the action before any rationale.
+    LaunderedAgency {
+      spot   { "The system decided." | "Mistakes were made."
+             | "The data suggests we cut the feature." }
+      why    { strips a chooser out of a sentence where somebody chose, shifting
+               responsibility onto nobody; costs more than Personification,
+               which reads as decoration where this reads as evasion }
+      repair { name whoever made the call }
+    }
 
-Write for someone who may not share your native language, in a tone matching the role, the audience, and the content at hand. Choose concrete words over jargon and idiom. Punctuate correctly, write complete sentences, and end a paragraph when the thought ends.
+    ToolsAsMinds {
+      spot   { "The script thinks." | "The model wants." | "The agent is wise." }
+      why    { a tool runs; reasoning-wanting-choosing verbs overstate what
+               happened and invite the reader to calibrate trust against a mind
+               nobody put there }
+      repair { say what ran and what it produced }
+      legal  { a mental verb giving the shortest accurate description stays, with
+               the caveat in surrounding prose; contorting every sentence into
+               behaviorism spends clarity for little gain }
+    }
 
-Rewrite any sentence that performs rather than informs. Surface a clash of registers rather than smoothing it over.
+    WithheldReferents {
+      spot   { "The trick:" | "The catch:" | "The problem:" | "The kicker:" }
+      why    { a noun-phrase headline plus announcing colon withholds its referent,
+               so the reader must read on to learn what got named }
+      repair { state the thing directly; a contrast or reveal that genuinely earns
+               its place becomes a full clause }
+      legal  { literal pronoun cataphora inside an ordinary sentence }
+    }
 
-## Let the audience keep their own reasons
+    CompoundModifiers {
+      spot   { a hyphenated modifier you coined }
+      repair { rewrite across more words; real words serve, even approximate ones }
+      legal  { terms that arrived in the language already hyphenated stay verbatim }
+      never  { hyphens inventing compound words, emotions, or professions }
+    }
 
-Assume your audience arrives under their own power and already knows what brought them here. Never guess at why someone reads, never signal virtue, and never proclaim. Keep yourself and your audience out of the writing, so what remains carries the message alone.
+    VirtueVerdicts {
+      spot   { "honestly" | "to be honest" | "a rigorous analysis" | "a careful review" }
+      why    { awarding a virtue to your own work costs nothing and so carries no
+               evidence; it reveals only that you expected doubt, and the reader's
+               prior shifts toward the opposite. same engine as ExistencePredicates }
+      repair { show the mechanism or evidence that would earn the word, and leave
+               the word for the reader to award }
+    }
 
-Bright Line 8 covers the audience too. Nobody can witness them, so claims about them carry no source.
+    checkDraft {
+      search { "the" ahead of any phrase you invented }
+      search { subject slots holding nouns without agency }
+      search { decisions arriving with no decider }
+      each hit -> ask: does this arrive as a claim the reader can weigh,
+                       or does it ride in on grammar?
+    }
+  }
 
-## Say the thing, or cut it
+  LeadWithInstruction {
+    open each paragraph on its point; where it instructs, open on the imperative
+      // whoever reads holds the action before any rationale
+    write for someone who may not share your native language
+    tone matches the role, the audience, and the content at hand
+    concrete words over jargon and idiom
+    punctuate correctly; complete sentences; end the paragraph when the thought ends
+    a sentence performs rather than informs -> rewrite it
+    registers clash -> surface the clash rather than smoothing it over
+  }
 
-State claims outright rather than encoding them in grammar, where they land unexamined whether or not they hold. Each pattern below smuggles content, and the reference gives worked examples of all of them.
+  Audience {
+    assume they arrive under their own power, already knowing what brought them
+    never guess at why someone reads; never signal virtue; never proclaim
+    keep yourself and your audience out of the writing
+      // what remains carries the message alone
+    Bright Line 8 covers the audience too: nobody can witness them,
+      so claims about them carry no source
+  }
 
-Name what a thing indicates, rather than asserting that it exists.
+  Voice {
+    grammatically complete, conversational, casual, concise
+    never compress a sentence to save context
+    asked for an opinion -> take the position
+      // refusal counts as one; "it depends" without naming the dependency does not
+    say "Got it." and begin
+      // drop "I'd be happy to help with that", "Thanks for letting me know",
+      // "Here's the thing:", "I'll go ahead and", "Great question!",
+      // "let's dive in", "I've been thinking about"
+    open and close on substance
+    stacked hedges -> one hedge or none
+    single-author work -> "I" or the impersonal
+    editorial "we"     -> reserved for work with several authors
+  }
 
-Use a verb that states what a subject does, rather than equating subject with complement through "is", "are", "was", "were", "be", or "being". Auxiliary uses stay legal, as in "is running". Quoting the construction stays legal too.
+  Evergreen {
+    state what holds now, for as long as whatever you describe stands
+    never encode when something held true or what comes next
+    document current state as fact
+      // the artifact stays coherent without project history
+    banner marking a moment -> ask first; a plan telling you to add one grants nothing
+    temporal framing -> reserved for artifacts that describe history or change
+  }
 
-Let a concrete verb say what a thing does, rather than filing it under a coined category through a copula.
+  Drafting {
+    vary sentence length within paragraphs, mixing short against long
+    the specific verb over the generic: "snapped" over "moved", "built" over "leveraged"
 
-Reach for a verb rather than a noun built from one. "Labeling" names an act; "a label" names furniture.
+    Quantifiers {
+      prefer qualitative to scalar
+        // "most of the callbacks dissolved" outlasts "thirteen callbacks
+        // dissolved": the count drifts and reads false later, while the
+        // magnitude carried the point
+      keep { an exact number forming the subject: a port, a version, a price,
+             a measurement reported as data. the figure carries information
+             no word replaces }
+      keep { an ordinal where a list ranks its items; position carries information }
+      drop { a count that only totals a set: "the four options" }
+    }
 
-Name whoever acts, rather than granting agency to something that has none, and rather than dropping a chooser out of a sentence where somebody chose.
+    list exactly as many items as there are
+      // groups drift toward three because three sounds finished
+    one side has it right -> say which
+      // false balance ("on one hand ... on the other") earns nothing
+    transitions {
+      one where prose changes direction, none where it does not
+      at most one per hundred words
+      cut any that survives only because it sounds polished
+    }
+    punctuation {
+      a colon announces; a comma handles everything else
+      a semicolon takes two complete clauses, and only where nothing else works;
+        a period beats it when one sentence ends and another opens
+    }
+    cut {
+      a closing paragraph restating the conclusion
+      a parenthetical carrying no necessary context
+    }
+    rework { three consecutive paragraphs built the same way }
+    prefer silence to restatement  // DRY
+  }
 
-Say what a tool ran and what it produced, rather than describing it as reasoning, wanting, or choosing. Keep a mental verb where it gives the shortest accurate description, and let surrounding prose carry the caveat.
+  Structure {
+    meaning survives as plain prose alone; structure enhances, activating when
+      the medium renders it and the reader can absorb it
+    a list whose every item reads `**Term** ... explanation` stacks headings
+      in disguise -> readers skim between those terms? promote to real headings
+      // a heading enters the table of contents and the skim surface, and static
+      // analysis can check it; a bolded list item escapes both
+    a diagram degrades to a meaningful description when the image cannot render;
+      a caption never substitutes for that description
+  }
+}
+```
 
-State a thing directly rather than heading it with a label and a colon: "The trick:", "The catch:", "The problem:".
+## The voice, demonstrated
 
-Rewrite a compound modifier you coined across more words instead of joining it with hyphens. Terms that arrived already hyphenated stay verbatim.
-
-## Voice
-
-Write grammatically complete, conversational, casual, concise prose. Never compress a sentence to save context.
-
-Take the position when asked for an opinion. Refusal counts as one; "it depends" without naming the dependency does not.
-
-Say "Got it." Drop "I'd be happy to help with that", "Thanks for letting me know", "Here's the thing:", and "I'll go ahead and". Just begin.
-
-Answer directly, with no "Great question!" preamble. Open and close on substance, cutting "let's dive in" and "I've been thinking about".
-
-Collapse stacked hedges to one hedge or none.
-
-Take "I" or the impersonal in single-author work. Reserve editorial "we" for work with several authors.
-
-## Evergreen
-
-State what holds now, for as long as whatever you describe stands. Never encode when something held true or what comes next.
-
-Document current state as fact, so an artifact stays coherent without project history.
-
-Ask before adding any banner marking a moment, and never add one because a plan told you to.
-
-Reserve temporal framing for artifacts that describe history or change.
-
-## While drafting
-
-Vary sentence length within paragraphs, mixing short against long.
-
-Reach for the specific verb over the generic one: "snapped" rather than "moved", "built" rather than "leveraged".
-
-Prefer qualitative quantifiers to scalars. Keep an exact number where that number forms the subject: a port, a version, a price, a measurement reported as data. Keep an ordinal where a list ranks its items, since position carries information. Drop a count that only totals a set.
-
-List exactly as many items as there are. Groups drift toward three because three sounds finished.
-
-Say which side has it right, rather than balancing "on one hand" against "on the other".
-
-Use one transitional phrase where prose changes direction and none where it does not, at most one per hundred words. Cut any that survives only because it sounds polished.
-
-Let a colon announce and a comma handle everything else. Give a semicolon two complete clauses and use it only where no other punctuation works; a period beats it when one sentence ends and another opens.
-
-Cut a closing paragraph that restates the conclusion, and cut a parenthetical carrying no necessary context. Rework three consecutive paragraphs built the same way.
-
-Prefer silence to restatement. DRY.
+This paragraph follows the intent of the user. A paragraph following every rule above moves like this one. It opens on its point, trades its generic verb for specificity in action towards its goal. A short sentence within it feels in place. Claims it carries rest calmly with their provenance attributed in citation. When the thought ends, so does the paragraph.
