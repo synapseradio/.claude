@@ -31,10 +31,6 @@ paths:
 
 ```sudolang
 Testing {
-  when (reading, writing, or running tests) {
-    read(../references/writing-code-reference.md § "Testing practice")
-  }
-
   Worth {
     a test carries value only when its expected result comes from somewhere
       other than the code it checks
@@ -45,6 +41,23 @@ Testing {
       // FunctionShadowing below is one instance of this
     an untested claim with a recorded reason is a decision;
       one with no record is a gap
+  }
+
+  RunScope {
+    run only tests covering changed files; map source to test by convention
+    the full suite runs only when the user asks, the scope warrants it,
+      or no narrower mapping exists
+    the project has a "test changed files" tool -> use it
+  }
+
+  Names {
+    behavior-description names: `<subject> <verb> <behavior> [when <condition>]`
+    a failing test reads as a sentence
+  }
+
+  Assertions {
+    use the framework's assertion library
+    never ad-hoc checks that discard context on failure
   }
 
   ScopeTags {
