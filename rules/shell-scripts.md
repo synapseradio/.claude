@@ -16,8 +16,20 @@ paths:
 
 # Shell Scripts
 
-When writing or reviewing shell scripts.
+```sudolang
+ShellScripts {
+  Applies { writing or reviewing shell scripts }
 
-Follow the Google Shell Style Guide. Read [bash-style-guide.md](../references/bash-style-guide.md) in full before writing or reviewing bash.
+  follow the Google Shell Style Guide {
+    read(../references/bash-style-guide.md) in full before writing
+      or reviewing bash
+    // the reference stays a reference deliberately: heavy on context,
+    // far to the side of other tasks. bash is simply not like the others.
+  }
 
-Repo convention: kebab-case script filenames take precedence over the guide's underscore default.
+  RepoConvention {
+    kebab-case script filenames take precedence over the guide's
+      underscore default
+  }
+}
+```
