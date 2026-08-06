@@ -40,10 +40,10 @@ WritingCode {
       // fewer moving parts, fewer dependencies, fewer assumptions
     work incrementally: the smallest working steps
       // clear first, correct second, fast third, never all at once
-    prefer duplication over wrong abstraction {
-      deduplicate only when the pieces represent the same concept
-        and change for the same reasons
-      shared code that branches per caller -> inline it
+    never duplicate {
+      a wrong abstraction -> redesign it rather than duplicate around it
+      shared code that branches per caller -> split it into abstractions
+        each caller can own
     }
     design for change: ask "how will someone change this next?";
       make the next change easy
