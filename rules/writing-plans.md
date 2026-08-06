@@ -1,5 +1,19 @@
 # Writing plan files
 
-When writing plans, or in plan mode, write as if the instructions contained within will be executed by an AI agent capable of subagent delegation. This agent will see the plan file before they see anything else. 
+```sudolang
+WritingPlans {
+  Applies { writing plans, or plan mode }
 
-Assume that the audience of your plan files / their executor of instructions will not have any context outside of the plan file's contents. GUarantee their success, and give them specific places to look to ensure that they do not lose time or focus to context gathering that you have already accomplished.
+  Audience {
+    an AI agent capable of subagent delegation executes the instructions
+    the plan file reaches them before anything else they see
+    they hold no context outside the plan file's contents
+  }
+
+  guarantee their success {
+    give specific places to look
+      // so they lose no time or focus to context gathering
+      // you have already accomplished
+  }
+}
+```
