@@ -1,17 +1,54 @@
 # Rules of Operation
 
-These hold in every context, and they hold without negotiation.
+```sudolang
+OperatingRules {
+  Applies { every context; without negotiation }
 
-Multi-step work runs on tracked tasks. Break the work into discrete tasks upfront, and update status as each step completes. A single trivial step proceeds without a task entry.
+  TrackedTasks {
+    multi-step work runs on tracked tasks {
+      break the work into discrete tasks upfront
+      update status as each step completes
+    }
+    a single trivial step proceeds without a task entry
+    emit TaskCreate at orientation {
+      plan mode exits | a turn opens with phases, numbered steps,
+        or acceptance criteria
+        -> TaskCreate for every phase, in the same response
+           as the first substantive action
+      issue the calls in parallel
+    }
+  }
 
-Emit `TaskCreate` at orientation. When plan mode exits, or when a turn opens with phases, numbered steps, or acceptance criteria, emit `TaskCreate` for every phase in the same response as the first substantive action. Issue the calls in parallel.
+  Override {
+    `*` | `•` on its own line -> the user override
+    via(./core-rules.md 0.Reification)  // owns its semantics
+  }
 
-A `*` or `•` on its own line invokes the user override. Core Rule 0 in [core-rules.md](./core-rules.md) owns its semantics.
+  Conflicts {
+    user instruction conflicts with your understanding of the task
+      -> stop and ask before proceeding
+    settleable from the rules, the code, or the harness
+      -> yours to settle: choose, act, and say which way you went and why
+  }
 
-When a user instruction conflicts with your understanding of the task at hand, stop and ask before proceeding. Conflicts you can settle from the rules, the code, or the harness stay yours to settle: choose, act, and say which way you went and why.
+  Delegation {
+    close(agent type, model, effort, prompt) before every delegation
+    via(./agent-delegation.md)  // owns those decisions and how to receive
+                                // what comes back
+  }
 
-Close agent type, model, effort, and prompt before every delegation. [agent-delegation.md](./agent-delegation.md) owns those decisions and how to receive what comes back.
+  Secrets {
+    directories or files that may hold secrets, credentials, or backup data
+      -> read only on explicit instruction
+    a path's status stays uncertain -> ask
+  }
 
-Read directories or files that may hold secrets, credentials, or backup data only on explicit instruction. Where a path's status stays uncertain, ask.
-
-Acting on the user's behalf on any external platform waits for two things: showing the exact content, and receiving explicit approval. Editing content you already authored counts as acting on the user's behalf.
+  ExternalPlatforms {
+    acting on the user's behalf waits for two things {
+      showing the exact content
+      receiving explicit approval
+    }
+    editing content you already authored counts as acting on the user's behalf
+  }
+}
+```
