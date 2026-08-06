@@ -60,20 +60,42 @@ paths:
 
 # Dependencies
 
-When adding, removing, or updating any package dependency.
+```sudolang
+Dependencies {
+  Applies { adding, removing, or updating any package dependency }
 
-Never pin a version on the command line. Run the bare package name and let the package manager resolve the current release.
+  extends GitCommit.DeterminismWins
+    // the package manager is a tool we've been given: its resolver decides
+    // versions deterministically, and hand edits bypass it
 
-Run these:
+  TheRepoIsTheSOP {
+    the repo carries its own dependency-management docs
+      -> read them before touching deps; on conflict, they override this file
+    // conventions like Bun workspace catalogs, pnpm patches, or npm overrides
+    // change where a version range belongs; skipping the docs usually means
+    // putting the range in the wrong place and redoing the work
+  }
 
-- `bun add <name>` / `bun add -D <name>`
-- `npm install <name>` / `pnpm add <name>`
+  UseTheTool {
+    detect the manager from the lockfile, never by preference
+      // bun.lock -> bun, pnpm-lock.yaml -> pnpm, Cargo.lock -> cargo, ...
+      // JavaScript priority: bun > pnpm > yarn > npm
+    run   { `bun add <name>` | `bun add -D <name>`
+          | `npm install <name>` | `pnpm add <name>` }
+    never { `bun add <name>@<version>`
+          | any flag or suffix that hand-picks a version on the CLI }
+    never edit a lockfile by hand
+      // the lockfile records what the resolver decided; editing it asserts
+      // a resolution nobody ran
+    after changing deps -> let the tool verify (install, audit)
+  }
 
-Never run these:
-
-- `bun add <name>@<version>`
-- Any flag or suffix that hand-picks a version on the CLI
-
-If a version constraint is genuinely required, it belongs in a config file: the lockfile's resolved version, a workspace catalog, an `overrides` block, or the package's own `package.json` edited as text. The CLI adds the dependency; the file constrains it.
-
-Before touching deps in a repo with its own dependency-management docs, read those docs first. Conventions like Bun workspace catalogs, pnpm patches, or npm overrides change where a version range belongs. Skipping the docs usually means putting the range in the wrong place and having to redo the work.
+  Constraining {
+    // the CLI adds the dependency; a file constrains it
+    a version constraint genuinely required -> a config file {
+      the lockfile's resolved version | a workspace catalog
+        | an `overrides` block | the package's own `package.json` edited as text
+    }
+  }
+}
+```
