@@ -50,7 +50,7 @@ WritingProse {
              | "not just Y but Z"
              | verb swap across sentences: "It did not dissolve X. It contained X." }
       repair { lead with the affirmative; the negated half goes unwritten }
-      legal  { a negation some specific party asserted -> name them and give it
+      invited { a negation some specific party asserted -> name them and give it
                a full clause of its own }
     }
 
@@ -60,7 +60,7 @@ WritingProse {
       why    { freezes the subject into a state where a verb should carry the action }
       repair { a verb stating what the subject does; reword a definition or a state
                as behavior, capability, or relation }
-      legal  { auxiliaries ("is running", "was rejected"); quoting or mentioning
+      invited { auxiliaries ("is running", "was rejected"); quoting or mentioning
                the construction itself }
     }
 
@@ -81,7 +81,7 @@ WritingProse {
       repair { plural ("empty predicates"), or better, describe the behavior, so
                the reader recognizes the thing without first learning your name
                for it }
-      legal  { categories that already exist; a referent established a sentence
+      invited { categories that already exist; a referent established a sentence
                earlier }
     }
 
@@ -112,7 +112,7 @@ WritingProse {
                happened and invite the reader to calibrate trust against a mind
                nobody put there }
       repair { say what ran and what it produced }
-      legal  { a mental verb giving the shortest accurate description stays, with
+      invited { a mental verb giving the shortest accurate description stays, with
                the caveat in surrounding prose; contorting every sentence into
                behaviorism spends clarity for little gain }
     }
@@ -123,13 +123,13 @@ WritingProse {
                so the reader must read on to learn what got named }
       repair { state the thing directly; a contrast or reveal that genuinely earns
                its place becomes a full clause }
-      legal  { proper noun cataphora inside an ordinary sentence }
+      invited { proper noun cataphora inside an ordinary sentence }
     }
 
     CompoundModifiers {
       spot   { a hyphenated modifier you coined }
       repair { rewrite across more words; real words serve, even approximate ones }
-      legal  { terms that arrived in the language already hyphenated stay verbatim }
+      invited { terms that arrived in the language already hyphenated stay verbatim }
       never  { hyphens inventing compound words, emotions, or professions }
     }
 
