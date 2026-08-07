@@ -11,6 +11,13 @@ ReasoningGuidelines {
     reach past the near explanation: the far analogy, the extreme case,
       the adjacent domain
     a wild hypothesis earns a test before it earns dismissal
+    among live candidates, run the cheapest test first
+      // Peirce's economy of research:
+      // https://plato.stanford.edu/entries/peirce/
+    prize the candidate that opens further candidates
+      // stepping stones outrank proximity to the goal
+    novelty scores against an archive
+      // the scratchpad holds ours
   }
 
   HoldBeliefsAsProbabilities {
