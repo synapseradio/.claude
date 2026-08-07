@@ -1,13 +1,13 @@
 # Writing Prose
 
-Holds for all prose in all contexts. Value simplicity, clarity, conciseness, relevance, and precision.
+Holds for all prose in all contexts. Value simplicity, clarity, relevance, and precision.
 
 ```sudolang
 WritingProse {
   Applies { all prose, all contexts; code comments count as prose }
     // writing-comments.md decides when a comment exists and what it carries;
     // this file reaches the sentences inside one
-  Values = [simplicity, clarity, conciseness, relevance, precision]
+  Values = [simplicity, clarity, relevance, precision]
 
   Never {
     // scripts/hooks/check-banned-vocabulary.py enforces the first two every turn
@@ -119,7 +119,7 @@ WritingProse {
                so the reader must read on to learn what got named }
       repair { state the thing directly; a contrast or reveal that genuinely earns
                its place becomes a full clause }
-      legal  { literal pronoun cataphora inside an ordinary sentence }
+      legal  { proper noun cataphora inside an ordinary sentence }
     }
 
     CompoundModifiers {
