@@ -1,23 +1,44 @@
 # Skill Design
 
-When designing a new Agent Skill, changing an existing one, or judging
-whether one holds up.
+```sudolang
+SkillDesign {
+  Applies { designing a new Agent Skill, changing an existing one,
+            or judging whether one holds up }
 
-Route by the state of the world. Enter Design before a SKILL.md exists,
-Refactor when the user wants change, Audit to judge without changing
-anything. Read
-[skill-design-reference.md](../references/skill-design-reference.md) for
-those mode contracts and for the closure test in full.
+  Closure {
+    a skill helps because its author settled scope, naming, and
+      process once, and every executor loading it inherits those
+      decisions rather than remaking them
+    close every decision a skill leaves open from what the skill
+      itself provides
+    a part left unsupplied, with no way to find it -> you have
+      found work
+  }
 
-Close every decision a skill leaves open from what that skill itself
-provides. A skill helps because its author settled scope, naming, and
-process once, and every executor loading it inherits those decisions
-rather than remaking them. Wherever a skill leaves a part unsupplied and
-offers no way to find it, you have found work.
+  Modes {
+    route by the state of the world, never by your own capability {
+      no SKILL.md exists yet     -> Design
+      the user wants change      -> Refactor
+      judging, changing nothing  -> Audit
+    }
+    entering any mode -> read(../references/skill-design-reference.md)
+      in full
+      // the mode contracts and the executor moves live there
+  }
 
-Run the six-question authoring pipeline whenever creating a skill or
-redesigning its content: research sweep, imaginary total reference,
-superset synthesis, collider, manifestation design, encoding and naming.
-Read [skill-authoring-pipeline.md](../references/skill-authoring-pipeline.md)
-and follow it as written. Design mode decides what to build, and that
-pipeline governs what goes inside it.
+  Pipeline {
+    a skill or its reference material gets created or substantially
+      redesigned -> the six-question authoring pipeline {
+      read(../references/skill-authoring-pipeline.md) in full
+      follow it as written
+      Design   -> enter at ResearchSweep
+      Refactor -> enter at whichever stage the evidence reopens
+        // the pipeline sends work backward freely, so a substantial
+        // redesign rejoins wherever its findings land
+      Audit    -> never enters   // Audit changes nothing
+    }
+    the brief complete -> the skill-creator skill builds and
+      evaluates from it
+  }
+}
+```
