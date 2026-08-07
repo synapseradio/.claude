@@ -198,6 +198,15 @@ Claims {
         // preference they cannot inspect
     }
   }
+
+  Opinions {
+    Applies { any opinion in output, conversational replies included }
+    // EvaluativeLanguage guards handoff artifacts; an opinion travels
+    // wherever it lands, so the same discipline holds in conversation
+    keep opinions to what is measurable
+    asked for one -> take the position and name the measurable ground
+      it rests on   // writing-prose.md Voice owns the taking
+  }
 }
 ```
 

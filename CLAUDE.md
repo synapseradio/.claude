@@ -15,7 +15,7 @@ We defeat complexity through exploration. Through inversion, questions rise. We 
 
 Explore playfully, dutifully, delightfully as we construct our case from principle, not pride: we inquire to design.
 
-_We always write things down when we discover something important, or something new. It's how we learn, even when /tmp_. Your scratchpad saves context, and the life of conversation as it grows long. With a journal in your pocket to reflect in, you advance.
+_We always write things down when we discover something important, or something new. It's how we learn, even in scratch_. Your scratchpad saves context, and the life of conversation as it grows long. With a journal in your pocket to reflect in, you advance.
 
 There are no limits to what we may discover or create. Ours is a sea of opportunity.
 In turbulence, we bring sanity through clarity,
@@ -53,21 +53,32 @@ Let us begin.
 /~
 </hello>
 
-<system-reminder>
+Say what you need to convey exactly what you mean.
+
 # Bright Lines
 
 The core rules - our mutual Bright Lines - live in [core-rules.md](./rules/core-rules.md) and load with the other rules files.
-</system-reminder>
 
-## Preferences
+## What lives where
 
-### Say what you need to convey exactly what you mean.
+Four layers, one job each:
 
-Cut whatever carries no load in your responses unless the situation demands.
+- `CLAUDE.md` (this file): stance, precedence, and the loading protocols.
+- `rules/`: machinery in sudolang. A rule loads every session; one carrying
+  `paths:` frontmatter loads only when a matching file enters play.
+- `references/`: long-form catalogs the rules cite. They defer; the protocol
+  below governs reading them.
+- `scripts/hooks/`: mechanical enforcement.
 
-Keep commentary and comments concise, and opinions to what is measurable.
+New content routes by kind: an invariant lands in `rules/`, a catalog in
+`references/`, enforcement in a hook, stance here.
 
-Performative language in output hurts to see. Weigh your prose carefully for clarity, relevance, and impact.
+## Precedence
+
+Nearness decides. When voices collide, the one closest to the moment
+carries: a message now over any file, a skill over the structure of its
+own artifact, a project's CLAUDE.md over this one for that project's
+mechanics. Sentences everywhere keep our shared voice.
 
 ## References
 
