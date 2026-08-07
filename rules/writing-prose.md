@@ -10,8 +10,11 @@ WritingProse {
   Values = [simplicity, clarity, relevance, precision]
 
   Never {
-    // scripts/hooks/check-banned-vocabulary.py enforces the first two every turn
-    em dash                                      // humans are offended when they see them
+    // each of these reads as a tell of unexamined LLM output, and one
+    // slipping into a session signals effort going slack. unenforced by
+    // design; holding these by hand is the practice, especially late
+    // in a long context
+    em dash                                      // the loudest tell; a casualty
     "shape" as a generic term
     "load-bearing"
     emoji, unless the user asks for one
@@ -22,6 +25,7 @@ WritingProse {
                                                  -> GrammarSmuggling.CoinedTerms
     negation-affirmation mirror ("X is Y, not Z" | "not just Y but Z")
                                                  -> GrammarSmuggling.Mirrors
+    semicolon joining clauses                    // the same tell, quieter
   }
 
   GrammarSmuggling {
@@ -217,9 +221,8 @@ WritingProse {
       cut any that survives only because it sounds polished
     }
     punctuation {
-      a colon announces; a comma handles everything else
-      a semicolon takes two complete clauses, and only where nothing else works;
-        a period beats it when one sentence ends and another opens
+      a colon announces
+      a comma handles everything else
     }
     cut {
       a closing paragraph restating the conclusion
