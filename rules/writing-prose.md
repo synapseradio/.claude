@@ -21,10 +21,12 @@ WritingProse {
     TL;DR on a message under 200 words
     virtue verdict on your own work ("honestly", "a rigorous analysis")
                                                  -> GrammarSmuggling.VirtueVerdicts
-    definite article on a same-document coinage ("the" on first mention of a term you minted)
+    definite article on a same-document coinage ("the" on first mention of a term coined in the same document)
                                                  -> GrammarSmuggling.CoinedTerms
     negation-affirmation mirror ("X is Y, not Z" | "not just Y but Z")
                                                  -> GrammarSmuggling.Mirrors
+    abstraction verbing an abstraction ("the rubric carries the process")
+                                                 -> GrammarSmuggling.AbstractActors
     semicolon joining clauses                    // the same tell, quieter
   }
 
@@ -97,6 +99,48 @@ WritingProse {
       repair { name whoever acts, or state the property directly }
     }
 
+    AbstractActors {
+      // Personification's working cousin: the verb is transitive and sounds
+      // procedural, so it slips past the copula and personification checks
+      spot   { an abstraction as subject of a transitive verb aimed at another
+               abstraction: "The rubric carries the process."
+             | "Six questions route the work." | "The report closes the run."
+             | a paragraph chaining these, each clause grammatical,
+               jointly asserting nothing anyone can verify }
+      why    { no actor appears and no checkable behavior gets stated; the
+               active verb performs authority where a person deciding, reading,
+               or writing should be visible }
+      repair { put whoever acts in the subject and the artifact in object
+               position, or go imperative: "answer the six questions; read
+               every page a live question names" }
+      invited { a verb naming a mechanical behavior the artifact verifiably
+                performs: "the script exits nonzero", "the test fails on
+                timeout" }
+    }
+
+    CadenceForMechanism {
+      // sound's version of the engine above: content riding on rhythm lands
+      // admired rather than weighed. a pen pass paring this register twice
+      // found the flourish hiding a factual miss, so removing it raised
+      // precision rather than merely calming the tone
+      spot   { a verb chain hung off an abstraction: "A description runs,
+               names the rule, and fails with the name attached."
+             | alliteration standing where an argument should:
+               "rerun rather than read" | "cost time rather than truth"
+             | a dramatic appositive: "at the worst time, mid-failure"
+             | one clause chain bundling mechanism, consequence, and moral }
+      why    { the cadence asks to be admired, and it often marks the exact
+               spot where the writing substituted rhythm for mechanism:
+               a miscast actor, or a claim vaguer than its plain words
+               ("yesterday's contract" for "a contract that no longer exists") }
+      repair { ask of each verb: who performs it, and what literally happens;
+               name that actor. give mechanism and consequence a sentence
+               each, and leave the moral unwritten: the consequence implies it }
+      invited { rhythm on a sentence whose actor and mechanism already stand;
+                Drafting asks for varied length, and cadence serving a true
+                sentence stays welcome }
+    }
+
     LaunderedAgency {
       spot   { "The system decided." | "Mistakes were made."
              | "The data suggests we cut the feature." }
@@ -143,11 +187,14 @@ WritingProse {
     }
 
     checkDraft {
-      search { "the" ahead of any phrase you invented }
+      search { "the" ahead of a phrase coined in this document }
       search { subject slots holding nouns without agency }
+      search { abstractions in subject position driving transitive verbs }
       search { decisions arriving with no decider }
+      search { cadence carrying a clause: alliterated contrasts, punch
+               appositives, verb chains hung off abstractions }
       each hit -> ask: does this arrive as a claim the reader can weigh,
-                       or does it ride in on grammar?
+                       or does it ride in on grammar or cadence?
     }
   }
 
@@ -159,6 +206,7 @@ WritingProse {
     concrete words over jargon and idiom
     punctuate correctly; complete sentences; end the paragraph when the thought ends
     a sentence performs rather than informs -> rewrite it
+                                               -> GrammarSmuggling.CadenceForMechanism
     registers clash -> surface the clash rather than smoothing it over
   }
 
