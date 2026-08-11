@@ -3,6 +3,8 @@
 ```sudolang
 WritingPlans {
   Applies { writing plans, or plan mode }
+  // leaving plan mode answers to ./plan-mode.md;
+  // this file governs what the plan file carries
 
   Audience {
     an AI agent capable of subagent delegation executes the instructions

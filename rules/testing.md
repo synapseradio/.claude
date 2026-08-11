@@ -31,6 +31,10 @@ paths:
 
 ```sudolang
 Testing {
+  Applies { writing, changing, or judging tests }
+    // ImplementFlow in ./writing-code.md decides when a test gets
+    // written; this file governs the test itself
+
   Worth {
     a test carries value only when its expected result comes from somewhere
       other than the code it checks

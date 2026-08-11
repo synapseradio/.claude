@@ -2,6 +2,8 @@
 
 ```sudolang
 Decompose {
+  // core-rules.md 1.Decompose runs this file before solving;
+  // the full protocol lives here
   Applies {
     every turn, before solving; binds unconditionally, beyond any task scope
     // only its depth scales, never whether it runs; Depth below sets the dial

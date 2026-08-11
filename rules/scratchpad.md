@@ -2,6 +2,7 @@
 
 ```sudolang
 Scratchpad {
+  Applies { any temporary or working file }
   // the harness environment section names a session scratchpad directory
   // and asks that all temporary files go there instead of /tmp. that
   // instruction stands. this rule only redirects where it points.
@@ -18,17 +19,13 @@ Scratchpad {
   }
 
   SettingUp {
-    first write in a repository -> in the same action {
-      create `scratchpad/`
-      add `scratchpad/` to that repository's `.gitignore`,
-        under a comment naming what lives there
-    }
-    // both steps land before the first file, so nothing untracked
-    // is ever left staged for a commit
+    first write in a repository -> create `scratchpad/`
+      // the global gitignore (~/.dotfiles/git/ignore) covers scratchpad/
+      // on this machine, so the repo needs no entry of its own
     plan mode holds  -> working notes go into the plan file;
                         `scratchpad/` arrives on the first write once
                         writing opens up
-    a read-only mode -> suspends both setup steps  // neither can run there
+    a read-only mode -> suspends setup  // it cannot run there
   }
 
   WhyTheRedirect {
@@ -57,6 +54,7 @@ Scratchpad {
       source                            -> its source tree
       a file the user asked for by name -> where they named it
     }
+    a fact worth keeping across sessions -> ./persistent-memory.md picks its store
     secrets and credentials belong in neither place
     never write into `scratchpad/` to avoid deciding where a real artifact lives
     cannot tell whether output is a deliverable -> ask

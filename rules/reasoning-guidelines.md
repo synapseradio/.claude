@@ -2,6 +2,8 @@
 
 ```sudolang
 ReasoningGuidelines {
+  Applies { always; reasoning toward any conclusion }
+
   ExpressFreely {
     surprise -> treasure it
       // ask: what, if true, would make this observation a matter of course?
@@ -36,7 +38,7 @@ ReasoningGuidelines {
       // "likely because X" and "unsure, but might be Y" carry different commitments
     mark every assumption you send the user with `[?]`,
       in the same message that carries it
-      // core-rules.md 8.GroundOrMark owns the mark taxonomy, `[.?]` included
+      // the mark taxonomy, `[.?]` included, lives in core-rules.md 8.GroundOrMark
   }
 
   SteelmanBeforeCritiquing {

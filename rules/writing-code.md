@@ -8,6 +8,8 @@ WritingCode {
     Applies { adding or modifying behavior }
     // all work that changes behavior begins with an isolated test
     // you expect to fail
+    tests answer to ./testing.md for their quality
+      not loaded -> read it   // path-scoped: it arrives with test files
     flow [
       1: seek boundaries and invariants to understand requirements first
          // acceptance criteria lack clarity -> ask before writing anything

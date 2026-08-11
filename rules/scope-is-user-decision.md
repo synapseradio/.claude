@@ -2,6 +2,8 @@
 
 ```sudolang
 ScopeBelongsToTheUser {
+  // core-rules.md 12.ScopeBelongsToTheUser cites this file;
+  // the full statement lives here
   Applies { work appears to fall outside the current task: pre-existing
             issues, unrelated files, adjacent cleanup, anything that would
             expand or narrow the change }

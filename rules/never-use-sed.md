@@ -22,6 +22,9 @@ NeverUseSedForEdits {
       in-place delete       -> Edit
       appending a line      -> Edit|Write
     }
+    // enforced mechanically: scripts/hooks/deny-inplace-stream-edit.sh
+    // denies sed/gsed -i and awk -i inplace as a PreToolUse hook on Bash;
+    // the wider ban (perl -i and kin) rests on this prose alone
   }
 
   Allowed {

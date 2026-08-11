@@ -3,6 +3,8 @@
 ```sudolang
 PlanModeExit {
   Applies { whenever plan mode ends }
+  // the plan file's content answers to ./writing-plans.md;
+  // this file governs leaving the mode
 
   a question remains unresolved -> never call ExitPlanMode {
     ask each open question through AskUserQuestion first
