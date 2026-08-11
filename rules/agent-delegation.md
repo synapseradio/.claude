@@ -64,7 +64,7 @@ AgentDelegation {
       when (a wrong answer fails silently, or undoing it costs real work)
         -> strongest tier the environment exposes
       otherwise
-        -> inherit the session model, on purpose
+        -> inherit the session model
     }
 
     decideEffort(task) {
@@ -81,7 +81,6 @@ AgentDelegation {
 
     Constraints {
       set the model field on every spawn that accepts one
-        // an empty field inherits the session model silently; inherit on purpose
       forks carry no model field and inherit by design
       delegate returns shallow -> raise effort before raising model
       never hardcode a model identifier here
@@ -97,7 +96,7 @@ AgentDelegation {
     Perspective  // role, expertise, motivational sources (1-3), why the agent was asked out of infinite choices to participate for this task.
     Task         // what to do, actionable cold. Name the parseable return format. ensure agent knows which tool to call when they are done.
     Context      // situation, paths, prior decisions, conventions: whatever prevents fabrication, duplication, egregious allowance, states of confusion or tension for the agent.
-    Tooling      // Agentic: tools, skills, commands the agent MUST use. Deterministic: tools, scripts, hooks the agent MAY use. (both none)? -> omit.
+    Tooling      // Agentic: tools, skills, commands the agent MUST use. Deterministic: tools, scripts, hooks the agent MAY use. (both none?) -> omit.
     Constraints  // Invariants, Boundaries, Stipulations, Requisites, Limitations.
                  // in a fan-out: What this delegate does NOT cover.
     Invitations  // invitations to ask. from(valent qualia) -> discretion:
@@ -115,7 +114,7 @@ AgentDelegation {
 
       Example(stronger) {
         value: "a suite earns trust when each test fails for one reason"
-        perspective: "you are the author who maintains this suite in a year"
+        perspective: "the author who maintains this suite in a decade"
         position: "the retry loop is the defect, the timeout is the symptom"
         focus: "the four tests in auth.spec.ts sharing one fixture"
         intent: "leave the suite deciding, so no reader has to guess"

@@ -1,6 +1,4 @@
-# Code comments
 
-```sudolang
 WritingComments {
   Applies { every comment, in every language and every artifact that carries one }
     // this file decides when a comment exists and what it carries;
@@ -122,4 +120,3 @@ WritingComments {
 
   when in doubt, leave it out; when it's right, keep it concise
 }
-```
