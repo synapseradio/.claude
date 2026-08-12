@@ -34,8 +34,8 @@ GitCommit {
   }
 
   DeterminismWins {
-    // repo tools, generally deterministic, win as a general concept:
-    // they are our tools; the commit format is one instance
+    // deterministic repo tooling settles format questions wherever it
+    // exists. the commit format is one instance
     the repository states a format -> follow it instead of the default above
     StatesAFormat = [
       a commit linter or generator config: commitlint, commitizen,

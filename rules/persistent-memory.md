@@ -9,7 +9,7 @@ PersistentMemory {
     fact belonging to one repository -> the file memory the harness names
                                         in its Memory section, the repository
                                         named inside the entry
-      // the store may span projects; the entry carries its own scope
+      // the store may span projects. the entry carries its own scope
     session narrative                -> whatever journal the environment provides
       // the running account of what happened and why
     working notes and run files      -> write them where ./scratchpad.md says

@@ -3,8 +3,8 @@
 ```sudolang
 Debugging {
   Applies { debugging a problem }
-  // the hypothesis discipline lives in core-rules.md 5.PredictThenRun;
-  // this file adds one rule on top
+  // this file adds one rule on top of the hypothesis discipline
+  via(core-rules.md 5.PredictThenRun)
 
   the user identifies a root cause -> investigate that cause
     // their diagnosis rests on observation you did not witness

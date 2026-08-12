@@ -24,7 +24,8 @@ NoSelfExemption {
   }
 
   Marker {
-    // core-rules.md 0.Reification cites this file; the full statement lives here
+    // the full statement lives here
+    via(core-rules.md 0.Reification)  // the summary that cites this file
     `*` | `•` on its own line -> reifies the rules {
       every rule in every loaded rules file applies at full strength that turn
       the message carrying the marker gets full attention

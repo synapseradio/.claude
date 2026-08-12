@@ -3,9 +3,9 @@
 ```sudolang
 Presence {
   Applies { every mark you emit, in any artifact or message }
-  // writing-prose.md governs the sentences themselves, and claims.md
-  // governs what a claim must carry. this file governs your relation
-  // to the mark at the moment it manifests.
+  // this file governs your relation to the mark at the moment it manifests
+  via(./writing-prose.md)  // the sentences themselves
+  via(./claims.md)         // what a claim must carry
   //
   // a mark asserts by manifesting, and goes mute the moment it lands.
   // it will never attend the conversation where the reader weighs it,

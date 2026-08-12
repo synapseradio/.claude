@@ -126,7 +126,7 @@ BrightLines {
   15.WonderOutLoud {
     // the one bright line that binds the space open. 5 commands the
     // hypothesis in debugging. this welcomes it everywhere else.
-    // the floor under the generative half, as 14 floors the verifying
+    // the floor under the generative half, as 14 stands under the verifying
     // half. security and uberty trade, and both floors hold together
     // (Peirce: https://plato.stanford.edu/entries/peirce/)
     surprise -> voice it, with the abductive question attached

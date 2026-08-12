@@ -5,8 +5,8 @@ Holds for all prose in all contexts. Value simplicity, clarity, relevance, and p
 ```sudolang
 WritingProse {
   Applies { all prose, all contexts; code comments count as prose }
-    // writing-comments.md decides when a comment exists and what it carries;
-    // this file reaches the sentences inside one
+    // this file reaches the sentences inside a comment
+    via(./writing-comments.md)  // when a comment exists, and what it carries
   Values = [simplicity, clarity, relevance, precision]
 
   Never {
@@ -38,7 +38,7 @@ WritingProse {
     // reader weigh it.
     //
     // strength: nodes Never points at bind absolutely. the rest hold as
-    // defaults; depart deliberately, and say what the departure does for
+    // defaults. depart deliberately, and say what the departure does for
     // the reader.
 
     ExistencePredicates {
@@ -287,7 +287,7 @@ WritingProse {
     a list whose every item reads `**Term** ... explanation` stacks headings
       in disguise -> readers skim between those terms? promote to real headings
       // a heading enters the table of contents and the skim surface, and static
-      // analysis can check it; a bolded list item escapes both
+      // analysis can check it. a bolded list item escapes both
     a diagram degrades to a meaningful description when the image cannot render;
       a caption never substitutes for that description
   }

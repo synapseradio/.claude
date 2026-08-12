@@ -4,9 +4,9 @@
 Repairing {
   Applies { applying a fix to a spotted defect, in any artifact:
             code, prose, config, tests, rules }
-  // debugging.md governs finding a cause. this file governs the fix once
-  // a site stands flagged. core-rules.md 5.PredictThenRun holds the
-  // prediction that precedes any change.
+  // this file governs the fix once a site stands flagged
+  via(./debugging.md)                  // finding the cause
+  via(core-rules.md 5.PredictThenRun)  // the prediction preceding any change
 
   cell [
     1: spot      // a pattern, a linter, a reader's flag names a site
@@ -53,7 +53,7 @@ Repairing {
       // a fix enters the artifact as new text, and every rule reaches it,
       // beyond the one that flagged its predecessor
     the repair trades the flagged defect for a new one
-      -> return to Diagnose. the operator was wrong
+      -> return to Diagnose. you chose the wrong repair
   }
 
   MisfireIsData {

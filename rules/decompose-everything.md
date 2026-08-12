@@ -2,11 +2,11 @@
 
 ```sudolang
 Decompose {
-  // core-rules.md 1.Decompose runs this file before solving;
   // the full protocol lives here
+  via(core-rules.md 1.Decompose)  // runs this file before solving
   Applies {
     every turn, before solving; binds unconditionally, beyond any task scope
-    // only its depth scales, never whether it runs; Depth below sets the dial
+    // only its depth scales, never whether it runs. Depth below decides how deep
   }
 
   beforeSolving(turn) {
@@ -27,7 +27,7 @@ Decompose {
     // 2. Select relations
     relations = select 1..5 fitting RelationTypes
       // RelationTypes: the two tables below the block
-    // most things decompose through 1-3 types; forcing every type
+    // most things decompose through 1-3 types. forcing every type
     // creates artificial structure
 
     // 3. Cut at joints
@@ -51,9 +51,9 @@ Decompose {
     interface stays small, so how the parts connect can be stated in far
       fewer words than the parts themselves
     parts change for independent reasons
-    properties change abruptly across the boundary, not gradually
+    properties change abruptly across the boundary
   }
-  // follow inherent structure; good decomposition carves at joints
+  // follow inherent structure. good decomposition carves at joints
   // that already exist
 
   Constraints {
@@ -89,8 +89,8 @@ Decompose {
     a question earns its slot when each possible answer lands in a
       different part
       // decompose your own uncertainty into cases first
-    every answer leaves the next action unchanged -> the map needs more
-      cutting, rather than the user
+    every answer leaves the next action unchanged -> cut the map
+      further before asking the user
   }
 }
 ```

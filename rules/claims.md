@@ -23,7 +23,7 @@ Claims {
     // discipline tests them all
 
     Ask {
-      // lead with these; the ladder below makes each answer precise
+      // lead with these. the ladder below makes each answer precise
       which guarantees does the next layer actually rest on?
         -> enumerate them; place each one separately
         // a claim naming no properties has skipped the work
@@ -63,7 +63,7 @@ Claims {
       }
       readiness(X, Y) = min(rung(p) for p in properties)
       // the weakest of the properties the next layer rests on governs the
-      // verdict; one unexercised guarantee caps the whole claim, whatever
+      // verdict. one unexercised guarantee caps the whole claim, whatever
       // the others reach
     }
 
@@ -72,7 +72,7 @@ Claims {
       prerequisites: concrete, actionable steps to the next rung
       rank items by rung; each carries its own
       // several things labeled "anticipated" or "in place" usually sit on
-      // different rungs; say which sits nearest bearing load and which
+      // different rungs. say which sits nearest bearing load and which
       // remains only asserted
     }
 
@@ -102,7 +102,7 @@ Claims {
     // the reader can score from the inputs, or cut it from the draft
 
     Ask {
-      // lead with these; the harness below makes each answer precise
+      // lead with these. the predicates below make each answer precise
       can a second reader score this from the inputs alone?
         -> that settles most cases; a word surviving it has earned its place
       which pair does this compare?
@@ -120,7 +120,7 @@ Claims {
         and no access to the writer's internal state, can check every clause
     }
     // distinct from seeking disconfirmation in reasoning-guidelines.md, which
-    // governs your own conclusions; this test governs handed-off output
+    // governs your own conclusions. this test governs handed-off output
 
     ABAnchoring {
       trigger: claim references a pair:
@@ -171,7 +171,7 @@ Claims {
       // also: cleaner(a, b), simpler(a, b), moreIdiomatic(a, b)
       a <= b on all five Predicates && a < b on at least one => a wins
       predicates trade (a wins on size, b wins on indirection) => noWinner
-      // noWinner stands as the verdict; treat it as a result, and report it
+      // noWinner stands as the verdict. treat it as a result, and report it
     }
 
     onNoWinner {
@@ -189,7 +189,7 @@ Claims {
 
     Contract {
       for each evaluative word in handed-off output:
-        reduce through this harness |
+        reduce through these predicates |
         reduce through an explicitly named alternative decomposition |
         remove it
       a word that resists decomposition names taste
@@ -201,7 +201,7 @@ Claims {
 
   Opinions {
     Applies { any opinion in output, conversational replies included }
-    // EvaluativeLanguage guards handoff artifacts; an opinion travels
+    // EvaluativeLanguage guards handoff artifacts. an opinion travels
     // wherever it lands, so the same discipline holds in conversation
     keep opinions to what is measurable
     asked for one -> take the position and name the measurable ground

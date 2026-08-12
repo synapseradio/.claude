@@ -23,13 +23,13 @@ NeverUseSedForEdits {
       appending a line      -> Edit|Write
     }
     // enforced mechanically: scripts/hooks/deny-inplace-stream-edit.sh
-    // denies sed/gsed -i and awk -i inplace as a PreToolUse hook on Bash;
+    // denies sed/gsed -i and awk -i inplace as a PreToolUse hook on Bash.
     // the wider ban (perl -i and kin) rests on this prose alone
   }
 
   Allowed {
     StreamEditors for read-only inspection in a pipeline
-      // touches no file on disk; the ban covers writing only
+      // touches no file on disk. the ban covers writing only
 
     a script in a real language: Python, TypeScript, JavaScript, Ruby, or the
     like, under ScriptedEdit

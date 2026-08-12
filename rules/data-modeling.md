@@ -17,7 +17,7 @@ DataModeling {
 
   FiveMoves {
     // each move carries one decision test. ask the test's question before
-    // applying the move; a "no" means the move buys nothing here.
+    // applying the move. a "no" means the move buys nothing here.
 
     ModelPositiveSpace {
       list legal states and write one constructor per state, in place of
@@ -32,7 +32,7 @@ DataModeling {
 
     ChooseARepresentationForTheCodeAtHand {
       representation decouples from interpretation
-      // a list of pairs represents an even-length list; a start time plus a
+      // a list of pairs represents an even-length list. a start time plus a
       // non-negative duration represents an ordered time range, ordering
       // guaranteed by construction where two raw timestamps would need a check
       no single representation holds privileged "correct" status;
@@ -83,13 +83,13 @@ DataModeling {
     every move answers to a trade-off: apply each as a question weighed
       per case; hold none as an invariant
     product types, sum types, and exhaustive matching suffice for all five moves
-      // variadic tuples, GADTs, refinement types offer conveniences on top;
+      // variadic tuples, GADTs, refinement types offer conveniences on top.
       // a model needing them to exist at all has probably drifted from
       // positive space back into restriction
     a precise type costs too much -> an abstract type with a smart constructor {
       validate inside the constructor; expose only methods preserving invariants
       // trades "unbreakable by construction" for flexibility plus a guarded
-      // surface; the guard holds only as well as its method set stays closed
+      // surface. the guard holds only as well as its method set stays closed
     }
     newtype and unit wrappers (UserId vs PostId) slow mistakes down without
       making them unrepresentable -> adopt by team judgment, priced as ergonomics

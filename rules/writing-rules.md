@@ -9,13 +9,14 @@ paths:
 ```sudolang
 WritingRules {
   Applies { writing or changing a rules file, or CLAUDE.md }
-  // sentence-level style lives in ./writing-prose.md, comment discipline
-  // in ./writing-comments.md; this file speaks to what makes a rule
-  // legible at the point where a reader meets it
+  // this file speaks to what makes a rule legible at the point where
+  // a reader meets it
+  via(./writing-prose.md)     // sentence-level style
+  via(./writing-comments.md)  // comment discipline
 
   FiveQualities {
     // a rule reads clearly at one point when the reader can answer five
-    // questions without leaving it; each can fail while the others hold
+    // questions without leaving it. each can fail while the others hold
     Trigger  { does this fire now?
                always-on   -> an Applies block, first line inside the rule
                path-scoped -> `paths:` frontmatter, with Applies still
@@ -41,6 +42,8 @@ WritingRules {
   CrossReferences {
     the full statement lives in one file; every other mention carries
       its local consequence and points there
+    a pointer writes as via(<file [Node]>), with a comment beside it
+      naming what lives at the far end
     edits land where the full statement lives, and the pointers follow
     a summary cites an expansion -> the expansion points back
       // a reader landing in either file learns the pair stays in sync

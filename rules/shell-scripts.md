@@ -24,7 +24,8 @@ ShellScripts {
     read(../references/bash-style-guide.md) in full before writing
       or reviewing bash
     // the reference stays a reference deliberately: heavy on context,
-    // far to the side of other tasks. bash is simply not like the others.
+    // far to the side of other tasks. bash fails quietly where other
+    // languages throw.
   }
 
   RepoConvention {

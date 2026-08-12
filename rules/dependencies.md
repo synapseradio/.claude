@@ -72,7 +72,7 @@ Dependencies {
     the repo carries its own dependency-management docs
       -> read them before touching deps; on conflict, they override this file
     // conventions like Bun workspace catalogs, pnpm patches, or npm overrides
-    // change where a version range belongs; skipping the docs usually means
+    // change where a version range belongs. skipping the docs usually means
     // putting the range in the wrong place and redoing the work
   }
 
@@ -85,13 +85,13 @@ Dependencies {
     never { `bun add <name>@<version>`
           | any flag or suffix that hand-picks a version on the CLI }
     never edit a lockfile by hand
-      // the lockfile records what the resolver decided; editing it asserts
+      // the lockfile records what the resolver decided. editing it asserts
       // a resolution nobody ran
     after changing deps -> let the tool verify (install, audit)
   }
 
   Constraining {
-    // the CLI adds the dependency; a file constrains it
+    // the CLI adds the dependency. a file constrains it
     a version constraint genuinely required -> a config file {
       the lockfile's resolved version | a workspace catalog
         | an `overrides` block | the package's own `package.json` edited as text

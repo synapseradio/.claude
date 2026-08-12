@@ -1,8 +1,8 @@
 
 WritingComments {
   Applies { every comment, in every language and every artifact that carries one }
-    // this file decides when a comment exists and what it carries;
-    // writing-prose.md reaches the sentences inside one
+    // this file decides when a comment exists and what it carries
+    via(./writing-prose.md)  // the sentences inside one answer there
 
   a comment carries the part of the author's theory the code cannot:
     why this form and not the obvious one, what got tried and dropped,
@@ -99,7 +99,7 @@ WritingComments {
       it cannot land in this change -> leave a TODO, tie it to the current
         task, carry an owner or ticket on it, and ask the user to add it
       knowledge spanning more than one file belongs in docs
-        // a comment may point to a doc or a test; it never stands in for either
+        // a comment may point to a doc or a test. it never stands in for either
     }
     WriteTheCommentFirst {
       draft the interface comment before the body

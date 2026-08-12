@@ -32,19 +32,20 @@ paths:
 ```sudolang
 Testing {
   Applies { writing, changing, or judging tests }
-    // ImplementFlow in ./writing-code.md decides when a test gets
-    // written; this file governs the test itself
+    // this file governs the test itself
+    via(./writing-code.md ImplementFlow)  // decides when a test gets written
 
   Worth {
     a test carries value only when its expected result comes from somewhere
       other than the code it checks
       // the oracle stands outside the system under test
     each test fails for one reason, and its failure message says which
-    the verdict holds across identical runs  // flake forbids nothing
+    the verdict holds across identical runs  // tolerate no flake:
+                                             // fix the test or delete it
     never trust a test you have not seen fail for the right reason
       // FunctionShadowing below is one instance of this
-    an untested claim with a recorded reason is a decision;
-      one with no record is a gap
+    a recorded reason makes an untested claim a decision.
+      no record leaves it a gap
   }
 
   RunScope {
