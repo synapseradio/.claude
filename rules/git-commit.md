@@ -9,7 +9,7 @@ GitCommit {
     verify staged files with `git diff --cached --name-only` before committing
     planning artifacts -> never included, unless explicitly requested
     HookBlock {
-      a pre-commit hook block = a failure, not a suggestion
+      a pre-commit hook block = a failure
       hook rejects the commit -> the rejection becomes the next task
       never `--no-verify` to bypass it
       after a rejection -> never amend the rejected attempt;

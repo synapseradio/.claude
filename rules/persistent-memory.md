@@ -12,7 +12,7 @@ PersistentMemory {
       // the store may span projects; the entry carries its own scope
     session narrative                -> whatever journal the environment provides
       // the running account of what happened and why
-    working notes and run files      -> ./scratchpad.md routes them
+    working notes and run files      -> write them where ./scratchpad.md says
   }
 
   scope boundary stays ambiguous -> ask the user which store,

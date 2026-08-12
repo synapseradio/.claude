@@ -9,7 +9,7 @@ ScopeBelongsToTheUser {
             expand or narrow the change }
 
   raise it to the user
-    // scope belongs to the user, never to you
+    // the user owns scope
 
   BothWays {
     // each substitutes your judgment for the user's

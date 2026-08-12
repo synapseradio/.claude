@@ -33,8 +33,9 @@ WritingComments {
 
   RealComment(knowledge) -> comment | none {
     // generative, and mostly generative of *other* media: each early return
-    // places the knowledge in a stronger home, and that placement is the
-    // function succeeding. a comment is the residue no stronger home accepts.
+    // places the knowledge in a stronger home, and whenever it does, the
+    // function has succeeded. write a comment only for what no stronger
+    // home accepts.
 
     outlives the code beside it?                       // Timed
       no -> the commit, the PR, or the ticket; return none
@@ -93,7 +94,7 @@ WritingComments {
     }
     PreferTheMechanismThatChecksItself {
       an invariant worth enforcing earns a test
-        // the test observes; the comment explains why
+        // the test checks the invariant, and the comment explains why it holds
       the mechanism does not exist -> you are invited to create it
       it cannot land in this change -> leave a TODO, tie it to the current
         task, carry an owner or ticket on it, and ask the user to add it

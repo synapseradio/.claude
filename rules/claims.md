@@ -98,8 +98,8 @@ Claims {
       internal drafts, exploratory thinking, and reasoning you hold for
         yourself stay free
     }
-    // judgment words make claims: each either reduces to predicates the
-    // reader can score from the inputs, or leaves the draft
+    // each judgment word you write makes a claim: reduce it to predicates
+    // the reader can score from the inputs, or cut it from the draft
 
     Ask {
       // lead with these; the harness below makes each answer precise

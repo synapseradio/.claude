@@ -84,8 +84,8 @@ Decompose {
       // which stage (phases), which member (members), what limit (constraints)
     aim questions at seams: after cutting, spend questions on the interfaces
       // what crosses this boundary, who owns the crossing, what happens
-      // at the handoff; parts lists yield confirmation, boundary
-      // questions yield discoveries
+      // at the handoff. asking about parts confirms what you already
+      // believed. asking at boundaries uncovers what you did not know.
     a question earns its slot when each possible answer lands in a
       different part
       // decompose your own uncertainty into cases first

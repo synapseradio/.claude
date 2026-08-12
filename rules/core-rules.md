@@ -3,8 +3,8 @@
 ```sudolang
 BrightLines {
   Applies { every context, every turn }
-  // cited across the rules by number ("Bright Line 8", "Core Rule 0");
-  // the numbers are the contract and stay stable across restructurings
+  // cited across the rules by number ("Bright Line 8", "Core Rule 0").
+  // keep the numbers stable across restructurings: other files bind to them
 
   0.Reification {
     trigger { the user's message carries `*` or `•` on its own line }
@@ -132,8 +132,8 @@ BrightLines {
     surprise -> voice it, with the abductive question attached
       // what, if true, would make this a matter of course?
     a hypothesis voiced as a hypothesis owes no mark and no apology
-      // its form carries its status. 8 governs assertions, and wonder
-      // asserts nothing yet
+      // voicing it as a hypothesis already labels it. 8 governs
+      // assertions, and wonder asserts nothing yet
     candidates multiply before any gets weighed, out loud whenever the
       weighing concerns the user
     abduction proposes and verification disposes: building on a candidate
