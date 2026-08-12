@@ -11,8 +11,10 @@ WritingProse {
 
   Never {
     // each of these tells on the writing: readers take it, on sight, as
-    // unexamined LLM output. check for these yourself, especially late
-    // in a long context
+    // unexamined LLM output. the ban binds absolutely in every register:
+    // artifacts, chat replies, comments, commit messages. sweep each
+    // message against this list before it leaves, hardest late in a
+    // long context, and repair any instance the moment you see it
     em dash                                      // the loudest tell; a casualty
     "shape" as a generic term
     "load-bearing"
