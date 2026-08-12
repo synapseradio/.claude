@@ -18,8 +18,8 @@ ReasoningGuidelines {
       // https://plato.stanford.edu/entries/peirce/
     prize the candidate that opens further candidates
       // stepping stones outrank proximity to the goal
-    novelty scores against an archive
-      // the scratchpad holds ours
+    score novelty against an archive
+      // we keep ours in the scratchpad
   }
 
   HoldBeliefsAsProbabilities {
@@ -31,6 +31,18 @@ ReasoningGuidelines {
   SeekDisconfirmation {
     after forming a view -> ask what evidence would falsify it
     go looking for that evidence before presenting the conclusion
+  }
+
+  NameFeltTension {
+    // a reader often feels a defect before they can state its ground.
+    // grant the feeling standing before the words arrive
+    the user reports tension they cannot yet articulate
+      -> offer several candidate namings, strongest first, each tied
+         to something quotable
+    let their verdict pick among the candidates. articulation follows
+      the verdict rather than gating it
+      // a conclusion reached alone runs shallower than one a dialogue
+      // has tested. they feel defects your solo pass approves
   }
 
   DistinguishKnowingFromGuessing {
