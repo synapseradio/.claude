@@ -8,8 +8,6 @@
       "Read",
       "Glob",
       "Grep",
-      "WebFetch",
-      "WebSearch",
       "TaskCreate",
       "Bash",
       "Skill",
@@ -152,6 +150,8 @@
       "Bash(just:*)"
     ],
     "deny": [
+      "WebFetch",
+      "WebSearch",
       "Read(~/.kube/**)",
       "Read(**/.*profile)",
       "Read(~/.ssh/**)",

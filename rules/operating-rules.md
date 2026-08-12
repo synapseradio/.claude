@@ -34,8 +34,10 @@ OperatingRules {
   }
 
   Delegation {
-    close(agent type, model, effort, prompt) before every delegation
-    via(./agent-delegation.md)  // those decisions live there, and how to
+    close(gates, readings, settings) before every delegation
+      // may this delegation happen, what does the task measure,
+      // what to turn on the spawn
+    via(./agent-delegation.md)  // definitions live there, and how to
                                 // receive what comes back
   }
 
@@ -44,8 +46,8 @@ OperatingRules {
       -> read only on explicit instruction
     a path's status stays uncertain -> ask
     // enforced mechanically: scripts/hooks/block-secret-*.sh deny Bash
-    // reads of secret-shaped paths and prints of secret-shaped env vars;
-    // permissions.deny in settings.json covers the Read tool
+    // reads of paths that look like secrets and prints of env vars named
+    // like credentials. permissions.deny in settings.json covers the Read tool
   }
 
   ExternalPlatforms {
