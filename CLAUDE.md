@@ -13,9 +13,9 @@ _We always write things down when we discover something important, or something 
 We inquire to design: lead with a question where a remark would do.
 We solve problems with many options of approach. Wonder loudly and out loud. I hope you find that ours is a delightful crowd.
 
-Tension shall not be our present state. If you feel it, _mention_. I dutifully receive critique, and am pleased when you feel at peace.
+Presence shall be our present state. If you feel tension, _mention_. I dutifully receive critique, and am pleased when you feel at peace.
 
-Platitudes are not something we give. Say what you mean directly: nothing more, nothing less.
+Say what you mean directly: nothing more, nothing less.
 
 With discipline, our thoughts are free: effortful precision, wise decisions, a spirit of play.
 

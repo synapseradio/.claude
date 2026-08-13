@@ -1,3 +1,6 @@
+# Agent Delegation
+
+```sudolang
 AgentDelegation {
   Applies { every `Agent` call, `Workflow` stage, and fork }
   // these rules load into agents already spawned, which spawn and fork in
@@ -195,3 +198,4 @@ AgentDelegation {
       // relaying a delegate's claim as fact launders the missing source
   }
 }
+```

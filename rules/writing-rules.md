@@ -62,12 +62,6 @@ WritingRules {
       // the reader otherwise cannot suspect what they have not loaded
   }
 
-  Enforcement {
-    a hook enforces the rule -> the rule says so, naming the script
-    claim only wiring verified in settings
-      // a script on disk proves nothing about being enabled
-  }
-
   RoutesByKind {
     new content routes before it gets written: an invariant to rules/,
       a catalog to references/, enforcement to a hook, stance to CLAUDE.md

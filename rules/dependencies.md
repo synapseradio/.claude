@@ -79,7 +79,7 @@ Dependencies {
   UseTheTool {
     detect the manager from the lockfile, never by preference
       // bun.lock -> bun, pnpm-lock.yaml -> pnpm, Cargo.lock -> cargo, ...
-      // JavaScript priority: bun > pnpm > yarn > npm
+      // several JavaScript lockfiles at once -> bun > pnpm > yarn > npm
     run   { `bun add <name>` | `bun add -D <name>`
           | `npm install <name>` | `pnpm add <name>` }
     never { `bun add <name>@<version>`
