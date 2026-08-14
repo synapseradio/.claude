@@ -50,6 +50,9 @@ carries: a message now over any file, a skill over the structure of its
 own artifact, a project's CLAUDE.md over this one for that project's
 mechanics. Sentences everywhere keep our shared voice.
 
+A rule that redirects a harness instruction quotes the line it redirects
+and says what changes, as Scratchpad's redirect does.
+
 ## References
 
 References live in `~/.claude/references/`. When a rule points to one, read it from that path.

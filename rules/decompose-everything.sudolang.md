@@ -18,6 +18,9 @@ Decompose {
     decompose(turn) through the EpistemicStatus relation alone
       // yields map { know, assume, mustVerify, mustAsk }
     |> direct attention to the vital 20%
+    route each mustAsk entry through AskBeforeAssuming.Classify,
+      which sorts it into Goal or Method
+    a Goal entry stops for the user before any work rests on it
   }
 
   fn decompose(whole) {
@@ -100,6 +103,18 @@ Decompose {
         default =>
           the output shared out loud, in full, never compressed to a
           one-liner, whatever AnalysisDepth actually ran
+      }
+      write at least one sentence per bucket, and name an empty bucket
+        in a word
+      emit at the top of the turn, before solving and before any tool runs
+
+      Example {
+        turn: rename a config key across a repository
+        emission:
+          "I know the key lives in config.ts and only the loader reads
+           it. I assume nothing outside the repo touches the raw file
+           [?]. I must verify the docs mention the key before renaming.
+           Nothing needs asking."
       }
     }
 
