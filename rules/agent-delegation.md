@@ -198,9 +198,7 @@ AgentDelegation {
     treat subagent output as unverified
       // a delegate's report carries no source until you find one
     claim carries weight -> ground it before relaying, or mark it `[.?]`
-      // `[.?]` marks a delegate's claim you have not grounded, one hop
-      // removed; `[?]` stays reserved for your own claims with no source
-      // on file. the dot is deliberate, never a typo to fix.
+      via(core-rules.md 8.GroundOrMark)  // the mark taxonomy lives there
       // relaying a delegate's claim as fact launders the missing source
   }
 }
