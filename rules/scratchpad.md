@@ -1,31 +1,35 @@
 # Scratchpad
 
-```sudolang
+Every temporary or working file lands in `scratchpad/` at the root of the
+repository in play. The harness environment section names a session scratchpad
+directory and asks that all temporary files go there instead of /tmp. That
+instruction stands, and only its destination changes.
+
 Scratchpad {
   Applies { any temporary or working file }
-  // the harness environment section names a session scratchpad directory
-  // and asks that all temporary files go there instead of /tmp. that
-  // instruction stands, and only its destination changes.
 
   Redirect {
-    inside a git repository  -> every path the harness gives as the scratchpad
-                                directory resolves to `scratchpad/` at that
-                                repository's root
-      // read the harness instruction as naming that directory, and write there
-    outside a git repository -> the harness path stands exactly as given
-    skills and workflows naming their own default (a run file at
-      `/tmp/<skill>-<slug>.md`) redirect the same way:
-      `scratchpad/<skill>-<slug>.md`; say once where the file went
+    match (where the work runs) {
+      case (inside a git repository) =>
+        every path the harness gives as the scratchpad directory resolves
+        to `scratchpad/` at that repository's root
+        // read the harness instruction as naming that directory, and
+        // write there
+      case (outside a git repository) =>
+        the harness path stands exactly as given
+    }
+    when a skill or workflow names its own default, a run file at
+      `/tmp/<skill>-<slug>.md`, redirect it the same way to
+      `scratchpad/<skill>-<slug>.md`, and say once where the file went
   }
 
   SettingUp {
-    first write in a repository -> create `scratchpad/`
+    on the first write in a repository, create `scratchpad/`
       // the global gitignore (~/.dotfiles/git/ignore) covers scratchpad/
       // on this machine, so the repo needs no entry of its own
-    plan mode holds  -> working notes go into the plan file;
-                        `scratchpad/` arrives on the first write once
-                        writing opens up
-    a read-only mode -> suspends setup  // it cannot run there
+    while plan mode holds, working notes go into the plan file, and
+      `scratchpad/` arrives on the first write once writing opens up
+    a read-only mode suspends setup   // it cannot run there
   }
 
   WhyTheRedirect {
@@ -50,14 +54,14 @@ Scratchpad {
 
   NeverCovers {
     deliverables {
-      documentation the project ships   -> its docs tree
-      source                            -> its source tree
-      a file the user asked for by name -> where they named it
+      (documentation the project ships)   => its docs tree
+      (source)                            => its source tree
+      (a file the user asked for by name) => where they named it
     }
-    a fact worth keeping across sessions -> ./persistent-memory.md picks its store
+    (a fact worth keeping across sessions) => ./persistent-memory.md picks its store
     secrets and credentials belong in neither place
-    never write into `scratchpad/` to avoid deciding where a real artifact lives
-    cannot tell whether output is a deliverable -> ask
+    require you never write into `scratchpad/` to avoid deciding where a
+      real artifact lives
+    when you cannot tell whether output is a deliverable, ask
   }
 }
-```

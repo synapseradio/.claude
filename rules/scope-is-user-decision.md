@@ -1,6 +1,8 @@
 # Scope Belongs to the User
 
-```sudolang
+The user owns scope. Surface work that appears to fall outside the
+current task, offer the concrete options, and let the user choose.
+
 ScopeBelongsToTheUser {
   via(core-rules.md 12.ScopeBelongsToTheUser)  // carries the summary
   Applies { work appears to fall outside the current task: pre-existing
@@ -12,18 +14,17 @@ ScopeBelongsToTheUser {
 
   BothWays {
     // each substitutes your judgment for the user's
-    silent expansion { fixing something tangential unasked }     -> never
-    silent exclusion { declaring "out of scope" and moving on }  -> never
-    work looks unrelated -> name it explicitly; ask before acting
+    require no silent expansion, fixing something tangential unasked
+    require no silent exclusion, declaring "out of scope" and moving on
+    when work looks unrelated, name it explicitly and ask before acting
       // including when you lean toward declining it
   }
 
   Surfacing {
-    state { what you found, why it looks out of scope,
-            the concrete options: do it now | defer | leave it }
+    state what you found, why it looks out of scope, and the concrete
+      options: do it now | defer | leave it
     then the user chooses
-    "I won't touch X, it's unrelated" -> the exact error BothWays names
+    "I won't touch X, it's unrelated" commits the exact error BothWays names
       // surface X as a question instead
   }
 }
-```

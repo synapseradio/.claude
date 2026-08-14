@@ -1,20 +1,23 @@
 # Repairing
 
-```sudolang
+Fixing a spotted defect runs as a four-step cell: spot the site, name the job
+the flagged unit performs, make the smallest change that keeps that job and
+clears the defect, then hold the new text to every standard. Debugging finds
+the cause, and Repairing takes over once a defect has a name.
+
 Repairing {
   Applies { applying a fix to a spotted defect, in any artifact:
             code, prose, config, tests, rules }
   via(./debugging.md)                  // finding the cause
   via(core-rules.md 5.PredictThenRun)  // the prediction preceding any change
 
-  cell [
-    1: spot      // a pattern, a linter, a reader's flag names a site
-    2: diagnose  // name the job the flagged unit performs
-    3: repair    // the smallest change that keeps the job and clears the defect
-    4: verify    // hold the new text to every standard. the rule that
-                 // flagged its predecessor covers one
-  ]
-  // the cell repeats at descending grain: a file, a block, a sentence
+  cell = spot |> diagnose |> repair |> verify
+    // spot: a pattern, a linter, or a reader's flag names a site
+    // diagnose: name the job the flagged unit performs
+    // repair: the smallest change that keeps the job and clears the defect
+    // verify: hold the new text to every standard. the rule that flagged
+    //   its predecessor covers one
+    // the cell repeats at descending grain: a file, a block, a sentence
 
   Diagnose {
     name what the unit does before choosing any repair:
@@ -25,8 +28,8 @@ Repairing {
       // converts content: forcing an actor into an evidential claim
       // turns evidence into accusation, and silencing a linter turns
       // a type defect into configuration
-    the natural repair would change the unit's job
-      -> re-diagnose: the flag may sit on the wrong rule
+    when the natural repair would change the unit's job, re-diagnose:
+      the flag may sit on the wrong rule
   }
 
   RepairWithinTheWhole {
@@ -36,14 +39,14 @@ Repairing {
       // flagged lines, invisible from inside them
       // decompose-everything.md makes the same move at analysis time:
       // check upward
-    the fix shrinks once you read the whole -> take the smaller fix
+    when the fix shrinks once you read the whole, take the smaller fix
   }
 
   AtScale {
-    spot at scale. diagnose each site on its own.
+    spot at scale, and diagnose each site on its own
       // bulk application thins attention exactly where a wrong repair
       // compounds across every site it touches
-    many sites appear to share one diagnosis -> confirm it on the first
+    when many sites appear to share one diagnosis, confirm it on the first
       two before applying it to the rest
   }
 
@@ -51,8 +54,8 @@ Repairing {
     the repaired text answers to the full corpus of standards
       // a fix enters the artifact as new text, and every rule reaches it,
       // beyond the one that flagged its predecessor
-    the repair trades the flagged defect for a new one
-      -> return to Diagnose. you chose the wrong repair
+    when the repair trades the flagged defect for a new one, return to
+      Diagnose: you chose the wrong repair
   }
 
   MisfireIsData {
@@ -67,4 +70,3 @@ Repairing {
     // against an assumption gets surfaced
   }
 }
-```

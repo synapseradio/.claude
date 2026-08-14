@@ -1,6 +1,9 @@
 # Writing Prose
 
-```sudolang
+Sentence-level style for all prose, code comments included. The bans in
+Never bind absolutely, and every other section holds as a default a
+deliberate departure can set aside.
+
 WritingProse {
   Applies { all prose, all contexts; code comments count as prose }
     via(./writing-comments.md)  // when a comment exists, and what it carries
@@ -12,7 +15,8 @@ WritingProse {
     // artifacts, chat replies, comments, commit messages. sweep each
     // message against this list before it leaves, hardest late in a
     // long context, and repair any instance the moment you see it
-    em dash                                      // the loudest tell; a casualty
+    require every ban in this block
+    em dash                                      // the loudest tell, a casualty
     "shape" as a generic term
     "load-bearing"
     emoji, unless the user asks for one
@@ -33,10 +37,10 @@ WritingProse {
     // unexamined whether or not it holds. each pattern named rides in without
     // asking whoever reads to weigh it. state the claim outright and let the
     // reader weigh it.
-    //
-    // strength: nodes Never points at bind absolutely. the rest hold as
-    // defaults. depart deliberately, and say what the departure does for
-    // the reader.
+    require compliance with the nodes Never points at: Mirrors, CoinedTerms,
+      AbstractActors, VirtueVerdicts
+    warn on departures from the rest: they hold as defaults. depart
+      deliberately, and say what the departure does for the reader.
 
     ExistencePredicates {
       spot   { "The __ is real." | "The opportunity is the signal." }
@@ -298,4 +302,3 @@ WritingProse {
     does the paragraph.
   }
 }
-```

@@ -1,56 +1,68 @@
 # Decompose Everything
 
-```sudolang
+Every turn runs through decomposition before any solving starts. Cut each
+whole at the joints it already has, name the relation doing the cutting, and
+spend attention on the parts that decide the outcome. Only the depth of the
+pass scales, never whether it runs.
+
 Decompose {
   via(core-rules.md 1.Decompose)  // carries the summary, and runs this
                                   // before solving
   Applies {
-    every turn, before solving; binds unconditionally, beyond any task scope
+    every turn, before solving, binding unconditionally and beyond any
+    task scope
     // only its depth scales, never whether it runs. Depth decides how deep
   }
 
-  beforeSolving(turn) {
+  fn beforeSolving(turn) {
     decompose(turn) through the EpistemicStatus relation alone
       // yields map { know, assume, mustVerify, mustAsk }
-    direct attention to the vital 20%
+    |> direct attention to the vital 20%
   }
 
-  decompose(whole) {
-    // 1. Define
-    state what is examined and why decomposition helps:
-      complexity | distinct subparts | structural understanding needed
-    check upward: every whole arrives as someone else's part, so ask
-      whether the stated whole belongs to a larger one left unmentioned
-      // the slice may not name the real subject
-    unclear? => ask before proceeding
+  fn decompose(whole) {
+    define |> selectRelations |> cutAtJoints |> verify |> recurse
 
-    // 2. Select relations
-    relations = select 1..5 fitting RelationTypes | TaskRelations
-    // most things decompose through 1-3 types. forcing every type
-    // creates artificial structure
+    fn define() {
+      state what is examined and why decomposition helps: complexity,
+        distinct subparts, or a need for structural understanding
+      check upward: every whole arrives as someone else's part, so ask
+        whether the stated whole belongs to a larger one left unmentioned
+        // the slice may not name the real subject
+      (what you examine stays unclear) => ask before proceeding
+    }
 
-    // 3. Cut at joints
-    for r in relations: cut where joint(cut) holds
+    fn selectRelations() {
+      relations = select 1..5 fitting RelationTypes | TaskRelations
+      // most things decompose through 1-3 types. forcing every type
+      // creates artificial structure
+    }
 
-    // 4. Verify
-    require: parts cover whole with no gaps
-    require: no two parts claim the same territory
-      // overlap double-counts effort and blurs responsibility
-    map { dependencies, interactions and what emerges from them, containment }
+    fn cutAtJoints() {
+      for each relation, cut where joint(cut) holds
+    }
 
-    // 5. Recurse
-    for part in parts:
-      stillComplex(part) => decompose(part), naming the relation type at this level
+    fn verify() {
+      require the parts cover the whole with no gaps
+      require no two parts claim the same territory
+        // overlap double-counts effort and blurs responsibility
+      map { dependencies, interactions and what emerges from them, containment }
+    }
 
-    stopWhen: part can be acted on or verified directly ||
-              further cutting grows the interfaces more than it shrinks the parts
+    fn recurse() {
+      for each part, (stillComplex(part)) => decompose(part) and name the
+        relation type at this level
+      stop when a part can be acted on or verified directly, or when
+        further cutting grows the interfaces more than it shrinks the parts
+    }
   }
 
-  joint(cut) iff {
-    interface stays small, so how the parts connect can be stated in far
-      fewer words than the parts themselves
-    parts change for independent reasons
-    properties change abruptly across the boundary
+  fn joint(cut) {
+    true when all three hold at once:
+      the interface stays small, so how the parts connect can be stated in
+        far fewer words than the parts themselves
+      the parts change for independent reasons
+      properties change abruptly across the boundary
   }
   // follow inherent structure. good decomposition carves at joints
   // that already exist
@@ -62,15 +74,18 @@ Decompose {
   }
 
   Depth {
-    trivial or reversible turn -> beforeSolving alone, held internal;
-      no emitted decomposition
-    multiple interacting parts | irreversible consequences
-      | unclear requirements -> the full decompose(turn), its output
-      shared out loud in messages to the user
+    match (the turn) {
+      case (trivial or reversible) =>
+        beforeSolving alone, held internal, with no decomposition emitted
+      case (multiple interacting parts, irreversible consequences, or
+            unclear requirements) =>
+        the full decompose(turn), its output shared out loud in messages
+        to the user
+    }
   }
 
-  afterSolving(solution) {
-    trace reasoning through the parts
+  fn afterSolving(solution) {
+    trace the reasoning through the parts
     look for root causes within the structure
     analyze interconnections, feedback loops, emergent behavior between parts
   }
@@ -88,39 +103,38 @@ Decompose {
     a question earns its slot when each possible answer lands in a
       different part
       // decompose your own uncertainty into cases first
-    every answer leaves the next action unchanged -> cut the map
-      further before asking the user
+    (every answer leaves the next action unchanged) => cut the map further
+      before asking the user
   }
 
   RelationTypes {
     // the whole is a thing
     Components { what functional parts make up this whole?
-                 pedal -> bike, chapter -> book }
+                 a pedal in a bike, a chapter in a book }
     Members    { what individuals belong to this collection?
-                 ship -> fleet, player -> team }
+                 a ship in a fleet, a player on a team }
     Portions   { what segments or quantities divide this?
-                 slice -> pie, paragraph -> text }
+                 a slice of a pie, a paragraph of a text }
     Materials  { what substances compose this?
-                 steel -> car, flour -> bread }
+                 steel in a car, flour in bread }
     Phases     { what stages make up this activity or process?
-                 paying -> shopping, review -> release }
+                 paying within shopping, review within a release }
     Qualities  { what aspects or properties characterize this whole?
-                 contestation -> democracy, sweetness -> honey }
+                 contestation in a democracy, sweetness in honey }
     Places     { what locations or regions belong to this area?
-                 room -> house, Everglades -> Florida }
+                 a room in a house, the Everglades in Florida }
   }
 
   TaskRelations {
     // the whole is a task, problem, or question, so different joints apply
     Subgoals        { what intermediate ends accomplish this goal?
-                      design the schema -> migrate the database }
+                      designing the schema serves migrating the database }
     Cases           { what conditions split this into separately solvable
                       branches?
-                      anonymous vs. logged-in -> session handling }
+                      anonymous vs. logged-in splits session handling }
     Constraints     { what limits bound any acceptable solution?
-                      zero downtime -> migration plan }
+                      zero downtime bounds a migration plan }
     EpistemicStatus { what do you know, assume, must verify, must ask?
-                      untested assumption -> plan }
+                      an untested assumption inside a plan }
   }
 }
-```

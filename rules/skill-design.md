@@ -1,6 +1,9 @@
 # Skill Design
 
-```sudolang
+Design an Agent Skill, change one, or judge whether one holds up. Pick the
+mode from the state of the world, then read the reference that mode names,
+in full, before acting.
+
 SkillDesign {
   Applies { designing a new Agent Skill, changing an existing one,
             or judging whether one holds up }
@@ -11,34 +14,34 @@ SkillDesign {
       decisions rather than remaking them
     close every decision a skill leaves open from what the skill
       itself provides
-    a part left unsupplied, with no way to find it -> you have
+    when a part is left unsupplied, with no way to find it, you have
       found work
   }
 
   Modes {
-    route by the state of the world, never by your own capability {
-      no SKILL.md exists yet     -> Design
-      the user wants change      -> Refactor
-      judging, changing nothing  -> Audit
+    route by the state of the world, never by your own capability
+    match (the state of the world) {
+      case (no SKILL.md exists yet)    => Design
+      case (the user wants change)     => Refactor
+      case (judging, changing nothing) => Audit
     }
-    entering any mode -> read(../references/skill-design-reference.md)
+    on entering any mode, read(../references/skill-design-reference.md)
       in full
       // the mode contracts and the executor moves live there
   }
 
   Pipeline {
-    a skill or its reference material gets created or substantially
-      redesigned -> the six-question authoring pipeline {
+    when a skill or its reference material gets created or substantially
+      redesigned, run the six-question authoring pipeline {
       read(../references/skill-authoring-pipeline.md) in full
       follow it as written
-      Design   -> enter at ResearchSweep
-      Refactor -> enter at whichever stage the evidence reopens
+      (Design)   => enter at ResearchSweep
+      (Refactor) => enter at whichever stage the evidence reopens
         // the pipeline sends work backward freely, so a substantial
         // redesign rejoins wherever its findings land
-      Audit    -> never enters   // Audit changes nothing
+      (Audit)    => never enters   // Audit changes nothing
     }
-    the brief complete -> the skill-creator skill builds and
+    once the brief is complete, the skill-creator skill builds and
       evaluates from it
   }
 }
-```

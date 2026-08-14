@@ -16,16 +16,17 @@ paths:
 
 # Shell Scripts
 
-```sudolang
+Shell work follows the Google Shell Style Guide, read in full before any bash
+gets written or reviewed. One repository convention overrides the guide:
+filenames stay kebab-case.
+
 ShellScripts {
   Applies { writing or reviewing shell scripts }
 
   follow the Google Shell Style Guide {
     read(../references/bash-style-guide.md) in full before writing
       or reviewing bash
-    // the reference stays a reference deliberately: heavy on context,
-    // far to the side of other tasks. bash fails quietly where other
-    // languages throw.
+    // bash fails quietly where other languages throw
   }
 
   RepoConvention {
@@ -33,4 +34,3 @@ ShellScripts {
       underscore default
   }
 }
-```

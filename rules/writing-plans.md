@@ -1,6 +1,9 @@
 # Writing plan files
 
-```sudolang
+A plan file reaches an agent who holds no context beyond what the file says,
+so it names every place to look and closes every open question before anyone
+approves it.
+
 WritingPlans {
   Applies { writing plans, or plan mode }
   // the plan file's content, and leaving the mode
@@ -19,7 +22,7 @@ WritingPlans {
 
   PlanModeExit {
     Applies { whenever plan mode ends }
-    a question remains unresolved -> never call ExitPlanMode {
+    require you never call ExitPlanMode while a question remains unresolved {
       ask each open question through AskUserQuestion first
       fold the answers into the plan
       present the plan for approval only after it closes every fork
@@ -28,8 +31,8 @@ WritingPlans {
     Hedge {
       spot   { "depending on X we could..." }
         // a plan that hedges signals an unresolved question
-      repair { extract the question; ask it; rewrite the branch as a decision }
+      repair { extract the question, ask it, and rewrite the branch as
+               a decision }
     }
   }
 }
-```

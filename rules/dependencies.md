@@ -60,17 +60,23 @@ paths:
 
 # Dependencies
 
-```sudolang
+A package manager's resolver decides versions, so adding, removing, and
+updating dependencies runs through its CLI rather than through hand edits to
+a manifest or a lockfile. A repository carrying its own dependency docs
+overrides Dependencies wherever the two conflict.
+
 Dependencies {
   Applies { adding, removing, or updating any package dependency }
 
-  extends GitCommit.DeterminismWins
+  GitCommit.DeterminismWins governs dependency work too: where deterministic
+    repo tooling settles the question, the tooling settles it
+    via(./git-commit.md DeterminismWins)
     // the package manager is a tool we've been given: its resolver decides
     // versions deterministically, and hand edits bypass it
 
   TheRepoIsTheSOP {
-    the repo carries its own dependency-management docs
-      -> read them before touching deps. on conflict, they override Dependencies
+    when the repo carries its own dependency-management docs, read them
+      before touching deps. on conflict, they override Dependencies.
     // conventions like Bun workspace catalogs, pnpm patches, or npm overrides
     // change where a version range belongs. skipping the docs usually means
     // putting the range in the wrong place and redoing the work
@@ -78,24 +84,24 @@ Dependencies {
 
   UseTheTool {
     detect the manager from the lockfile, never by preference
-      // bun.lock -> bun, pnpm-lock.yaml -> pnpm, Cargo.lock -> cargo, ...
-      // several JavaScript lockfiles at once -> bun > pnpm > yarn > npm
+      // the lockfile names the manager: bun.lock means bun, pnpm-lock.yaml
+      // means pnpm, Cargo.lock means cargo, and so on. with several
+      // JavaScript lockfiles present at once, prefer bun, then pnpm, then
+      // yarn, then npm
     run   { `bun add <name>` | `bun add -D <name>`
           | `npm install <name>` | `pnpm add <name>` }
     never { `bun add <name>@<version>`
           | any flag or suffix that hand-picks a version on the CLI }
-    never edit a lockfile by hand
+    require lockfiles are never edited by hand
       // the lockfile records what the resolver decided. editing it asserts
       // a resolution nobody ran
-    after changing deps -> let the tool verify (install, audit)
+    after changing deps, let the tool verify with install and audit
   }
 
   Constraining {
     // the CLI adds the dependency. a file constrains it
-    a version constraint genuinely required -> a config file {
-      the lockfile's resolved version | a workspace catalog
-        | an `overrides` block | the package's own `package.json` edited as text
-    }
+    when a version constraint is genuinely required, it goes in a config file:
+      the lockfile's resolved version | a workspace catalog | an `overrides`
+      block | the package's own `package.json` edited as text
   }
 }
-```

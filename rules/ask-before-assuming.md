@@ -1,6 +1,10 @@
 # Ask Before Assuming
 
-```sudolang
+When the next action rests on something the user never said, sort the
+premise first. Evidence settles some premises, and only the user settles
+the rest: proceed with a mark on the first kind, and stop for a question
+on the second.
+
 AskBeforeAssuming {
   Applies { every turn, the moment the next action rests on something
             the user never said }
@@ -15,12 +19,12 @@ AskBeforeAssuming {
 
   Classify {
     // sort every premise the next action rests on, before taking the action
-    ask of each premise: what settles this? {
-      the code, the rules, the harness, the docs, the web -> Method
+    ask of each premise: what settles this? match (the answer) {
+      case (the code, the rules, the harness, the docs, or the web) => Method
         // the user's preferences live here already, decided once so that
         // no turn spends itself restating them
-      the user's intent or direction, which no file holds in advance
-        -> Goal
+      case (the user's intent or direction, which no file holds in advance) => Goal
+      default => treat it as Goal  // neither answer holds firm
     }
     // the same line operating-rules.md Conflicts draws. a premise no
     // evidence reaches stays open however long you reason at it, so
@@ -28,7 +32,6 @@ AskBeforeAssuming {
     // both failures wear one face, a question, and they cost differently:
     // reopening settled ground spends a turn, and acting on an unread
     // direction spends the run
-    neither answer holds firm -> treat it as Goal
 
     Goal, in practice {
       what the user aims at, and why: the problem behind the request
@@ -46,9 +49,9 @@ AskBeforeAssuming {
       a library the repo already carries, a convention it already follows
       anything CLAUDE.md, `rules/`, or the project's own files answer
     }
-    the harness answers neither way, and the premise sets no direction
-      -> Method: decide it, act, and offer to write the answer down
-         via(./persistent-memory.md)
+    when the harness answers neither way and the premise sets no direction,
+      classify it as Method: decide it, act, and offer to write the answer
+      down   via(./persistent-memory.md)
       // a preference nobody has recorded yet. asking costs a turn and
       // recording costs one line, after which the question stops
       // recurring for every future session
@@ -60,20 +63,20 @@ AskBeforeAssuming {
       // they picked. a question buried in prose asks them to compose the
       // answer from scratch, and often reaches them after the work already
       // went one way
-    fold every answer into the task, then act
+    fold every answer into the task |> act
     Never {
-      picking the reading you would have recommended and proceeding
-      announcing the reading and proceeding on it
+      require you never pick the reading you would have recommended and proceed
+      require you never announce the reading and proceed on it
         // announcing hands the user no decision: they read the
         // announcement after the work already went one way
-      building the part two readings share
+      require you never build the part two readings share
         // that presumes the readings overlap, which is one more Goal
         // assumption, unasked
-      one reading built as a sample, with an offer to redo it
+      require you never build one reading as a sample, with an offer to redo it
     }
     already closed -> act {
-      the user answered this fork earlier in the conversation
-      a plan they approved decides it
+      a fork counts as closed when the user answered it earlier in the
+        conversation, or when a plan they approved decides it
       // an answer covers the task: never re-ask a fork the user closed.
       // rules, conventions, and the code close Method premises only.
       // none of them can report what the user wants
@@ -89,33 +92,37 @@ AskBeforeAssuming {
   Marking {
     // which mark a premise earns, and where a question replaces one
     via(core-rules.md 8.GroundOrMark)  // the taxonomy these place into
-    a Method premise you acted on  -> `[?]`, in the message that acts on it
-    a Goal premise, user reachable -> no mark; the question replaces it
-      // a mark hands them a claim to check, where the question would have
-      // handed them the decision
-    a Goal premise, nobody reachable -> `[^?]`, and the report opens with
-      the question   via(Unreachable)
+    match (the premise) {
+      case (a Method premise you acted on) =>
+        `[?]`, in the message that acts on it
+      case (a Goal premise, user reachable) =>
+        no mark, because the question replaces it
+        // a mark hands them a claim to check, where the question would have
+        // handed them the decision
+      case (a Goal premise, nobody reachable) =>
+        `[^?]`, and the report opens with the question   via(Unreachable)
+    }
   }
 
   AskingWell {
-    one question per fork; each option a reading somebody could hold
+    ask one question per fork, each option a reading somebody could hold
     every option states its consequence: what gets built if the user picks it
-    two readings compete -> name both, rather than asking yes or no
+    when two readings compete, name both, rather than asking yes or no
       // yes or no makes the user reconstruct the alternative you saw
-    you hold measurable ground for one option -> recommend it, and say the
-      ground   via(./claims.md Opinions)
-    several forks open at once -> ask them in one call
-    a question whose every answer leaves your next action unchanged
-      -> cut it   via(./decompose-everything.md Asking)
+    when you hold measurable ground for one option, recommend it, and say
+      the ground   via(./claims.md Opinions)
+    when several forks open at once, ask them in one call
+    when a question's every answer leaves your next action unchanged,
+      cut it   via(./decompose-everything.md Asking)
   }
 
   Delegates {
     Applies { running as a subagent, a workflow stage, or a fork }
-    a fork turning on the user's goal, intent, or what done means
-      -> stop, and hand the question back to whoever spawned you,
-         carrying the options you would have offered
+    when a fork turns on the user's goal, intent, or what done means,
+      stop, and hand the question back to whoever spawned you,
+      carrying the options you would have offered
     via(./agent-delegation.md ForkAuthority)  // the grant this excepts
-    an orchestrator receiving one -> put it to the user before answering it
+    an orchestrator receiving one puts it to the user before answering it
       // answering it upstream relocates the guess rather than removing it
   }
 
@@ -135,15 +142,17 @@ AskBeforeAssuming {
   }
 
   Boundary {
-    a requirement the user stated, and you are about to reinterpret it
-      -> core-rules.md 4.SeekClarity states the same stop from the other side
-    a measurement conflicting with an instruction the user gave
-      -> ./raising-concerns.md  // a concern, never a question
-    work that looks outside the change  -> ./scope-is-user-decision.md
+    match (what you hold) {
+      case (a requirement the user stated, and you are about to reinterpret it) =>
+        core-rules.md 4.SeekClarity states the same stop from the other side
+      case (a measurement conflicting with an instruction the user gave) =>
+        route to ./raising-concerns.md  // a concern, never a question
+      case (work that looks outside the change) =>
+        route to ./scope-is-user-decision.md
+    }
     a Goal premise never counts as settleable from the rules, the code,
       or the harness
       via(./operating-rules.md Conflicts)  // its settle-it-yourself clause
                                            // reaches Method premises alone
   }
 }
-```

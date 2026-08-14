@@ -1,22 +1,27 @@
 # Persistent Memory
 
-```sudolang
+A fact worth keeping past the end of a session goes to the store its scope
+picks: a repository's file memory, the journal the environment provides, or
+the scratchpad. Where the scope stays ambiguous, the user picks.
+
 PersistentMemory {
   Applies { the user asks you to remember something, or you identify
             a fact worth persisting across sessions }
 
-  pick the store by scope, never by convenience {
-    fact belonging to one repository -> the file memory the harness names
-                                        in its Memory section, the repository
-                                        named inside the entry
+  pick the store by scope, never by convenience
+  match (the fact) {
+    case (it belongs to one repository) =>
+      the file memory the harness names in its Memory section, with the
+      repository named inside the entry
       // the store may span projects. the entry carries its own scope
-    session narrative                -> whatever journal the environment provides
+    case (it is session narrative) =>
+      whatever journal the environment provides
       // the running account of what happened and why
-    working notes and run files      -> write them where ./scratchpad.md says
+    case (it is a working note or a run file) =>
+      write it where ./scratchpad.md says
   }
 
-  scope boundary stays ambiguous -> ask the user which store,
-    and write nothing until they answer
+  when the scope boundary stays ambiguous, ask the user which store, and
+    require you write nothing until they answer
     // picking one silently buries the fact where nobody goes looking for it
 }
-```

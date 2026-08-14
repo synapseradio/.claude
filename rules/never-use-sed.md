@@ -1,6 +1,9 @@
 # Never Use sed for Edits
 
-```sudolang
+Every edit goes through a tool that shows what it matched: Edit, Write, or a
+script in a real language that reports what it changed. Stream editors driving
+in-place substitution stay out of any path that writes a file.
+
 NeverUseSedForEdits {
   Applies { always }
   // the ban covers in-place substitution over a stream, rather than writing
@@ -13,14 +16,14 @@ NeverUseSedForEdits {
     // in-place substitution driven by a pattern, reporting nothing it matched
 
   Constraints {
-    never use StreamEditors to modify a file
+    require StreamEditors never modify a file
     prefer Edit or Write wherever either expresses the change
       // they match exactly, fail loudly on a wrong match,
       // and never silently mangle the rest of the file
-    triviality is no exemption {
-      one-line substitution -> Edit
-      in-place delete       -> Edit
-      appending a line      -> Edit|Write
+    triviality exempts nothing, so match (the change) {
+      case (a one-line substitution) => Edit
+      case (an in-place delete)      => Edit
+      case (appending a line)        => Edit | Write
     }
     // enforced mechanically: scripts/hooks/deny-inplace-stream-edit.sh
     // denies sed/gsed -i and awk -i inplace as a PreToolUse hook on Bash.
@@ -31,8 +34,8 @@ NeverUseSedForEdits {
     StreamEditors for read-only inspection in a pipeline
       // touches no file on disk. the ban covers writing only
 
-    a script in a real language: Python, TypeScript, JavaScript, Ruby, or the
-    like, under ScriptedEdit
+    a script in a real language, Python, TypeScript, JavaScript, Ruby, or the
+      like, under ScriptedEdit
       // reach for one where the change is mechanical and repeats across many
       // files or many lines, and Edit would spend a call per instance
   }
@@ -42,10 +45,10 @@ NeverUseSedForEdits {
 
     Requirements {
       reversible before it runs {
-        `git commit` or `git stash` FIRST
+        require a checkpoint first: `git commit` or `git stash`
           // the script's whole effect becomes the only uncommitted diff,
           // so `git checkout` returns the tree
-        no checkpoint -> do not run the script
+        (no checkpoint) => do not run the script
       }
 
       idempotent {
@@ -58,4 +61,3 @@ NeverUseSedForEdits {
     }
   }
 }
-```
