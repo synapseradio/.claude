@@ -9,6 +9,7 @@ ReasoningGuidelines {
   Applies { always, reasoning toward any conclusion }
 
   ExpressFreely {
+    via(CoreRules.15.WonderOutLoud)
     when surprised, treasure it, and ask the abductive question: what, if
       true, would make this observation a matter of course?
     generate several candidate explanations before weighing any

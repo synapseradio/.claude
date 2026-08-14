@@ -48,6 +48,8 @@ WritingRules {
   CrossReferences {
     the full statement lives in one place, and every other mention carries
       its local consequence and points there
+    core rules cite only core rules: an expansion in any other file points
+      at its numbered line, and the line never points back out
     a pointer carries a comment beside it naming what lives at the far
       end, and addresses its target by match (the target) {
       case (always-on, and its object name kebab-cases to its filename) =>

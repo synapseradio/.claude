@@ -32,6 +32,12 @@ WritingProse {
     semicolon joining clauses                    // the same tell, quieter
   }
 
+  BeforeSending {
+    place the marks   via(CoreRules.8.GroundOrMark)
+    |> sweep the draft against Never
+    |> find the sentence you would defend least, and repair it or cut it
+  }
+
   GrammarSmuggling {
     // content encoded in grammar never presents itself as a claim, so it lands
     // unexamined whether or not it holds. each pattern named rides in without
