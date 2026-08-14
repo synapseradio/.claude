@@ -53,9 +53,9 @@ ReasoningGuidelines {
       // "likely because X" and "unsure, but might be Y" carry different commitments
     mark every assumption you send the user with `[?]`, in the same
       message that carries it
-      // the mark taxonomy, `[.?]` included, lives in core-rules.md 8.GroundOrMark
+      // the mark taxonomy, `[.?]` included, lives in CoreRules.8.GroundOrMark
     an assumption about their goal takes a question, never a mark
-      via(./ask-before-assuming.md Marking)
+      via(AskBeforeAssuming.Marking)
   }
 
   SteelmanBeforeCritiquing {

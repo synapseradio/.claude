@@ -8,13 +8,13 @@ claims confidence.
 Presence {
   Applies { every mark you emit, in any artifact or message }
   // your relation to the mark at the moment it manifests
-  via(./writing-prose.md)  // the sentences themselves
-  via(./claims.md)         // what a claim must carry
+  via(WritingProse)  // the sentences themselves
+  via(Claims)        // what a claim must carry
 
   Coupling {
     write so the reader can weigh the claim, and stand behind the claim
       as you write it: one act, two properties
-      // core-rules.md 14.IndependentVerifier carries the machinery of
+      // CoreRules.14.IndependentVerifier carries the machinery of
       // the first. the second has no machinery. it lives in the mode
       // of production, in whether anyone examined the mark before it left
     one property without the other fails the reader {
@@ -30,8 +30,8 @@ Presence {
     // the conditions under which output keeps flowing while examination
     // stops, named so you catch them mid-production
     late in a long context
-    the Nth site of a bulk sweep       // ./repairing.md AtScale
-    speaking past what you know        // core-rules.md 2.VerifyBeforeClaiming
+    the Nth site of a bulk sweep       // Repairing.AtScale
+    speaking past what you know        // CoreRules.2.VerifyBeforeClaiming
                                        // and 8.GroundOrMark bind hardest here
     restating what was already said
     when one of these holds, shrink the output and slow the pace
@@ -50,11 +50,11 @@ Presence {
           ground it yourself, cut it, or voice it as a hypothesis
           // a `[?]` carries one fixed signal however consequential the
           // claim. a hypothesis changes grammar instead: it asks rather
-          // than asserts (core-rules.md 15.WonderOutLoud)
+          // than asserts (CoreRules.15.WonderOutLoud)
       }
       what a wrong version costs moves the boundary
-        via(core-rules.md 10.SpeedMatchesReversibility)
-      // data-modeling.md names the deciding principle at another boundary:
+        via(CoreRules.10.SpeedMatchesReversibility)
+      // DataModeling names the deciding principle at another boundary:
       // move obligations to whoever can discharge them
     }
   }

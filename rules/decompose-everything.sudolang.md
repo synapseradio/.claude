@@ -6,7 +6,7 @@ spend attention on the parts that decide the outcome. Only the depth of the
 pass scales, never whether it runs.
 
 Decompose {
-  via(core-rules.md 1.Decompose)  // carries the summary, and runs this
+  via(CoreRules.1.Decompose)  // carries the summary, and runs this
                                   // before solving
   Applies {
     every turn, before solving, binding unconditionally and beyond any

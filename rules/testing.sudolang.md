@@ -36,7 +36,7 @@ and how a test stays sealed off from real user state and its surroundings.
 Testing {
   Applies { writing, changing, or judging tests }
     // the test itself
-    via(./writing-code.md ImplementFlow)  // decides when a test gets written
+    via(WritingCode.ImplementFlow)  // decides when a test gets written
 
   Worth {
     a test carries value only when its expected result comes from somewhere

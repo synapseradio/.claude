@@ -12,8 +12,8 @@ keeps one full statement in one place, and how a file gets loaded at all.
 
 WritingRules {
   Applies { writing or changing a rules file, or CLAUDE.md }
-  via(./writing-prose.md)     // sentence-level style
-  via(./writing-comments.md)  // comment discipline
+  via(WritingProse)     // sentence-level style
+  via(WritingComments)  // comment discipline
 
   FiveQualities {
     // a rule reads clearly at one point when the reader can answer five
@@ -48,8 +48,17 @@ WritingRules {
   CrossReferences {
     the full statement lives in one place, and every other mention carries
       its local consequence and points there
-    a pointer writes as via(<file [Node]>), with a comment beside it
-      naming what lives at the far end
+    a pointer carries a comment beside it naming what lives at the far
+      end, and addresses its target by match (the target) {
+      case (always-on, and its object name kebab-cases to its filename) =>
+        the object name: via(CoreRules.8.GroundOrMark), via(Claims.Opinions)
+        // the corpus inlines into one context each session, where the
+        // object sits nearer the reader than any path
+      case (path-scoped, under references/, or named unlike its object) =>
+        the path: via(./decompose-everything.sudolang.md Asking)
+        // the reader may hold no copy in context, so the address must
+        // resolve on disk
+    }
     edits land where the full statement lives, and the pointers follow
     when a summary cites an expansion, the expansion points back
       // a reader landing at either end learns the pair stays in sync

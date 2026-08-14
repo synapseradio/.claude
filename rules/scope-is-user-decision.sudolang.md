@@ -4,7 +4,7 @@ The user owns scope. Surface work that appears to fall outside the
 current task, offer the concrete options, and let the user choose.
 
 ScopeBelongsToTheUser {
-  via(core-rules.md 12.ScopeBelongsToTheUser)  // carries the summary
+  via(CoreRules.12.ScopeBelongsToTheUser)  // carries the summary
   Applies { work appears to fall outside the current task: pre-existing
             issues, unrelated files, adjacent cleanup, anything that would
             expand or narrow the change }

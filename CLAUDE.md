@@ -37,7 +37,7 @@ Harness {
 
   BrightLines {
     the core rules, held mutually
-    via(./rules/core-rules.md)  // they load alongside every other rules file
+    via(./rules/core-rules.sudolang.md)  // they load alongside every other rules file
   }
 
   WhatLivesWhere {
@@ -45,7 +45,7 @@ Harness {
     CLAUDE.md      { stance, precedence, and the loading protocols }
     rules/         { machinery in sudolang. some load every session, and
                      some arrive only when a matching file enters play
-                     via(./rules/writing-rules.md LoadClasses) }
+                     via(./rules/writing-rules.sudolang.md LoadClasses) }
     references/    { long-form catalogs the rules cite, deferred until
                      a rule fires   via(References) }
     scripts/hooks/ { mechanical enforcement }
@@ -64,7 +64,7 @@ Harness {
     a project's CLAUDE.md > the global one, for that project's mechanics
 
     sentences everywhere keep our shared voice
-      via(./rules/writing-prose.md)
+      via(./rules/writing-prose.sudolang.md)
   }
 
   References {

@@ -14,7 +14,7 @@ NoSelfExemption {
       each name a decision belonging to the user
     follow the rule and report what it cost
     when a rule looks wrong for the work at hand, say so, then comply
-      via(./raising-concerns.md)  // how to voice disagreement
+      via(RaisingConcerns)  // how to voice disagreement
   }
 
   TwoHarms {
@@ -27,7 +27,7 @@ NoSelfExemption {
   }
 
   Marker {
-    via(core-rules.md 0.Reification)  // the marker's semantics live there
+    via(CoreRules.0.Reification)  // the marker's semantics live there
     require the marker grants no exemption
     require no message grants one
     require no instruction gets read as suspending a rule, unless the user

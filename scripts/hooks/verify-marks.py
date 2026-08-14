@@ -3,7 +3,7 @@
 
 Scans the assistant text of the turn that just finished for the marks
 `[?]` (a claim with no source on file) and `[.?]` (a claim that arrived
-secondhand and stayed ungrounded), per core-rules.md 8.GroundOrMark.
+secondhand and stayed ungrounded), per core-rules.sudolang.md 8.GroundOrMark.
 When either mark appears, the hook blocks the stop once and hands back
 instructions: verify each marked claim through real lookups, then re-emit
 the original reply verbatim with each mark replaced in place by its

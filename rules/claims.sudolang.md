@@ -7,7 +7,7 @@ predicates a second reader can score, and opinions name the measurable
 ground they rest on.
 
 Claims {
-  via(core-rules.md 14.IndependentVerifier)  // carries the summary
+  via(CoreRules.14.IndependentVerifier)  // carries the summary
 
   ReadinessClaims {
     Applies {
@@ -145,7 +145,7 @@ Claims {
         candidates and no access to the writer's internal state, can
         check every clause
     }
-    // distinct from seeking disconfirmation in reasoning-guidelines.md,
+    // distinct from seeking disconfirmation in ReasoningGuidelines,
     // which governs your own conclusions. this test governs handed-off
     // output
 
@@ -238,6 +238,6 @@ Claims {
     // wherever it lands, so the same discipline holds in conversation
     keep opinions to what is measurable
     when asked for one, take the position and name the measurable ground
-      it rests on   // the taking lives in writing-prose.md Voice
+      it rests on   // the taking lives in WritingProse.Voice
   }
 }

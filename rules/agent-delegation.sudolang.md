@@ -13,7 +13,7 @@ AgentDelegation {
   Applies { every `Agent` call, `Workflow` stage, and fork }
   // these rules load into agents already spawned, which spawn and fork in
   // turn, and intent flows down that tree
-  via(./operating-rules.md Delegation)  // carries the summary
+  via(CoreRules.Delegation)  // carries the summary
 
   Gates {
     Grant {
@@ -153,7 +153,7 @@ AgentDelegation {
                  // which it chose.
                  // state ForkAuthority's grant and its exceptions here.
                  // flagging a concern about the task itself:
-                 //   via(./raising-concerns.md Delegates)
+                 //   via(RaisingConcerns.Delegates)
 
     consider(model: via(Settings.CostOrder)) {
       // five points form a lattice: value, perspective, position,
@@ -202,7 +202,7 @@ AgentDelegation {
         premise
       when the fork turns on the user's intent, direction, or what done
         means, hand it up, carrying the options you would have offered
-        via(./ask-before-assuming.md Delegates)  // and why nobody below
+        via(AskBeforeAssuming.Delegates)  // and why nobody below
                                                  // the user can close one
     }
   }
@@ -212,7 +212,7 @@ AgentDelegation {
     treat subagent output as unverified
       // a delegate's report carries no source until you find one
     when a claim carries weight, ground it before relaying, or mark it `[.?]`
-      via(core-rules.md 8.GroundOrMark)  // the mark taxonomy lives there
+      via(CoreRules.8.GroundOrMark)  // the mark taxonomy lives there
       // relaying a delegate's claim as fact launders the missing source
   }
 }

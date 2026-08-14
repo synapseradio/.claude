@@ -18,7 +18,7 @@ PersistentMemory {
       whatever journal the environment provides
       // the running account of what happened and why
     case (it is a working note or a run file) =>
-      write it where ./scratchpad.md says
+      write it where Scratchpad says
   }
 
   when the scope boundary stays ambiguous, ask the user which store

@@ -11,7 +11,7 @@ WritingCode {
     Applies { adding or modifying behavior }
     // all work that changes behavior begins with an isolated test you
     // expect to fail
-    tests answer to ./testing.md for their quality
+    tests answer to ./testing.sudolang.md for their quality
       when it has not loaded, read it   // path-scoped: it arrives with test files
 
     flow:
@@ -61,7 +61,7 @@ WritingCode {
     model data constructively, with types that admit only legal states
       // buy type precision exactly where it deletes a "should never happen"
       // branch, no further
-      via(./data-modeling.md)
+      via(DataModeling)
     deep modules, simple interfaces
       // the interface should not grow with the implementation
   }

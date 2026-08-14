@@ -70,7 +70,7 @@ Dependencies {
 
   GitCommit.DeterminismWins governs dependency work too: where deterministic
     repo tooling settles the question, the tooling settles it
-    via(./git-commit.md DeterminismWins)
+    via(GitCommit.DeterminismWins)
     // the package manager is a tool we've been given: its resolver decides
     // versions deterministically, and hand edits bypass it
 

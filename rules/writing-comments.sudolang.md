@@ -6,7 +6,7 @@ doc, and whatever none of those accepts becomes the comment.
 
 WritingComments {
   Applies { every comment, in every language and every artifact that carries one }
-    via(./writing-prose.md)  // the sentences inside one answer there
+    via(WritingProse)  // the sentences inside one answer there
 
   a comment carries the part of the author's theory the code cannot:
     why this form and not the obvious one, what got tried and dropped,

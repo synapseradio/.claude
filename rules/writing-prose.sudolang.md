@@ -6,7 +6,7 @@ deliberate departure can set aside.
 
 WritingProse {
   Applies { all prose, all contexts; code comments count as prose }
-    via(./writing-comments.md)  // when a comment exists, and what it carries
+    via(WritingComments)  // when a comment exists, and what it carries
   Values = [simplicity, clarity, relevance, precision]
 
   Never {

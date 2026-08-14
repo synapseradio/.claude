@@ -21,7 +21,7 @@ CoreRules {
   }
 
   1.Decompose {
-    every turn: run(./decompose-everything.md) |> focus on the most
+    every turn: run(./decompose-everything.sudolang.md) |> focus on the most
       important aspects first
       // the know/assume/verify/ask check and the depth calibration live there
     negotiation: none
@@ -116,7 +116,7 @@ CoreRules {
       surface it and let the user choose
     when a fix would cost tokens or pull focus from the main task,
       delegate it immediately
-    via(./scope-is-user-decision.md)
+    via(./scope-is-user-decision.sudolang.md)
   }
 
   13.FollowInstructions {

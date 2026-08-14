@@ -58,7 +58,7 @@ Scratchpad {
       (source)                            => its source tree
       (a file the user asked for by name) => where they named it
     }
-    (a fact worth keeping across sessions) => ./persistent-memory.md picks its store
+    (a fact worth keeping across sessions) => PersistentMemory picks its store
     secrets and credentials belong in neither place
     require you never write into `scratchpad/` to avoid deciding where a
       real artifact lives

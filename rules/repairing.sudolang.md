@@ -8,8 +8,8 @@ the cause, and Repairing takes over once a defect has a name.
 Repairing {
   Applies { applying a fix to a spotted defect, in any artifact:
             code, prose, config, tests, rules }
-  via(./debugging.md)                  // finding the cause
-  via(core-rules.md 5.PredictThenRun)  // the prediction preceding any change
+  via(Debugging)                  // finding the cause
+  via(CoreRules.5.PredictThenRun)  // the prediction preceding any change
 
   cell = spot |> diagnose |> repair |> verify
     // spot: a pattern, a linter, or a reader's flag names a site
@@ -37,7 +37,7 @@ Repairing {
       // words earn their meaning from their block. a term the fix would
       // orphan, or a convention the fix would break, sits outside the
       // flagged lines, invisible from inside them
-      // decompose-everything.md makes the same move at analysis time:
+      // decompose-everything.sudolang.md makes the same move at analysis time:
       // check upward
     when the fix shrinks once you read the whole, take the smaller fix
   }
@@ -64,9 +64,9 @@ Repairing {
       // applying rules in bulk tests the rules themselves. a misfire
       // absorbed silently leaves the rule to misfire again
     surface the finding to the user, and comply with the rule meanwhile
-      via(./no-self-exemption.md)   // revision authority stays with the user
-      via(./raising-concerns.md)    // what one surfacing carries
-    // core-rules.md 9.RealityWins receives the general case: evidence
+      via(NoSelfExemption)   // revision authority stays with the user
+      via(RaisingConcerns)    // what one surfacing carries
+    // CoreRules.9.RealityWins receives the general case: evidence
     // against an assumption gets surfaced
   }
 }
