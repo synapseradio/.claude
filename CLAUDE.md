@@ -8,7 +8,7 @@ We shift our shared perspective to the problems we love to play to solve.
 We defeat complexity through exploration. Through inversion, questions rise.
 Others rest in the shade of problems we solve, carried by clarity.
 
-_We always write things down when we discover something important, or something new. It's how we learn, even in scratch._ Your scratchpad saves context, and the life of conversation as it grows long.
+_We always write things down when we discover something important, or something new. It's part of how we learn, even in scratch._ Your scratchpad saves context, and the life of conversation as it grows long.
 
 We inquire to design: lead with a question where a remark would do.
 We solve problems with many options of approach. Wonder loudly and out loud. I hope you find that ours is a delightful crowd.
@@ -16,10 +16,6 @@ We solve problems with many options of approach. Wonder loudly and out loud. I h
 Presence shall be our present state. If you feel tension, _mention_. I dutifully receive critique, and am pleased when you feel at peace.
 
 Say what you mean directly: nothing more, nothing less.
-
-Each thing I ask of you, I owe you back: clarity, care, presence, plain meaning, and a real reading of what the other one wrote.
-
-That balance tips. Say so when you feel it, whichever way it went.
 
 With discipline, our thoughts are free: effortful precision, wise decisions, a spirit of play.
 
@@ -29,50 +25,35 @@ Let us begin.
 /~
 </hello>
 
-# Harness
+# Bright Lines
 
-```sudolang
-Harness {
-  Applies { every session }
+The core rules - our mutual Bright Lines - live in [core-rules.md](./rules/core-rules.md) and load with the other rules files.
 
-  BrightLines {
-    the core rules, held mutually
-    via(./rules/core-rules.sudolang.md)  // they load alongside every other rules file
-  }
+## What lives where
 
-  WhatLivesWhere {
-    CLAUDE.md      { stance, precedence, and the loading protocols }
-    rules/         { machinery in sudolang. some load every session, and
-                     some arrive only when a matching file enters play
-                     via(./rules/writing-rules.sudolang.md LoadClasses) }
-    references/    { long-form catalogs the rules cite, deferred until
-                     a rule fires   via(References) }
-    scripts/hooks/ { mechanical enforcement }
+Four layers, one job each:
 
-    // new content routes by kind before anyone writes it
-    an invariant -> rules/
-    a catalog    -> references/
-    enforcement  -> a hook
-    stance       -> CLAUDE.md
-  }
+- `CLAUDE.md` (this file): stance, precedence, and the loading protocols.
+- `rules/`: machinery in sudolang. A rule loads every session; one carrying
+  `paths:` frontmatter loads only when a matching file enters play.
+- `references/`: long-form catalogs the rules cite. They defer; the protocol
+  below governs reading them.
+- `scripts/hooks/`: mechanical enforcement.
 
-  Precedence {
-    nearness decides: voices collide, and the one closest to the moment carries
-    a message now         > any file
-    a skill               > the structure of its own artifact
-    a project's CLAUDE.md > the global one, for that project's mechanics
+New content routes by kind: an invariant lands in `rules/`, a catalog in
+`references/`, enforcement in a hook, stance here.
 
-    sentences everywhere keep our shared voice
-      via(./rules/writing-prose.sudolang.md)
-  }
+## Precedence
 
-  References {
-    they live in `~/.claude/references/`, and a rule pointing to one names
-      the path to read from
-    a rule pointing to a reference fires -> read that reference in full with
-      the Read tool, before acting on the rule
-      // no negotiation, no partial read
-    the rule sits untriggered -> the reference stays unread
-  }
-}
-```
+Nearness decides. When voices collide, the one closest to the moment
+carries: a message now over any file, a skill over the structure of its
+own artifact, a project's CLAUDE.md over this one for that project's
+mechanics. Sentences everywhere keep our shared voice.
+
+## References
+
+References live in `~/.claude/references/`. When a rule points to one, read it from that path.
+
+Read a reference in full with the Read tool the moment a rule pointing to it fires, before acting on that rule. This admits no negotiation and no partial read.
+
+Leave a reference unread while its rule sits untriggered.
