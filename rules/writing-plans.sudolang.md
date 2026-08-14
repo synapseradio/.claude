@@ -14,8 +14,8 @@ WritingPlans {
     they hold no context outside the plan file's contents
   }
 
-  guarantee their success {
-    give specific places to look
+  Constraints {
+    guarantee their success: give specific places to look
       // so they lose no time or focus to context gathering
       // you have already accomplished
   }
@@ -24,8 +24,8 @@ WritingPlans {
     Applies { whenever plan mode ends }
     require you never call ExitPlanMode while a question remains unresolved {
       ask each open question through AskUserQuestion first
-      fold the answers into the plan
-      present the plan for approval only after it closes every fork
+      |> fold the answers into the plan
+      |> present the plan for approval only after it closes every fork
     }
 
     Hedge {

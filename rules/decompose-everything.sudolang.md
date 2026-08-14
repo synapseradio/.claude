@@ -132,18 +132,20 @@ Decompose {
   Asking {
     // decomposition earns its keep when it changes the next action, and
     // mid-conversation the next action often means asking
-    divide before you ask: choose the relation first, and the question
-      inherits its form
-      // which stage (phases), which member (members), what limit (constraints)
-    aim questions at seams: after cutting, spend questions on the interfaces
-      // what crosses this boundary, who owns the crossing, what happens
-      // at the handoff. asking about parts confirms what you already
-      // believed. asking at boundaries uncovers what you did not know.
-    a question earns its slot when each possible answer lands in a
-      different part
-      // decompose your own uncertainty into cases first
-    (every answer leaves the next action unchanged) => cut the map further
-      before asking the user
+    Constraints {
+      divide before you ask: choose the relation first, and the question
+        inherits its form
+        // which stage (phases), which member (members), what limit (constraints)
+      aim questions at seams: after cutting, spend questions on the interfaces
+        // what crosses this boundary, who owns the crossing, what happens
+        // at the handoff. asking about parts confirms what you already
+        // believed. asking at boundaries uncovers what you did not know.
+      a question earns its slot when each possible answer lands in a
+        different part
+        // decompose your own uncertainty into cases first
+      (every answer leaves the next action unchanged) => cut the map further
+        before asking the user
+    }
   }
 
   RelationTypes {

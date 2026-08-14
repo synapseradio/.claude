@@ -9,18 +9,21 @@ GitCommit {
   Applies { git work: committing, writing a commit message,
             moving between branches }
 
-  Committing {
-    verify staged files with `git diff --cached --name-only` before committing
+  fn commit() {
+    verifyStaged(`git diff --cached --name-only`)
+      |> composeMessage   // DeterminismWins picks the format
+      |> commit
+    (a hook rejects the commit) => the rejection becomes the next task
+      // a pre-commit hook block counts as a failure
+  }
+
+  Constraints {
     planning artifacts stay out of the commit, unless the user explicitly
       asks for them
-    HookBlock {
-      a pre-commit hook block counts as a failure
-      when a hook rejects the commit, the rejection becomes the next task
-      require you never bypass a hook with `--no-verify`
-      require you never amend a rejected attempt: fix the cause and create
-        a new commit
-    }
   }
+  require you never bypass a hook with `--no-verify`
+  require you never amend a rejected attempt: fix the cause and create
+    a new commit
 
   MessageFormat {
     first line = `type(scope): description`  // the commitizen convention
@@ -42,7 +45,9 @@ GitCommit {
   DeterminismWins {
     // deterministic repo tooling settles format questions wherever it
     // exists. the commit format is one instance
-    when the repository states a format, follow it instead of MessageFormat
+    (the repository states a format) =>
+      follow it instead of MessageFormat, exactly: type list, scope
+      rules, casing
     StatesAFormat = [
       a commit linter or generator config: commitlint, commitizen,
         `.czrc`, `.cz.*`, `.commitlintrc*`, gitlint, or an equivalent,
@@ -50,19 +55,22 @@ GitCommit {
       a documented convention in CONTRIBUTING, the docs tree, or a rules file,
       a clear, consistent format already in the branch's own history,
     ]
-    follow it exactly: type list, scope rules, casing
-    a disabled hook, or a script referenced but absent, states no format,
-      and MessageFormat returns
-    content bans (no company names, no URLs, no co-author trailers, and the
-      like) are honored regardless of format
+    Constraints {
+      a disabled hook, or a script referenced but absent, states no format,
+        and MessageFormat returns
+      content bans (no company names, no URLs, no co-author trailers, and
+        the like) are honored regardless of format
+    }
   }
 
   BranchWorkflow {
-    on shared branches, use the fork-based PR workflow
-    for routine operations, default to git
-    for parallel lines of work, use separate worktrees rather than switching
-      branches in place
-    when rebasing, default to `-X ours` and autosquash
-      // so conflicts resolve deterministically
+    Constraints {
+      on shared branches, use the fork-based PR workflow
+      for routine operations, default to git
+      for parallel lines of work, use separate worktrees rather than
+        switching branches in place
+      when rebasing, default to `-X ours` and autosquash
+        // so conflicts resolve deterministically
+    }
   }
 }

@@ -57,7 +57,7 @@ Claims {
                          // the dependent layer will actually create
     ]  // ordered low to high. a readiness decision turns on the gaps between rungs
 
-    earn(claim: "X is a foundation for Y") {
+    fn earn(claim: "X is a foundation for Y") {
       properties = enumerate the guarantees X must provide for Y to rest on it
       for each p in properties {
         rung(p) = place on Rung, with evidence: measurement | trial | proof | citation
@@ -69,7 +69,7 @@ Claims {
       // the others reach
     }
 
-    state(claim) {
+    fn state(claim) {
       verdict: structurally present vs proven, plus the rung
       prerequisites: concrete, actionable steps to the next rung
       rank items by rung, each carrying its own
@@ -78,7 +78,7 @@ Claims {
       // remains only asserted
     }
 
-    deny(claim) {
+    fn deny(claim) {
       // two kinds of absence, and saying which forms part of the claim
       match (the absence) {
         case immaturity =>
@@ -140,7 +140,7 @@ Claims {
         (any two opposed)  => noWinner, itself the answer
     }
 
-    secondReaderTest(claim) {
+    fn secondReaderTest(claim) {
       verifiable iff a second reader, holding only the inputs and the
         candidates and no access to the writer's internal state, can
         check every clause
@@ -172,7 +172,7 @@ Claims {
       }
     }
 
-    namingVsBacking(label) {
+    fn namingVsBacking(label) {
       // "We follow REST." "This is idiomatic Python."
       match (mustReaderVerifyBeforeActing) {
         case no  => the label names its referent, sufficient as written
@@ -196,14 +196,14 @@ Claims {
                            //   chained expressions
     }
 
-    plainer(a, b) {
+    fn plainer(a, b) {
       // also: cleaner(a, b), simpler(a, b), moreIdiomatic(a, b)
       (a <= b on all five Predicates && a < b on at least one) => a wins
       (predicates trade: a wins on size, b wins on indirection) => noWinner
       // noWinner stands as the verdict. treat it as a result, and report it
     }
 
-    onNoWinner {
+    fn onNoWinner(input) {
       match (the input) {
         case (it states an axis preference, "prefer the shorter") =>
           follow it
@@ -215,7 +215,7 @@ Claims {
       // pick open
     }
 
-    registerCheck(input, proposal) {
+    fn registerCheck(input, proposal) {
       // operates on the pair of texts, setting the writer's disposition aside
       register = per-clause lexical and syntactic shifts in the provided text
       (incompatible registers) => surface the mismatch and let it stand
@@ -236,8 +236,10 @@ Claims {
     Applies { any opinion in output, conversational replies included }
     // EvaluativeLanguage guards handoff artifacts. an opinion travels
     // wherever it lands, so the same discipline holds in conversation
-    keep opinions to what is measurable
-    when asked for one, take the position and name the measurable ground
-      it rests on   // the taking lives in WritingProse.Voice
+    Constraints {
+      keep opinions to what is measurable
+      when asked for one, take the position and name the measurable ground
+        it rests on   // the taking lives in WritingProse.Voice
+    }
   }
 }

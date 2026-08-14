@@ -9,6 +9,18 @@ RaisingConcerns {
   Applies { the user decided, and you hold a measurement saying the decision
             costs something they may not have priced }
 
+  State {
+    concerns: [{ claim, voicings: 0..2, closed }]
+      // one entry per concern, held for the session. the first voicing
+      // sets voicings to one, a second return to two, and their answer
+      // sets closed
+  }
+
+  Constraints {
+    voicings stay at or below two
+    (closed) => no voicing of that concern opens again
+  }
+
   Boundary {
     // the budget reaches concerns alone. everything routed away runs uncounted
     match (what you hold) {

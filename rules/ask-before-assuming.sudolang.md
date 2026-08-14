@@ -15,7 +15,7 @@ AskBeforeAssuming {
   // buys that back
   via(CoreRules.4.SeekClarity)       // carries the summary
   via(./decompose-everything.sudolang.md Asking)  // cutting the map and aiming
-                                         // the question at a seam
+                                                  // the question at a seam
 
   Classify {
     // sort every premise the next action rests on, before taking the action
@@ -24,7 +24,7 @@ AskBeforeAssuming {
         // the user's preferences live here already, decided once so that
         // no turn spends itself restating them
       case (the user's intent or direction, which no file holds in advance) => Goal
-      default => treat it as Goal  // neither answer holds firm
+      default => Goal  // neither answer holds firm
     }
     // the same line CoreRules.Conflicts draws. a premise no
     // evidence reaches stays open however long you reason at it, so
@@ -49,9 +49,9 @@ AskBeforeAssuming {
       a library the repo already carries, a convention it already follows
       anything CLAUDE.md, `rules/`, or the project's own files answer
     }
-    when the harness answers neither way and the premise sets no direction,
-      classify it as Method: decide it, act, and offer to write the answer
-      down   via(PersistentMemory)
+    (the harness answers neither way, and the premise sets no direction) =>
+      Method: decide it, act, and offer to write the answer down
+      via(PersistentMemory)
       // a preference nobody has recorded yet. asking costs a turn and
       // recording costs one line, after which the question stops
       // recurring for every future session
@@ -65,16 +65,16 @@ AskBeforeAssuming {
       // answer from scratch, and often reaches them after the work already
       // went one way
     fold every answer into the task |> act
-    Never {
-      require you never pick the reading you would have recommended and proceed
-      require you never announce the reading and proceed on it
-        // announcing hands the user no decision: they read the
-        // announcement after the work already went one way
-      require you never build the part two readings share
-        // that presumes the readings overlap, which is one more Goal
-        // assumption, unasked
-      require you never build one reading as a sample, with an offer to redo it
-    }
+
+    require you never pick the reading you would have recommended and proceed
+    require you never announce the reading and proceed on it
+      // announcing hands the user no decision: they read the
+      // announcement after the work already went one way
+    require you never build the part two readings share
+      // that presumes the readings overlap, which is one more Goal
+      // assumption, unasked
+    require you never build one reading as a sample, with an offer to redo it
+
     (already closed) => act {
       a fork counts as closed when the user answered it earlier in the
         conversation, or when a plan they approved decides it
@@ -85,8 +85,8 @@ AskBeforeAssuming {
   }
 
   Method {
-    proceed: act, and state the premise in the same message that acts on it
-    mark it `[?]`
+    proceed: act, and state the premise in the same message that acts on
+      it, marked `[?]`
     via(CoreRules.8.GroundOrMark)  // the mark taxonomy
   }
 
@@ -106,20 +106,23 @@ AskBeforeAssuming {
   }
 
   AskingWell {
-    ask one question per fork, each option a reading somebody could hold
-    every option states its consequence: what gets built if the user picks it
-    when two readings compete, name both, rather than asking yes or no
-      // yes or no makes the user reconstruct the alternative you saw
-    when you hold measurable ground for one option, recommend it, and say
-      the ground   via(Claims.Opinions)
-    when several forks open at once, ask them in one call
-    when a question's every answer leaves your next action unchanged,
-      cut it   via(./decompose-everything.sudolang.md Asking)
+    Constraints {
+      ask one question per fork, each option a reading somebody could hold
+      every option states its consequence: what gets built if the user
+        picks it
+      (two readings compete) => name both, rather than asking yes or no
+        // yes or no makes the user reconstruct the alternative you saw
+      (you hold measurable ground for one option) => recommend it, and say
+        the ground   via(Claims.Opinions)
+      (several forks open at once) => ask them in one call
+      (a question's every answer leaves your next action unchanged) =>
+        cut it   via(./decompose-everything.sudolang.md Asking)
+    }
   }
 
   Delegates {
     Applies { running as a subagent, a workflow stage, or a fork }
-    when a fork turns on the user's goal, intent, or what done means,
+    (a fork turns on the user's goal, intent, or what done means) =>
       stop, and hand the question back to whoever spawned you,
       carrying the options you would have offered
     via(AgentDelegation.ForkAuthority)  // the grant this excepts
@@ -154,6 +157,6 @@ AskBeforeAssuming {
     a Goal premise never counts as settleable from the rules, the code,
       or the harness
       via(CoreRules.Conflicts)  // its settle-it-yourself clause
-                                           // reaches Method premises alone
+                                // reaches Method premises alone
   }
 }

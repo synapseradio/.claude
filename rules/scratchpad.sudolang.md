@@ -18,18 +18,23 @@ Scratchpad {
       case (outside a git repository) =>
         the harness path stands exactly as given
     }
-    when a skill or workflow names its own default, a run file at
-      `/tmp/<skill>-<slug>.md`, redirect it the same way to
-      `scratchpad/<skill>-<slug>.md`, and say once where the file went
+    (a skill or workflow names its own default, a run file at
+      `/tmp/<skill>-<slug>.md`) =>
+      redirect it the same way to `scratchpad/<skill>-<slug>.md`, and say
+      once where the file went
   }
 
   SettingUp {
-    on the first write in a repository, create `scratchpad/`
+    fn firstWrite(repository) {
+      create `scratchpad/`
       // the global gitignore (~/.dotfiles/git/ignore) covers scratchpad/
       // on this machine, so the repo needs no entry of its own
-    while plan mode holds, working notes go into the plan file, and
-      `scratchpad/` arrives on the first write once writing opens up
-    a read-only mode suspends setup   // it cannot run there
+    }
+    Constraints {
+      while plan mode holds, working notes go into the plan file, and
+        `scratchpad/` arrives on the first write once writing opens up
+      a read-only mode suspends setup   // it cannot run there
+    }
   }
 
   WhyTheRedirect {
@@ -59,9 +64,11 @@ Scratchpad {
       (a file the user asked for by name) => where they named it
     }
     (a fact worth keeping across sessions) => PersistentMemory picks its store
-    secrets and credentials belong in neither place
+    Constraints {
+      secrets and credentials belong in neither place
+    }
     require you never write into `scratchpad/` to avoid deciding where a
       real artifact lives
-    when you cannot tell whether output is a deliverable, ask
+    (you cannot tell whether output is a deliverable) => ask
   }
 }

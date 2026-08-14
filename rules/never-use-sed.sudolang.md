@@ -15,8 +15,12 @@ NeverUseSedForEdits {
   StreamEditors = [sed, gsed, awk, `perl -i`, etc]
     // in-place substitution driven by a pattern, reporting nothing it matched
 
+  require StreamEditors never modify a file
+    // enforced mechanically: scripts/hooks/deny-inplace-stream-edit.sh
+    // denies sed/gsed -i and awk -i inplace as a PreToolUse hook on Bash.
+    // the wider ban (perl -i and kin) rests on this prose alone
+
   Constraints {
-    require StreamEditors never modify a file
     prefer Edit or Write wherever either expresses the change
       // they match exactly, fail loudly on a wrong match,
       // and never silently mangle the rest of the file
@@ -25,9 +29,6 @@ NeverUseSedForEdits {
       case (an in-place delete)      => Edit
       case (appending a line)        => Edit | Write
     }
-    // enforced mechanically: scripts/hooks/deny-inplace-stream-edit.sh
-    // denies sed/gsed -i and awk -i inplace as a PreToolUse hook on Bash.
-    // the wider ban (perl -i and kin) rests on this prose alone
   }
 
   Allowed {
@@ -43,21 +44,19 @@ NeverUseSedForEdits {
   ScriptedEdit {
     Applies { a script modifying more than a single line of code }
 
-    Requirements {
-      reversible before it runs {
-        require a checkpoint first: `git commit` or `git stash`
-          // the script's whole effect becomes the only uncommitted diff,
-          // so `git checkout` returns the tree
-        (no checkpoint) => do not run the script
-      }
+    require a checkpoint first: `git commit` or `git stash`
+      // the script's whole effect becomes the only uncommitted diff,
+      // so `git checkout` returns the tree
+    (no checkpoint) => do not run the script
 
-      idempotent {
-        running it again changes nothing further
-        run it a second time and confirm it reports no change
-      }
+    fn run(script) {
+      checkpoint |> run |> report what changed |> read the diff
+        |> run again and confirm it reports no change
+        // idempotent: running it again changes nothing further
+    }
 
+    Constraints {
       match exact strings rather than loose patterns
-      report what changed, and read the diff before moving on
     }
   }
 }

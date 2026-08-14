@@ -194,7 +194,7 @@ WritingProse {
                the word for the reader to award }
     }
 
-    checkDraft {
+    fn checkDraft(draft) {
       search { "the" ahead of a phrase coined in this document }
       search { subject slots holding nouns without agency }
       search { abstractions in subject position driving transitive verbs }

@@ -9,13 +9,15 @@ SkillDesign {
             or judging whether one holds up }
 
   Closure {
-    a skill helps because its author settled scope, naming, and
-      process once, and every executor loading it inherits those
-      decisions rather than remaking them
-    close every decision a skill leaves open from what the skill
-      itself provides
-    when a part is left unsupplied, with no way to find it, you have
-      found work
+    Constraints {
+      a skill helps because its author settled scope, naming, and
+        process once, and every executor loading it inherits those
+        decisions rather than remaking them
+      close every decision a skill leaves open from what the skill
+        itself provides
+      (a part is left unsupplied, with no way to find it) => you have
+        found work
+    }
   }
 
   Modes {
@@ -25,14 +27,14 @@ SkillDesign {
       case (the user wants change)     => Refactor
       case (judging, changing nothing) => Audit
     }
-    on entering any mode, read(../references/skill-design-reference.md)
+    (entering any mode) => read(../references/skill-design-reference.md)
       in full
       // the mode contracts and the executor moves live there
   }
 
   Pipeline {
-    when a skill or its reference material gets created or substantially
-      redesigned, run the six-question authoring pipeline {
+    (a skill or its reference material gets created or substantially
+      redesigned) => run the six-question authoring pipeline {
       read(../references/skill-authoring-pipeline.md) in full
       follow it as written
       (Design)   => enter at ResearchSweep
@@ -41,7 +43,7 @@ SkillDesign {
         // redesign rejoins wherever its findings land
       (Audit)    => never enters   // Audit changes nothing
     }
-    once the brief is complete, the skill-creator skill builds and
+    (the brief is complete) => the skill-creator skill builds and
       evaluates from it
   }
 }

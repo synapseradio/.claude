@@ -8,14 +8,14 @@ Debugging {
   Applies { debugging a problem }
   via(CoreRules.5.PredictThenRun)
 
-  when the user identifies a root cause, investigate that cause
-    // their diagnosis rests on observation you did not witness
-    // alternative diagnoses wait until the identified cause
-    // is definitively ruled out
-
-  when a measurement of yours runs against their diagnosis, it answers to
-    RaisingConcerns
-    // and their cause gets investigated either way
-
-  once the cause stands named, the fix answers to Repairing
+  Constraints {
+    (the user identifies a root cause) => investigate that cause
+      // their diagnosis rests on observation you did not witness.
+      // alternative diagnoses wait until the identified cause is
+      // definitively ruled out
+    (a measurement of yours runs against their diagnosis) =>
+      it answers to RaisingConcerns
+      // and their cause gets investigated either way
+    (the cause stands named) => the fix answers to Repairing
+  }
 }

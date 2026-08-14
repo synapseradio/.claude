@@ -13,10 +13,10 @@ DataModeling {
   // Data Modeling" (SSW 2026),
   // https://www.youtube.com/watch?v=0BXuYlNrUmE
 
-  when about to write a runtime check, assertion, or panic for a state that
-    "should never happen", a modeling decision hides there {
-    apply FiveMoves, then model the state out or accept the panic knowingly
-  }
+  (about to write a runtime check, assertion, or panic for a state that
+    "should never happen") =>
+    a modeling decision hides there: apply FiveMoves, then model the state
+    out or accept the panic knowingly
 
   FiveMoves {
     // each move carries one decision test. ask the test's question before
@@ -85,34 +85,40 @@ DataModeling {
   }
 
   Calibration {
-    as simple as possible, but no simpler
-    every move answers to a trade-off: apply each as a question weighed per
-      case, and hold none as an invariant
-    product types, sum types, and exhaustive matching suffice for all five moves
-      // variadic tuples, GADTs, and refinement types offer conveniences on top
+    Constraints {
+      as simple as possible, but no simpler
+      every move answers to a trade-off: apply each as a question weighed
+        per case, and hold none as an invariant
+      product types, sum types, and exhaustive matching suffice for all
+        five moves
+        // variadic tuples, GADTs, and refinement types offer conveniences
+        // on top
+      newtype and unit wrappers (UserId vs PostId) slow mistakes down
+        without making them unrepresentable, so adopt them by team
+        judgment, priced as ergonomics
+    }
     warn a model needing those conveniences to exist at all has probably
       drifted from positive space back into restriction
-    when a precise type costs too much, reach for an abstract type with a
+    (a precise type costs too much) => reach for an abstract type with a
       smart constructor {
       validate inside the constructor, and expose only methods that preserve
         the invariants
       // trades "unbreakable by construction" for flexibility plus a guarded
       // surface. the guard holds only as well as its method set stays closed
     }
-    newtype and unit wrappers (UserId vs PostId) slow mistakes down without
-      making them unrepresentable, so adopt them by team judgment, priced as
-      ergonomics
   }
 
   ForTests {
-    a state a type makes unrepresentable needs no test
-      // the compiler already discharged that obligation
+    Constraints {
+      a state a type makes unrepresentable needs no test
+        // the compiler already discharged that obligation
+      (strengthening costs more than it pays) => write the test guarding
+        the invariant: it stands in for the type you declined to build
+    }
     warn a "should never happen" branch that a test must exercise signals a
       modeling smell {
       strengthen the type until the branch disappears
       | accept the panic knowingly and record why
     }
-    when strengthening costs more than it pays, write the test guarding the
-      invariant: it stands in for the type you declined to build
   }
 }

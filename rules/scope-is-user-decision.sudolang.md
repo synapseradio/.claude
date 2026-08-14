@@ -16,14 +16,14 @@ ScopeBelongsToTheUser {
     // each substitutes your judgment for the user's
     require no silent expansion, fixing something tangential unasked
     require no silent exclusion, declaring "out of scope" and moving on
-    when work looks unrelated, name it explicitly and ask before acting
+    (work looks unrelated) => name it explicitly and ask before acting
       // including when you lean toward declining it
   }
 
   Surfacing {
     state what you found, why it looks out of scope, and the concrete
       options: do it now | defer | leave it
-    then the user chooses
+    |> the user chooses
     "I won't touch X, it's unrelated" commits the exact error BothWays names
       // surface X as a question instead
   }

@@ -14,7 +14,7 @@ WritingCode {
     tests answer to ./testing.sudolang.md for their quality
       when it has not loaded, read it   // path-scoped: it arrives with test files
 
-    flow:
+    fn implement(behaviorChange) {
       seek boundaries and invariants to understand the requirements first
         // when acceptance criteria lack clarity, ask before writing anything
       |> write the failing test and run it, confirming that it fails for the
@@ -24,10 +24,11 @@ WritingCode {
       |> run the test, then match (the outcome) {
            case (it fails) => fix the code
            case (the requirement was misunderstood) =>
-             change the test, then start the flow again at its first step
+             change the test, then start implement again at its first step
          }
       |> refactor if needed, re-running the test after each change
          // keep behavior changes and structure changes separate
+    }
 
     require testing happens even where the project has no test
       infrastructure: flag the gap before writing code, and never skip the test
@@ -41,6 +42,7 @@ WritingCode {
   }
 
   CodeQualities {
+    // each line names a constraint held continuously while writing
     never add complexity for scenarios that cannot happen
     validate at system boundaries, and ask before adding compatibility layers
     prefer simplicity over cleverness

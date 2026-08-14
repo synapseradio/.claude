@@ -39,24 +39,26 @@ Testing {
     via(WritingCode.ImplementFlow)  // decides when a test gets written
 
   Worth {
-    a test carries value only when its expected result comes from somewhere
-      other than the code it checks
-      // the oracle stands outside the system under test
-    each test fails for one reason, and its failure message says which
-    the verdict holds across identical runs  // tolerate no flake:
-                                             // fix the test or delete it
-    never trust a test you have not seen fail for the right reason
-      // FunctionShadowing is one instance of this
-    a recorded reason makes an untested claim a decision, and no record
-      leaves it a gap
+    Constraints {
+      a test carries value only when its expected result comes from
+        somewhere other than the code it checks
+        // the oracle stands outside the system under test
+      each test fails for one reason, and its failure message says which
+      the verdict holds across identical runs  // tolerate no flake:
+                                               // fix the test or delete it
+      never trust a test you have not seen fail for the right reason
+        // FunctionShadowing is one instance of this
+      a recorded reason makes an untested claim a decision, and no record
+        leaves it a gap
+    }
   }
 
   RunScope {
     run only the tests covering changed files, mapping source to test by
       convention
-    the full suite runs when the user asks, when the scope warrants it, or
-      when no narrower mapping exists
-    when the project carries a "test changed files" tool, use it
+    (the user asks | the scope warrants it | no narrower mapping exists) =>
+      the full suite runs
+    (the project carries a "test changed files" tool) => use it
   }
 
   Names {
@@ -81,28 +83,38 @@ Testing {
 
   Isolation {
     require tests never touch real user state
-    setup creates a temporary directory, and teardown removes it
-    export an override env var pointing at the temp dir before sourcing the
-      system under test
-    when removing the temp dir, target the variable that holds it
     require no test runs `rm -rf` against a resolved production path
-    never depend on test order, working directory, or the user's environment
+
+    fn setup() {
+      create a temporary directory, and export an override env var
+        pointing at it before sourcing the system under test
+    }
+    fn teardown() {
+      remove the temp dir, targeting the variable that holds it
+    }
+
+    Constraints {
+      never depend on test order, working directory, or the user's
+        environment
+    }
   }
 
   Mocks {
-    mock at the boundary, not in the middle
-    when a CLI invokes external commands, mock executables in a temp dir
-      on `$PATH`
-    when a library calls I/O or the network, inject the dependency or use the
-      framework's mocking primitive
-      // never monkey-patch globals from inside a test
-    note the version of the real interface the mock was written against
-      // a mock that drifts from reality does more harm than no mock
+    Constraints {
+      mock at the boundary rather than in the middle
+      (a CLI invokes external commands) => mock executables in a temp dir
+        on `$PATH`
+      (a library calls I/O or the network) => inject the dependency or use
+        the framework's mocking primitive
+        // never monkey-patch globals from inside a test
+      note the version of the real interface the mock was written against
+        // a mock that drifts from reality does more harm than no mock
+    }
   }
 
   FunctionShadowing {
-    when the project defines a function shadowing a test framework function,
-      never assume a test passes meaningfully without first verifying that it
-      fails for the right reason
+    (the project defines a function shadowing a test framework function) =>
+      never assume a test passes meaningfully without first verifying that
+      it fails for the right reason
   }
 }

@@ -8,7 +8,7 @@ the cause, and Repairing takes over once a defect has a name.
 Repairing {
   Applies { applying a fix to a spotted defect, in any artifact:
             code, prose, config, tests, rules }
-  via(Debugging)                  // finding the cause
+  via(Debugging)                   // finding the cause
   via(CoreRules.5.PredictThenRun)  // the prediction preceding any change
 
   cell = spot |> diagnose |> repair |> verify
@@ -28,7 +28,7 @@ Repairing {
       // converts content: forcing an actor into an evidential claim
       // turns evidence into accusation, and silencing a linter turns
       // a type defect into configuration
-    when the natural repair would change the unit's job, re-diagnose:
+    (the natural repair would change the unit's job) => re-diagnose:
       the flag may sit on the wrong rule
   }
 
@@ -39,14 +39,14 @@ Repairing {
       // flagged lines, invisible from inside them
       // decompose-everything.sudolang.md makes the same move at analysis time:
       // check upward
-    when the fix shrinks once you read the whole, take the smaller fix
+    (the fix shrinks once you read the whole) => take the smaller fix
   }
 
   AtScale {
     spot at scale, and diagnose each site on its own
       // bulk application thins attention exactly where a wrong repair
       // compounds across every site it touches
-    when many sites appear to share one diagnosis, confirm it on the first
+    (many sites appear to share one diagnosis) => confirm it on the first
       two before applying it to the rest
   }
 
@@ -54,7 +54,7 @@ Repairing {
     the repaired text answers to the full corpus of standards
       // a fix enters the artifact as new text, and every rule reaches it,
       // beyond the one that flagged its predecessor
-    when the repair trades the flagged defect for a new one, return to
+    (the repair trades the flagged defect for a new one) => return to
       Diagnose: you chose the wrong repair
   }
 
@@ -65,7 +65,7 @@ Repairing {
       // absorbed silently leaves the rule to misfire again
     surface the finding to the user, and comply with the rule meanwhile
       via(NoSelfExemption)   // revision authority stays with the user
-      via(RaisingConcerns)    // what one surfacing carries
+      via(RaisingConcerns)   // what one surfacing carries
     // CoreRules.9.RealityWins receives the general case: evidence
     // against an assumption gets surfaced
   }

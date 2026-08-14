@@ -29,8 +29,8 @@ ShellScripts {
     // bash fails quietly where other languages throw
   }
 
-  RepoConvention {
+  Constraints {
     kebab-case script filenames take precedence over the guide's
-      underscore default
+      underscore default   // the one repo convention overriding the guide
   }
 }

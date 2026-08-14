@@ -35,7 +35,7 @@ WritingComments {
                    and they name the far end }
   }
 
-  RealComment(knowledge) returns comment | none {
+  fn RealComment(knowledge) returns comment | none {
     // each early return places the knowledge in a stronger home, and
     // whenever it does, the function has succeeded. write a comment only
     // for what no stronger home accepts.
