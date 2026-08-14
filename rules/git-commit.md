@@ -16,8 +16,8 @@ GitCommit {
     HookBlock {
       a pre-commit hook block counts as a failure
       when a hook rejects the commit, the rejection becomes the next task
-      require never bypassing a hook with `--no-verify`
-      require never amending a rejected attempt: fix the cause and create
+      require you never bypass a hook with `--no-verify`
+      require you never amend a rejected attempt: fix the cause and create
         a new commit
     }
   }

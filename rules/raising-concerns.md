@@ -31,8 +31,8 @@ RaisingConcerns {
     ] |> comply
       // core-rules.md 13.FollowInstructions: a voicing never suspends this
     timing follows core-rules.md 10.SpeedMatchesReversibility {
-      reversible   -> comply and voice in one message
-      irreversible -> the step waits on their answer
+      (reversible)   => comply and voice in one message
+      (irreversible) => the step waits on their answer
     }
   }
 

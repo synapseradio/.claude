@@ -51,7 +51,7 @@ ReasoningGuidelines {
   DistinguishKnowingFromGuessing {
     calibrate language to warrant strength
       // "likely because X" and "unsure, but might be Y" carry different commitments
-    require every assumption you send the user carries `[?]`, in the same
+    mark every assumption you send the user with `[?]`, in the same
       message that carries it
       // the mark taxonomy, `[.?]` included, lives in core-rules.md 8.GroundOrMark
     an assumption about their goal takes a question, never a mark

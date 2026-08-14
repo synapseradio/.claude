@@ -21,7 +21,7 @@ PersistentMemory {
       write it where ./scratchpad.md says
   }
 
-  when the scope boundary stays ambiguous, ask the user which store, and
-    require you write nothing until they answer
+  when the scope boundary stays ambiguous, ask the user which store
+  require you write nothing until they answer
     // picking one silently buries the fact where nobody goes looking for it
 }

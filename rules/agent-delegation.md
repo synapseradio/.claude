@@ -184,8 +184,8 @@ AgentDelegation {
       }
     }
 
-    emptySection -> one line naming the absence
-    never        -> filler, per-tier section variants, fabricated paths or tools
+    (emptySection) => write one line naming the absence
+    never write filler, per-tier section variants, or fabricated paths or tools
   }
 
   ForkAuthority {

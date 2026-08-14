@@ -13,7 +13,8 @@ Debugging {
     // alternative diagnoses wait until the identified cause
     // is definitively ruled out
 
-  (a measurement of yours runs against their diagnosis) => ./raising-concerns.md
+  when a measurement of yours runs against their diagnosis, it answers to
+    ./raising-concerns.md
     // and their cause gets investigated either way
 
   once the cause stands named, the fix answers to ./repairing.md

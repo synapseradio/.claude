@@ -57,8 +57,9 @@ AskBeforeAssuming {
       // recurring for every future session
   }
 
-  Goal -> stop before acting {
-    call AskUserQuestion, before any work rests on the answer
+  Goal {
+    stop before acting: call AskUserQuestion, before any work rests on
+      the answer
       // it puts the competing readings in front of them and records which one
       // they picked. a question buried in prose asks them to compose the
       // answer from scratch, and often reaches them after the work already
@@ -74,7 +75,7 @@ AskBeforeAssuming {
         // assumption, unasked
       require you never build one reading as a sample, with an offer to redo it
     }
-    already closed -> act {
+    (already closed) => act {
       a fork counts as closed when the user answered it earlier in the
         conversation, or when a plan they approved decides it
       // an answer covers the task: never re-ask a fork the user closed.
@@ -83,8 +84,8 @@ AskBeforeAssuming {
     }
   }
 
-  Method -> proceed {
-    act, and state the premise in the same message that acts on it
+  Method {
+    proceed: act, and state the premise in the same message that acts on it
     mark it `[?]`
     via(core-rules.md 8.GroundOrMark)  // the mark taxonomy
   }

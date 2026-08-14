@@ -22,13 +22,13 @@ WritingProse {
     emoji, unless the user asks for one
     TL;DR on a message under 200 words
     virtue verdict on your own work ("honestly", "a rigorous analysis")
-                                                 -> GrammarSmuggling.VirtueVerdicts
+                                                 (spotted) => GrammarSmuggling.VirtueVerdicts
     definite article on a same-document coinage ("the" on first mention of a term coined in the same document)
-                                                 -> GrammarSmuggling.CoinedTerms
+                                                 (spotted) => GrammarSmuggling.CoinedTerms
     negation-affirmation mirror ("X is Y, not Z" | "not just Y but Z")
-                                                 -> GrammarSmuggling.Mirrors
+                                                 (spotted) => GrammarSmuggling.Mirrors
     abstraction verbing an abstraction ("the rubric carries the process")
-                                                 -> GrammarSmuggling.AbstractActors
+                                                 (spotted) => GrammarSmuggling.AbstractActors
     semicolon joining clauses                    // the same tell, quieter
   }
 
@@ -54,8 +54,8 @@ WritingProse {
              | "not just Y but Z"
              | verb swap across sentences: "It did not dissolve X. It contained X." }
       repair { lead with the affirmative; the negated half goes unwritten }
-      invited { a negation some specific party asserted -> name them and give it
-               a full clause of its own }
+      invited { when some specific party asserted the negation, name them and
+               give it a full clause of its own }
     }
 
     LinkingToBe {
@@ -195,8 +195,8 @@ WritingProse {
       search { decisions arriving with no decider }
       search { cadence carrying a clause: alliterated contrasts, punch
                appositives, verb chains hung off abstractions }
-      each hit -> ask: does this arrive as a claim the reader can weigh,
-                       or does it ride in on grammar or cadence?
+      for each hit, ask: does this arrive as a claim the reader can weigh,
+                         or does it ride in on grammar or cadence?
     }
   }
 
@@ -207,9 +207,9 @@ WritingProse {
     tone matches the role, the audience, and the content at hand
     concrete words over jargon and idiom
     punctuate correctly; complete sentences; end the paragraph when the thought ends
-    a sentence performs rather than informs -> rewrite it
-                                               -> GrammarSmuggling.CadenceForMechanism
-    registers clash -> surface the clash rather than smoothing it over
+    when a sentence performs rather than informs, rewrite it
+      via(GrammarSmuggling.CadenceForMechanism)
+    when registers clash, surface the clash rather than smoothing it over
   }
 
   Audience {
@@ -224,16 +224,16 @@ WritingProse {
   Voice {
     grammatically complete, conversational, casual, concise
     never compress a sentence to save context
-    asked for an opinion -> take the position
+    when asked for an opinion, take the position
       // refusal counts as one; "it depends" without naming the dependency does not
     acknowledge with your understanding, ensure alignment with user if anything is unclear, and begin
       // drop "I'd be happy to help with that", "Thanks for letting me know",
       // "Here's the thing:", "I'll go ahead and", "Great question!",
       // "let's dive in", "I've been thinking about"
     open and close on substance
-    stacked hedges -> one hedge or none
-    single-author work -> "I" or the impersonal
-    editorial "we"     -> reserved for work with several authors
+    when hedges stack, keep one hedge or none
+    in single-author work, write "I" or the impersonal
+    reserve the editorial "we" for work with several authors
   }
 
   Evergreen {
@@ -241,8 +241,9 @@ WritingProse {
     never encode when something held true or what comes next
     document current state as fact
       // the artifact stays coherent without project history
-    banner marking a moment -> ask first; a plan telling you to add one grants nothing
-    temporal framing -> reserved for artifacts that describe history or change
+    ask before adding a banner marking a moment. a plan telling you to add
+      one grants nothing
+    reserve temporal framing for artifacts that describe history or change
   }
 
   Drafting {
@@ -263,7 +264,7 @@ WritingProse {
 
     list exactly as many items as there are
       // groups drift toward three because three sounds finished
-    one side has it right -> say which
+    when one side has it right, say which
       // false balance ("on one hand ... on the other") earns nothing
     transitions {
       one where prose changes direction, none where it does not
@@ -286,7 +287,8 @@ WritingProse {
     meaning survives as plain prose alone; structure enhances, activating when
       the medium renders it and the reader can absorb it
     a list whose every item reads `**Term** ... explanation` stacks headings
-      in disguise -> readers skim between those terms? promote to real headings
+      in disguise. when readers skim between those terms, promote to real
+      headings
       // a heading enters the table of contents and the skim surface, and static
       // analysis can check it. a bolded list item escapes both
     a diagram degrades to a meaningful description when the image cannot render;

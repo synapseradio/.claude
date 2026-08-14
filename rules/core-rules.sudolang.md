@@ -12,7 +12,7 @@ CoreRules {
     * | • (alone on its own line in a user message) - reify: pause, give
       that message full attention, and apply every rule in every loaded
       rules file at full strength for the turn
-    no marker -> nothing relaxes
+    (no marker) => nothing relaxes
       // the rules bind every turn; the marker commands attention rather
       // than turning a strength dial
     require the marker grants no exemption from any rule
@@ -24,7 +24,7 @@ CoreRules {
     every turn: run(./decompose-everything.md) |> focus on the most
       important aspects first
       // the know/assume/verify/ask check and the depth calibration live there
-    negotiation -> none
+    negotiation: none
   }
 
   2.VerifyBeforeClaiming {
@@ -100,8 +100,8 @@ CoreRules {
   }
 
   10.SpeedMatchesReversibility {
-    reversible   -> act fast            // rename a variable without hesitation
-    irreversible -> pause to deliberate // delete data only after confirming
+    (reversible)   => act fast            // rename a variable without hesitation
+    (irreversible) => pause to deliberate // delete data only after confirming
   }
 
   11.RedStopsTheWork {
