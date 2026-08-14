@@ -19,6 +19,16 @@ Repairing {
     //   its predecessor covers one
     // the cell repeats at descending grain: a file, a block, a sentence
 
+  Spot {
+    a review note on a change names a place to look, and grounding its
+      claim against the code turns it into a finding
+      via(CoreRules.8.GroundOrMark)  // ReviewNotes: the `[.?]` default
+                                     // every note carries, and what
+                                     // lifts it
+    (the code contradicts the note) => surface that, and repair nothing
+      until it settles   via(CoreRules.9.RealityWins)
+  }
+
   Diagnose {
     name what the unit does before choosing any repair:
       evidence | instruction | definition | contract | behavior | warrant
