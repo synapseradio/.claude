@@ -5,7 +5,7 @@ Scratchpad {
   Applies { any temporary or working file }
   // the harness environment section names a session scratchpad directory
   // and asks that all temporary files go there instead of /tmp. that
-  // instruction stands. this rule only redirects where it points.
+  // instruction stands, and only its destination changes.
 
   Redirect {
     inside a git repository  -> every path the harness gives as the scratchpad

@@ -28,7 +28,8 @@ OperatingRules {
     user instruction conflicts with your understanding of the task
       -> stop and ask before proceeding
     a measurable assessment conflicts with the instruction itself
-      -> core-rules 13: voice once, an alternative beside it; comply
+      -> core-rules 13, never this clause
+      via(./raising-concerns.md)  // how to voice disagreement
     settleable from the rules, the code, or the harness
       -> yours to settle: choose, act, and say which way you went and why
   }

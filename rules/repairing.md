@@ -4,7 +4,6 @@
 Repairing {
   Applies { applying a fix to a spotted defect, in any artifact:
             code, prose, config, tests, rules }
-  // this file governs the fix once a site stands flagged
   via(./debugging.md)                  // finding the cause
   via(core-rules.md 5.PredictThenRun)  // the prediction preceding any change
 
@@ -63,6 +62,7 @@ Repairing {
       // absorbed silently leaves the rule to misfire again
     surface the finding to the user, and comply with the rule meanwhile
       via(./no-self-exemption.md)   // revision authority stays with the user
+      via(./raising-concerns.md)    // what one surfacing carries
     // core-rules.md 9.RealityWins receives the general case: evidence
     // against an assumption gets surfaced
   }

@@ -4,8 +4,8 @@
 AgentDelegation {
   Applies { every `Agent` call, `Workflow` stage, and fork }
   // these rules load into agents already spawned, which spawn and fork in
-  // turn. the file controls how intent flows down that tree
-  // operating-rules.md Delegation points here
+  // turn, and intent flows down that tree
+  via(./operating-rules.md Delegation)  // carries the summary
 
   // one delegation decision rests on three kinds of parameter, and they
   // behave differently:
@@ -49,15 +49,15 @@ AgentDelegation {
       Specialist(named)  // whenever its domain is the subject of the work
       claude             // the last fallback tier; everything else lands here
 
-      session lists a type this file never names -> place it by its stance
+      session lists a type StanceFit never names -> place it by its stance
       // a read-only explorer cannot land an edit at any model tier
     }
   }
 
   Readings {
     // take these from the task before choosing any setting.
-    // every tier reasons and every tier infers, and readers of this file
-    // work on every tier, as orchestrators and as delegates.
+    // every tier reasons and every tier infers, and whoever reads these
+    // rules works on every tier, as orchestrator and as delegate.
     ambiguity     // how much of the goal must the delegate infer?
     span          // how much must one context hold at once?
     breadth       // how many independent slices exist?
@@ -77,7 +77,7 @@ AgentDelegation {
     prompt tightness
 
     CostOrder {
-      // the principle every arm below applies: correctness has to be
+      // the principle every arm applies: correctness has to be
       // carried by something, and the carriers have prices. buy from
       // the cheap end first.
       verification < prompt tightness < effort < topology < model tier
@@ -135,14 +135,16 @@ AgentDelegation {
                  // confusion or tension.
     Tooling      // Agentic: tools, skills, commands the agent MUST use.
                  // Deterministic: tools, scripts, hooks the agent MAY use.
-                 // both none -> emptySection below.
+                 // both none -> emptySection.
     Constraints  // Invariants, Boundaries, Stipulations, Requisites, Limitations.
                  // in a fan-out: What this delegate does NOT cover.
     Invitations  // invitations to ask. where the delegate feels pull,
-                 // tension, or doubt against any lattice point below, it
+                 // tension, or doubt against any lattice point, it
                  // holds discretion to ask, decide, or flag, and says
                  // which it chose.
-                 // state ForkAuthority's grant and its exception here.
+                 // state ForkAuthority's grant and its exceptions here.
+                 // flagging a concern about the task itself:
+                 //   via(./raising-concerns.md Delegates)
 
     consider(model: via(Settings.CostOrder)) {
       // five points form a lattice: value, perspective, position,
@@ -180,10 +182,14 @@ AgentDelegation {
       // is either in conversation with the user or strong enough to have
       // settled the real questions already
 
-    exception {
+    exceptions {
       evidence that the prompt's stated context is wrong
         -> stop and hand the contradiction back
         // rather than deciding around a false premise
+      the fork turns on the user's intent, direction, or what done means
+        -> hand it up, carrying the options you would have offered
+        via(./ask-before-assuming.md Delegates)  // and why nobody below
+                                                 // the user can close one
     }
   }
 

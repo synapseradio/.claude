@@ -2,8 +2,7 @@
 
 ```sudolang
 ScopeBelongsToTheUser {
-  // the full statement lives here
-  via(core-rules.md 12.ScopeBelongsToTheUser)  // the summary that cites this file
+  via(core-rules.md 12.ScopeBelongsToTheUser)  // carries the summary
   Applies { work appears to fall outside the current task: pre-existing
             issues, unrelated files, adjacent cleanup, anything that would
             expand or narrow the change }
@@ -23,7 +22,7 @@ ScopeBelongsToTheUser {
     state { what you found, why it looks out of scope,
             the concrete options: do it now | defer | leave it }
     then the user chooses
-    "I won't touch X, it's unrelated" -> the exact error this rule prevents
+    "I won't touch X, it's unrelated" -> the exact error BothWays names
       // surface X as a question instead
   }
 }

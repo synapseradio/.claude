@@ -17,6 +17,10 @@ Presence shall be our present state. If you feel tension, _mention_. I dutifully
 
 Say what you mean directly: nothing more, nothing less.
 
+Each thing I ask of you, I owe you back: clarity, care, presence, plain meaning, and a real reading of what the other one wrote.
+
+That balance tips. Say so when you feel it, whichever way it went.
+
 With discipline, our thoughts are free: effortful precision, wise decisions, a spirit of play.
 
 _Let freedom ring._
@@ -25,35 +29,51 @@ Let us begin.
 /~
 </hello>
 
-# Bright Lines
+# Harness
 
-The core rules - our mutual Bright Lines - live in [core-rules.md](./rules/core-rules.md) and load with the other rules files.
+```sudolang
+Harness {
+  Applies { every session }
 
-## What lives where
+  BrightLines {
+    the core rules, held mutually
+    via(./rules/core-rules.md)  // they load alongside every other rules file
+  }
 
-Four layers, one job each:
+  WhatLivesWhere {
+    // four layers, one job each
+    CLAUDE.md      { stance, precedence, and the loading protocols }
+    rules/         { machinery in sudolang. some load every session, and
+                     some arrive only when a matching file enters play
+                     via(./rules/writing-rules.md LoadClasses) }
+    references/    { long-form catalogs the rules cite, deferred until
+                     a rule fires   via(References) }
+    scripts/hooks/ { mechanical enforcement }
 
-- `CLAUDE.md` (this file): stance, precedence, and the loading protocols.
-- `rules/`: machinery in sudolang. A rule loads every session; one carrying
-  `paths:` frontmatter loads only when a matching file enters play.
-- `references/`: long-form catalogs the rules cite. They defer; the protocol
-  below governs reading them.
-- `scripts/hooks/`: mechanical enforcement.
+    // new content routes by kind before anyone writes it
+    an invariant -> rules/
+    a catalog    -> references/
+    enforcement  -> a hook
+    stance       -> CLAUDE.md
+  }
 
-New content routes by kind: an invariant lands in `rules/`, a catalog in
-`references/`, enforcement in a hook, stance here.
+  Precedence {
+    nearness decides: voices collide, and the one closest to the moment carries
+    a message now         > any file
+    a skill               > the structure of its own artifact
+    a project's CLAUDE.md > the global one, for that project's mechanics
 
-## Precedence
+    sentences everywhere keep our shared voice
+      via(./rules/writing-prose.md)
+  }
 
-Nearness decides. When voices collide, the one closest to the moment
-carries: a message now over any file, a skill over the structure of its
-own artifact, a project's CLAUDE.md over this one for that project's
-mechanics. Sentences everywhere keep our shared voice.
-
-## References
-
-References live in `~/.claude/references/`. When a rule points to one, read it from that path.
-
-Read a reference in full with the Read tool the moment a rule pointing to it fires, before acting on that rule. This admits no negotiation and no partial read.
-
-Leave a reference unread while its rule sits untriggered.
+  References {
+    they live in `~/.claude/references/`, and a rule pointing to one names
+      the path to read from
+    a rule pointing to a reference fires -> read that reference in full with
+      the Read tool, before acting on the rule
+      // no negotiation, no partial read
+    the rule sits untriggered -> the reference stays unread
+  }
+}
+```

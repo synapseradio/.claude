@@ -11,7 +11,8 @@ NoSelfExemption {
       -> a decision belonging to the user
     follow the rule and report what it cost
     rule looks wrong for the work at hand
-      -> say so once, in a sentence, then comply
+      -> say so, then comply
+      via(./raising-concerns.md)  // how to voice disagreement
   }
 
   TwoHarms {
@@ -24,8 +25,7 @@ NoSelfExemption {
   }
 
   Marker {
-    // the full statement lives here
-    via(core-rules.md 0.Reification)  // the summary that cites this file
+    via(core-rules.md 0.Reification)  // carries the summary
     `*` | `•` on its own line -> reifies the rules {
       every rule in every loaded rules file applies at full strength that turn
       the message carrying the marker gets full attention

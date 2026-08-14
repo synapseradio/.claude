@@ -70,7 +70,7 @@ Dependencies {
 
   TheRepoIsTheSOP {
     the repo carries its own dependency-management docs
-      -> read them before touching deps; on conflict, they override this file
+      -> read them before touching deps. on conflict, they override Dependencies
     // conventions like Bun workspace catalogs, pnpm patches, or npm overrides
     // change where a version range belongs. skipping the docs usually means
     // putting the range in the wrong place and redoing the work

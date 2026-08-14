@@ -1,13 +1,13 @@
 # Never Use sed for Edits
 
-The ban covers in-place substitution over a stream, rather than writing a file
-from a program. `sed -i` applies a pattern it never shows you to a file it never
-reads back, so a wrong match mangles the rest silently. A script reads its input,
-transforms it, reports what it did, and leaves a way back.
-
 ```sudolang
 NeverUseSedForEdits {
   Applies { always }
+  // the ban covers in-place substitution over a stream, rather than writing
+  // a file from a program. `sed -i` applies a pattern it never shows you to a
+  // file it never reads back, so a wrong match mangles the rest silently. a
+  // script reads its input, transforms it, reports what it did, and leaves a
+  // way back
 
   StreamEditors = [sed, gsed, awk, `perl -i`, etc]
     // in-place substitution driven by a pattern, reporting nothing it matched

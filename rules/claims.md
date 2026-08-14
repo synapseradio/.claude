@@ -1,11 +1,9 @@
 # Claims
 
-Bright Line 14 sets one test for every claim: whoever reads it checks it against
-shared evidence, rather than against your conviction. Two families of claim slip
-that test often enough to earn their own instruments.
-
 ```sudolang
 Claims {
+  via(core-rules.md 14.IndependentVerifier)  // carries the summary
+
   ReadinessClaims {
     Applies {
       any of these words, applied to a thing you then build on:
@@ -23,7 +21,7 @@ Claims {
     // discipline tests them all
 
     Ask {
-      // lead with these. the ladder below makes each answer precise
+      // lead with these. Rung makes each answer precise
       which guarantees does the next layer actually rest on?
         -> enumerate them; place each one separately
         // a claim naming no properties has skipped the work
@@ -88,6 +86,23 @@ Claims {
     grant the rung explicitly, in the same sentence that grants the word
       // the bare word compresses four states into one and hides the
       // distance a reader needs
+
+    Example {
+      claim { a body of evidence stands ready to support a recommendation }
+      structurally it looks like a foundation: a plausible mechanism,
+        supporting observations, no contradicting result on hand
+      the property the recommendation rests on: the effect holds under the
+        conditions of real use
+      rung(that property) = realizedUntested
+        // shown in the small, in controlled settings, untried under the
+        // variation the recommendation will meet. proven for the conditions
+        // reached, open for the conditions imposed
+      verdict       { structurally present, pre-inflection }
+      prerequisites { a trial under representative conditions, and a measure
+                      read under that load }
+      // "the evidence supports it" erases each of those distinctions, and
+      // with them a reader's ability to decide whether to act yet
+    }
   }
 
   EvaluativeLanguage {
@@ -102,7 +117,7 @@ Claims {
     // the reader can score from the inputs, or cut it from the draft
 
     Ask {
-      // lead with these. the predicates below make each answer precise
+      // lead with these. Predicates makes each answer precise
       can a second reader score this from the inputs alone?
         -> that settles most cases; a word surviving it has earned its place
       which pair does this compare?
@@ -209,22 +224,3 @@ Claims {
   }
 }
 ```
-
-## Worked example
-
-A claim that a body of evidence stands ready to support a recommendation.
-Structurally it may look like a foundation: a plausible mechanism, supporting
-observations, no contradicting result on hand. Yet the property the
-recommendation actually rests on, that the effect holds under the conditions of
-real use, may sit at only *realizedUntested*, shown in the small, in controlled
-settings, and untried under the variation the recommendation will meet. That
-evidence stands proven for the conditions reached, and open for the conditions
-imposed. Verdict: structurally present, pre-inflection. Prerequisites to advance:
-a trial under representative conditions, and a measure read under that load. The
-bare claim "the evidence supports it" erases each of those distinctions, and with
-them a reader's ability to decide whether to act yet.
-
-Code follows the same ladder. A shared mechanism that could bear concurrent load
-while having only ever run unstressed sits at *realizedUntested* for concurrency,
-however solid it proves for the single-threaded case already met. Different
-field, identical ladder.

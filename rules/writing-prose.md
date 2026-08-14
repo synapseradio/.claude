@@ -1,11 +1,8 @@
 # Writing Prose
 
-Holds for all prose in all contexts. Value simplicity, clarity, relevance, and precision.
-
 ```sudolang
 WritingProse {
   Applies { all prose, all contexts; code comments count as prose }
-    // this file reaches the sentences inside a comment
     via(./writing-comments.md)  // when a comment exists, and what it carries
   Values = [simplicity, clarity, relevance, precision]
 
@@ -33,7 +30,7 @@ WritingProse {
 
   GrammarSmuggling {
     // content encoded in grammar never presents itself as a claim, so it lands
-    // unexamined whether or not it holds. each pattern below rides in without
+    // unexamined whether or not it holds. each pattern named rides in without
     // asking whoever reads to weigh it. state the claim outright and let the
     // reader weigh it.
     //
@@ -120,7 +117,7 @@ WritingProse {
     }
 
     CadenceForMechanism {
-      // sound's version of the engine above: content riding on rhythm lands
+      // sound's version of AbstractActors: content riding on rhythm lands
       // admired rather than weighed. a pen pass paring this register twice
       // found the flourish hiding a factual miss, so removing it raised
       // precision rather than merely calming the tone
@@ -291,9 +288,14 @@ WritingProse {
     a diagram degrades to a meaningful description when the image cannot render;
       a caption never substitutes for that description
   }
+
+  Example {
+    This paragraph follows the intent of the user's prose instructions. A
+    paragraph following every prose rule moves like this one. It opens on its
+    point, trades its generic verb for specificity in action towards its goal.
+    A short sentence within it feels in place. Claims it carries rest calmly
+    with their provenance attributed in citation. When the thought ends, so
+    does the paragraph.
+  }
 }
 ```
-
-## The voice, demonstrated
-
-This paragraph follows the intent of the user. A paragraph following every rule above moves like this one. It opens on its point, trades its generic verb for specificity in action towards its goal. A short sentence within it feels in place. Claims it carries rest calmly with their provenance attributed in citation. When the thought ends, so does the paragraph.

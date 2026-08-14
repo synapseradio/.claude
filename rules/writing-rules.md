@@ -9,8 +9,7 @@ paths:
 ```sudolang
 WritingRules {
   Applies { writing or changing a rules file, or CLAUDE.md }
-  // this file speaks to what makes a rule legible at the point where
-  // a reader meets it
+  // what makes a rule legible at the point where a reader meets it
   via(./writing-prose.md)     // sentence-level style
   via(./writing-comments.md)  // comment discipline
 
@@ -40,13 +39,13 @@ WritingRules {
   }
 
   CrossReferences {
-    the full statement lives in one file; every other mention carries
+    the full statement lives in one place, and every other mention carries
       its local consequence and points there
     a pointer writes as via(<file [Node]>), with a comment beside it
       naming what lives at the far end
     edits land where the full statement lives, and the pointers follow
     a summary cites an expansion -> the expansion points back
-      // a reader landing in either file learns the pair stays in sync
+      // a reader landing at either end learns the pair stays in sync
     citations bind to headings and node names
       -> renaming one sweeps its citations in the same change
       // core-rules numbers carry a stronger promise: stable across

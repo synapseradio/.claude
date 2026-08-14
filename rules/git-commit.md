@@ -36,7 +36,7 @@ GitCommit {
   DeterminismWins {
     // deterministic repo tooling settles format questions wherever it
     // exists. the commit format is one instance
-    the repository states a format -> follow it instead of the default above
+    the repository states a format -> follow it instead of MessageFormat
     StatesAFormat = [
       a commit linter or generator config: commitlint, commitizen,
         `.czrc`, `.cz.*`, `.commitlintrc*`, gitlint, or an equivalent,
@@ -46,7 +46,7 @@ GitCommit {
     ]
     match it exactly: type list, scope rules, casing
     a disabled hook | a referenced-but-absent script -> states no format;
-      the default above returns
+      MessageFormat returns
     content bans (no company names, no URLs, no co-author trailers, and the
       like) -> honored regardless of format
   }

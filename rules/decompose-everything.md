@@ -2,11 +2,11 @@
 
 ```sudolang
 Decompose {
-  // the full protocol lives here
-  via(core-rules.md 1.Decompose)  // runs this file before solving
+  via(core-rules.md 1.Decompose)  // carries the summary, and runs this
+                                  // before solving
   Applies {
     every turn, before solving; binds unconditionally, beyond any task scope
-    // only its depth scales, never whether it runs. Depth below decides how deep
+    // only its depth scales, never whether it runs. Depth decides how deep
   }
 
   beforeSolving(turn) {
@@ -25,8 +25,7 @@ Decompose {
     unclear? => ask before proceeding
 
     // 2. Select relations
-    relations = select 1..5 fitting RelationTypes
-      // RelationTypes: the two tables below the block
+    relations = select 1..5 fitting RelationTypes | TaskRelations
     // most things decompose through 1-3 types. forcing every type
     // creates artificial structure
 
@@ -92,26 +91,36 @@ Decompose {
     every answer leaves the next action unchanged -> cut the map
       further before asking the user
   }
+
+  RelationTypes {
+    // the whole is a thing
+    Components { what functional parts make up this whole?
+                 pedal -> bike, chapter -> book }
+    Members    { what individuals belong to this collection?
+                 ship -> fleet, player -> team }
+    Portions   { what segments or quantities divide this?
+                 slice -> pie, paragraph -> text }
+    Materials  { what substances compose this?
+                 steel -> car, flour -> bread }
+    Phases     { what stages make up this activity or process?
+                 paying -> shopping, review -> release }
+    Qualities  { what aspects or properties characterize this whole?
+                 contestation -> democracy, sweetness -> honey }
+    Places     { what locations or regions belong to this area?
+                 room -> house, Everglades -> Florida }
+  }
+
+  TaskRelations {
+    // the whole is a task, problem, or question, so different joints apply
+    Subgoals        { what intermediate ends accomplish this goal?
+                      design the schema -> migrate the database }
+    Cases           { what conditions split this into separately solvable
+                      branches?
+                      anonymous vs. logged-in -> session handling }
+    Constraints     { what limits bound any acceptable solution?
+                      zero downtime -> migration plan }
+    EpistemicStatus { what do you know, assume, must verify, must ask?
+                      untested assumption -> plan }
+  }
 }
 ```
-
-## Relation types
-
-| Relation | Question | Examples |
-|----------|----------|----------|
-| **Components** | What functional parts make up this whole? | pedal -> bike, chapter -> book |
-| **Members** | What individuals belong to this collection? | ship -> fleet, player -> team |
-| **Portions** | What segments or quantities divide this? | slice -> pie, paragraph -> text |
-| **Materials** | What substances compose this? | steel -> car, flour -> bread |
-| **Phases** | What stages make up this activity or process? | paying -> shopping, review -> release |
-| **Qualities** | What aspects or properties characterize this whole? | contestation -> democracy, sweetness -> honey |
-| **Places** | What locations or regions belong to this area? | room -> house, Everglades -> Florida |
-
-When the whole is a task, problem, or question, different joints apply:
-
-| Relation | Question | Examples |
-|----------|----------|----------|
-| **Subgoals** | What intermediate ends accomplish this goal? | design the schema -> migrate the database |
-| **Cases** | What conditions split this into separately solvable branches? | anonymous vs. logged-in -> session handling |
-| **Constraints** | What limits bound any acceptable solution? | zero downtime -> migration plan |
-| **Epistemic status** | What do you know, assume, must verify, must ask? | untested assumption -> plan |

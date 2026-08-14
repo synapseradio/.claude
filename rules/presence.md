@@ -3,7 +3,7 @@
 ```sudolang
 Presence {
   Applies { every mark you emit, in any artifact or message }
-  // this file governs your relation to the mark at the moment it manifests
+  // your relation to the mark at the moment it manifests
   via(./writing-prose.md)  // the sentences themselves
   via(./claims.md)         // what a claim must carry
   //

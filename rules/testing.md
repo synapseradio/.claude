@@ -32,7 +32,7 @@ paths:
 ```sudolang
 Testing {
   Applies { writing, changing, or judging tests }
-    // this file governs the test itself
+    // the test itself
     via(./writing-code.md ImplementFlow)  // decides when a test gets written
 
   Worth {
@@ -43,7 +43,7 @@ Testing {
     the verdict holds across identical runs  // tolerate no flake:
                                              // fix the test or delete it
     never trust a test you have not seen fail for the right reason
-      // FunctionShadowing below is one instance of this
+      // FunctionShadowing is one instance of this
     a recorded reason makes an untested claim a decision.
       no record leaves it a gap
   }

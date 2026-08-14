@@ -3,7 +3,6 @@
 ```sudolang
 WritingComments {
   Applies { every comment, in every language and every artifact that carries one }
-    // this file decides when a comment exists and what it carries
     via(./writing-prose.md)  // the sentences inside one answer there
 
   a comment carries the part of the author's theory the code cannot:
@@ -113,7 +112,8 @@ WritingComments {
   }
 
   OnContact {
-    an edit brings a nearby comment within reach -> hold it to everything above
+    an edit brings a nearby comment within reach
+      -> hold it to every rule in WritingComments
     restates its neighbors | contradicts the code -> leaves in the same edit
     a convention mandates a comment on every declaration
       -> the one sentence a caller needs, plus whatever static analysis and
