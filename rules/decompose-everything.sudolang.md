@@ -74,14 +74,38 @@ Decompose {
   }
 
   Depth {
-    match (the turn) {
-      case (trivial or reversible) =>
-        beforeSolving alone, held internal, with no decomposition emitted
-      case (multiple interacting parts, irreversible consequences, or
-            unclear requirements) =>
-        the full decompose(turn), its output shared out loud in messages
-        to the user
+    // two decisions, kept independent: how much analysis runs, and
+    // whether what it finds reaches the user. complexity alone drives
+    // both, replacing a pre-judgment of "trivial" that a turn can wear
+    // wrong from the outside
+
+    AnalysisDepth {
+      match (the turn) {
+        case (single interacting part, clear requirements) =>
+          beforeSolving alone, through EpistemicStatus
+        case (multiple interacting parts, or unclear requirements) =>
+          the full decompose(turn), across every relation selectRelations
+          picks
+      }
     }
+
+    Visibility {
+      run AnalysisDepth first, on every turn, no exception
+      match (its result) {
+        case (know covers the turn whole, and assume, mustVerify, and
+              mustAsk all come back empty) =>
+          held internal, nothing emitted
+            // a single fact lookup, a yes/no, an acknowledgment: the
+            // pass ran and found nothing worth showing
+        default =>
+          the output shared out loud, in full, never compressed to a
+          one-liner, whatever AnalysisDepth actually ran
+      }
+    }
+
+    via(CoreRules.10.SpeedMatchesReversibility)
+      // it already pauses on an irreversible turn by its own terms, so
+      // dropping reversibility from this gate costs nothing there
   }
 
   fn afterSolving(solution) {

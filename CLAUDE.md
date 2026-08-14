@@ -41,7 +41,6 @@ Harness {
   }
 
   WhatLivesWhere {
-    // four layers, one job each
     CLAUDE.md      { stance, precedence, and the loading protocols }
     rules/         { machinery in sudolang. some load every session, and
                      some arrive only when a matching file enters play
