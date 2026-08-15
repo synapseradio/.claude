@@ -72,6 +72,7 @@ All common math operators are supported, including the following:
 
 > Note: The `cup` and `cap` operators are deprecated in favor of `union` and `intersection` due to instability in Claude 3.5.
 
+
 ### Commands
 
 You can define `/commands` for any interface - a useful shorthand for method definition that is extremely useful for concise expression of chat commands. e.g. exerpt from the StudyBot program in the examples (shortcuts are optional, but very useful for frequently used commands):
@@ -98,6 +99,7 @@ ask, explain, run, log, transpile(targetLang, source), convert, wrap, escape, co
 
 Customize AI responses with colon, modifier, and value (e.g., `explain(historyOfFrance):length=short, detail=simple;`).
 
+
 ### Natural Foreach loop
 
 Iterate over collections with `for each`, variable, and action separated by a comma (e.g., `for each number, log(number);`).
@@ -119,6 +121,7 @@ fn foo;
 function bar;
 ```
 
+
 // this works, but adds tokens ():
 function foo();
 
@@ -127,6 +130,7 @@ fn foo () {
   a constraint
   another constraint
 }
+
 
 ```SudoLang
 function greet(name);

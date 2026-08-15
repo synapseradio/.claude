@@ -45,6 +45,11 @@
     "shell-snapshots/**",
     "session-env/**",
     "cache/**",
-    ".thinkies/**"
+    ".thinkies/**",
+
+    // Vendored upstream documents. These are somebody else's bytes, kept
+    // byte-for-byte so a checksum still verifies them against the source
+    // the commit message names. Normalizing whitespace here breaks that.
+    "references/sudolang-spec.md"
   ]
 }
