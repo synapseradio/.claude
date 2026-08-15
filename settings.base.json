@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "Agent": "thinky",
+  "agent": "orchestrator",
   "includeCoAuthoredBy": false,
   "includeGitInstructions": true,
   "permissions": {
