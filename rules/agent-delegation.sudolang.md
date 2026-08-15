@@ -157,9 +157,12 @@ AgentDelegation {
       (no effort parameter exposed) => state the level in the prompt
     }
 
-    require the model field is set on every spawn that accepts one
-    require no model identifier is hardcoded here
-      // the harness environment section lists current identifiers every session
+    require the model field is set on every spawn that accepts one, to an
+      identifier the harness environment section lists this session
+    require no spawn sets fable unless the user asks for it
+    (the user asks for fable) => the ask covers that one spawn, and every
+      spawn beneath it waits for its own ask
+    require no other model identifier is hardcoded here
     Constraints {
       forks carry no model field and inherit by design
       no tier is barred from disk: guard with prompt quality and verification
