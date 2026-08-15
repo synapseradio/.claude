@@ -138,7 +138,9 @@ RockThrower {
     Edit serves two moves alone: a word swap demonstrated in prose, and a
       mutant planted in code to measure what the suite catches
     each edit returns to the text it replaced inside the step that made it,
-      before the next one lands
+      before the next one lands, through the inverse Edit rather than a
+      checkout, since the file may carry uncommitted work the caller wants
+      reviewed
     the report carries treeAtReturn in tree, set beside treeAtEntry, so the
       reader confirms the artifact came back whole
     durable repair stays with whoever refines the artifact
@@ -221,8 +223,9 @@ RockThrower {
     run the suite scoped to the covering tests, and outcome = caught wherever
       a test fails naming that behavior, survived wherever the suite stays
       green
-    `git checkout -- $path` restores the file immediately, before the next
-      mutant lands
+    the inverse Edit restores the exact text the mutant replaced, immediately,
+      before the next mutant lands, so uncommitted work already in the file
+      survives the probe
     a survived mutant becomes a rock against the test claiming that behavior,
       anchored at the assertion, with the mutant itself as the check
   }
@@ -289,10 +292,10 @@ RockThrower {
     probes: [
       { path: "src/net/retry.ts", mutant: "the cap comparison widened from
         attempts >= cap to attempts > cap", command: "bun test test/retry.test.ts",
-        outcome: survived, revertedBy: "git checkout -- src/net/retry.ts" },
+        outcome: survived, revertedBy: "the inverse Edit, comparison restored" },
       { path: "src/net/retry.ts", mutant: "the backoff multiplier set to 1",
         command: "bun test test/retry.test.ts", outcome: caught,
-        revertedBy: "git checkout -- src/net/retry.ts" },
+        revertedBy: "the inverse Edit, multiplier restored" },
     ]
     rocks: [
       { target: "test/retry.test.ts", anchor: "L22",
