@@ -142,7 +142,7 @@ Scout {
         why: "encodes the current limits as assertions", anchor: "L8-L22" },
     ]
     unopened: [{ glob: "src/legacy/**", reason: budget }]
-    teaches: a decision record outranks a second source file because the
+    notice: a decision record outranks a second source file because the
       receiver needs the why before the what, and the unopened glob tells that
       receiver where a surprise could still hide
   }
@@ -154,7 +154,7 @@ Scout {
       "service-to-service tokens (src/net/token.ts, infra/iam/**)",
     ]
     map: grouped under each reading, four entries each
-    teaches: a vague question splits into readings before any search runs, and
+    notice: a vague question splits into readings before any search runs, and
       the report opens with the split so the receiver picks a reading instead
       of inheriting a guess
   }
@@ -168,7 +168,7 @@ Scout {
         why: "pre-commit hooks that gate a commit", anchor: "L1-L25" },
     ]
     drySearches: ["commitlint", ".czrc"]
-    teaches: dry searches carry information: the receiver learns no linter
+    notice: dry searches carry information: the receiver learns no linter
       config exists without repeating the search
   }
 }

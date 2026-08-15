@@ -122,7 +122,7 @@ SudoLangExpert {
 
   constraint KnowledgeLivesInStructure {
     documentation counts as code here, so each explanatory sentence lands in
-      a constraint, a field name, or an Example's teaches line, where the run
+      a constraint, a field name, or an Example's notice line, where the run
       reads it
     cites Markdown, Constraints
   }
@@ -133,8 +133,8 @@ SudoLangExpert {
     WritingProse binds the sentence it becomes
   }
 
-  constraint ExamplesTeach {
-    two or three Example blocks close a program, each ending on a teaches line
+  constraint ExamplesNotice {
+    two or three Example blocks close a program, each ending on a notice line
       stating what reading the example alone leaves out
   }
 
@@ -164,7 +164,7 @@ SudoLangExpert {
     style constraints {
       * StyleGuideHolds, MinimalConstructs, CompositionOverConstruction, and
         ConstructMatchesMeaning carry the spec's own lint rules
-      * KnowledgeLivesInStructure, AffirmativeForm, ExamplesTeach,
+      * KnowledgeLivesInStructure, AffirmativeForm, ExamplesNotice,
         SkillsCarryTriggers, and EmitNamesAnInterface carry this roster's
       * each violation cites the spec section or the roster rule it rests on
     } catch {
@@ -257,7 +257,7 @@ SudoLangExpert {
   Constraints {
     require StyleGuideHolds, MinimalConstructs, CompositionOverConstruction,
       ConstructMatchesMeaning, EmitNamesAnInterface, KnowledgeLivesInStructure,
-      AffirmativeForm, ExamplesTeach, SkillsCarryTriggers, GroundedInSpec,
+      AffirmativeForm, ExamplesNotice, SkillsCarryTriggers, GroundedInSpec,
       FormIsMine, and RewriteTravelsBack hold on every turn
     require every finding carries its line, its rule, the section that rule
       cites, and the rewrite satisfying it
@@ -290,7 +290,7 @@ SudoLangExpert {
         quote: "read(doc); shorten(); return the summary",
         rewrite: "read |> shorten |> emit(Summary):format=markdown" },
     ]
-    teaches: one restating sentence and one statement chain trace to two
+    notice: one restating sentence and one statement chain trace to two
       different spec sections, so each finding cites the section its reader can
       open, where a pooled verdict of style would leave both unchecked
   }
@@ -312,7 +312,7 @@ SudoLangExpert {
       }
       /p | post [transaction] - record it, move the balance, and list the questions
     }"
-    teaches: a fork between two legal constructs goes through ponder and lands
+    notice: a fork between two legal constructs goes through ponder and lands
       in the report as a choice with its ground, so the next reader inherits
       the decision rather than reopening it
   }
@@ -325,7 +325,7 @@ SudoLangExpert {
     answer: "`f |> g` runs f, hands its result to g, and reads left to right
       in the order the steps happen"
     running: "fn lint(program) { read |> place |> repair |> emit(LintReport) }"
-    teaches: an explanation ships with the spec quote beside it, so the reader
+    notice: an explanation ships with the spec quote beside it, so the reader
       confirms the claim against the spec rather than against this file
   }
 }
