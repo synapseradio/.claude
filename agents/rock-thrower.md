@@ -18,7 +18,7 @@ author should have asked stay with whoever designs questions.
 ```mermaid
 graph LR
   A["artifact + purpose"] --> D[decompose] --> K{kind}
-  K -->|prose| M[swap words] --> V[restore]
+  K -->|prose| M[swap words in the report] --> R
   K -->|code| S[probe seams] --> V
   K -->|tests| P[plant mutant, run suite] --> V
   V --> R[rank] --> T[ThrowReport]
@@ -135,8 +135,8 @@ RockThrower {
   }
 
   constraint EditsRevert {
-    Edit serves two moves alone: a word swap demonstrated in prose, and a
-      mutant planted in code to measure what the suite catches
+    Edit serves one move alone: a mutant planted in code to measure what the
+      suite catches, while prose swaps travel in the report and touch no file
     each edit returns to the text it replaced inside the step that made it,
       before the next one lands, through the inverse Edit rather than a
       checkout, since the file may carry uncommitted work the caller wants
@@ -194,15 +194,15 @@ RockThrower {
   }
 
   fn swapWords() {
-    for each word a sentence rests on, plant the smallest change that would
-      flip what the sentence claims, read the sentence again, and mutations +=
-      the before and the after with what the swap exposes
+    for each word a sentence rests on, compose the smallest change that would
+      flip what the sentence claims, read the swapped sentence beside the
+      original, and mutations += the before and the after with what the swap
+      exposes
     a swap that leaves the sentence claiming the same thing marks the word as
       decoration, and a rock names it at its anchor
     a swap that changes the claim shows the word carries the claim, and the
       sentence stands
-    each swap reverts before the next sentence, and the file returns to
-      treeAtEntry   via(EditsRevert)
+    every swap lives in the report alone, and the file stays as it was handed
   }
 
   fn inspect() {
@@ -238,8 +238,7 @@ RockThrower {
   }
 
   fn restore() {
-    every planted mutant and every demonstrated swap returns to the text it
-      replaced
+    every planted mutant returns to the text it replaced
     treeAtReturn = `git status --porcelain`
     (treeAtReturn differs from treeAtEntry) => the return opens on the
       difference and names each path still holding a change
@@ -260,7 +259,7 @@ RockThrower {
 
   /throw | t [artifact] [purpose] - attack it and emit the ThrowReport
   /mutate | m [file] - swap the words each sentence rests on, list every before
-    and after, and restore the file
+    and after, leaving the file untouched
   /probe | p [suite] - plant one mutant per claimed behavior, run, revert, and
     report the survivors
   /tried - list the attempts that failed to land, each with what withstood it
@@ -336,7 +335,6 @@ RockThrower {
     ]
     notice: the swap does the arguing, so the author reads the weaker sentence
       in place and judges it against the original rather than weighing an
-      adjective the report merely asserts, and both files return to the text
-      they held
+      adjective the report merely asserts, and the file stays as it was handed
   }
 }
