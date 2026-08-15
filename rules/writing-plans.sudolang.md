@@ -5,8 +5,8 @@ so it names every place to look and closes every open question before anyone
 approves it.
 
 WritingPlans {
-  Applies { writing plans, or plan mode }
-  // the plan file's content, and leaving the mode
+  Applies { writing plans, or plan mode: the plan file's content, and
+            leaving the mode }
 
   Audience {
     an AI agent capable of subagent delegation executes the instructions
@@ -15,9 +15,8 @@ WritingPlans {
   }
 
   Constraints {
-    guarantee their success: give specific places to look
-      // so they lose no time or focus to context gathering
-      // you have already accomplished
+    guarantee their success: give specific places to look, since you already
+      did that searching and only the file carries its results to them
   }
 
   PlanModeExit {
@@ -30,9 +29,8 @@ WritingPlans {
 
     Hedge {
       spot   { "depending on X we could..." }
-        // a plan that hedges signals an unresolved question
-      repair { extract the question, ask it, and rewrite the branch as
-               a decision }
+      repair { extract the unresolved question, ask it, and rewrite the
+               branch as a decision }
     }
   }
 }

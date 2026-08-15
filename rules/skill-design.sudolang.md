@@ -28,8 +28,7 @@ SkillDesign {
       case (judging, changing nothing) => Audit
     }
     (entering any mode) => read(../references/skill-design-reference.md)
-      in full
-      // the mode contracts and the executor moves live there
+      in full for its mode contracts and executor moves
   }
 
   Pipeline {
@@ -38,10 +37,9 @@ SkillDesign {
       read(../references/skill-authoring-pipeline.md) in full
       follow it as written
       (Design)   => enter at ResearchSweep
-      (Refactor) => enter at whichever stage the evidence reopens
-        // the pipeline sends work backward freely, so a substantial
-        // redesign rejoins wherever its findings land
-      (Audit)    => never enters   // Audit changes nothing
+      (Refactor) => enter at whichever stage the evidence reopens, moving
+        backward through the pipeline freely
+      (Audit)    => never enters
     }
     (the brief is complete) => the skill-creator skill builds and
       evaluates from it

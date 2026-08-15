@@ -25,12 +25,11 @@ ShellScripts {
 
   follow the Google Shell Style Guide {
     read(../references/bash-style-guide.md) in full before writing
-      or reviewing bash
-    // bash fails quietly where other languages throw
+      or reviewing bash, which fails quietly where other languages throw
   }
 
   Constraints {
     kebab-case script filenames take precedence over the guide's
-      underscore default   // the one repo convention overriding the guide
+      underscore default
   }
 }

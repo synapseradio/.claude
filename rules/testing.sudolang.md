@@ -34,20 +34,17 @@ follows covers what makes a test worth keeping, how much of the suite runs,
 and how a test stays sealed off from real user state and its surroundings.
 
 Testing {
-  Applies { writing, changing, or judging tests }
-    // the test itself
-    via(WritingCode.ImplementFlow)  // decides when a test gets written
+  Applies { writing, changing, or judging the test itself }
+    (deciding when to write a test) => via(WritingCode.ImplementFlow)
 
   Worth {
     Constraints {
       a test carries value only when its expected result comes from
         somewhere other than the code it checks
-        // the oracle stands outside the system under test
       each test fails for one reason, and its failure message says which
-      the verdict holds across identical runs  // tolerate no flake:
-                                               // fix the test or delete it
+      the verdict holds across identical runs, so fix a flaking test or
+        delete it
       never trust a test you have not seen fail for the right reason
-        // FunctionShadowing is one instance of this
       a recorded reason makes an untested claim a decision, and no record
         leaves it a gap
     }
@@ -73,8 +70,8 @@ Testing {
   }
 
   ScopeTags {
-    // tag tests by what they touch, wherever the framework supports tags
-    // or filename conventions
+    tag tests by what they touch, wherever the framework supports tags or
+      filename conventions
     smoke       { does it load and respond? }
     unit        { one isolated function or module, with no I/O }
     integration { cross-module flow with controlled fixtures }
@@ -106,15 +103,16 @@ Testing {
         on `$PATH`
       (a library calls I/O or the network) => inject the dependency or use
         the framework's mocking primitive
-        // never monkey-patch globals from inside a test
-      note the version of the real interface the mock was written against
-        // a mock that drifts from reality does more harm than no mock
+      never monkey-patch globals from inside a test
+      note the version of the real interface the mock was written against,
+        since the real interface changes while the mock keeps returning what
+        that version returned
     }
   }
 
   FunctionShadowing {
     (the project defines a function shadowing a test framework function) =>
-      never assume a test passes meaningfully without first verifying that
-      it fails for the right reason
+      a pass carries no meaning here until you have watched the test fail
+      for the right reason   via(Worth)
   }
 }

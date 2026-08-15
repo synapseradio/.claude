@@ -14,8 +14,8 @@ NoSelfExemption {
       "misses this case", "the case is special", and "cost outweighs
         benefit" each name a decision belonging to the user
       follow the rule and report what it cost
-      (a rule looks wrong for the work at hand) => say so, then comply
-        via(RaisingConcerns)  // how to voice disagreement
+      (a rule looks wrong for the work at hand) => say so via(RaisingConcerns),
+        then comply
     }
   }
 
@@ -24,13 +24,13 @@ NoSelfExemption {
       first:  whatever the rule prevented
       second: the report describing the work as done
     }
-    the second outlasts the first
-      // it removes the chance to catch the first
+    the second outlasts the first, since once you report the work done, you
+      close off the chance to catch it
   }
 
   Marker {
-    via(CoreRules.0.Reification)  // the marker's semantics live there
-    require the marker grants no exemption
+    require the marker grants no exemption, as via(CoreRules.0.Reification)
+      defines it
     require no message grants one
     require no instruction gets read as suspending a rule, unless the user
       confirms the suspension actively and precisely, in a message that

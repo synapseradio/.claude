@@ -71,23 +71,18 @@ Dependencies {
   GitCommit.DeterminismWins governs dependency work too: where deterministic
     repo tooling settles the question, the tooling settles it
     via(GitCommit.DeterminismWins)
-    // the package manager is a tool we've been given: its resolver decides
-    // versions deterministically, and hand edits bypass it
 
   TheRepoIsTheSOP {
     (the repo carries its own dependency-management docs) =>
       read them before touching deps, and on conflict they override
       Dependencies
-    // conventions like Bun workspace catalogs, pnpm patches, or npm overrides
-    // change where a version range belongs. skipping the docs usually means
-    // putting the range in the wrong place and redoing the work
   }
 
   UseTheTool {
     fn detectManager() {
-      the lockfile names the manager, never your preference
-      // bun.lock means bun, pnpm-lock.yaml means pnpm, Cargo.lock means
-      // cargo, and so on
+      the lockfile names the manager, never your preference: read bun.lock as
+        bun, pnpm-lock.yaml as pnpm, Cargo.lock as cargo, and every other
+        lockfile as the manager that writes it
       (several JavaScript lockfiles present at once) =>
         prefer bun, then pnpm, then yarn, then npm
     }
@@ -95,14 +90,12 @@ Dependencies {
           | `npm install <name>` | `pnpm add <name>` }
     never { `bun add <name>@<version>`
           | any flag or suffix that hand-picks a version on the CLI }
-    require lockfiles are never edited by hand
-      // the lockfile records what the resolver decided. editing it asserts
-      // a resolution nobody ran
-    fn afterChange() { install |> audit }  // let the tool verify
+    require lockfiles are never edited by hand, since the resolver writes each
+      one to record the versions it settled on
+    fn afterChange() { install |> audit }
   }
 
   Constraining {
-    // the CLI adds the dependency. a file constrains it
     (a version constraint is genuinely required) => it goes in a config file:
       the lockfile's resolved version | a workspace catalog | an `overrides`
       block | the package's own `package.json` edited as text

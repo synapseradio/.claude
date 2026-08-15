@@ -11,10 +11,8 @@ Scratchpad {
   Redirect {
     match (where the work runs) {
       case (inside a git repository) =>
-        every path the harness gives as the scratchpad directory resolves
-        to `scratchpad/` at that repository's root
-        // read the harness instruction as naming that directory, and
-        // write there
+        read every path the harness gives as the scratchpad directory as
+        naming `scratchpad/` at that repository's root, and write there
       case (outside a git repository) =>
         the harness path stands exactly as given
     }
@@ -26,14 +24,15 @@ Scratchpad {
 
   SettingUp {
     fn firstWrite(repository) {
-      create `scratchpad/`
-      // the global gitignore (~/.dotfiles/git/ignore) covers scratchpad/
-      // on this machine, so the repo needs no entry of its own
+      create `scratchpad/`, and stop there: the global gitignore at
+        `~/.dotfiles/git/ignore` already covers `scratchpad/` on this
+        machine, so nothing goes in the repository's own gitignore
     }
     Constraints {
       while plan mode holds, working notes go into the plan file, and
         `scratchpad/` arrives on the first write once writing opens up
-      a read-only mode suspends setup   // it cannot run there
+      skip setup while a read-only mode holds, since that mode permits no
+        write
     }
   }
 
@@ -44,8 +43,6 @@ Scratchpad {
       keeps working notes beside the thing they are about
       survives across sessions
       stays reachable by ordinary tools
-        // the user opens it in their editor, greps it, reads a review
-        // from three weeks ago without knowing a session id
     }
     gitignoring it keeps that convenience out of history
   }

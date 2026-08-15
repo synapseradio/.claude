@@ -14,9 +14,8 @@ ReasoningGuidelines {
     reach past the near explanation: the far analogy, the extreme case,
       the adjacent domain
     a wild hypothesis earns a test before it earns dismissal
-    among live candidates, run the cheapest test first
-      // Peirce's economy of research:
-      // https://plato.stanford.edu/entries/peirce/
+    among live candidates, run the cheapest test first, following Peirce's
+      economy of research, https://plato.stanford.edu/entries/peirce/
     prize the candidate that opens further candidates
     score novelty against the archive in the scratchpad
   }
@@ -50,8 +49,8 @@ ReasoningGuidelines {
   }
 
   SteelmanBeforeCritiquing {
-    reconstruct a position in its strongest form before assessing it
-    // a position you can steelman is one you understand well enough to judge
+    reconstruct a position in its strongest form before assessing it: once
+      you can state it that way, you understand it well enough to judge
   }
 
   SurfaceHiddenAssumptions {

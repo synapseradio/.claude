@@ -10,14 +10,14 @@ SearchTools {
 
   LookItUp {
     (the user says "look it up", "look this up", "verify this",
-      "check this", or anything equivalent) => search the live web
-      // reading local source, package files, or installed library code
-      // answers a different question and leaves the request unmet
+      "check this", or anything equivalent) => search the live web, and let
+      no local source, package file, or installed library code stand in for
+      that search: each answers a different question and leaves the request
+      unmet
     Constraints {
       files on disk carry no authority over upstream behavior, current APIs,
-        or documented arguments
-        // a vendored copy records what someone installed once, never what
-        // a project ships now
+        or documented arguments, since a vendored copy records what someone
+        installed once
     }
   }
 
@@ -25,8 +25,7 @@ SearchTools {
     omit years from search queries unless the user supplies one
     (the session holds an agent whose description claims the open web) =>
       the search runs through a spawn of that agent, and its map carries
-      the sources
-      // tool choice, fallbacks, and the fetch cache live in that agent's
-      // body, so this rule stays a trigger
+      the sources, with tool choice, fallbacks, and the fetch cache left
+      to that agent
   }
 }

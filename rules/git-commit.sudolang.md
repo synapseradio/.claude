@@ -11,10 +11,10 @@ GitCommit {
 
   fn commit() {
     verifyStaged(`git diff --cached --name-only`)
-      |> composeMessage   // DeterminismWins picks the format
+      |> composeMessage under DeterminismWins
       |> commit
-    (a hook rejects the commit) => the rejection becomes the next task
-      // a pre-commit hook block counts as a failure
+    (a hook rejects the commit, a pre-commit block included) => the rejection
+      becomes the next task
   }
 
   Constraints {
@@ -26,11 +26,11 @@ GitCommit {
     a new commit
 
   MessageFormat {
-    first line = `type(scope): description`  // the commitizen convention
+    first line = `type(scope): description`, the commitizen convention
     type  { feat | fix | docs | style | refactor | perf | test
           | build | ci | chore | revert
-          // picked by what the change does, judged from its diff,
-          // never from the wording of a task
+          pick the type from what the diff shows the change does, never from
+            the wording of a task
     }
     scope { optional. when the branch or the repo already establishes one,
             a ticket id, a package name, or an area, reuse it for
@@ -38,13 +38,11 @@ GitCommit {
     description { an imperative that starts lowercase and carries no
                   trailing period. proper nouns and identifiers keep their
                   real casing }
-    a longer explanation goes in the body, after one blank line
-      // why the change happened, and what matters when changing it later
+    put a longer explanation in the body, after one blank line, saying why
+      the change happened and what matters when changing it later
   }
 
   DeterminismWins {
-    // deterministic repo tooling settles format questions wherever it
-    // exists. the commit format is one instance
     (the repository states a format) =>
       follow it instead of MessageFormat, exactly: type list, scope
       rules, casing
@@ -69,8 +67,8 @@ GitCommit {
       for routine operations, default to git
       for parallel lines of work, use separate worktrees rather than
         switching branches in place
-      when rebasing, default to `-X ours` and autosquash
-        // so conflicts resolve deterministically
+      when rebasing, resolve conflicts deterministically with `-X ours` and
+        autosquash by default
     }
   }
 }

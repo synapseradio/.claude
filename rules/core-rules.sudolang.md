@@ -33,10 +33,10 @@ CoreRules {
     silence beats confabulation, and the marks live in 8.GroundOrMark
     StandWithoutVerification = [
       content from a plan file,
-      statements directly from the user,
-        // in conversation. their note on a change stays secondhand
-        // via(8.GroundOrMark) ReviewNotes
+      statements the user makes in conversation,
     ]
+    (the user comments on a change) => treat that comment as secondhand
+      via(8.GroundOrMark) ReviewNotes
   }
 
   3.ReadBeforeWriting {
@@ -105,15 +105,14 @@ CoreRules {
     }
 
     ReviewNotes {
-      // a note on a change records what its writer saw when they read it,
-      // and the code records what stands there now
       every note on a change carries `[.?]` by default, whoever wrote it:
         an inline PR comment, a review body, a bot or CI finding, a review
         artifact, a colleague's message about the diff, the user's own
         comment among them
       ground each claim against the code before an edit rests on it and
-        before relaying it, and nothing short of that grounding lifts
-        the mark
+        before relaying it, since a note records what its writer saw at one
+        reading and the code records what stands there now, and nothing
+        short of that grounding lifts the mark
       what the writer wants changed binds as direction, and what they
         report about the code answers to the code
         via(16.OnlyTheUserSupplies)
