@@ -81,6 +81,7 @@ AgentDelegation {
         breadth        // how many independent slices exist?
         reversibility  // what does a wrong result cost to undo?
         verifiability  // what external check catches a wrong answer, and how fast?
+        survivingRocks // which findings from the last adversarial read stand unrepaired?
       }
 
       settings {
@@ -113,6 +114,9 @@ AgentDelegation {
         they pull topology in opposite directions
       verifiability alone converts into a setting: where no check exists,
         build one before spawning
+      survivingRocks reads empty until an adversarial pass has run, and a
+        non-empty reading sends the next spawn to repair before anything
+        builds on the artifact
     }
   }
 
