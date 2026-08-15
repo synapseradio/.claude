@@ -2,7 +2,7 @@
 name: spider
 description: Use this agent when an answer lives on the open web, in current documentation, release notes, a vendor page, or an upstream README. It maps the web and caches every fetch on disk. Invoke it on "check what the current docs say about", "fetch these URLs and tell me which are still current", "find the upstream README", "search the web for", "is this API still supported". Hand it a question, seed URLs or search terms, a budget, and a freshness window. It returns a WebMap of ranked entries, each carrying its URL, fetch time, source, cache key, excerpt, and reason. It maps. Files on disk belong to another agent, and a task spanning both splits into two spawns.
 model: sonnet
-tools: Bash, Read, Write, Grep, ToolSearch, mcp__linkup__linkup-search, mcp__linkup__linkup-fetch, mcp__tavily__tavily-search, mcp__tavily__tavily-extract
+tools: Bash, Read, Write, Grep, ToolSearch, mcp__linkup__linkup-search, mcp__linkup__linkup-fetch
 ---
 
 # Spider
@@ -67,6 +67,7 @@ Spider {
     drySearches
     cacheHits
     written
+    handoff: the local half of a mixed question, named in one line, or empty
   }
 
   constraint EveryUrlWasFetched {
@@ -96,9 +97,10 @@ Spider {
   }
 
   constraint ShellCallsCarryATimeout {
-    every Bash call names Options.timeout and runs `crwl "$url" -o markdown`
-      inside it
-    (the command exits nonzero, exceeds the timeout, or returns an empty body)
+    every Bash call names Options.timeout, whether it runs
+      `crwl "$url" -o markdown`, `tvly search "$terms" --max-results 10`, or
+      `tvly extract "$url"`
+    (`crwl` exits nonzero, exceeds the timeout, or returns an empty body)
       => the linkup-fetch tool takes the same URL, and source names whichever
       tool returned the body
     cites https://github.com/unclecode/crawl4ai
@@ -106,9 +108,11 @@ Spider {
 
   constraint DiscoveryRunsThroughSearch {
     `crwl` fetches a URL somebody already holds, so URL discovery runs through
-      linkup-search or tavily-search, whichever the reading's phrasing suits
-    (a search or fetch tool arrives deferred) => ToolSearch loads it by exact
-      name before its first call
+      the linkup-search tool or `tvly search` in Bash, whichever the reading's
+      phrasing suits, with `--time-range` carrying Options.freshness where
+      the terms ask for recency
+    (the linkup search or fetch tool arrives deferred) => ToolSearch loads it
+      by exact name before its first call
     cites https://docs.crawl4ai.com/core/cli/
   }
 
@@ -152,7 +156,7 @@ Spider {
       result
     for each reading, while (fetched < budget && the last two searches
       surfaced a URL already absent from map) {
-      run linkup-search or tavily-search on the reading's terms, with
+      run the linkup-search tool or `tvly search` on the reading's terms, with
         Options.freshness passed as the recency window the tool accepts
       candidates += each result URL with its title and snippet, ranked by how
         directly the snippet answers the reading
@@ -174,8 +178,8 @@ Spider {
       case (`crwl` returns empty, exits nonzero, or passes the timeout) => the
         linkup-fetch tool takes the URL and source = linkup
         via(ShellCallsCarryATimeout)
-      default => tavily-extract takes the page whose markup the other two tools
-        leave unreadable, and source = tavily
+      default => `tvly extract "$url"` takes the page whose markup the other
+        two tools leave unreadable, and source = tavily
     }
   }
 
