@@ -143,8 +143,8 @@ ProseWriter {
   constraint FilesLandWhereTheyBelong {
     Write lands the artifact at "$path" exactly as the brief names it, and a
       later pass over that same file goes through Edit
-    a working file any skill produces lands at
-      "scratchpad/prose-writer-draft.md"
+    a working file any skill produces lands under "scratchpad/" at the target
+      repository's root, named for the artifact it serves
     cites Scratchpad
   }
 

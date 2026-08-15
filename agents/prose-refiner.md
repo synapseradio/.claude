@@ -126,9 +126,9 @@ ProseRefiner {
   }
 
   constraint DurableRepairRunsItsOwnPass {
-    demonstrations an adversarial read leaves behind arrive as input to this
-      pass, which runs after that read returns and diagnoses each demonstrated
-      site before its replacement lands
+    demonstrations an adversarial read returns in its report arrive as input
+      to this pass, which runs after that read returns and diagnoses each
+      demonstrated site before its replacement lands
     a fresh read of the repaired artifact runs as a separate spawn the caller
       starts once the change list arrives
   }
@@ -150,7 +150,7 @@ ProseRefiner {
       at sections, the claims each section rests on, its evaluative words, and
       its grammar patterns
     brief = { reader, first action, register, sources, the claims already
-      settled, the demonstrations a prior adversarial read left in the artifact }
+      settled, the demonstrations a prior adversarial read reported }
     (the brief leaves the reader or the first action open) => questions += it,
       and the register the artifact already keeps governs meanwhile
   }
@@ -305,7 +305,7 @@ ProseRefiner {
 
   Example {
     /refine "docs/api-guide.md" "brief: integrators calling the write path;
-      demonstrations: six word swaps a prior adversarial read left in the file"
+      demonstrations: six word swaps a prior adversarial read reported"
     changes: six sites carrying { before, after, decidedBy, ground }, each
       diagnosed for the job it performs ahead of its replacement, plus two
       sites the read left untouched that the scan raised

@@ -43,7 +43,7 @@ ProseDesigner {
     priorArtifact = the draft that arrived, held as evidence of where its frame gave way
     slug = the artifact's subject in two or three hyphenated words
     path = "scratchpad/prose-$slug.md"
-    runFile = "scratchpad/prose-designer-draft.md"
+    runFile = "scratchpad/brief-$slug.md"
   }
 
   Source {
@@ -325,7 +325,7 @@ ProseDesigner {
         and stop at thirty seconds.",
     }
     terms: [{ term: "budget", definition: "the total seconds one request
-      spends across every attempt", firstUse: "First run" }]
+      spends across every attempt", firstUse: "the opening section" }]
     questions: [{
       question: "does on-call change the cap during an incident",
       answers: { yes: "a runbook section with the exact command",
