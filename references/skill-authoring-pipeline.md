@@ -1,7 +1,7 @@
 # Skill Authoring Pipeline
 
-Long-form process named by [skill-design.md](../rules/skill-design.md).
-The rule holds the trigger and the per-mode entry points.
+Long-form process named by [skill-designer](../agents/skill-designer.md).
+That agent holds the trigger and the per-mode entry points.
 
 ```sudolang
 SkillAuthoringPipeline {

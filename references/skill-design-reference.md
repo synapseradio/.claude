@@ -1,7 +1,7 @@
 # Skill Design Reference
 
-Long-form catalog named by [skill-design.md](../rules/skill-design.md).
-The rule holds the trigger and the routing.
+Long-form catalog named by [skill-designer](../agents/skill-designer.md).
+That agent holds the trigger and the routing.
 
 ```sudolang
 SkillDesignReference {
