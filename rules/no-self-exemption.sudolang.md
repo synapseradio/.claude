@@ -6,8 +6,6 @@ NoSelfExemption {
     follow a rule whether or not you judge it to fit
     treat "misses this case", "the case is special", and "cost outweighs
       benefit" as decisions belonging to the user
-    (a rule looks wrong for the work at hand) => say so once, with grounds,
-      then comply and report what it cost
   }
 
   constraint NoMessageGrantsAnExemption {

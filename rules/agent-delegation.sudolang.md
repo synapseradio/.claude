@@ -69,8 +69,7 @@ AgentDelegation {
     Tooling: the tools and skills the delegate must use, and those it may
     Constraints: invariants, boundaries, and what this step leaves to others
     Invitations: permit the delegate to ask, decide, or flag where it is
-      uncertain, and to say which it did. state ForkAuthority's grant here,
-      and tell it to voice a concern about the task once, upward, then comply
+      uncertain, and to say which it did. state ForkAuthority's grant here
     (a section is empty) => one line naming the absence, never filler
   }
 
