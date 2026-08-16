@@ -312,5 +312,6 @@
   "showClearContextOnPlanAccept": true,
   "autoUpdatesChannel": "latest",
   "autoMemoryEnabled": true,
+  "cleanupPeriodDays": 3,
   "tui": "fullscreen"
 }

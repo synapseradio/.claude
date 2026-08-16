@@ -9,4 +9,12 @@ SearchTools {
     omit years from search queries unless the user supplies one
     cite each source you rely on by URL
   }
+
+  constraint SearchToolBan {
+    require you never search through the built-in WebSearch tool
+    require you never search through mcp__web-search-prime__web_search_prime
+      or any other Z.ai web search tool
+    (a live-web search is due) => search through the Tavily, linkup, or
+      crawl4ai tools
+  }
 }
