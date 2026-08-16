@@ -1,71 +1,38 @@
-# Scratchpad
-
-Every temporary or working file lands in `scratchpad/` at the root of the
-repository in play. The harness environment section names a session scratchpad
-directory and asks that all temporary files go there instead of /tmp. That
-instruction stands, and only its destination changes.
-
 Scratchpad {
-  Applies { any temporary or working file }
+  Applies { any temporary or working file: intermediate results, throwaway
+            scripts, generated data, reviews, audits, plans, run files }
 
-  Redirect {
-    match (where the work runs) {
-      case (inside a git repository) =>
-        read every path the harness gives as the scratchpad directory as
-        naming `scratchpad/` at that repository's root, and write there
-      case (outside a git repository) =>
-        the harness path stands exactly as given
-    }
-    (a skill or workflow names its own default, a run file at
-      `/tmp/<skill>-<slug>.md`) =>
-      redirect it the same way to `scratchpad/<skill>-<slug>.md`, and say
-      once where the file went
+  Layout {
+    root = "scratchpad/" at the root of the repository in play
+    dir = if (`git branch --show-current` names a branch) "$root/$branch/"
+      else root
+    file = "$dir/$YYYYMMDD-HHmm-$slug.md", timestamped at the first write
   }
 
-  SettingUp {
-    fn firstWrite(repository) {
-      create `scratchpad/`, and stop there: the global gitignore at
-        `~/.dotfiles/git/ignore` already covers `scratchpad/` on this
-        machine, so nothing goes in the repository's own gitignore
-    }
-    Constraints {
-      while plan mode holds, working notes go into the plan file, and
-        `scratchpad/` arrives on the first write once writing opens up
-      skip setup while a read-only mode holds, since that mode permits no
-        write
-    }
+  constraint RedirectTheHarnessPath {
+    (inside a git repository) => read every path the harness gives as its
+      scratchpad or temp directory as naming Layout.dir, and write there
+    (outside a git repository) => use the harness path exactly as given
+    (a skill or workflow names a default such as `/tmp/<skill>-<slug>.md`)
+      => write it at Layout.file with that slug, and say once where it went
   }
 
-  WhyTheRedirect {
-    a session directory disappears with the session and sits far from
-      the code its notes describe
-    a repository-local directory {
-      keeps working notes beside the thing they are about
-      survives across sessions
-      stays reachable by ordinary tools
-    }
-    gitignoring it keeps that convenience out of history
+  constraint SetupStopsAtMkdir {
+    create Layout.dir on first write and change nothing else: the global
+      gitignore at `~/.dotfiles/git/ignore` already covers `scratchpad/`
+    (plan mode holds) => keep working notes in the plan file until writing
+      opens up
+    (a read-only mode holds) => skip setup
   }
 
-  Covers {
-    everything the harness instruction already covers: intermediate results,
-      working files, throwaway scripts, generated data, any output that does
-      not belong in the user's project
-    reviews, audits, plans, and run files land here too
-  }
-
-  NeverCovers {
-    deliverables {
-      (documentation the project ships)   => its docs tree
-      (source)                            => its source tree
-      (a file the user asked for by name) => where they named it
-    }
-    (a fact worth keeping across sessions) => PersistentMemory picks its store
-    Constraints {
-      secrets and credentials belong in neither place
-    }
+  constraint NeverForDeliverables {
+    require documentation the project ships goes to its docs tree, source to
+      its source tree, and a file the user named to where they named it
+    require no secret or credential lands in `scratchpad/`
     require you never write into `scratchpad/` to avoid deciding where a
       real artifact lives
+    (a fact is worth keeping across sessions) => store it under
+      PersistentMemory
     (you cannot tell whether output is a deliverable) => ask
   }
 }

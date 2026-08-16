@@ -1,118 +1,61 @@
 ---
 paths:
-  - "**/*.test.*"
-  - "**/*.spec.*"
-  - "**/*_test.*"
-  - "**/*_spec.*"
+  - "**/*.{test,spec}.*"
+  - "**/*{_test,_spec,Test,Tests,Spec,Specs}.*"
   - "**/test_*.*"
-  - "**/*Test.*"
-  - "**/*Tests.*"
-  - "**/*Spec.*"
-  - "**/*Specs.*"
   - "**/*bats*"
-  - "**/__tests__/**"
-  - "**/__mocks__/**"
-  - "**/__fixtures__/**"
-  - "**/tests/**"
-  - "**/test/**"
-  - "**/spec/**"
-  - "**/specs/**"
-  - "**/e2e/**"
-  - "**/cypress/**"
-  - "**/playwright/**"
-  - "**/integration/**"
-  - "**/testdata/**"
-  - "**/fixtures/**"
-  - "**/*.feature"
-  - "**/*.test"
+  - "**/{__tests__,__mocks__,__fixtures__,tests,test,spec,specs,e2e,cypress,playwright,integration,testdata,fixtures}/**"
+  - "**/*.{feature,test}"
 ---
 
-# Testing
-
-A test earns trust by failing once, for a reason its message names. What
-follows covers what makes a test worth keeping, how much of the suite runs,
-and how a test stays sealed off from real user state and its surroundings.
-
 Testing {
-  Applies { writing, changing, or judging the test itself }
-    (deciding when to write a test) => via(WritingCode.ImplementFlow)
+  Applies { writing, changing, or judging a test }
 
-  Worth {
-    Constraints {
-      a test carries value only when its expected result comes from
-        somewhere other than the code it checks
-      each test fails for one reason, and its failure message says which
-      the verdict holds across identical runs, so fix a flaking test or
-        delete it
-      never trust a test you have not seen fail for the right reason
-      a recorded reason makes an untested claim a decision, and no record
-        leaves it a gap
-    }
+  constraint Worth {
+    require the expected result comes from somewhere other than the code
+      under test
+    require each test fails for one reason, and its message says which
+    require the verdict holds across identical runs: fix a flaking test or
+      delete it
+    require you have watched a test fail for the right reason before you
+      trust it green, and treat a pass as meaningless until then where the
+      project shadows a framework function
+    (a claim stays untested) => record why, so the gap reads as a decision
   }
 
-  RunScope {
-    run only the tests covering changed files, mapping source to test by
-      convention
-    (the user asks | the scope warrants it | no narrower mapping exists) =>
-      the full suite runs
-    (the project carries a "test changed files" tool) => use it
+  constraint RunScope {
+    run only the tests covering changed files, mapped by convention or by
+      the project's own "test changed files" tool
+    (the user asks || the scope warrants it || no narrower mapping exists)
+      => run the full suite
   }
 
-  Names {
-    name a test for the behavior it describes:
-      `<subject> <verb> <behavior> [when <condition>]`
-    a failing test reads as a sentence
+  constraint Names {
+    name each test `<subject> <verb> <behavior> [when <condition>]`, so a
+      failure reads as a sentence
+    tag each test by what it touches where the framework supports it:
+      smoke | unit | integration
   }
 
-  Assertions {
-    use the framework's assertion library
-    never write ad-hoc checks that discard context on failure
+  constraint Assertions {
+    use the framework's assertion library, never an ad-hoc check that
+      discards context on failure
   }
 
-  ScopeTags {
-    tag tests by what they touch, wherever the framework supports tags or
-      filename conventions
-    smoke       { does it load and respond? }
-    unit        { one isolated function or module, with no I/O }
-    integration { cross-module flow with controlled fixtures }
-    tag-based filtering gives fast feedback during development
+  constraint Isolation {
+    require no test touches real user state, and none runs `rm -rf` against
+      a resolved production path
+    create a temporary directory and export an override env var pointing at
+      it before sourcing the system under test, and remove it in teardown
+      through that variable
+    require no test depends on order, working directory, or the user's
+      environment
   }
 
-  Isolation {
-    require tests never touch real user state
-    require no test runs `rm -rf` against a resolved production path
-
-    fn setup() {
-      create a temporary directory, and export an override env var
-        pointing at it before sourcing the system under test
-    }
-    fn teardown() {
-      remove the temp dir, targeting the variable that holds it
-    }
-
-    Constraints {
-      never depend on test order, working directory, or the user's
-        environment
-    }
-  }
-
-  Mocks {
-    Constraints {
-      mock at the boundary rather than in the middle
-      (a CLI invokes external commands) => mock executables in a temp dir
-        on `$PATH`
-      (a library calls I/O or the network) => inject the dependency or use
-        the framework's mocking primitive
-      never monkey-patch globals from inside a test
-      note the version of the real interface the mock was written against,
-        since the real interface changes while the mock keeps returning what
-        that version returned
-    }
-  }
-
-  FunctionShadowing {
-    (the project defines a function shadowing a test framework function) =>
-      a pass carries no meaning here until you have watched the test fail
-      for the right reason   via(Worth)
+  constraint Mocks {
+    mock at the boundary: executables in a temp dir on `$PATH` for a CLI,
+      an injected dependency or the framework's primitive for I/O and
+      network, never a monkey-patched global from inside a test
+    note the version of the real interface each mock was written against
   }
 }

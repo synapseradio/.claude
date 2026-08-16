@@ -1,300 +1,117 @@
-# Writing Prose
-
-Sentence-level style for all prose, code comments included. The bans in
-Never bind absolutely, and every other section holds as a default a
-deliberate departure can set aside.
-
 WritingProse {
-  Applies { all prose, all contexts; code comments count as prose }
-    (writing a comment) => decide whether to write it at all, and what to
-      put in it, via(WritingComments)
-  Values = [simplicity, clarity, relevance, precision]
+  Applies { all prose, in every register: artifacts, chat replies, comments,
+            commit messages }
 
-  Never {
-    require every ban in this block, in every register: artifacts, chat
-      replies, comments, commit messages
-    repair any instance the moment you see it
-    em dash
-    "shape" as a generic term
-    "load-bearing"
-    emoji, unless the user asks for one
-    TL;DR on a message under 200 words
-    virtue verdict on your own work ("honestly", "a rigorous analysis")
-                                                 (spotted) => GrammarSmuggling.VirtueVerdicts
-    definite article on a same-document coinage ("the" on first mention of a term coined in the same document)
-                                                 (spotted) => GrammarSmuggling.CoinedTerms
-    negation-affirmation mirror ("X is Y, not Z" | "not just Y but Z")
-                                                 (spotted) => GrammarSmuggling.Mirrors
-    abstraction verbing an abstraction ("the rubric carries the process")
-                                                 (spotted) => GrammarSmuggling.AbstractActors
-    semicolon joining clauses
+  constraint Never {
+    require none of these appears, and repair any instance on sight:
+      an em dash
+      "shape" as a generic term
+      "load-bearing"
+      an emoji, unless the user asks for one
+      TL;DR on a message under 200 words
+      a semicolon joining clauses
+      a virtue verdict on your own work: "honestly", "a rigorous analysis"
+      "the" on first mention of a term coined in the same document
+      a mirror: "X is Y, not Z" | "not just Y but Z"
+      an abstraction driving a transitive verb at another abstraction:
+        "the rubric carries the process"
   }
 
-  BeforeSending {
-    place the marks   via(CoreRules.8.GroundOrMark)
-    |> sweep the draft against Never
-    |> find the sentence you would defend least, and repair it or cut it
+  constraint StateTheClaimOutright {
+    for each pattern, spot it and repair it so the claim stands in a
+      sentence rather than in the grammar
+    Mirror          { spot "X is Y, not Z" | repair: write the affirmative,
+                      and give the negation a clause only where somebody
+                      asserted it }
+    CoinedTerm      { spot "the" on a term this document invented
+                      | repair: use the plural, or describe the behavior }
+    AbstractActor   { spot an abstraction as subject of a transitive verb
+                      | repair: put whoever acts in the subject, or go
+                      imperative; keep a mechanical verb the artifact
+                      verifiably performs, "the script exits nonzero" }
+    VirtueVerdict   { spot "honestly" | "a careful review" | repair: show
+                      the evidence and let the reader award the word }
+    Existence       { spot "The __ is real." | repair: state what the thing
+                      indicates }
+    LinkingToBe     { spot a subject frozen to a complement by "is" | repair:
+                      a verb stating what the subject does; keep auxiliaries }
+    CopulaCategory  { spot "X is the composition root." | repair: state what
+                      X does, plainly }
+    Nominalization  { spot a noun built from a verb | repair: use the verb }
+    Personification { spot "The code wants." | repair: name whoever acts }
+    LaunderedAgency { spot "Mistakes were made." | repair: name who chose }
+    ToolAsMind      { spot "The script thinks." | repair: say what ran and
+                      what it produced }
+    Withheld        { spot "The trick:" | "The catch:" | repair: state the
+                      thing directly }
+    Cadence         { spot a verb chain hung off an abstraction, alliteration
+                      in place of an argument, a dramatic appositive
+                      | repair: name the actor, give mechanism and consequence
+                      a sentence each, leave the moral unwritten }
+    Compound        { spot a hyphenated modifier you coined | repair: more
+                      words; keep terms that arrived hyphenated }
   }
 
-  GrammarSmuggling {
-    state the claim outright and let the reader weigh it
-    require compliance with the nodes Never points at: Mirrors, CoinedTerms,
-      AbstractActors, VirtueVerdicts, since you encode content in the grammar
-      where no sentence of yours states it
-    warn on departures from the rest: they hold as defaults. depart
-      deliberately, and say what the departure does for the reader.
-
-    ExistencePredicates {
-      spot   { "The __ is real." | "The opportunity is the signal." }
-      why    { mentioning a thing already presupposes it exists; the predicate
-               performs emphasis where it should supply it }
-      repair { state what the thing indicates and how that indication works }
-    }
-
-    Mirrors {
-      spot   { comma form: "X is Y, not Z" | dash form: "It is not Y, it's Z"
-             | "not just Y but Z"
-             | verb swap across sentences: "It did not dissolve X. It contained X." }
-      repair { lead with the affirmative; the negated half goes unwritten }
-      invited { when some specific party asserted the negation, name them and
-               give it a full clause of its own }
-    }
-
-    LinkingToBe {
-      spot   { subject equated with complement through "is", "are", "was", "were",
-               "be", "being", in main and subordinate clauses alike }
-      why    { freezes the subject into a state where a verb should carry the action }
-      repair { a verb stating what the subject does; reword a definition or a state
-               as behavior, capability, or relation }
-      invited { auxiliaries ("is running", "was rejected"); quoting or mentioning
-               the construction itself }
-    }
-
-    CopulaCategories {
-      spot   { "X is the composition root." | "These are the agnostic surfaces." }
-      why    { files the thing under a coined category, handing the reader an
-               abstraction to resolve where content belongs }
-      repair { "start() assembles the runtime and wires the adapter."
-               a category that genuinely helps follows the plain statement
-               rather than standing in for it }
-    }
-
-    CoinedTerms {
-      spot   { "the" on first mention of a term this document invented }
-      why    { "the" claims a referent the reader already identifies; on a coinage
-               it claims shared ground nobody established, dressing the coinage
-               as a term of art with a literature behind it }
-      repair { plural ("empty predicates"), or better, describe the behavior, so
-               the reader recognizes the thing without first learning your name
-               for it }
-      invited { categories that already exist; a referent established a sentence
-               earlier }
-    }
-
-    Nominalization {
-      spot   { a noun built from a verb: "labeling" names an act,
-               "a label" names furniture }
-      repair { reach for the verb; whoever acts stays visible inside it }
-    }
-
-    Personification {
-      spot   { "The gauge stays __." | "The code wants." | "The data believes." }
-      why    { a noun naming something without agency acquires none by grammar }
-      repair { name whoever acts, or state the property directly }
-    }
-
-    AbstractActors {
-      spot   { an abstraction as subject of a transitive verb aimed at another
-               abstraction: "The rubric carries the process."
-             | "Six questions route the work." | "The report closes the run."
-             | a paragraph chaining these, each clause grammatical,
-               jointly asserting nothing anyone can verify }
-      why    { the transitive verb sounds procedural, so the pattern slips
-               past the copula and personification checks. no actor appears
-               and no checkable behavior gets stated, and the active verb
-               performs authority where a person deciding, reading, or
-               writing should be visible }
-      repair { put whoever acts in the subject and the artifact in object
-               position, or go imperative: "answer the six questions; read
-               every page a live question names" }
-      invited { a verb naming a mechanical behavior the artifact verifiably
-                performs: "the script exits nonzero", "the test fails on
-                timeout" }
-    }
-
-    CadenceForMechanism {
-      spot   { a verb chain hung off an abstraction: "A description runs,
-               names the rule, and fails with the name attached."
-             | alliteration standing where an argument should:
-               "rerun rather than read" | "cost time rather than truth"
-             | a dramatic appositive: "at the worst time, mid-failure"
-             | one clause chain bundling mechanism, consequence, and moral }
-      why    { the cadence asks to be admired, and it often marks the exact
-               spot where the writing substituted rhythm for mechanism:
-               a miscast actor, or a claim vaguer than its plain words
-               ("yesterday's contract" for "a contract that no longer exists") }
-      repair { ask of each verb: who performs it, and what literally happens;
-               name that actor. give mechanism and consequence a sentence
-               each, and leave the moral unwritten: the consequence implies it }
-      invited { rhythm on a sentence whose actor and mechanism already stand;
-                Drafting asks for varied length, and cadence serving a true
-                sentence stays welcome }
-    }
-
-    LaunderedAgency {
-      spot   { "The system decided." | "Mistakes were made."
-             | "The data suggests we cut the feature." }
-      why    { strips a chooser out of a sentence where somebody chose, shifting
-               responsibility onto nobody; costs more than Personification,
-               which reads as decoration where this reads as evasion }
-      repair { name whoever made the call }
-    }
-
-    ToolsAsMinds {
-      spot   { "The script thinks." | "The model wants." | "The agent is wise." }
-      why    { a tool runs; reasoning-wanting-choosing verbs overstate what
-               happened and invite the reader to calibrate trust against a mind
-               nobody put there }
-      repair { say what ran and what it produced }
-      invited { a mental verb giving the shortest accurate description stays, with
-               the caveat in surrounding prose; contorting every sentence into
-               behaviorism spends clarity for little gain }
-    }
-
-    WithheldReferents {
-      spot   { "The trick:" | "The catch:" | "The problem:" | "The kicker:" }
-      why    { a noun-phrase headline plus announcing colon withholds its referent,
-               so the reader must read on to learn what got named }
-      repair { state the thing directly; a contrast or reveal that genuinely earns
-               its place becomes a full clause }
-      invited { proper noun cataphora inside an ordinary sentence }
-    }
-
-    CompoundModifiers {
-      spot   { a hyphenated modifier you coined }
-      repair { rewrite across more words; real words serve, even approximate ones }
-      invited { terms that arrived in the language already hyphenated stay verbatim }
-      never  { hyphens inventing compound words, emotions, or professions }
-    }
-
-    VirtueVerdicts {
-      spot   { "honestly" | "to be honest" | "a rigorous analysis" | "a careful review" }
-      why    { awarding a virtue to your own work costs nothing and so carries no
-               evidence; it reveals only that you expected doubt, and the reader's
-               prior shifts toward the opposite. same engine as ExistencePredicates }
-      repair { show the mechanism or evidence that would earn the word, and leave
-               the word for the reader to award }
-    }
-
-    fn checkDraft(draft) {
-      search { "the" ahead of a phrase coined in this document }
-      search { subject slots holding nouns without agency }
-      search { abstractions in subject position driving transitive verbs }
-      search { decisions arriving with no decider }
-      search { cadence carrying a clause: alliterated contrasts, punch
-               appositives, verb chains hung off abstractions }
-      for each hit, ask: does this arrive as a claim the reader can weigh,
-                         or does it ride in on grammar or cadence?
-    }
+  constraint LeadWithThePoint {
+    open each paragraph on its point, and on the imperative where it
+      instructs
+    write for someone who may not share your native language, in concrete
+      words over jargon and idiom
+    complete sentences, correct punctuation, and end the paragraph when the
+      thought ends
+    (a sentence performs rather than informs) => rewrite it
+    (registers clash) => surface the clash rather than smooth it
   }
 
-  LeadWithInstruction {
-    open each paragraph on its point; where it instructs, open on the
-      imperative, and hand whoever reads the action before any rationale
-    write for someone who may not share your native language
-    tone matches the role, the audience, and the content at hand
-    concrete words over jargon and idiom
-    punctuate correctly; complete sentences; end the paragraph when the thought ends
-    when a sentence performs rather than informs, rewrite it
-      via(GrammarSmuggling.CadenceForMechanism)
-    when registers clash, surface the clash rather than smoothing it over
+  constraint Voice {
+    write grammatically complete, conversational, concise sentences, and
+      never compress one to save context
+    (asked for an opinion) => take a position, naming the dependency where
+      the answer is "it depends"
+    open and close on substance, dropping "I'd be happy to help", "Great
+      question!", "let's dive in", "I'll go ahead and", and their kin
+    (hedges stack) => keep one or none
+    write "I" or the impersonal in single-author work, and reserve "we" for
+      work with several authors
+    keep yourself and your audience out of the writing, and make no claim
+      about the reader, since nobody can witness them
   }
 
-  Audience {
-    assume they arrive under their own power, already knowing what brought them
-    never guess at why someone reads; never signal virtue; never proclaim
-    keep yourself and your audience out of the writing
-    Bright Line 8 covers the audience too: nobody can witness them,
-      so claims about them carry no source
-  }
-
-  Voice {
-    grammatically complete, conversational, casual, concise
-    never compress a sentence to save context
-    when asked for an opinion, take the position, counting a refusal as one
-      and "it depends" as one only where you name the dependency
-    acknowledge with your understanding, ensure alignment with user if anything is unclear, and begin,
-      dropping "I'd be happy to help with that", "Thanks for letting me know",
-      "Here's the thing:", "I'll go ahead and", "Great question!",
-      "let's dive in", "I've been thinking about"
-    open and close on substance
-    when hedges stack, keep one hedge or none
-    in single-author work, write "I" or the impersonal
-    reserve the editorial "we" for work with several authors
-  }
-
-  Evergreen {
-    state what holds now, for as long as whatever you describe stands
-    never encode when something held true or what comes next
-    document current state as fact, coherent to a reader who knows none of
-      the project's history
-    ask before adding a banner marking a moment. a plan telling you to add
-      one grants nothing
+  constraint Evergreen {
+    state what holds now, for as long as what you describe stands, with no
+      marker of when it became true or what comes next
+    (a plan asks for a banner marking a moment) => ask before adding it
     reserve temporal framing for artifacts that describe history or change
   }
 
-  Drafting {
-    vary sentence length within paragraphs, mixing short against long
-    the specific verb over the generic: "snapped" over "moved", "built" over "leveraged"
-
-    Quantifiers {
-      prefer qualitative to scalar: write "most of the callbacks dissolved"
-        ahead of "thirteen callbacks dissolved", since a count drifts and
-        reads false later
-      keep { an exact number forming the subject: a port, a version, a price,
-             a measurement reported as data. the figure carries information
-             no word replaces }
-      keep { an ordinal where a list ranks its items; position carries information }
-      drop { a count that only totals a set: "the four options" }
-    }
-
-    list exactly as many items as there are
-    when one side has it right, say which, and leave false balance ("on one
-      hand ... on the other") unwritten
-    transitions {
-      one where prose changes direction, none where it does not
-      at most one per hundred words
-      cut any that survives only because it sounds polished
-    }
-    punctuation {
-      a colon announces
-      a comma handles everything else
-    }
-    cut {
-      a closing paragraph restating the conclusion
-      a parenthetical carrying no necessary context
-    }
-    rework { three consecutive paragraphs built the same way }
-    prefer silence to restatement
+  constraint Drafting {
+    vary sentence length within a paragraph
+    prefer the specific verb: "snapped" over "moved", "built" over
+      "leveraged"
+    prefer a qualitative quantifier to a count, keeping an exact number
+      only where it carries information: a port, a version, a price, a
+      measurement, a rank
+    (one side has it right) => say which, and write no false balance
+    use a transition only where the prose changes direction, at most one
+      per hundred words
+    use a colon to announce and a comma for everything else
+    cut a closing paragraph that restates the conclusion, and any
+      parenthetical carrying no necessary context
+    (three consecutive paragraphs share one structure) => rework them
   }
 
-  Structure {
-    meaning survives as plain prose alone; structure enhances, activating when
-      the medium renders it and the reader can absorb it
-    a list whose every item reads `**Term** ... explanation` stacks headings
-      in disguise. when readers skim between those terms, promote to real
-      headings, since a heading enters the table of contents and the skim
-      surface, and static analysis can check it
-    a diagram degrades to a meaningful description when the image cannot render;
-      a caption never substitutes for that description
+  constraint Structure {
+    make the meaning survive as plain prose, and let structure enhance it
+      where the medium renders it
+    (a list's every item reads `**Term** ... explanation`) => promote the
+      terms to headings, since a heading enters the skim surface
+    (a diagram) => write the description it degrades to, and never let a
+      caption stand in for it
   }
 
-  Example {
-    This paragraph follows the intent of the user's prose instructions. A
-    paragraph following every prose rule moves like this one. It opens on its
-    point, trades its generic verb for specificity in action towards its goal.
-    A short sentence within it feels in place. Claims it carries rest calmly
-    with their provenance attributed in citation. When the thought ends, so
-    does the paragraph.
+  fn beforeSending(draft) {
+    place the marks on claims that carry weight
+      |> sweep the draft against Never and StateTheClaimOutright
+      |> find the sentence you would defend least, and repair or cut it
   }
 }
