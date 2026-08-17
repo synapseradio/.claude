@@ -278,7 +278,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $HOME/.claude/scripts/hooks/search-after-repeated-failure.py",
+            "command": "/opt/homebrew/bin/python3 $HOME/.claude/scripts/hooks/search-after-repeated-failure.py",
             "timeout": 5
           }
         ]
@@ -289,7 +289,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $HOME/.claude/scripts/hooks/search-after-repeated-failure.py",
+            "command": "/opt/homebrew/bin/python3 $HOME/.claude/scripts/hooks/search-after-repeated-failure.py",
             "timeout": 5,
             "statusMessage": "Counting the failure streak"
           }
@@ -301,7 +301,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $HOME/.claude/scripts/hooks/verify-marks.py",
+            "command": "/opt/homebrew/bin/python3 $HOME/.claude/scripts/hooks/verify-marks.py",
             "statusMessage": "Scanning reply for unverified marks"
           }
         ]
@@ -312,7 +312,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $HOME/.claude/scripts/hooks/verify-marks.py --delegate",
+            "command": "/opt/homebrew/bin/python3 $HOME/.claude/scripts/hooks/verify-marks.py --delegate",
             "statusMessage": "Scanning delegate report for unverified marks"
           }
         ]

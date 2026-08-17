@@ -124,6 +124,14 @@ class RepeatedFailureHook(unittest.TestCase):
         context = self.context(self.failure(command="bun test", error="Exit code 1\n1 failed"))
         self.assertIn("red step you predicted", context)
 
+    def test_every_reminder_excuses_an_error_that_names_its_own_fix(self):
+        context = self.context(
+            self.failure(
+                command="ruff check .", error="Exit code 1\nSIM105 Use contextlib.suppress"
+            )
+        )
+        self.assertIn("names its own fix", context)
+
     def test_an_interrupt_never_counts_toward_the_streak(self):
         self.assertIsNone(self.failure(is_interrupt=True), "an abort reports no wrong model")
         context = self.context(self.failure())

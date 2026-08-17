@@ -33,12 +33,18 @@ SearchTools {
 
   constraint AFailureBuysALookup {
     Applies { a tool call just failed }
-    stop, run lookup(), and resume from what it returns
+    stop, and read the error before choosing what to do next
     require you never attempt again from the recollection that produced the
       failure, since a failure against an interface reports a wrong model of
       that interface rather than a wrong keystroke
-    (the failure is the red step you predicted before writing the code) =>
-      say so in one clause and carry on to the code that makes it pass
+    next = match (the error) {
+      case (it names its own fix: a linter rule carrying its replacement, a
+            compiler suggestion, a usage line) => apply what it names, and
+            skip lookup()
+      case (it is the red step you predicted before writing the code) => say
+            so in one clause and carry on to the code that makes it pass
+      default => run lookup(), and resume from what it returns
+    }
     (a second failure follows with no success between) => search the error
       text verbatim before anything else
   }

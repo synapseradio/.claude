@@ -135,9 +135,11 @@ def build_context(failures, count):
         )
     numbered = "\n".join(f"{n}. {s}" for n, s in enumerate(steps, start=1))
     closing = (
-        "\n\nA test you wrote to fail has already done its job: where this "
-        "failure is the red step you predicted, say so in one clause and "
-        "carry on to the code that makes it pass."
+        "\n\nTwo failures skip the lookup. Where the error names its own fix, "
+        "a linter rule carrying its replacement, a compiler suggestion, or a "
+        "usage line, apply what it names and say in one clause that you did. "
+        "Where the failure is the red step you predicted before writing the "
+        "code, say so and carry on to the code that makes it pass."
     )
     return lead + numbered + closing
 
