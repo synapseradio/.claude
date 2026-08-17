@@ -1,5 +1,5 @@
 line-length = 100
-target-version = "py315"
+target-version = "py314"
 
 [lint]
 # Baseline (E, F, W, I) mirrors ~/projects/ai/ai-skills/.ruff.toml.
@@ -14,8 +14,10 @@ select = [
     "B",   # flake8-bugbear — catches actual bugs (mutable default args,
            # B007 unused loop vars, B008 calls in defaults). Worth the
            # small noise on a tree of this size.
-    "UP",  # pyupgrade — modernize syntax for the declared target-version.
-           # Auto-fixable; keeps the codebase from drifting behind py315.
+    "UP",  # pyupgrade — modernize syntax for the declared target-version,
+           # which tracks the interpreter the hooks name in settings.json.
+           # A target above it emits syntax that interpreter cannot parse,
+           # and a hook that fails to start leaves its gate quiet.
     "SIM", # flake8-simplify — pattern simplifications (collapse nested
            # ifs, reduce ternary verbosity). Mostly opinion-free.
     "RUF", # ruff's own rules — catches unused noqa directives, unsorted
