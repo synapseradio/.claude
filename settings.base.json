@@ -10,6 +10,7 @@
       "TaskCreate",
       "Bash",
       "Skill",
+      "mcp__tavily__*",
       "Bash(git status:*)",
       "Bash(git commit -m:*)",
       "Bash(git commit -am:*)",
@@ -248,6 +249,52 @@
       "Bash(pip config unset:*)"
     ],
     "defaultMode": "acceptEdits"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/scripts/hooks/block-secret-leaks.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/scripts/hooks/block-secret-file-reads.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/scripts/hooks/deny-inplace-stream-edit.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOME/.claude/scripts/hooks/verify-marks.py",
+            "statusMessage": "Scanning reply for unverified marks"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOME/.claude/scripts/hooks/verify-marks.py --delegate",
+            "statusMessage": "Scanning delegate report for unverified marks"
+          }
+        ]
+      }
+    ]
   },
   "sandbox": {
     "enabled": false,

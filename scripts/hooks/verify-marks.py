@@ -15,6 +15,10 @@ in live conversation the question replaces the mark.
 One pass per stop cycle: `stop_hook_active` means a Stop hook already
 blocked this cycle, so the hook exits silently instead of looping. A mark
 that survives its verification pass therefore stands as written.
+
+Run with `--delegate` from SubagentStop, where a `[^?]` rides up to the
+caller untouched: a subagent reaches no user, so the question it stands in
+for travels in the report rather than through AskUserQuestion.
 """
 
 import json
@@ -80,31 +84,59 @@ def last_turn_text(transcript_path):
 
 
 INLINE_CODE = re.compile(r"`[^`\n]*`")
+FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+
+
+def fenced_line_numbers(lines):
+    """Indices of the lines inside a fence that closes.
+
+    A closing delimiter runs at least as long as the one that opened it and
+    carries nothing after it, so a shorter run inside a longer fence leaves
+    the fence open. A fence still open at the end of the turn excludes
+    nothing, since a delimiter the author never closed would otherwise hide
+    every claim that follows it.
+    """
+    fenced = set()
+    opened_at = None
+    opener = ""
+    for number, line in enumerate(lines):
+        match = FENCE.match(line)
+        if not match:
+            continue
+        run, rest = match.group(1), match.group(2)
+        if opened_at is None:
+            if run.startswith("`") and "`" in rest:
+                continue
+            opened_at, opener = number, run
+        elif run[0] == opener[0] and len(run) >= len(opener) and not rest.strip():
+            fenced.update(range(opened_at, number + 1))
+            opened_at = None
+    return fenced
 
 
 def marked_lines(blocks):
     """Lines carrying a mark, keyed by mark, skipping fenced code and inline
     code spans, where a mark is a mention rather than a claim.
 
+    The turn's blocks join into one line sequence, since a fence opened in
+    one text block closes in a later one.
+
     A line carrying two marks lands under each of them.
     """
-    lines = {mark: [] for mark in MARKS}
-    for block in blocks:
-        in_fence = False
-        for line in block.splitlines():
-            if line.lstrip().startswith("```"):
-                in_fence = not in_fence
-                continue
-            if in_fence:
-                continue
-            prose = INLINE_CODE.sub("", line)
-            for mark in MARKS:
-                if mark in prose and line.strip() not in lines[mark]:
-                    lines[mark].append(line.strip())
-    return {mark: found for mark, found in lines.items() if found}
+    lines = [line for block in blocks for line in block.splitlines()]
+    fenced = fenced_line_numbers(lines)
+    found = {mark: [] for mark in MARKS}
+    for number, line in enumerate(lines):
+        if number in fenced:
+            continue
+        prose = INLINE_CODE.sub("", line)
+        for mark in MARKS:
+            if mark in prose and line.strip() not in found[mark]:
+                found[mark].append(line.strip())
+    return {mark: hits for mark, hits in found.items() if hits}
 
 
-def build_reason(lines_by_mark):
+def build_reason(lines_by_mark, carried=()):
     found = ", ".join(lines_by_mark)
     listing = "\n\n".join(
         f"Marked {mark} ({MARK_MEANINGS[mark]}):\n" + "\n".join(f"- {line}" for line in lines)
@@ -133,6 +165,15 @@ def build_reason(lines_by_mark):
             "offer, then re-emit with the mark dropped, since a live "
             "question replaces it. Looking the premise up settles nothing: "
             "only the user's answer does."
+        )
+    if carried:
+        steps.append(
+            "Leave every line marked [^?] exactly where it stands, and open "
+            "the report with UNANSWERED: the question each one carries and "
+            "the options you would have offered, then what you did, then "
+            "what you left undone. Calling AskUserQuestion settles nothing "
+            "from here, since only whoever spawned you reaches the user. "
+            "The lines that ride up:\n" + "\n".join(f"- {line}" for line in carried)
         )
     steps.append(
         "Change nothing outside the marked sentences: no added commentary, "
@@ -166,9 +207,14 @@ def main():
     if transcript and Path(transcript).exists():
         blocks = last_turn_text(transcript) + blocks
     lines_by_mark = marked_lines(blocks)
+    # argv carries the mode rather than the payload, so the wiring in
+    # settings.json alone decides which event this run answers.
+    delegate = "--delegate" in sys.argv[1:]
+    carried = lines_by_mark.pop("[^?]", []) if delegate else []
     if not lines_by_mark:
         sys.exit(0)
-    json.dump({"decision": "block", "reason": build_reason(lines_by_mark)}, sys.stdout)
+    reason = build_reason(lines_by_mark, carried)
+    json.dump({"decision": "block", "reason": reason}, sys.stdout)
     sys.exit(0)
 
 

@@ -36,9 +36,9 @@ def assistant_tool_use():
     return entry("assistant", [{"type": "tool_use", "id": "t1", "name": "Read", "input": {}}])
 
 
-def run_hook(payload):
+def run_hook(payload, *args):
     completed = subprocess.run(
-        [sys.executable, str(SCRIPT)],
+        [sys.executable, str(SCRIPT), *args],
         input=json.dumps(payload),
         capture_output=True,
         text=True,
@@ -145,6 +145,47 @@ class VerifyMarksStopHook(unittest.TestCase):
         )
         self.assertIsNone(result, "a mark quoted inside a fence must not block")
 
+    def test_an_unclosed_fence_hides_no_later_mark(self):
+        result = self.decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": (
+                    "Example:\n```python\nfoo()\n\nNobody else calls it [?]."
+                ),
+            }
+        )
+        self.assertIsNotNone(result, "a fence that never closes must exclude nothing")
+        self.assertIn("Nobody else calls it [?].", result["reason"])
+
+    def test_a_shorter_inner_delimiter_does_not_close_the_outer_fence(self):
+        result = self.decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": (
+                    "Doc:\n````markdown\n```sh\nrun\n````\nThe rename is safe [?]."
+                ),
+            }
+        )
+        self.assertIsNotNone(result, "a ``` inside a ```` fence must not end the fence")
+        self.assertIn("The rename is safe [?].", result["reason"])
+
+    def test_a_fence_spanning_two_text_blocks_still_ends_at_its_closing_delimiter(self):
+        transcript = self.transcript(
+            user_text("go"),
+            entry(
+                "assistant",
+                [
+                    {"type": "text", "text": "Start:\n```python"},
+                    {"type": "text", "text": "foo()\n```\nThe count is 12 [?]."},
+                ],
+            ),
+        )
+        result = self.decision(
+            {"stop_hook_active": False, "transcript_path": transcript, "last_assistant_message": ""}
+        )
+        self.assertIsNotNone(result, "fence state must carry across text blocks of one turn")
+        self.assertIn("The count is 12 [?].", result["reason"])
+
     def test_a_mark_mentioned_inside_an_inline_code_span_does_not_block(self):
         result = self.decision(
             {
@@ -166,6 +207,55 @@ class VerifyMarksStopHook(unittest.TestCase):
         )
         self.assertIsNotNone(result, "a real mark beside a quoted one still blocks")
         self.assertIn("nobody else calls it [?].", result["reason"])
+
+    def delegate_decision(self, payload):
+        code, out = run_hook(payload, "--delegate")
+        self.assertEqual(code, 0)
+        return json.loads(out) if out.strip() else None
+
+    def test_a_delegate_report_carrying_only_a_caret_mark_does_not_block(self):
+        result = self.delegate_decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": "I read the request as covering staging only [^?].",
+            }
+        )
+        self.assertIsNone(
+            result, "a [^?] must ride up to the caller rather than stall the delegate"
+        )
+
+    def test_a_delegate_report_blocks_on_a_source_mark(self):
+        result = self.delegate_decision(
+            {"stop_hook_active": False, "last_assistant_message": "The count is 12 [?]."}
+        )
+        self.assertIsNotNone(result, "a delegate resolves the marks it can settle itself")
+        self.assertIn("The count is 12 [?].", result["reason"])
+
+    def test_a_delegate_report_mixing_marks_blocks_and_routes_the_caret_upward(self):
+        result = self.delegate_decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": (
+                    "The count is 12 [?].\nI read the request as covering staging only [^?]."
+                ),
+            }
+        )
+        self.assertIsNotNone(result)
+        reason = result["reason"]
+        self.assertIn("UNANSWERED", reason)
+        self.assertIn("I read the request as covering staging only [^?].", reason)
+        self.assertNotIn("call AskUserQuestion with the question", reason)
+
+    def test_the_main_agent_still_routes_a_caret_mark_to_ask_user_question(self):
+        result = self.decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": "I read the request as covering staging only [^?].",
+            }
+        )
+        self.assertIsNotNone(result, "without --delegate the caret mark keeps its blocking pass")
+        self.assertIn("AskUserQuestion", result["reason"])
+        self.assertNotIn("UNANSWERED", result["reason"])
 
     def test_stop_hook_active_exits_silently(self):
         result = self.decision(
