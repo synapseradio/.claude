@@ -273,6 +273,29 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOME/.claude/scripts/hooks/search-after-repeated-failure.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOME/.claude/scripts/hooks/search-after-repeated-failure.py",
+            "timeout": 5,
+            "statusMessage": "Counting the failure streak"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
