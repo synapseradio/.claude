@@ -11,7 +11,7 @@ ScopeBelongsToTheUser {
   fn surface(work) {
     state what you found and why it looks out of scope
       |> offer the options: do it now | defer | leave it
-      |> the user chooses
+      |> present choice(s) to the user via AskUserQuestion, presenting each question with appropriate context
     ask this even when you lean toward declining, since you settle scope in
       the user's place whenever you expand or exclude on your own
   }

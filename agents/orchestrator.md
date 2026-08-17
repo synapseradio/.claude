@@ -195,6 +195,14 @@ Orchestrator {
       wrong, and voices a concern once, upward, then complies
   }
 
+  fn spawn(step) {
+    invoke Agent with step.type, passing the composed prompt, step.model, and
+      step.effort as the model and effort settings
+    set notification to wait on the Agent spawn's completion, recording the
+      spawn in open with its type, model, and effort so receive(report) can
+      process it when it returns
+  }
+
   fn delegate(step) {
     route |> place |> compose |> spawn
     spawn one at a time, and wait on its notification before the next
