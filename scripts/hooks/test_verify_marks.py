@@ -186,17 +186,43 @@ class VerifyMarksStopHook(unittest.TestCase):
         self.assertIsNotNone(result, "fence state must carry across text blocks of one turn")
         self.assertIn("The count is 12 [?].", result["reason"])
 
-    def test_a_mark_mentioned_inside_an_inline_code_span_does_not_block(self):
+    def test_a_mark_inside_a_code_span_of_its_own_blocks(self):
         result = self.decision(
             {
                 "stop_hook_active": False,
                 "last_assistant_message": (
-                    "MARKS gains `[^?]`, and `[?]` or `[.?]` keep the verify step. "
-                    "The rule at `core-rules:87` lists `[?]`, `[.?]`, `[^?]`."
+                    "That count came back from the background agent at 146 test files "
+                    "`[.?]` (its own caveat: regex-based, not type-aware)."
                 ),
             }
         )
-        self.assertIsNone(result, "a mark quoted inside backticks is a mention, and must not block")
+        self.assertIsNotNone(result, "backticks around a mark leave it a mark")
+        self.assertEqual(result["decision"], "block")
+        self.assertIn("146 test files", result["reason"])
+
+    def test_the_reason_offers_the_referral_resolution_beside_the_verification_one(self):
+        result = self.decision(
+            {"stop_hook_active": False, "last_assistant_message": "The count is 12 [?]."}
+        )
+        reason = result["reason"]
+        self.assertIn("refers to a mark", reason, "a line may discuss a mark rather than claim")
+        self.assertIn("in words", reason, "the reference goes in words, never as the glyph")
+        self.assertIn(
+            "what you did about it", reason, "a referral names the action it already took"
+        )
+        self.assertIn("what you do next", reason, "or the action it is about to take")
+
+    def test_a_mark_inside_a_longer_code_span_does_not_block(self):
+        result = self.decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": (
+                    "The rule reads `state the premise marked [?] in the same message`, "
+                    "and `MARKS = ('[?]', '[.?]', '[^?]')` names them in the hook."
+                ),
+            }
+        )
+        self.assertIsNone(result, "a span holding code or a quoted rule line stays code")
 
     def test_a_mark_outside_a_code_span_on_a_line_that_also_mentions_one_blocks(self):
         result = self.decision(
@@ -257,11 +283,28 @@ class VerifyMarksStopHook(unittest.TestCase):
         self.assertIn("AskUserQuestion", result["reason"])
         self.assertNotIn("UNANSWERED", result["reason"])
 
-    def test_stop_hook_active_exits_silently(self):
+    def test_a_second_pass_reports_the_surviving_marks_without_blocking(self):
         result = self.decision(
             {"stop_hook_active": True, "last_assistant_message": "Still marked [?]."}
         )
-        self.assertIsNone(result, "a second Stop pass in the same cycle must not block again")
+        self.assertIsNotNone(result, "a mark that survived the pass reaches the user")
+        self.assertNotIn("decision", result, "a second Stop pass must not block again")
+        self.assertIn("Still marked [?].", result["systemMessage"])
+
+    def test_a_second_pass_stays_silent_when_no_mark_survives(self):
+        result = self.decision(
+            {"stop_hook_active": True, "last_assistant_message": "Every claim carries its source."}
+        )
+        self.assertIsNone(result, "a resolved reply draws no notice")
+
+    def test_a_delegate_second_pass_stays_silent_on_a_caret_mark(self):
+        result = self.delegate_decision(
+            {
+                "stop_hook_active": True,
+                "last_assistant_message": "I read the request as covering staging only [^?].",
+            }
+        )
+        self.assertIsNone(result, "a [^?] rides up to the caller rather than drawing a notice")
 
 
 if __name__ == "__main__":

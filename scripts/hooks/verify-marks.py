@@ -10,11 +10,17 @@ takes: verify a `[?]` or `[.?]` claim through real lookups and re-emit the
 original reply verbatim with each mark replaced in place by its inline
 citation, correcting or removing only the sentences that failed; put the
 question a `[^?]` stands in for to the user through AskUserQuestion, since
-in live conversation the question replaces the mark.
+in live conversation the question replaces the mark. A line that refers to
+a mark rather than claiming under one takes a third resolution: it names
+the mark in words and says what became of it.
 
 One pass per stop cycle: `stop_hook_active` means a Stop hook already
-blocked this cycle, so the hook exits silently instead of looping. A mark
-that survives its verification pass therefore stands as written.
+blocked this cycle, so the hook reports the surviving marks through
+`systemMessage` and lets the turn end, instead of looping. A mark that
+survives its verification pass therefore stands as written, in front of the
+user rather than silently. Stderr would not reach them: from a hook that
+exits 0 it goes to the debug log alone, per
+https://docs.claude.com/en/docs/claude-code/hooks
 
 Run with `--delegate` from SubagentStop, where a `[^?]` rides up to the
 caller untouched: a subagent reaches no user, so the question it stands in
@@ -114,9 +120,23 @@ def fenced_line_numbers(lines):
     return fenced
 
 
+def strip_code_spans(line):
+    """The line with its inline code removed, keeping a span that holds a
+    mark and nothing else.
+
+    A reply writes a mark in backticks as readily as bare, so the backticks
+    settle nothing about whether the sentence claims or quotes. A longer
+    span holds code or a quoted rule line, where the mark is a mention.
+    """
+    return INLINE_CODE.sub(
+        lambda span: span.group(0) if span.group(0).strip("`").strip() in MARKS else "",
+        line,
+    )
+
+
 def marked_lines(blocks):
-    """Lines carrying a mark, keyed by mark, skipping fenced code and inline
-    code spans, where a mark is a mention rather than a claim.
+    """Lines carrying a mark, keyed by mark, skipping fenced code, where a
+    mark is a mention rather than a claim.
 
     The turn's blocks join into one line sequence, since a fence opened in
     one text block closes in a later one.
@@ -129,7 +149,7 @@ def marked_lines(blocks):
     for number, line in enumerate(lines):
         if number in fenced:
             continue
-        prose = INLINE_CODE.sub("", line)
+        prose = strip_code_spans(line)
         for mark in MARKS:
             if mark in prose and line.strip() not in found[mark]:
                 found[mark].append(line.strip())
@@ -176,6 +196,16 @@ def build_reason(lines_by_mark, carried=()):
             "The lines that ride up:\n" + "\n".join(f"- {line}" for line in carried)
         )
     steps.append(
+        "A flagged line that refers to a mark, rather than claiming under "
+        "one, resolves a third way. Keep the reference, name the mark in "
+        "words instead of writing the glyph, and say in the same sentence "
+        'what you did about it or what you do next: "A subagent returned '
+        "a mark handing a decision up to you, so I am putting that "
+        'question through AskUserQuestion." A glyph left standing as a '
+        "reference identifier reads as a claim awaiting its source, and "
+        "this pass cannot tell the two apart."
+    )
+    steps.append(
         "Change nothing outside the marked sentences: no added commentary, "
         "no report about the verification, no restructuring. The reader "
         "sees the same message they would have seen, with sources where "
@@ -190,12 +220,18 @@ def build_reason(lines_by_mark, carried=()):
     )
 
 
+def build_notice(lines_by_mark):
+    listing = "\n".join(f"{mark} {line}" for mark, lines in lines_by_mark.items() for line in lines)
+    return (
+        "These marks survived the verification pass and stand as written, "
+        "each still awaiting what its mark names:\n" + listing
+    )
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
     except ValueError:
-        sys.exit(0)
-    if payload.get("stop_hook_active"):
         sys.exit(0)
     # The harness flushes the turn's assistant entries to the transcript
     # AFTER Stop hooks run, so the transcript alone always scans one turn
@@ -212,6 +248,9 @@ def main():
     delegate = "--delegate" in sys.argv[1:]
     carried = lines_by_mark.pop("[^?]", []) if delegate else []
     if not lines_by_mark:
+        sys.exit(0)
+    if payload.get("stop_hook_active"):
+        json.dump({"systemMessage": build_notice(lines_by_mark)}, sys.stdout)
         sys.exit(0)
     reason = build_reason(lines_by_mark, carried)
     json.dump({"decision": "block", "reason": reason}, sys.stdout)

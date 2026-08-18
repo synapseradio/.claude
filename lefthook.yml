@@ -20,6 +20,17 @@ pre-commit:
             glob: "*.{sh,bash}"
             run: shellcheck {staged_files}
 
+    # Runs after the lint group, because markdownlint's stage_fixed rewrites
+    # the very rule files this reads. The script regenerates every output
+    # from scratch, so it takes no file arguments; the glob only decides
+    # whether a commit touched anything the generated files depend on.
+    - name: sync-agent-configs
+      glob:
+        - "rules/*.md"
+        - "agents/*.md"
+        - "CLAUDE.md"
+      run: python3.14 scripts/sync-agent-configs.py
+
 # pre-push gate: re-runs the check-only side of every linter against the
 # diff being pushed. shellcheck and shfmt -d have no autofix; ruff check
 # without --fix matches the same intent. Catches anything that slipped in
@@ -39,3 +50,8 @@ pre-push:
           - name: shfmt-check
             glob: "*.{sh,bash}"
             run: shfmt -i 2 -d {push_files}
+
+    # Ungated by glob: a generated file also goes stale when a plugin is
+    # enabled or disabled, which changes no file under version control.
+    - name: sync-agent-configs-check
+      run: python3.14 scripts/sync-agent-configs.py --check
