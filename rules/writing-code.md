@@ -1,5 +1,5 @@
 WritingCode {
-  Applies { writing or modifying source code }
+  AppliesWhen { writing or modifying source code }
 
   fn implement(behaviorChange) {
     find the boundaries and invariants first, and ask wherever acceptance

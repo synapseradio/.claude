@@ -40,7 +40,7 @@ class TestParseDocument:
         )
 
     def test_file_without_frontmatter_reports_none(self):
-        text = "CoreRules {\n  Applies { every context }\n}\n"
+        text = "CoreRules {\n  AppliesWhen { every context }\n}\n"
 
         doc = sync.parse_document(text)
 

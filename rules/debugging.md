@@ -1,5 +1,5 @@
 Debugging {
-  Applies { debugging a problem }
+  AppliesWhen { debugging a problem }
 
   state the hypothesis before changing anything, and let the cheapest test
     decide it

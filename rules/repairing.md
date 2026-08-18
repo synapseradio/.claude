@@ -1,5 +1,5 @@
 Repairing {
-  Applies { fixing a named defect in any artifact: code, prose, config,
+  AppliesWhen { fixing a named defect in any artifact: code, prose, config,
             tests, rules }
 
   Job: evidence | instruction | definition | contract | behavior | warrant

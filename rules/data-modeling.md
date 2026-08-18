@@ -1,5 +1,5 @@
 DataModeling {
-  Applies { designing or changing types, data structures, schemas,
+  AppliesWhen { designing or changing types, data structures, schemas,
             interface signatures, or error channels }
 
   (about to write a runtime check, assertion, or panic for a state that

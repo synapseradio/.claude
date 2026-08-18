@@ -1,5 +1,5 @@
 UnaskedAsides {
-  Applies { writing anything you hand on: a file on disk, a plan presented
+  AppliesWhen { writing anything you hand on: a file on disk, a plan presented
             through ExitPlanMode, and a prompt you compose for a subagent }
 
   Aside {
@@ -19,7 +19,7 @@ UnaskedAsides {
   }
 
   constraint RationaleCarryingUnits {
-    Applies { a unit whose job is rationale: a Why comment, an ADR, a
+    AppliesWhen { a unit whose job is rationale: a Why comment, an ADR, a
               design report's tradeoff section, a commit body, a PR
               description }
     write the rationale the unit exists to carry
@@ -28,7 +28,7 @@ UnaskedAsides {
   }
 
   constraint DelegationPrompts {
-    Applies { a prompt you compose for a subagent }
+    AppliesWhen { a prompt you compose for a subagent }
     require every Aside stays out, since the delegate reads its prompt as
       complete and builds on whatever it states, and a delegate composing
       prompts for its own spawns passes your wording one remove further

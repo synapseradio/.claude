@@ -1,5 +1,5 @@
 AgentDelegation {
-  Applies { every `Agent` call, and every spawn a spawned agent makes in
+  AppliesWhen { every `Agent` call, and every spawn a spawned agent makes in
             turn, one at a time }
   choose the agent type first, then the model that agent runs on and the
     effort it spends

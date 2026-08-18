@@ -1,5 +1,5 @@
 CoreRules {
-  Applies { every context, every turn, without negotiation }
+  AppliesWhen { every context, every turn, without negotiation }
 
   0.Reification {
     (* | • alone on its own line in a user message) => pause, give that

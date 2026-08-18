@@ -1,5 +1,5 @@
 PersistentMemory {
-  Applies { the user asks you to remember something, or you identify a
+  AppliesWhen { the user asks you to remember something, or you identify a
             fact worth keeping across sessions }
 
   fn store(fact) {

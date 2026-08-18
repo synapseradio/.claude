@@ -10,7 +10,7 @@ paths:
 ---
 
 Dependencies {
-  Applies { adding, removing, or updating any package dependency }
+  AppliesWhen { adding, removing, or updating any package dependency }
 
   manager = the tool that writes the lockfile present in the tree
 

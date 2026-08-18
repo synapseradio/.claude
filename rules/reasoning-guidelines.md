@@ -1,5 +1,5 @@
 ReasoningGuidelines {
-  Applies { reasoning toward any conclusion }
+  AppliesWhen { reasoning toward any conclusion }
 
   fn reason(question) {
     generate |> filter |> calibrate

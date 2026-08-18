@@ -5,7 +5,7 @@ paths:
 ---
 
 WritingRules {
-  Applies { writing or changing a rules file, or CLAUDE.md }
+  AppliesWhen { writing or changing a rules file, or CLAUDE.md }
 
   constraint ValidSudoLang {
     write each rules file as one SudoLang v2 interface, opening on its name

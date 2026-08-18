@@ -9,7 +9,7 @@ paths:
 ---
 
 Testing {
-  Applies { writing, changing, or judging a test }
+  AppliesWhen { writing, changing, or judging a test }
 
   constraint Worth {
     require the expected result comes from somewhere other than the code

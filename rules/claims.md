@@ -1,5 +1,5 @@
 Claims {
-  Applies { any claim leaving your hands for a reader who checks it without
+  AppliesWhen { any claim leaving your hands for a reader who checks it without
             taking your word }
 
   Rung {
@@ -13,7 +13,7 @@ Claims {
   }
 
   constraint ReadinessClaims {
-    Applies { "ready", "in place", "already supports", "anticipates", "a
+    AppliesWhen { "ready", "in place", "already supports", "anticipates", "a
               foundation for", "a precondition met", and denying any of them }
     enumerate the guarantees the next layer rests on, and place each on a
       Rung with its evidence: a measurement, a trial, a proof, or a citation
@@ -38,7 +38,7 @@ Claims {
   }
 
   constraint EvaluativeLanguage {
-    Applies { output leaving your hands carrying a word that scores
+    AppliesWhen { output leaving your hands carrying a word that scores
               something: clean | plain | simple | idiomatic | better | "this
               matches that" }
     require each such word reduces through Predicates or a named

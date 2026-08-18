@@ -1,5 +1,5 @@
 WritingComments {
-  Applies { every comment in source code, in any language }
+  AppliesWhen { every comment in source code, in any language }
 
   Kind {
     Why       { rationale, with the alternative you rejected }

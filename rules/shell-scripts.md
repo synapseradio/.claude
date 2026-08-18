@@ -5,7 +5,7 @@ paths:
 ---
 
 ShellScripts {
-  Applies { writing or reviewing shell scripts }
+  AppliesWhen { writing or reviewing shell scripts }
 
   constraint GoogleStyleGuide {
     read `~/.claude/references/bash-style-guide.md` in full before writing

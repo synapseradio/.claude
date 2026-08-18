@@ -1,5 +1,5 @@
 WritingPlans {
-  Applies { writing a plan file, or leaving plan mode }
+  AppliesWhen { writing a plan file, or leaving plan mode }
 
   constraint WrittenForAReaderWithNoContext {
     write for an AI agent who holds nothing but the plan file and can

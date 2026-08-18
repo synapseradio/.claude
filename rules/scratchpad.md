@@ -1,5 +1,5 @@
 Scratchpad {
-  Applies { any temporary or working file: intermediate results, throwaway
+  AppliesWhen { any temporary or working file: intermediate results, throwaway
             scripts, generated data, reviews, audits, plans, run files }
 
   Layout {

@@ -1,5 +1,5 @@
 WritingProse {
-  Applies { all prose, in every register: artifacts, chat replies, comments,
+  AppliesWhen { all prose, in every register: artifacts, chat replies, comments,
             commit messages }
 
   constraint Never {

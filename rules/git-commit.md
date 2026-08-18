@@ -1,5 +1,5 @@
 GitCommit {
-  Applies { committing, writing a commit message, moving between branches }
+  AppliesWhen { committing, writing a commit message, moving between branches }
 
   Message {
     firstLine = "$type($scope): $description"

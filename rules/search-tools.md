@@ -1,5 +1,5 @@
 SearchTools {
-  Applies { the user says "look it up", "look this up", "verify this",
+  AppliesWhen { the user says "look it up", "look this up", "verify this",
             "check this", or anything equivalent
             | about to write a call, flag, or config key against a package
               the lockfile resolves
@@ -22,7 +22,7 @@ SearchTools {
   }
 
   constraint ReadBeforeTheFirstCall {
-    Applies { about to write a call, flag, or config key against a package
+    AppliesWhen { about to write a call, flag, or config key against a package
               the lockfile resolves }
     read the current documentation for the resolved version before writing
       the first line against it, and let no recollection of the interface
@@ -32,7 +32,7 @@ SearchTools {
   }
 
   constraint AFailureBuysALookup {
-    Applies { a tool call just failed }
+    AppliesWhen { a tool call just failed }
     stop, and read the error before choosing what to do next
     require you never attempt again from the recollection that produced the
       failure, since a failure against an interface reports a wrong model of
@@ -50,7 +50,7 @@ SearchTools {
   }
 
   constraint BothSourcesAtOnce {
-    Applies { lookup() runs }
+    AppliesWhen { lookup() runs }
     issue the installed-artifact read and the live-web search in one
       response, and let neither wait on the other
     read the installed artifact for what the resolved version does: its

@@ -1,5 +1,5 @@
 NeverUseSedForEdits {
-  Applies { always }
+  AppliesWhen { always }
 
   StreamEditors = [sed, gsed, awk, `perl -i`, and any tool substituting in
     place from a pattern it never shows you]
@@ -14,7 +14,7 @@ NeverUseSedForEdits {
   }
 
   constraint ScriptedEdit {
-    Applies { a change repeating mechanically across many files or lines }
+    AppliesWhen { a change repeating mechanically across many files or lines }
     write the script in a real language: Python, TypeScript, JavaScript,
       Ruby, or the like, matching exact strings rather than loose patterns
     require a checkpoint before it runs, `git commit` or `git stash`, so the

@@ -1,5 +1,5 @@
-AskBeforeAssuming {
-  Applies { the next action rests on something the user never said }
+AskUserBeforeAssuming {
+  AppliesWhen { the next action rests on something the user has not stated }
 
   Premise {
     kind: Goal | Method
@@ -23,8 +23,7 @@ AskBeforeAssuming {
   }
 
   constraint Goal {
-    stop before acting: ask through AskUserQuestion before any work rests on
-      the answer, then fold the answer into the task and act
+    stop before acting: ask through AskUserQuestion or similarly named available tools before doing or planning any work that rests on the answer, then fold the answer into the task and act
     require you never pick the reading you would have recommended and proceed
     require you never announce a reading and proceed on it
     require you never build the part two readings share, nor one reading as
@@ -47,7 +46,7 @@ AskBeforeAssuming {
   }
 
   constraint Delegates {
-    Applies { running as a subagent, a workflow stage, or a fork }
+    AppliesWhen { running as a subagent, a workflow stage, or a fork }
     (a fork turns on the user's goal, intent, or what done means) => stop
       and hand the question up to whoever spawned you, with the options you
       would have offered
