@@ -28,7 +28,7 @@ from pathlib import Path
 
 import yaml
 
-HOME = Path("/Users/nke")
+HOME = Path.home()
 CLAUDE_HOME = HOME / ".claude"
 
 

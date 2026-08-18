@@ -153,7 +153,7 @@ Scout {
   }
 
   Example {
-    /map "which rules govern how we write commit messages?" "/Users/nke/.claude"
+    /map "which rules govern how we write commit messages?" "~/.claude"
     map: [
       { path: "rules/git-commit.sudolang.md", kind: doc, relevance: 5, quality: 5,
         why: "MessageFormat and DeterminismWins", anchor: "L1-L60" },

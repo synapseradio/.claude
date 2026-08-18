@@ -23,6 +23,8 @@ sync = importlib.util.module_from_spec(_spec)
 sys.modules["sync_agent_configs"] = sync
 _spec.loader.exec_module(sync)
 
+HOME = pathlib.Path.home()
+
 
 class TestParseDocument:
     def test_frontmatter_block_separates_from_body(self):
@@ -61,7 +63,7 @@ class TestRewritePaths:
     def test_tilde_prefix_becomes_the_home_directory(self):
         rewritten = sync.rewrite_paths("read `~/.claude/references/bash-style-guide.md` in full")
 
-        assert rewritten == "read `/Users/nke/.claude/references/bash-style-guide.md` in full", (
+        assert rewritten == f"read `{HOME}/.claude/references/bash-style-guide.md` in full", (
             "a ~/ prefix must resolve, since the generated file sits where ~ is not expanded"
         )
 
@@ -76,13 +78,13 @@ class TestRewritePaths:
         rewritten = sync.rewrite_paths("live in [core-rules.md](./rules/core-rules.md) and load")
 
         assert rewritten == (
-            "live in [core-rules.md](/Users/nke/.claude/rules/core-rules.md) and load"
+            f"live in [core-rules.md]({HOME}/.claude/rules/core-rules.md) and load"
         ), "a link relative to ~/.claude does not resolve from the directory the output sits in"
 
     def test_parent_relative_link_target_resolves(self):
         rewritten = sync.rewrite_paths("see [x](../.dotfiles/git/ignore)")
 
-        assert rewritten == "see [x](/Users/nke/.dotfiles/git/ignore)", (
+        assert rewritten == f"see [x]({HOME}/.dotfiles/git/ignore)", (
             "a ../ segment must collapse rather than survive into the absolute path"
         )
 
@@ -97,7 +99,7 @@ class TestRewritePaths:
         assert sync.rewrite_paths(text) == text, "a fragment target names no file on disk"
 
     def test_absolute_link_survives(self):
-        text = "at [x](/Users/nke/.claude/rules/core-rules.sudolang.md)"
+        text = f"at [x]({HOME}/.claude/rules/core-rules.sudolang.md)"
 
         assert sync.rewrite_paths(text) == text, "an already-absolute target needs no rewrite"
 
@@ -106,7 +108,7 @@ class TestRewritePaths:
 
         assert (
             sync.rewrite_paths(text)
-            == "Alpha `/Users/nke/.claude/x` beta\n\n- gamma: delta\n  - epsilon\n"
+            == f"Alpha `{HOME}/.claude/x` beta\n\n- gamma: delta\n  - epsilon\n"
         ), "only the path token changes; every other byte, newline and indent included, survives"
 
 
@@ -170,7 +172,7 @@ class TestBuildAgentsMarkdown:
 
         built = sync.build_agents_markdown(claude_md, rules)
 
-        assert "`/Users/nke/.claude/references/x.md`" in built, (
+        assert f"`{HOME}/.claude/references/x.md`" in built, (
             "a rule body reaches the generated file through the same path rewrite as the preamble"
         )
 
