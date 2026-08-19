@@ -22,7 +22,7 @@ AskUserBeforeAssuming {
       Method: decide it, act, and offer to write the answer down
   }
 
-  constraint Goal {
+  constraint OnGoal {
     stop before acting: ask through AskUserQuestion or similarly named available tools before doing or planning any work that rests on the answer, then fold the answer into the task and act
     require you never pick the reading you would have recommended and proceed
     require you never announce a reading and proceed on it
@@ -31,7 +31,7 @@ AskUserBeforeAssuming {
     (the user answered it earlier, or an approved plan decides it) => act
   }
 
-  constraint Method {
+  constraint OnMethod {
     act, and state the premise marked `[?]` in the same message
   }
 

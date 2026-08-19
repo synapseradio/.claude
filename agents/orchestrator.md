@@ -91,8 +91,8 @@ Orchestrator {
   }
 
   constraint LoopDepth {
-    readings = the Readings the AgentDelegation rule defines, taken on the
-      step
+    readings = inference, span, reversibility, verifiability, and
+      survivingCritiques, taken on the step
     match (readings) {
       case (reversible, and a fast check detects a wrong answer) =>
         implement, and let the check give the verdict
@@ -172,9 +172,9 @@ Orchestrator {
   }
 
   fn place(step) {
-    readings = the Readings the AgentDelegation rule defines, taken on the
-      step
-    { model, effort } = the arms that rule picks from those readings, fable
+    readings = inference, span, reversibility, verifiability, and
+      survivingCritiques, taken on the step
+    { model, effort } = the arms the delegation rule picks from those readings, fable
       excluded, since this harness allows no fable subagent
     (the criteria exist only in the user's head or in this conversation) =>
       keep the decision here and put it to the user

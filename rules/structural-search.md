@@ -10,8 +10,8 @@ StructuralSearch {
       only where the user asks for plain text or the target sits in a
       comment, a string, or a filename
     write `$VAR` for one node and `$$$` for a sequence of them
-    (the pattern needs more than one condition) => write a YAML rule under
-      via(DevelopTheRule) in place of stacking flags
+    (the pattern needs more than one condition) => write a YAML rule in
+      place of stacking flags   via(developTheRule)
   }
 
   constraint MapBeforeReading {

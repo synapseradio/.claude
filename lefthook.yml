@@ -20,6 +20,15 @@ pre-commit:
             glob: "*.{sh,bash}"
             run: shellcheck {staged_files}
 
+    # Holds rules/ and agents/ to one SudoLang ontology. Reads the whole
+    # tree since the cross-file rules need every file; the glob only decides
+    # whether the commit touched anything it checks.
+    - name: check-rules-ontology
+      glob:
+        - "rules/*.md"
+        - "agents/*.md"
+      run: python3.14 scripts/hooks/check-rules-ontology.py
+
     # Runs after the lint group, because markdownlint's stage_fixed rewrites
     # the very rule files this reads. The script regenerates every output
     # from scratch, so it takes no file arguments; the glob only decides

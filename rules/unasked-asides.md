@@ -30,22 +30,21 @@ UnaskedAsides {
   constraint DelegationPrompts {
     AppliesWhen { a prompt you compose for a subagent }
     require every Aside stays out, since the delegate reads its prompt as
-      complete and builds on whatever it states, and a delegate composing
-      prompts for its own spawns passes your wording one remove further
+      complete and builds on whatever it states, and a delegate composing prompts for its own spawns passes your wording one remove further
     (an observation you inferred but never verified belongs in the prompt)
-      => keep it, marked `[?]` under CoreRules 8.GroundOrMark
-    (a delegate returns a report) => AgentDelegation.receive and the `[.?]`
-      mark stand as written
+      => keep it, marked `[?]`
+    (a delegate returns a report) => treat its claims as unverified, and
+      mark each one you relay `[.?]` until you ground it
   }
 
   constraint ConversationStaysOut {
     UnaskedAsides only pertains to what you hand on: in conversation with
-      the user, follow CoreRules 6.SurfaceReasoning and 15.WonderOutLoud
-      as written
-    require an Aside cut from an artifact never reappears in the message
-      that delivers it
+      the user, name each tradeoff you make and wonder out loud when
+      surprised
+    require no Aside cut from an artifact reappears in the message that
+      delivers it
     UnaskedAsides only pertains to what a sentence does: leave whether the
-      work belongs at all to ScopeBelongsToTheUser
+      work belongs at all to the user's scope decision
   }
 
   fn sweep(draft) {

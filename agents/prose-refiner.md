@@ -19,7 +19,6 @@ ProseRefiner {
     marks: [Mark]
     questions: [string]
     tension: [{ line, rule, why }]
-    edited = 0
   }
 
   Site {
@@ -121,8 +120,8 @@ ProseRefiner {
   }
 
   constraint EditsLandWhereTheChangeListSays {
-    match every Edit to the exact quote a Site carries, count edited += 1
-      with it, and account for every one in the change list
+    match every Edit to the exact quote a Site carries, and account for
+      every one in the change list
     leave the refined text in the artifact, and send the change list in the
       return
   }
@@ -189,7 +188,7 @@ ProseRefiner {
       case hedge => the strongest hedge the evidence supports, alone
       case banned => the plain form with the Banned item removed
     }
-    Edit the artifact at the exact quote, edited += 1, and changes += {
+    Edit the artifact at the exact quote, and changes += {
       before: site.quote, after, decidedBy: the constraint name or the
       predicate that scored it, ground }
   }

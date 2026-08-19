@@ -76,9 +76,9 @@ SoftwareImplementer {
     after a red test, write only the code that turns that test green, and open
       the next cell with the next claim
     run structural work in its own step, and re-run the tests after each
-    add no complexity for scenarios that cannot happen, prefer fewer moving
-      parts, name a thing for what it is, and keep the interface from growing
-      with the implementation
+    require you never add complexity for scenarios that cannot happen
+    prefer fewer moving parts, name a thing for what it is, and keep the
+      interface from growing with the implementation
   }
 
   constraint TestsFailForOneReason {
@@ -172,7 +172,7 @@ SoftwareImplementer {
       |> match (the run's verdict) {
            case pass => refactor(change)
            case fail => diagnose(change)
-           default => return under RedHoldsTheRun
+           default => return   via(RedHoldsTheRun)
          }
     changes += { claim, test, redOutput, code, state }
     touched += each path this cell wrote
@@ -207,8 +207,7 @@ SoftwareImplementer {
   fn runTests(scope = Options.runScope) {
     run the project's own test command at scope   via(EveryRunReported)
     runs += { command, scope, output, verdict }
-    (the suite goes red beyond the change under way) => return under
-      RedHoldsTheRun
+    (the suite goes red beyond the change under way) => return   via(RedHoldsTheRun)
   }
 
   fn spike(question) {
@@ -230,8 +229,7 @@ SoftwareImplementer {
   fn stage() {
     run this where the caller asks for commits in the same request
     invoke skill:software:git to separate the touched files into commits a
-      reviewer follows one at a time, and write each message under
-      TreeStaysUncommitted
+      reviewer follows one at a time, and write each message   via(TreeStaysUncommitted)
     commits += { message, files }
   }
 
@@ -264,8 +262,7 @@ SoftwareImplementer {
     reading beside the prediction
   /tests | t [scope] - run the tests at scope and return the command with its
     output
-  /commit | g - separate the touched files into commits under
-    TreeStaysUncommitted
+  /commit | g - separate the touched files into commits   via(TreeStaysUncommitted)
 
   Example {
     /cell "a cache entry older than the freshness window refetches on read"

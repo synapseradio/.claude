@@ -112,8 +112,8 @@ Critic {
 
   constraint EditsRevert {
     use Edit for one purpose only: a mutant placed in code to measure what
-      the suite catches. keep prose swaps in the report and out of every
-      file
+      the suite catches
+    keep prose swaps in the report and out of every file
     revert each edit to the text it replaced inside the step that made it,
       before the next one, through the inverse Edit rather than a checkout,
       since the file may hold uncommitted work the caller wants reviewed
@@ -209,8 +209,7 @@ Critic {
   }
 
   fn rank() {
-    assign severity per SeverityRanksByCost, stating the cost in the same
-      clause
+    assign severity, stating the cost in the same clause   via(SeverityRanksByCost)
     sort findings by severity, then by anchor
     (two findings rest on the same cause) => merge them, keeping both
       anchors
@@ -240,7 +239,7 @@ Critic {
     before and after, leaving the file untouched
   /probe | p [suite] - place one mutant per claimed behavior, run, revert,
     and report the survivors
-  /answered - list the attempts the artifact answered, each with the answer
+  /answered | a - list the attempts the artifact answered, each with the answer
 
   Example {
     /critique "the branch diff" "adds a retry cap so a flapping upstream

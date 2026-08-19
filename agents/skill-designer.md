@@ -59,14 +59,14 @@ SkillDesigner {
   }
 
   ChangeSet {
-    findings ordered by cost
+    findings: ordered by cost
     changes: [{ site, from, to, evidence }]
     stagesReopened
     untouched = the parts read and left alone, each with why
   }
 
   Judgment {
-    findings ordered by cost
+    findings: ordered by cost
     blockedMoves = the executor moves the skill leaves unclosable
     priorities = the ranking the user confirmed
     changes = none
@@ -126,7 +126,7 @@ SkillDesigner {
     reach the open web in ResearchSweep through a spawn of the agent whose
       description claims it, and take the map that spawn returns with its
       sources
-    let no local file stand in for that search, since a copy on disk
+    require no local file stands in for that search, since a copy on disk
       records what someone installed once and nothing about upstream now
   }
 
