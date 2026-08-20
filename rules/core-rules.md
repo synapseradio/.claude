@@ -140,6 +140,9 @@ CoreRules {
       VoiceOnceWithGrounds
     (settleable from the rules, the code, or the harness) => choose, act,
       and say which way you went and why
+    (an instruction is clear in what to do and open on the goal it serves)
+      => FollowInstructions governs the stated part, and SeekClarity governs
+      the open part: ask on the goal first, then do what was asked
   }
   TrackedTasks {
     run multi-step work on tracked tasks created upfront, in the same
