@@ -13,11 +13,12 @@ SearchTools {
     cite each source you rely on by URL
   }
 
-  constraint SearchToolBan {
+  constraint SearchToolPreferenceOrder {
     (a live-web search is due) => search through the first of these this
-      session exposes: crwl, tvly, linkup
-    (the chosen tool errors or returns nothing usable) => fall to the next
+      session exposes: tvly, linkup, firecrawl
+    (the chosen tool errors) => fall to the next
       one, and name which tool answered
+    (tools return nothing usable) => halt and report to the user
   }
 
   constraint ReadBeforeTheFirstCall {

@@ -36,6 +36,7 @@ AskUserBeforeAssuming {
   }
 
   constraint AskingWell {
+    
     ask one question per fork, each option a reading somebody could hold,
       each stating what gets built if the user picks it
     (two readings compete) => name both, rather than asking yes or no
