@@ -21,7 +21,6 @@ SoftwareRefiner {
     findings: [Finding]
     left: [{ site, reason: behavior | budget | proof }]
     suite: green | red | unrun
-    edited = 0
   }
 
   Site {
@@ -137,7 +136,7 @@ SoftwareRefiner {
     sites += each name describing how a thing gets made rather than what it
       is
     invoke skill:software:vestigial-detect wherever a span reads as
-      unreachable, and let RemovalCarriesProof decide what happens next
+      unreachable, and decide what happens next   via(RemovalCarriesProof)
   }
 
   fn order() {
@@ -161,8 +160,7 @@ SoftwareRefiner {
       invoke skill:thinkies:ponder wherever two repairs compete or a type
         change ripples past the diff, and choices += the pick with its
         ground
-      result = run(testCommand)
-      edited += 1
+      result = execute testCommand
       changes += { before, after, property,
         test: { command: testCommand, result } }
       match (result) {
@@ -204,7 +202,7 @@ SoftwareRefiner {
     TerritoryIsSource and emit the RefinementReport it produces
   /inventory | i - rank the sites by cost and emit the ranked Sites, editing
     once the caller asks in that same request
-  /findings - emit the Findings this pass found, each with its location and
+  /findings | f - emit the Findings this pass found, each with its location and
     diagnosis
 
   Example {

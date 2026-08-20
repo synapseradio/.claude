@@ -15,7 +15,7 @@ GitCommit {
     (the repo states a format: a commitlint, commitizen, or gitlint config,
       an enabled commit-msg hook, a documented convention, or a consistent
       branch history) => follow it exactly in place of Message
-    (a hook is disabled, or its script is absent) => Message applies
+    (a hook is disabled, or its script is absent) => follow Message
     honor content bans, such as no URLs or co-author trailers, either way
   }
 
@@ -28,10 +28,11 @@ GitCommit {
   fn commit() {
     verify the staged set with `git diff --cached --name-only`, keeping
       planning artifacts out unless the user asks for them
-      |> compose the message under RepoFormatWins |> commit
+      |> compose the message   via(RepoFormatWins)
+      |> commit
   }
 
-  Branches {
+  constraint Branches {
     use the fork-based PR workflow on shared branches
     use separate worktrees for parallel work rather than switching in place
     (rebasing) => resolve conflicts with `-X ours` and autosquash by default

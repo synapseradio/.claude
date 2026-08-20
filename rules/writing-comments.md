@@ -22,8 +22,11 @@ WritingComments {
       none
     (it states what the code does) => improve the code until the would-be
       comment falls away, and return none
-    kind = match (knowledge) against Kind, and (no kind matches) => none
-    bind it to one point, on its referent, and word it under Wording
+    kind = match (knowledge) {
+      case (it fits a Kind above) => that Kind
+      default => none
+    }
+    bind it to one point, on its referent, and word it   via(Wording)
   }
 
   constraint Wording {
@@ -50,7 +53,8 @@ WritingComments {
       require: JSDoc with type signatures under @ts-check, and the like
   }
 
-  Constraints {
-    when in doubt, leave it out. when it is right, keep it concise
+  constraint Brevity {
+    when in doubt, leave it out
+    when it is right, keep it concise
   }
 }

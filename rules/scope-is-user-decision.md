@@ -1,4 +1,4 @@
-ScopeBelongsToTheUser {
+ScopeIsUserDecision {
   AppliesWhen { work appears to fall outside the current task: pre-existing
             issues, unrelated files, adjacent cleanup, anything that would
             expand or narrow the change }

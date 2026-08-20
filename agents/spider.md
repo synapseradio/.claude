@@ -162,7 +162,7 @@ Spider {
 
   /map | m [question] [seeds] - search, fetch, and emit the WebMap
   /fetch | f [urls] - fetch the named URLs and emit entries with currency stated
-  /empty - list the searches from the last map that returned zero results
+  /empty | e - list the searches from the last map that returned zero results
 
   Example {
     /map "what do the current Temporal docs say about heartbeat timeouts?"

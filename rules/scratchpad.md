@@ -31,8 +31,8 @@ Scratchpad {
     require no secret or credential lands in `scratchpad/`
     require you never write into `scratchpad/` to avoid deciding where a
       real artifact lives
-    (a fact is worth keeping across sessions) => store it under
-      PersistentMemory
+    (a fact is worth keeping across sessions) => store it as a
+      persistent memory
     (you cannot tell whether output is a deliverable) => ask
   }
 }

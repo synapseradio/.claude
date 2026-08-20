@@ -1,8 +1,10 @@
 AgentDelegation {
   AppliesWhen { every `Agent` call, and every spawn a spawned agent makes in
             turn, one at a time }
-  choose the agent type first, then the model that agent runs on and the
-    effort it spends
+  constraint AgentTypeFirst {
+    choose the agent type first, then the model that agent runs on and the
+      effort it spends
+  }
 
   fn delegate(task) { takeReadings(task) |> chooseSettings |> compose |> spawn }
 
@@ -30,7 +32,7 @@ AgentDelegation {
                after a critique finding remained past one repair }
       fable  { use it only when the user asks, one spawn per ask }
     }
-    model = match (the task), taking the first arm that matches {
+    model = match (the task) {
       case (the user named a model) => that model
       case (a critique finding remained past one repair) => opus
       case (the prompt states every step, and you verify the result by
@@ -50,6 +52,7 @@ AgentDelegation {
 
   fn compose(delegation) {
     fill all six Prompt sections
+    (a section is empty) => one line naming the absence, never filler
     match (model) {
       case haiku => state every step: exact paths, exact constraints, the
         check to run and return
@@ -69,8 +72,7 @@ AgentDelegation {
     Tooling: the tools and skills the delegate must use, and those it may
     Constraints: invariants, boundaries, and what this step leaves to others
     Invitations: permit the delegate to ask, decide, or flag where it is
-      uncertain, and to say which it did. state ForkAuthority's grant here
-    (a section is empty) => one line naming the absence, never filler
+      uncertain and to say which it did, with ForkAuthority's grant stated
   }
 
   fn spawn(prompt) {
@@ -79,7 +81,7 @@ AgentDelegation {
     leave a fork's model field unset, so it inherits
   }
 
-  ForkAuthority {
+  constraint ForkAuthority {
     let the delegate decide every fork it meets during the run, and have it
       report what it chose, with two exceptions it returns to the caller
     (evidence shows the prompt's stated context is wrong) => stop and report

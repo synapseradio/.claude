@@ -2,7 +2,7 @@ FirecrawlMCP {
   AppliesWhen { about to call any mcp__firecrawl__* tool }
 
   constraint PickTheToolByBoundary {
-    tool = match (the need), taking the first arm that matches {
+    tool = match (the need) {
       case (a library, API, or error question) => firecrawl_developer_search
       case (a page whose URL you hold) => firecrawl_scrape
       case (a page you must find) => firecrawl_search

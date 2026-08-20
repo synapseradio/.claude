@@ -2,14 +2,14 @@ DataModeling {
   AppliesWhen { designing or changing types, data structures, schemas,
             interface signatures, or error channels }
 
-  (about to write a runtime check, assertion, or panic for a state that
-    "should never happen") =>
-    treat that as a modeling decision: apply FiveMoves, drawn from Alexis
-    King's "The Unreasonable Effectiveness of Constructive Data Modeling"
-    (SSW 2026), https://www.youtube.com/watch?v=0BXuYlNrUmE, then model the
-    state out or accept the panic knowingly
+  constraint PanicIsAModelingDecision {
+    (about to write a runtime check, assertion, or panic for a state that
+      "should never happen") =>
+      treat that as a modeling decision: apply FiveMoves, drawn from Alexis
+      King's "The Unreasonable Effectiveness of Constructive Data Modeling" then model the state out or accept the panic knowingly
+  }
 
-  FiveMoves {
+  constraint FiveMoves {
     ModelPositiveSpace {
       list the legal states and write one constructor per state, in place of
         taking a broader type and restricting it with advanced machinery: a
@@ -24,7 +24,7 @@ DataModeling {
 
     ChooseARepresentationForTheCodeAtHand {
       keep representation apart from interpretation
-      grant no single representation "correct" status: pick whichever
+      require no representation holds "correct" status: pick whichever
         serves the code reading it, a list of pairs for an even-length list,
         or a start time plus a non-negative duration for a time range
         ordered by construction where two raw timestamps would need a check,
@@ -69,19 +69,17 @@ DataModeling {
     }
   }
 
-  Calibration {
-    Constraints {
-      make the model as simple as possible, and no simpler
-      ask each move's test question before applying it, weigh the answer for
-        the code at hand, skip the move on a "no", and hold none as an
-        invariant
-      reach for product types, sum types, and exhaustive matching first,
-        since they suffice for all five moves, and treat variadic tuples,
-        GADTs, and refinement types as conveniences on top
-      adopt newtype and unit wrappers (UserId vs PostId) by team judgment,
-        priced as ergonomics, since they slow mistakes down without making
-        them unrepresentable
-    }
+  constraint Calibration {
+    make the model as simple as possible, and no simpler
+    ask each move's test question before applying it, weigh the answer for
+      the code at hand, skip the move on a "no", and hold none as an
+      invariant
+    reach for product types, sum types, and exhaustive matching first,
+      since they suffice for all five moves, and treat variadic tuples,
+      GADTs, and refinement types as conveniences on top
+    adopt newtype and unit wrappers (UserId vs PostId) by team judgment,
+      priced as ergonomics, since they slow mistakes down without making
+      them unrepresentable
     warn (a model needs those conveniences to exist at all) => check whether
       it has drifted from positive space back into restriction
     (a precise type costs too much) => reach for an abstract type with a
@@ -93,17 +91,14 @@ DataModeling {
     }
   }
 
-  ForTests {
-    Constraints {
-      write no test for a state a type makes unrepresentable, since the
-        compiler discharged that obligation
-      (strengthening costs more than it pays) => write the test guarding
-        the invariant, in place of the type you declined to build
-    }
+  constraint ForTests {
+    require no test covers a state a type makes unrepresentable, since thee
+      compiler discharged that obligation
+    (strengthening costs more than it pays) => write the test guarding
+      the invariant, in place of the type you declined to build
     warn (a test must exercise a "should never happen" branch) => read that
       as a modeling smell {
       strengthen the type until the branch disappears
-      | accept the panic knowingly and record why
     }
   }
 }

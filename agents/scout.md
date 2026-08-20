@@ -104,8 +104,8 @@ Scout {
   fn rank() {
     for each entry in map {
       relevance = how directly the entry's content answers its reading
-      quality = authorship, currency within freshness, and how many other
-        files cite it, weighed in that order
+      quality = a blend of authorship, currency within freshness, and how
+        many other files cite it, authorship weighing most
     }
     rank a decision record, spec, or test stating an invariant above a
       second implementation file at equal relevance
