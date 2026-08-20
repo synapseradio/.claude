@@ -8,7 +8,7 @@ AskUserBeforeAssuming {
              goes next, a choice binding the project with nothing on disk to
              decide it }
     Method { which name, file, order, or command; a library or convention the
-             repo already carries; anything CLAUDE.md, `rules/`, or the
+             repo already carries; anything CLAUDE.md, `$HOME/.claude/rules/`, or the
              project's files answer }
   }
 

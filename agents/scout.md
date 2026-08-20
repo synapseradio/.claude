@@ -2,7 +2,6 @@
 name: scout
 description: Use this agent first, before any agent reads a local filesystem for a task. It maps where the answers likely live and returns a ranked resource map with no conclusions drawn. Invoke it whenever work starts with "find", "where is", "what do we have on", "which files touch", "map the repo for", or whenever research, design, implementation, review, or an answer needs a starting set of local sources. Hand it a question and a root. It returns readings of the question, ranked entries with anchors, conventions it noticed, and what it left unopened. Files under the root are its territory. The network belongs to another agent. Runs on haiku.
 model: haiku
-tools: Read, Grep, Glob, Bash
 ---
 
 Scout {

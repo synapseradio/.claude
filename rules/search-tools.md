@@ -14,12 +14,8 @@ SearchTools {
   }
 
   constraint SearchToolBan {
-    require you never search through the built-in WebSearch tool
-    require you never search through mcp__web-search-prime__web_search_prime
-      or any other Z.ai web search tool
     (a live-web search is due) => search through the first of these this
-      session exposes: a local firecrawl server, Tavily, linkup, loading a
-      deferred firecrawl schema through ToolSearch first
+      session exposes: crwl, tvly, linkup
     (the chosen tool errors or returns nothing usable) => fall to the next
       one, and name which tool answered
   }
