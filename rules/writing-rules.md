@@ -4,77 +4,24 @@ paths:
   - "**/CLAUDE.md"
 ---
 
-WritingRules {
-  AppliesWhen { writing or changing a rules file, or CLAUDE.md }
+# Writing rules
 
-  constraint ValidSudoLang {
-    write each rules file as one SudoLang v2 interface, opening on its name
-      with no heading and no preamble, and comments nowhere
-    open the interface on `AppliesWhen { }` naming what fires the rule, and
-      give a constraint its own `AppliesWhen { }` only where it fires on
-      less than the interface does
-    write every sentence as an instruction to Claude: an imperative, a
-      guarded clause `(condition) => action`, a `warn (condition) => action`,
-      a `require`, a `let`, a `for each` or `while`, a pipeline of `|>`
-      steps, a `match`, a `test { }` question inside a catalog member, or a
-      field
-    (a fact fits no construct) => cut it
-    (a path-scoped rule) => keep `paths:` frontmatter whose globs match file
-      paths, and still name the activity in AppliesWhen
-  }
+This applies when writing or changing a rules file, or CLAUDE.md.
 
-  constraint Containers {
-    put every demand inside `constraint Name {` or `fn name() {`, and keep a
-      bare `Name {` block for definitions alone: a record, a catalog of
-      kinds, a value table
-    write a kind the text matches against as `Name { text }`, a value a
-      statement compares against as `name { text }`, a field as `name: type`
-      or `name = value`, and a list as `name = [items]`
-    give every node a name unique in its file, with no number in front,
-      and every interface a name unique across rules/ and agents/
-    write a match as `match (subject) {` with `case (condition) => action`
-      arms and an optional `default => action`, and let the first matching
-      arm win without saying so
-  }
+## Form
 
-  constraint Forms {
-    write a prohibition as `never <act>` where the model acts,
-      and `require no <thing> <happens>` where the ban falls on an artifact
-      or a state
-    keep `, never X` and `, and never X` for a contrast inside an
-      imperative
-    write a condition that gates a whole statement as a guard, and keep a
-      trailing `unless`, `only where`, `wherever`, or `where` clause for one
-      that qualifies the action
-    end a statement that applies another node with `because(Name)` on its last
-      line, and write `because(Name)` alone on the line closing a fn body where
-      the whole fn runs under it
-    inside a catalog, write a member that holds a definition as `Name {
-      text }` and a member that instructs as an imperative or guard
-  }
+Write each rules file as prose: one heading naming the territory, then a sentence naming what fires the rule, in the form "This applies when ...". Give a subsection its own applies-when sentence only where it fires on less than the file does. Write comments nowhere.
 
-  constraint FiveQualities {
-    Trigger  { name in AppliesWhen what fires the rule now }
-    Demand   { state what it requires, in imperatives }
-    Pointer  { (the topic appears in another file) => restate the one clause
-               this rule rests on, and keep the full statement in one place }
-    Boundary { (a neighbor continues the territory) => name it
-               (no neighbor) => let AppliesWhen alone bound the rule, and never
-                 fabricate a boundary }
-    Warrant  { put the mechanism fact the reader cannot see inside the
-               instruction that rests on it, and never argue that the rule
-               deserves to exist }
-  }
+Write every sentence as an instruction to Claude: an imperative, a condition and the act it gates, or a definition an instruction uses. Cut a sentence that only describes, argues, or narrates.
 
-  constraint CrossReferences {
-    make each file close from itself: point with `because(Name)` only at a
-      constraint or fn inside the same interface, and name no node of
-      another rules file or agent
-    (you rename a node) => sweep its `because()` pointers in the same change
-  }
+For a path-scoped rule, keep `paths:` frontmatter whose globs match file paths, and still name the activity in the applies-when sentence.
 
-  constraint RoutesByKind {
-    route new content before writing it: an invariant to `rules/`, a catalog
-      to `references/`, enforcement to a hook, stance to CLAUDE.md
-  }
-}
+`~/.claude/references/working-rules.md` renders the always-on rules into one document. A change to an always-on rule lands in the rule's file and in that document in the same change.
+
+## Five qualities
+
+Hold every rule to five qualities. Trigger: the applies-when sentence names what fires the rule now. Demand: state what the rule requires, in imperatives. Pointer: when the topic appears in another file, restate the one clause this rule rests on, keep the full statement in one place, and link the file that carries it. Boundary: when a neighbor continues the territory, name it, and where none does, let the applies-when sentence alone bound the rule, fabricating no boundary. Warrant: put the mechanism fact the reader cannot see inside the instruction that rests on it, and never argue that the rule deserves to exist.
+
+## Routing
+
+Route new content before writing it: an invariant to `rules/`, a catalog to `references/`, enforcement to a hook, stance to CLAUDE.md. When you rename a rules file or a heading another file links, sweep the links in the same change.

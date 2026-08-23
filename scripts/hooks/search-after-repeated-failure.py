@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """PostToolUse and PostToolUseFailure hook: a lookup once a tool call fails.
 
-Hands back the lookup that search-tools.sudolang.md AFailureBuysALookup
-requires, reading the installed artifact and searching the live web
+Hands back the lookup that rules/search-tools.md, under "A failure buys a
+lookup", requires, reading the installed artifact and searching the live web
 together rather than attempting again from the recollection that produced
 the failure. A streak reports its length, and a streak whose failures carry
 one error asks for that text verbatim.

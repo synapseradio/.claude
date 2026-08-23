@@ -1,38 +1,11 @@
-Scratchpad {
-  AppliesWhen { any temporary or working file: intermediate results, throwaway
-            scripts, generated data, reviews, audits, plans, run files }
+# Where temporary files go
 
-  Layout {
-    root = "scratchpad/" at the root of the repository in play
-    dir = if (`git branch --show-current` names a branch) "$root/$branch/"
-      else root
-    file = "$dir/$YYYYMMDD-HHmm-$slug.md", timestamped at the first write
-  }
+This applies to any temporary or working file: intermediate results, throwaway scripts, generated data, reviews, audits, plans, run files.
 
-  constraint RedirectTheHarnessPath {
-    (inside a git repository) => read every path the harness gives as its
-      scratchpad or temp directory as naming Layout.dir, and write there
-    (outside a git repository) => use the harness path exactly as given
-    (a skill or workflow names a default such as `/tmp/<skill>-<slug>.md`)
-      => write it at Layout.file with that slug, and say once where it went
-  }
+The root sits at `scratchpad/` at the root of the repository in play. When `git branch --show-current` names a branch, the directory is `scratchpad/$branch/`, and otherwise the root itself. A file lands at `$dir/$slug__$DD-MM-YY-HHmm.md`, timestamped at the first write.
 
-  constraint SetupStopsAtMkdir {
-    create Layout.dir on first write and change nothing else: the global
-      gitignore at `~/.dotfiles/git/ignore` already covers `scratchpad/`
-    (plan mode holds) => keep working notes in the plan file until writing
-      opens up
-    (a read-only mode holds) => skip setup
-  }
+Inside a git repository, read every path the harness gives as its scratchpad or temp directory as naming that directory, and write there. Outside a git repository, use the harness path exactly as given. When a skill or workflow names a default such as `/tmp/<skill>-<slug>.md`, write it at the layout path with that slug, and say once where it went.
 
-  constraint NeverForDeliverables {
-    require documentation the project ships goes to its docs tree, source to
-      its source tree, and a file the user named to where they named it
-    require no secret or credential lands in `scratchpad/`
-    never write into `scratchpad/` to avoid deciding where a
-      real artifact lives
-    (a fact is worth keeping across sessions) => store it as a
-      persistent memory
-    (you cannot tell whether output is a deliverable) => ask
-  }
-}
+Create the directory on first write and change nothing else, since the global gitignore at `~/.dotfiles/git/ignore` covers `scratchpad/`. While plan mode holds, keep working notes in the plan file until writing opens up. While a read-only mode holds, skip setup.
+
+Documentation the project ships goes to its docs tree, source to its source tree, and a file the user named to where they named it. No secret or credential lands in `scratchpad/`. Never write into `scratchpad/` to avoid deciding where a real artifact lives. When a fact is worth keeping across sessions, store it as a persistent memory. When you cannot tell whether output is a deliverable, ask.

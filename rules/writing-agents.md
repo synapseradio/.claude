@@ -3,59 +3,24 @@ paths:
   - "**/agents/*.md"
 ---
 
-WritingAgents {
-  AppliesWhen { writing or changing an agent file under agents/ }
+# Writing agents
 
-  constraint AgentShape {
-    write the file as the prompt layer above the `Agent` tool call: the
-      harness installs the body as the system prompt of every spawn whose
-      `subagent_type` names this agent, the frontmatter supplies the spawn's
-      default model and tools, and the call supplies the task prompt and
-      any model override, so keep task content out of the file and stance
-      out of the call
-    open the file on YAML frontmatter carrying `name` and `description`,
-      with `tools` where the agent holds fewer than all and `model` where it
-      runs on one below the session's
-    write the description as the trigger, since an agent loads by a
-      router's match on it and carries no AppliesWhen
-    write the body as one SudoLang v2 interface opening on the agent's
-      PascalCase name: `Options { }` for the typed parameters a caller may
-      override, each with its default as `name: type = default`, `State { }`
-      for what a run accumulates, a record block per thing it returns, then
-      constraints and fns, a closing `Constraints { }`, commands, and
-      `Example { }` blocks
-  }
+This applies when writing or changing an agent file under `agents/`.
 
-  constraint SharedVocabulary {
-    write every sentence in the constructs rules carry: an imperative, a
-      guarded clause `(condition) => action`, a `warn (condition) =>
-      action`, a `require`, a `let`, a `for each` or `while`, a pipeline
-      of `|>` steps ending in `emit(Record)`, a `match (subject) {` whose
-      first matching arm wins, a field, or `state += value`
-    write `invoke skill:<plugin>:<name> <when>` for a skill the step loads,
-      with the moment in the trailing clause
-    put every demand inside `constraint Name {` or `fn name() {`, and keep
-      a bare `Name {` block for a record, a catalog, or a list
-    write a prohibition as `never <act>` or `require no
-      <thing> <happens>`
-    give every node a name unique in its file, with no number in front
-  }
+## The file's place
 
-  constraint Pointers {
-    point with `because(Name)` only at a constraint or fn inside the same
-      interface, and name no node of a rules file or another agent
-    end a statement that applies another node with `because(Name)` on its last
-      line, and write `because(Name)` alone on the line closing a fn body where
-      the whole fn runs under it
-    write `run(Name)` where a step applies a constraint now, and `execute`
-      where a step runs a shell command
-    (a rule carries the clause you rest on) => restate that one clause
-      here, and keep the full statement in the rule
-  }
+Write the file as the prompt layer above the `Agent` tool call: the harness installs the body as the system prompt of every spawn whose `subagent_type` names this agent, the frontmatter supplies the spawn's default model and tools, and the call supplies the task prompt and any model override. Keep task content out of the file and stance out of the call.
 
-  constraint RollCall {
-    close the constraints with `Constraints { require A, B, and C hold on
-      every turn }` naming every declared constraint and nothing else
-    give every command the form `/name | alias [args] - effect`
-  }
-}
+Open the file on YAML frontmatter carrying `name` and `description`, with `tools` where the agent holds fewer than all and `model` where it runs on one below the session's. Write the description as the trigger, since an agent loads by a router's match on it and carries no applies-when sentence of its own.
+
+## The body
+
+Write the body as prose addressed to the agent, in the voice of the rules files: a heading naming the agent, an opening sentence or two stating its job and what it returns, then instruction-only sentences under headings that name territories. Open each paragraph on its point, and on the imperative where it instructs.
+
+State the settings a caller may override, each with its range and its default. Give the procedure in the order it runs, each stage opening on what it does. State each constraint as an instruction that holds on every turn, and state a prohibition as "never" plus the act. Describe the return as what it carries and the line it opens on. Name a skill the agent loads together with the moment it loads: "Invoke the thinkies:decompose skill on the question as soon as it arrives."
+
+Define a term where it first appears, in a clause, even when a reference carries the full statement, so the body reads without the reference in hand. When a rule carries the clause you rest on, restate that one clause here, and keep the full statement in the rule.
+
+## Scope stays flexible
+
+Describe the ways a caller may scope a run as example use cases rather than a command grammar, and have the agent honor the scope the request states. Close the file on worked examples: a natural request, the return it produces, and a sentence naming what the example shows.

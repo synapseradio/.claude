@@ -4,15 +4,15 @@
 Scans the assistant text of the turn that just finished for the marks
 `[?]` (a claim with no source on file), `[.?]` (a claim that arrived
 secondhand and stayed ungrounded), and `[^?]` (a premise only the user can
-settle), per core-rules.sudolang.md 8.GroundOrMark. When any mark appears,
-the hook blocks the stop once and hands back the resolution each mark
-takes: verify a `[?]` or `[.?]` claim through real lookups and re-emit the
-original reply verbatim with each mark replaced in place by its inline
-citation, correcting or removing only the sentences that failed; put the
-question a `[^?]` stands in for to the user through AskUserQuestion, since
-in live conversation the question replaces the mark. A line that refers to
-a mark rather than claiming under one takes a third resolution: it names
-the mark in words and says what became of it.
+settle), per rules/core-rules.md, under "Evidence before claims". When any
+mark appears, the hook blocks the stop once and hands back the resolution
+each mark takes: verify a `[?]` or `[.?]` claim through real lookups and
+re-emit the original reply verbatim with each mark replaced in place by its
+inline citation, correcting or removing only the sentences that failed; put
+the question a `[^?]` stands in for to the user through AskUserQuestion,
+since in live conversation the question replaces the mark. A line that
+refers to a mark rather than claiming under one takes a third resolution:
+it names the mark in words and says what became of it.
 
 One pass per stop cycle: `stop_hook_active` means a Stop hook already
 blocked this cycle, so the hook reports the surviving marks through

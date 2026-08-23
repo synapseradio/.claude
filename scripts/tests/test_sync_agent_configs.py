@@ -99,7 +99,7 @@ class TestRewritePaths:
         assert sync.rewrite_paths(text) == text, "a fragment target names no file on disk"
 
     def test_absolute_link_survives(self):
-        text = f"at [x]({HOME}/.claude/rules/core-rules.sudolang.md)"
+        text = f"at [x]({HOME}/.claude/rules/core-rules.md)"
 
         assert sync.rewrite_paths(text) == text, "an already-absolute target needs no rewrite"
 
@@ -122,12 +122,12 @@ class TestBuildAgentsMarkdown:
     def _tree(self, tmp_path: pathlib.Path) -> tuple[pathlib.Path, pathlib.Path]:
         claude_md = _write(tmp_path / "CLAUDE.md", "# Preamble\n\nStance goes here.\n")
         rules = tmp_path / "rules"
-        _write(rules / "alpha.sudolang.md", "Alpha {\n  always\n}\n")
+        _write(rules / "alpha.md", "Alpha {\n  always\n}\n")
         _write(
-            rules / "gated.sudolang.md",
+            rules / "gated.md",
             '---\npaths:\n  - "**/*.sh"\n---\n\nGated {\n  sometimes\n}\n',
         )
-        _write(rules / "zeta.sudolang.md", "Zeta {\n  always\n}\n")
+        _write(rules / "zeta.md", "Zeta {\n  always\n}\n")
         return claude_md, rules
 
     def test_rule_carrying_paths_frontmatter_stays_out(self, tmp_path):
@@ -168,7 +168,7 @@ class TestBuildAgentsMarkdown:
     def test_paths_in_rule_bodies_are_rewritten(self, tmp_path):
         claude_md = _write(tmp_path / "CLAUDE.md", "# Preamble\n")
         rules = tmp_path / "rules"
-        _write(rules / "alpha.sudolang.md", "Alpha {\n  read `~/.claude/references/x.md`\n}\n")
+        _write(rules / "alpha.md", "Alpha {\n  read `~/.claude/references/x.md`\n}\n")
 
         built = sync.build_agents_markdown(claude_md, rules)
 
@@ -179,8 +179,8 @@ class TestBuildAgentsMarkdown:
     def test_sections_are_separated_by_one_blank_line(self, tmp_path):
         claude_md = _write(tmp_path / "CLAUDE.md", "# Preamble\n\n\n")
         rules = tmp_path / "rules"
-        _write(rules / "alpha.sudolang.md", "Alpha {\n}\n\n\n")
-        _write(rules / "zeta.sudolang.md", "Zeta {\n}\n")
+        _write(rules / "alpha.md", "Alpha {\n}\n\n\n")
+        _write(rules / "zeta.md", "Zeta {\n}\n")
 
         built = sync.build_agents_markdown(claude_md, rules)
 
@@ -511,9 +511,9 @@ def targets(tmp_path):
 
     claude_home = tmp_path / "claude"
     _write(claude_home / "CLAUDE.md", "# Preamble\n\nStance.\n")
-    _write(claude_home / "rules" / "alpha.sudolang.md", "Alpha {\n}\n")
+    _write(claude_home / "rules" / "alpha.md", "Alpha {\n}\n")
     _write(
-        claude_home / "rules" / "gated.sudolang.md",
+        claude_home / "rules" / "gated.md",
         '---\npaths:\n  - "**/*.sh"\n---\n\nGated {\n}\n',
     )
     _agent_source(claude_home / "agents", "scout", model="haiku", tools="Read, Glob, Agent")
@@ -564,7 +564,7 @@ class TestBuildPlan:
         owned = {(key.path, key.key): key.value for key in plan.keys}
         listed = owned[(targets.opencode_config, "instructions")]
 
-        assert any(entry.endswith("alpha.sudolang.md") for entry in listed), (
+        assert any(entry.endswith("alpha.md") for entry in listed), (
             "every rule that loads each session must reach opencode"
         )
 
@@ -573,7 +573,7 @@ class TestBuildPlan:
         owned = {(key.path, key.key): key.value for key in plan.keys}
         listed = owned[(targets.opencode_config, "instructions")]
 
-        assert not any(entry.endswith("gated.sudolang.md") for entry in listed), (
+        assert not any(entry.endswith("gated.md") for entry in listed), (
             "the plugin appends a path-scoped rule when a matching file is in play, so listing it "
             "here would load it in every session and twice in a matching one"
         )
@@ -581,7 +581,7 @@ class TestBuildPlan:
     def test_build_plan_writes_no_copy_of_a_path_scoped_rule(self, targets):
         plan = sync.build_plan(targets)
 
-        assert not any(f.path.name == "gated.sudolang.md" for f in plan.files), (
+        assert not any(f.path.name == "gated.md" for f in plan.files), (
             "the plugin reads a path-scoped rule from its canonical file and strips the "
             "frontmatter itself, so no copy exists to fall out of date"
         )
@@ -655,7 +655,7 @@ class TestApply:
 
     def test_check_exits_nonzero_after_a_source_changes(self, targets):
         sync.main([], targets=targets)
-        _write(targets.claude_home / "rules" / "alpha.sudolang.md", "Alpha {\n  changed\n}\n")
+        _write(targets.claude_home / "rules" / "alpha.md", "Alpha {\n  changed\n}\n")
 
         assert sync.main(["--check"], targets=targets) != 0, (
             "an edited rule that never reached the generated files is what the push gate catches"

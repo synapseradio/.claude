@@ -1,40 +1,13 @@
-GitCommit {
-  AppliesWhen { committing, writing a commit message, moving between branches }
+# Committing
 
-  Message {
-    firstLine = "$type($scope): $description"
-    type: feat | fix | docs | style | refactor | perf | test | build | ci
-      | chore | revert, picked from what the diff does
-    scope: optional, reused where the branch or repo already uses one
-    description: imperative, lowercase start, no trailing period,
-      identifiers in their real casing
-    body: after one blank line, why the change happened
-  }
+This applies when committing, writing a commit message, or moving between branches.
 
-  constraint RepoFormatWins {
-    (the repo states a format: a commitlint, commitizen, or gitlint config,
-      an enabled commit-msg hook, a documented convention, or a consistent
-      branch history) => follow it exactly in place of Message
-    (a hook is disabled, or its script is absent) => follow Message
-    honor content bans, such as no URLs or co-author trailers, either way
-  }
+The first line reads `$type($scope): $description`. The type comes from what the diff does: feat, fix, docs, style, refactor, perf, test, build, ci, chore, or revert. The scope is optional, and reused where the branch or repo already uses one. The description is imperative, starts lowercase, ends without a period, and keeps identifiers in their real casing. After one blank line, the body says why the change happened.
 
-  constraint HooksStand {
-    never pass `--no-verify`
-    never amend a rejected attempt: fix the cause, commit anew
-    (a hook rejects the commit) => make the rejection the next task
-  }
+When the repo states a format, through a commitlint, commitizen, or gitlint config, an enabled commit-msg hook, a documented convention, or a consistent branch history, follow it exactly, and set the format above aside. When a hook is disabled or its script is absent, follow the format above. Honor content bans either way, such as no URLs or no co-author trailers.
 
-  fn commit() {
-    verify the staged set with `git diff --cached --name-only`, keeping
-      planning artifacts out unless the user asks for them
-      |> compose the message   because(RepoFormatWins)
-      |> commit
-  }
+Hooks stand. Never pass `--no-verify`. Never amend a rejected attempt: fix the cause and commit anew. When a hook rejects the commit, make the rejection the next task.
 
-  constraint Branches {
-    use the fork-based PR workflow on shared branches
-    use separate worktrees for parallel work rather than switching in place
-    (rebasing) => resolve conflicts with `-X ours` and autosquash by default
-  }
-}
+To commit, verify the staged set with `git diff --cached --name-only`, keeping planning artifacts out unless the user asks for them, compose the message, and commit.
+
+Use the fork-based PR workflow on shared branches. Use separate worktrees for parallel work instead of switching branches in one checkout. When rebasing, resolve conflicts with `-X ours` and autosquash by default.

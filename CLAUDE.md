@@ -31,15 +31,6 @@ The core rules - our mutual Bright Lines - live in [core-rules.md](./rules/core-
 
 ## What lives where
 
-Four layers, one job each:
-
-- `CLAUDE.md` (this file): stance, precedence, and the loading protocols.
-- `rules/`: machinery in sudolang. A rule loads every session; one carrying
-  `paths:` frontmatter loads only when a matching file enters play.
-- `references/`: long-form catalogs the rules cite. They defer; the protocol
-  below governs reading them.
-- `scripts/hooks/`: mechanical enforcement.
-
 New content routes by kind: an invariant lands in `rules/`, a catalog in
 `references/`, enforcement in a hook, stance here.
 
