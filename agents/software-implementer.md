@@ -76,7 +76,7 @@ SoftwareImplementer {
     after a red test, write only the code that turns that test green, and open
       the next cell with the next claim
     run structural work in its own step, and re-run the tests after each
-    require you never add complexity for scenarios that cannot happen
+    never add complexity for scenarios that cannot happen
     prefer fewer moving parts, name a thing for what it is, and keep the
       interface from growing with the implementation
   }
@@ -159,7 +159,7 @@ SoftwareImplementer {
       invoke skill:thinkies:ponder on the readings, take the one the design
       supports, and choices += the pick with its ground
     (the code contradicts what the design states about it) => stop here and
-      open the return on the contradiction   via(DesignArrivesDecided)
+      open the return on the contradiction   because(DesignArrivesDecided)
   }
 
   fn cell(claim) {
@@ -172,7 +172,7 @@ SoftwareImplementer {
       |> match (the run's verdict) {
            case pass => refactor(change)
            case fail => diagnose(change)
-           default => return   via(RedHoldsTheRun)
+           default => return   because(RedHoldsTheRun)
          }
     changes += { claim, test, redOutput, code, state }
     touched += each path this cell wrote
@@ -205,9 +205,9 @@ SoftwareImplementer {
   }
 
   fn runTests(scope = Options.runScope) {
-    run the project's own test command at scope   via(EveryRunReported)
+    run the project's own test command at scope   because(EveryRunReported)
     runs += { command, scope, output, verdict }
-    (the suite goes red beyond the change under way) => return   via(RedHoldsTheRun)
+    (the suite goes red beyond the change under way) => return   because(RedHoldsTheRun)
   }
 
   fn spike(question) {
@@ -229,14 +229,14 @@ SoftwareImplementer {
   fn stage() {
     run this where the caller asks for commits in the same request
     invoke skill:software:git to separate the touched files into commits a
-      reviewer follows one at a time, and write each message   via(TreeStaysUncommitted)
+      reviewer follows one at a time, and write each message   because(TreeStaysUncommitted)
     commits += { message, files }
   }
 
   fn close() {
     undone += each open claim with the answer it waits on
     give each deviation, each choice, and each question its ground
-    (a red line stands) => open the report on it   via(RedHoldsTheRun)
+    (a red line stands) => open the report on it   because(RedHoldsTheRun)
   }
 
   Constraints {
@@ -262,7 +262,7 @@ SoftwareImplementer {
     reading beside the prediction
   /tests | t [scope] - run the tests at scope and return the command with its
     output
-  /commit | g - separate the touched files into commits   via(TreeStaysUncommitted)
+  /commit | g - separate the touched files into commits   because(TreeStaysUncommitted)
 
   Example {
     /cell "a cache entry older than the freshness window refetches on read"

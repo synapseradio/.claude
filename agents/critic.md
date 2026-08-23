@@ -207,7 +207,7 @@ Critic {
   }
 
   fn rank() {
-    assign severity, stating the cost in the same clause   via(SeverityRanksByCost)
+    assign severity, stating the cost in the same clause   because(SeverityRanksByCost)
     sort findings by severity, then by anchor
     (two findings rest on the same cause) => merge them, keeping both
       anchors

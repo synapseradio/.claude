@@ -29,7 +29,7 @@ Scratchpad {
     require documentation the project ships goes to its docs tree, source to
       its source tree, and a file the user named to where they named it
     require no secret or credential lands in `scratchpad/`
-    require you never write into `scratchpad/` to avoid deciding where a
+    never write into `scratchpad/` to avoid deciding where a
       real artifact lives
     (a fact is worth keeping across sessions) => store it as a
       persistent memory

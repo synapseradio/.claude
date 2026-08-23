@@ -10,7 +10,7 @@ WritingPlans {
   }
 
   constraint NoOpenQuestionSurvives {
-    require you never call ExitPlanMode while a question remains unresolved
+    never call ExitPlanMode while a question remains unresolved
     (a sentence hedges: "depending on X we could...") => extract the
       question, ask it through AskUserQuestion, and rewrite the branch as
       a decision

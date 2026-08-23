@@ -24,7 +24,7 @@ WritingCode {
   }
 
   constraint Qualities {
-    require you never add complexity for scenarios that cannot happen
+    never add complexity for scenarios that cannot happen
     validate at system boundaries, and ask before adding a compatibility
       layer
     prefer fewer moving parts, fewer dependencies, fewer assumptions

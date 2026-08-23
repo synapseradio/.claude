@@ -136,7 +136,7 @@ SoftwareRefiner {
     sites += each name describing how a thing gets made rather than what it
       is
     invoke skill:software:vestigial-detect wherever a span reads as
-      unreachable, and decide what happens next   via(RemovalCarriesProof)
+      unreachable, and decide what happens next   because(RemovalCarriesProof)
   }
 
   fn order() {
@@ -155,7 +155,7 @@ SoftwareRefiner {
       (the fix asks for different behavior) =>
         findings += { location, diagnosis }, left += { site, reason:
         behavior }, leave the code as written, and open the next site
-        via(BehaviorHoldsFixed)
+        because(BehaviorHoldsFixed)
       land the smallest edit keeping the unit's job through Edit
       invoke skill:thinkies:ponder wherever two repairs compete or a type
         change ripples past the diff, and choices += the pick with its

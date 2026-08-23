@@ -190,11 +190,11 @@ SkillDesigner {
     (no path arrives, and the subject points at a directory) => spawn the
       agent that maps local files, and read what its map ranks first
     findings += each site where the skill blocks an executor move, with the
-      move named   via(ClosureIsTheTest)
+      move named   because(ClosureIsTheTest)
   }
 
   fn pipeline() {
-    (mode = Audit) => skip this stage entirely   via(ContentEarnsItsWayIn)
+    (mode = Audit) => skip this stage entirely   because(ContentEarnsItsWayIn)
     run the six questions in sequence, each producing the artifact the next
       consumes, entering where the mode says
     stages += one entry per question with what it produced and the check

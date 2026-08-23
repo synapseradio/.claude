@@ -11,7 +11,7 @@ StructuralSearch {
       comment, a string, or a filename
     write `$VAR` for one node and `$$$` for a sequence of them
     (the pattern needs more than one condition) => write a YAML rule in
-      place of stacking flags   via(developTheRule)
+      place of stacking flags   because(developTheRule)
   }
 
   constraint MapBeforeReading {

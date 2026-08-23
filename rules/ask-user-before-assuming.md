@@ -24,9 +24,9 @@ AskUserBeforeAssuming {
 
   constraint OnGoal {
     stop before acting: ask through AskUserQuestion or similarly named available tools before doing or planning any work that rests on the answer, then fold the answer into the task and act
-    require you never pick the reading you would have recommended and proceed
-    require you never announce a reading and proceed on it
-    require you never build the part two readings share, nor one reading as
+    never pick the reading you would have recommended and proceed
+    never announce a reading and proceed on it
+    never build the part two readings share, nor one reading as
       a sample with an offer to redo it
     (the user answered it earlier, or an approved plan decides it) => act
   }

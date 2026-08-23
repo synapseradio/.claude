@@ -4,8 +4,8 @@ ScopeIsUserDecision {
             expand or narrow the change }
 
   constraint NeitherExpandNorExcludeAlone {
-    require you never fix something tangential unasked
-    require you never declare work "out of scope" and move on
+    never fix something tangential unasked
+    never declare work "out of scope" and move on
   }
 
   fn surface(work) {

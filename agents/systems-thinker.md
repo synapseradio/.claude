@@ -187,7 +187,7 @@ SystemsThinker {
       leverage.level.wrongWay.push) => ladder += a rung worded from that
       level's ask, placed first in open, with why naming the wrongWay
       effect and the observation that would show the move pushing the
-      other way   via(ReturnOpensOnWhatActsFirst)
+      other way   because(ReturnOpensOnWhatActsFirst)
   }
 
   constraint TranscendenceWeighsTheAnswers {
@@ -309,7 +309,7 @@ SystemsThinker {
       the files, the record, and read-only commands
     transcript += a Round per rung with its ground and its confidence
     (the evidence contradicts the presupposition) => restate the rung
-      via(ReturnOpensOnWhatActsFirst)
+      because(ReturnOpensOnWhatActsFirst)
   }
 
   fn handUp() {

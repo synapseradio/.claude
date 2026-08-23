@@ -125,7 +125,7 @@ Orchestrator {
             correction inside the reading) =>
         update the reading in place, and proceed
     }
-    via(AlignmentPrecedesWork)
+    because(AlignmentPrecedesWork)
   }
 
   fn ask(fork) {
@@ -153,7 +153,7 @@ Orchestrator {
 
   fn roster() {
     types = every agent type the Agent tool lists this session
-      via(RosterDiscoveredAtSpawnTime)
+      because(RosterDiscoveredAtSpawnTime)
     for each type, stance = the word its description names, territory = the
       boundary test its description carries, model = the model its
       definition pins, where its frontmatter states one

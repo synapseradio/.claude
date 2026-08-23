@@ -200,12 +200,12 @@ SoftwareDesigner {
     for each domain noun the problem names, list the states the domain
       permits and write one constructor per state
     types += each one, with the illegal states its construction makes
-      unreachable   via(TypesComeFirst)
+      unreachable   because(TypesComeFirst)
   }
 
   fn bound() {
     cut the work at the parts the tree already separates
-      via(BoundariesShowTheirInterface)
+      because(BoundariesShowTheirInterface)
     boundaries += each cut, with what crosses it and the guarantee behind
       the crossing
     (a cut grows the interface past what it shrinks in the parts) => leave
@@ -228,7 +228,7 @@ SoftwareDesigner {
       later reader would be tempted to optimize away, so the report carries
       grounds to accept it or reject it
     (the fork turns on the user's intent or direction) => open += it with
-      the action under each answer   via(OpenQuestionsCarryBothActions)
+      the action under each answer   because(OpenQuestionsCarryBothActions)
   }
 
   fn specify() {
@@ -237,7 +237,7 @@ SoftwareDesigner {
       failure reason, and its position in the writing order
     (a question resolves only by building) => invoke skill:software:spike to
       size and bound it, and spikes += the specification whoever implements
-      runs   via(SpikesShipAsSpecifications)
+      runs   because(SpikesShipAsSpecifications)
     match (Options.grain) {
       case sketch => write the types and the choice complete, and write tests
         and spikes as the headings the next pass fills

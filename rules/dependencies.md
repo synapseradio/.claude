@@ -20,8 +20,8 @@ Dependencies {
   }
 
   constraint TheResolverPicksVersions {
-    require you never edit a lockfile by hand
-    require you never pin a version on the CLI: no `<name>@<version>`, no
+    never edit a lockfile by hand
+    never pin a version on the CLI: no `<name>@<version>`, no
       flag that hand-picks a version
     (a version constraint is genuinely required) => write it in config: the
       lockfile's resolved version | a workspace catalog | an `overrides`

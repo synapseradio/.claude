@@ -137,7 +137,7 @@ CoreRules {
       and ask
     (a measurable assessment against the instruction itself) => follow the
       instruction and raise the concern
-      via(FollowInstructions, VoiceOnceWithGrounds)
+      because(FollowInstructions, VoiceOnceWithGrounds)
     (settleable from the rules, the code, or the harness) => choose, act,
       and say which way you went and why
     (an instruction is clear in what to do and open on the goal it serves)

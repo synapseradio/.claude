@@ -124,7 +124,7 @@ Spider {
       case (`crwl` returns a body) => source = crawl4ai
       case (`crwl` returns empty, exits nonzero, or passes the timeout) =>
         fetch with the linkup-fetch tool and source = linkup
-        via(ShellCallsCarryATimeout)
+        because(ShellCallsCarryATimeout)
       default => run `tvly extract "$url"` for the page whose markup the
         other two tools leave unreadable, and source = tavily
     }

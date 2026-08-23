@@ -26,7 +26,7 @@ WritingComments {
       case (it fits a Kind above) => that Kind
       default => none
     }
-    bind it to one point, on its referent, and word it   via(Wording)
+    bind it to one point, on its referent, and word it   because(Wording)
   }
 
   constraint Wording {

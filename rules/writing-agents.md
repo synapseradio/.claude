@@ -36,16 +36,16 @@ WritingAgents {
       with the moment in the trailing clause
     put every demand inside `constraint Name {` or `fn name() {`, and keep
       a bare `Name {` block for a record, a catalog, or a list
-    write a prohibition as `require you never <act>` or `require no
+    write a prohibition as `never <act>` or `require no
       <thing> <happens>`
     give every node a name unique in its file, with no number in front
   }
 
   constraint Pointers {
-    point with `via(Name)` only at a constraint or fn inside the same
+    point with `because(Name)` only at a constraint or fn inside the same
       interface, and name no node of a rules file or another agent
-    end a statement that applies another node with `via(Name)` on its last
-      line, and write `via(Name)` alone on the line closing a fn body where
+    end a statement that applies another node with `because(Name)` on its last
+      line, and write `because(Name)` alone on the line closing a fn body where
       the whole fn runs under it
     write `run(Name)` where a step applies a constraint now, and `execute`
       where a step runs a shell command

@@ -20,15 +20,15 @@ GitCommit {
   }
 
   constraint HooksStand {
-    require you never pass `--no-verify`
-    require you never amend a rejected attempt: fix the cause, commit anew
+    never pass `--no-verify`
+    never amend a rejected attempt: fix the cause, commit anew
     (a hook rejects the commit) => make the rejection the next task
   }
 
   fn commit() {
     verify the staged set with `git diff --cached --name-only`, keeping
       planning artifacts out unless the user asks for them
-      |> compose the message   via(RepoFormatWins)
+      |> compose the message   because(RepoFormatWins)
       |> commit
   }
 

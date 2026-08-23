@@ -34,7 +34,7 @@ SearchTools {
   constraint AFailureBuysALookup {
     AppliesWhen { a tool call just failed }
     stop, and read the error before choosing what to do next
-    require you never attempt again from the recollection that produced the
+    never attempt again from the recollection that produced the
       failure, since a failure against an interface reports a wrong model of
       that interface rather than a wrong keystroke
     next = match (the error) {
@@ -65,7 +65,7 @@ SearchTools {
   fn lookup() {
     name the interface in question and the version the lockfile resolves
       |> read the installed artifact and search the live web together under
-         via(BothSourcesAtOnce)
+         because(BothSourcesAtOnce)
       |> state what the sources settled and what they left open
   }
 }

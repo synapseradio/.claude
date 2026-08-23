@@ -38,7 +38,7 @@ WritingRules {
   }
 
   constraint Forms {
-    write a prohibition as `require you never <act>` where the model acts,
+    write a prohibition as `never <act>` where the model acts,
       and `require no <thing> <happens>` where the ban falls on an artifact
       or a state
     keep `, never X` and `, and never X` for a contrast inside an
@@ -46,8 +46,8 @@ WritingRules {
     write a condition that gates a whole statement as a guard, and keep a
       trailing `unless`, `only where`, `wherever`, or `where` clause for one
       that qualifies the action
-    end a statement that applies another node with `via(Name)` on its last
-      line, and write `via(Name)` alone on the line closing a fn body where
+    end a statement that applies another node with `because(Name)` on its last
+      line, and write `because(Name)` alone on the line closing a fn body where
       the whole fn runs under it
     inside a catalog, write a member that holds a definition as `Name {
       text }` and a member that instructs as an imperative or guard
@@ -67,10 +67,10 @@ WritingRules {
   }
 
   constraint CrossReferences {
-    make each file close from itself: point with `via(Name)` only at a
+    make each file close from itself: point with `because(Name)` only at a
       constraint or fn inside the same interface, and name no node of
       another rules file or agent
-    (you rename a node) => sweep its `via()` pointers in the same change
+    (you rename a node) => sweep its `because()` pointers in the same change
   }
 
   constraint RoutesByKind {

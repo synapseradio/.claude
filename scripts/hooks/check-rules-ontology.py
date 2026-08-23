@@ -6,7 +6,7 @@ interfaces, splits each into statements, and reports any statement that
 reintroduces an inconsistency the ontology settled: a trigger block named
 anything but AppliesWhen, a pointer that resolves to no node or stands
 mid-sentence, a prose pointer (`under X`, `per X`, `X applies`) where
-`via(X)` is the form, a prohibition in a spelling other than `require you
+`because(X)` is the form, a prohibition in a spelling other than `require you
 never` or `require no`, a match head carrying an annotation or no braces,
 two sentences in one statement, a demand outside a constraint or fn, a
 numbered block, a name of another file's node, a duplicated name, an agent
@@ -59,7 +59,7 @@ RE_PROSE_POINTER = re.compile(
 )
 RE_MATCH_HEAD = re.compile(r"\bmatch\s*\(")
 RE_SENTENCE_JOIN = re.compile(r"(?<!\be\.g)(?<!\bi\.e)(?<!\bvs)(?<!\betc)[a-z)`\"']\.\s+[a-z]")
-RE_REQUIRE_OTHER_NEVER = re.compile(r"^require\s+(?!you never\b|no\b|none\b)[^,]*\bnever\b")
+RE_REQUIRE_OTHER_NEVER = re.compile(r"^require\s+(?!never\b|no\b|none\b)[^,]*\bnever\b")
 RE_NEGATED_IMPERATIVE = re.compile(r"^(?!require\b)[a-z]+\s+(no|none)\s+\w")
 RE_APPLIES_BARE = re.compile(r"\bApplies\b(?!When)")
 
@@ -318,12 +318,12 @@ def _targets(expr: str) -> list[str]:
 
 
 def rule_pointer(doc: Document) -> list[Finding]:
-    """A2, A3, D4: every via()/run() names a constraint or fn declared in this file."""
+    """A2, A3, D4: every because()/run() names a constraint or fn declared in this file."""
     out = []
     for st in doc.statements:
         if st.in_example:
             continue
-        text = strip_code_spans(st.text)  # `via(Name)` in backticks quotes the form
+        text = strip_code_spans(st.text)  # `because(Name)` in backticks quotes the form
         for regex, kind in ((RE_VIA, "via"), (RE_RUN, "run")):
             for m in regex.finditer(text):
                 for target in _targets(m.group(1)):
@@ -341,13 +341,13 @@ def rule_pointer(doc: Document) -> list[Finding]:
 
 
 def rule_via_trailing(doc: Document) -> list[Finding]:
-    """A4: via(...) closes the line it governs, and never stands as a line of its own."""
+    """A4: because(...) closes the line it governs, and never stands as a line of its own."""
     out = []
     for st in doc.statements:
-        if st.in_example or "via(" not in st.text:
+        if st.in_example or "because(" not in st.text:
             continue
         if re.fullmatch(r"(via\([^)]*\)\s*)+", st.text.strip()):
-            # a via() line closing a fn or constraint body governs that body
+            # a because() line closing a fn or constraint body governs that body
             siblings = [s for s in doc.statements if s.container == st.container]
             closes_body = (
                 st.container
@@ -360,26 +360,26 @@ def rule_via_trailing(doc: Document) -> list[Finding]:
                         "VIA_TRAILING",
                         doc.path,
                         st.line,
-                        "via(...) alone on a line that closes no fn or constraint body; append it to the statement it governs",
+                        "because(...) alone on a line that closes no fn or constraint body; append it to the statement it governs",
                     )
                 )
             continue
         for offset, raw in enumerate(st.raw_lines):
             line = strip_code_spans(raw).rstrip()
-            if "via(" in line and not re.search(r"via\([^)]*\)(\s+via\([^)]*\))*$", line):
+            if "because(" in line and not re.search(r"via\([^)]*\)(\s+via\([^)]*\))*$", line):
                 out.append(
                     Finding(
                         "VIA_TRAILING",
                         doc.path,
                         st.line + offset,
-                        "via(...) stands mid-line; move it to the end of the line",
+                        "because(...) stands mid-line; move it to the end of the line",
                     )
                 )
     return out
 
 
 def rule_prose_pointer(doc: Document) -> list[Finding]:
-    """A3: `under X`, `per X`, `X applies`, `let X decide` on a declared node; write via(X)."""
+    """A3: `under X`, `per X`, `X applies`, `let X decide` on a declared node; write because(X)."""
     out = []
     for st in doc.statements:
         if st.in_example:
@@ -392,14 +392,14 @@ def rule_prose_pointer(doc: Document) -> list[Finding]:
                         "PROSE_POINTER",
                         doc.path,
                         st.line,
-                        f"points at {name} in prose; write via({name})",
+                        f"points at {name} in prose; write because({name})",
                     )
                 )
     return out
 
 
 def rule_prohibition(doc: Document) -> list[Finding]:
-    """A5: a statement-level prohibition reads `require you never ...` or `require no ...`."""
+    """A5: a statement-level prohibition reads `never ...` or `require no ...`."""
     out = []
     for st in doc.statements:
         if st.in_example or st.construct not in {"require", "imperative", "let"}:
@@ -411,7 +411,7 @@ def rule_prohibition(doc: Document) -> list[Finding]:
                     "PROHIBITION",
                     doc.path,
                     st.line,
-                    "`require ... never` without a comma; write `require you never` or `require no`",
+                    "`require ... never` without a comma; write `never` or `require no`",
                 )
             )
         elif RE_NEGATED_IMPERATIVE.match(t):
@@ -420,7 +420,7 @@ def rule_prohibition(doc: Document) -> list[Finding]:
                     "PROHIBITION",
                     doc.path,
                     st.line,
-                    "prohibition in the imperative (`verb no ...`); write `require you never` or `require no`",
+                    "prohibition in the imperative (`verb no ...`); write `never` or `require no`",
                 )
             )
     return out
