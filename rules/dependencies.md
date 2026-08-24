@@ -13,10 +13,33 @@ paths:
 
 This applies when adding, removing, or updating any package dependency.
 
-When the repo carries its own dependency docs, read them before touching any dependency, and follow them wherever they conflict with this rule.
+```sudolang
+the repo carries its own dependency docs => read them before touching any dependency,
+  and follow them wherever they conflict with this rule
 
-The manager is the tool that writes the lockfile present in the tree: bun for bun.lock or bun.lockb, pnpm for pnpm-lock.yaml, yarn for yarn.lock, npm for package-lock.json, cargo for Cargo.lock, and otherwise the tool that writes that lockfile. When several JavaScript lockfiles are present, prefer bun, then pnpm, then yarn, then npm.
+manager = the tool that writes the lockfile present in the tree:
+  bun.lock or bun.lockb => bun
+  pnpm-lock.yaml => pnpm
+  yarn.lock => yarn
+  package-lock.json => npm
+  Cargo.lock => cargo
+  otherwise => the tool that writes that lockfile
+several JavaScript lockfiles present => prefer bun, then pnpm, then yarn, then npm
 
-The resolver picks versions. Never edit a lockfile by hand. Never pin a version on the CLI: no `<name>@<version>`, no flag that hand-picks a version. When a version constraint is genuinely required, write it in config: the lockfile's resolved version, a workspace catalog, an `overrides` block, or the package's own `package.json` edited as text.
+Constraints {
+  the resolver picks versions
+  require never edit a lockfile by hand
+  require never pin a version on the CLI: no <name>@<version>,
+    no flag that hand-picks a version
+  a version constraint genuinely required => write it in config: the lockfile's
+    resolved version, a workspace catalog, an overrides block, or the package's
+    own package.json edited as text
+}
 
-To change a dependency, detect the manager, run the manager's own add or remove command, such as `bun add <name>`, `bun add -D <name>`, `pnpm add <name>`, or `npm install <name>`, then install and audit.
+fn changeDependency {
+  detect the manager
+  run the manager's own add or remove command, such as `bun add <name>`,
+    `bun add -D <name>`, `pnpm add <name>`, or `npm install <name>`
+  install and audit
+}
+```

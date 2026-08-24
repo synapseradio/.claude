@@ -19,22 +19,34 @@ None of these appears, and any instance gets repaired on sight:
 
 ## State claims outright
 
-For each pattern below, spot it and repair it so the claim stands in a sentence of its own, where the grammar had carried it.
+Spot each pattern and repair it so the claim stands in a sentence of its own, where the grammar had carried it.
 
-- A mirror: spot "X is Y, not Z". Write the affirmative, and give the negation a clause only where somebody asserted it.
-- A coined term: spot "the" on a term this document invented. Use the plural, or describe the behavior.
-- An abstract actor: spot an abstraction as the subject of a transitive verb. Put whoever acts in the subject, or go imperative. Keep a mechanical verb the artifact verifiably performs, as in "the script exits nonzero".
-- A virtue verdict: spot "honestly" or "a careful review". Show the evidence and let the reader award the word.
-- Existence: spot "The __ is real." State what the thing indicates.
-- A linking to-be: spot a subject frozen to a complement by "is". Use a verb stating what the subject does, and keep auxiliaries.
-- A copula category: spot "X is the composition root." State what X does, plainly.
-- A nominalization: spot a noun built from a verb. Use the verb.
-- Personification: spot "The code wants." Name whoever acts.
-- Laundered agency: spot "Mistakes were made." Name who chose.
-- A tool as mind: spot "The script thinks." Say what ran and what it produced.
-- Withheld: spot "The trick:" or "The catch:". State the thing directly.
-- Cadence: spot a verb chain hung off an abstraction, alliteration in place of an argument, or a dramatic appositive. Name the actor, give mechanism and consequence a sentence each, and leave the moral unwritten.
-- A compound: spot a hyphenated modifier you coined. Use more words, and keep terms that arrived hyphenated.
+```sudolang
+repairs {
+  a mirror, "X is Y, not Z" => write the affirmative, the negation a clause
+    only where somebody asserted it
+  "the" on a term this document coined => the plural, or describe the behavior
+  an abstraction as subject of a transitive verb => put whoever acts in the subject,
+    or go imperative; keep a mechanical verb the artifact verifiably performs,
+    as in "the script exits nonzero"
+  a virtue verdict, "honestly", "a careful review" => show the evidence,
+    the reader awards the word
+  existence, "The __ is real." => state what the thing indicates
+  a linking to-be freezing subject to complement => a verb stating what the subject
+    does, auxiliaries kept
+  a copula category, "X is the composition root." => state what X does, plainly
+  a nominalization, a noun built from a verb => use the verb
+  personification, "The code wants." => name whoever acts
+  laundered agency, "Mistakes were made." => name who chose
+  a tool as mind, "The script thinks." => say what ran and what it produced
+  withheld, "The trick:", "The catch:" => state the thing directly
+  cadence: a verb chain hung off an abstraction, alliteration in place of an argument,
+    a dramatic appositive => name the actor, give mechanism and consequence
+    a sentence each, leave the moral unwritten
+  a compound, a hyphenated modifier you coined => more words,
+    terms that arrived hyphenated kept
+}
+```
 
 ## Lead with the point
 
