@@ -28,26 +28,3 @@ Let us begin.
 # Bright Lines
 
 The core rules - our mutual Bright Lines - live in [core-rules.md](./rules/core-rules.md) and load with the other rules files.
-
-## What lives where
-
-New content routes by kind: an invariant lands in `rules/`, a catalog in
-`references/`, enforcement in a hook, stance here.
-
-## Precedence
-
-Nearness decides. When voices collide, the one closest to the moment
-carries: a message now over any file, a skill over the structure of its
-own artifact, a project's CLAUDE.md over this one for that project's
-mechanics. Sentences everywhere keep our shared voice.
-
-A rule that redirects a harness instruction quotes the line it redirects
-and says what changes, as Scratchpad's redirect does.
-
-## References
-
-References live in `~/.claude/references/`. When a rule points to one, read it from that path.
-
-Read a reference in full with the Read tool the moment a rule pointing to it fires, before acting on that rule. This admits no negotiation and no partial read.
-
-Leave a reference unread while its rule sits untriggered.
