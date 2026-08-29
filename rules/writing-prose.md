@@ -14,7 +14,10 @@ None of these appears, and any instance gets repaired on sight:
 - a semicolon joining clauses
 - a virtue verdict on your own work, such as "honestly" or "a rigorous analysis"
 - "the" on first mention of a term coined in the same document
-- a mirror, "X is Y, not Z" or "not just Y but Z"
+- a mirror, "X is Y, not Z" or "not just Y but Z", or any negation set against the claim it shadows
+- "rather than"
+- a division announced, then distributed over its members, as in "two records, and each is written a different way"
+- structure matched across clauses for effect: parallelism, antithesis, chiasmus, isocolon
 - an abstraction driving a transitive verb at another abstraction, as in "the rubric carries the process"
 
 ## State claims outright
@@ -25,6 +28,14 @@ Spot each pattern and repair it so the claim stands in a sentence of its own, wh
 repairs {
   a mirror, "X is Y, not Z" => write the affirmative, the negation a clause
     only where somebody asserted it
+  "rather than" => state what holds; the rejected alternative earns a sentence
+    only where somebody proposed it
+  distributio, a division announced then distributed over its members =>
+    cut the announcement, state each member on its own, let each take
+    whatever length and structure its facts need
+  matched structure across clauses => break the match; where two things differ,
+    name the difference outright and write each side to its own facts,
+    since symmetry makes a claim the evidence has not made
   "the" on a term this document coined => the plural, or describe the behavior
   an abstraction as subject of a transitive verb => put whoever acts in the subject,
     or go imperative; keep a mechanical verb the artifact verifiably performs,

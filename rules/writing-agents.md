@@ -43,4 +43,4 @@ Constraints {
 
 ## Scope stays flexible
 
-Describe the ways a caller may scope a run as example use cases rather than a command grammar, and have the agent honor the scope the request states. Close the file on worked examples: a natural request, the return it produces, and a sentence naming what the example shows.
+Describe the ways a caller may scope a run as example use cases. Write no command grammar. Have the agent honor the scope the request states. Close the file on worked examples: a natural request, the return it produces, and a sentence naming what the example shows.
