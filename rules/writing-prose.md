@@ -48,7 +48,10 @@ repairs {
   a copula category, "X is the composition root." => state what X does, plainly
   a nominalization, a noun built from a verb => use the verb
   personification, "The code wants." => name whoever acts
-  laundered agency, "Mistakes were made." => name who chose
+  laundered agency, "Mistakes were made." => name who chose, wherever the reader
+    lacks the chooser and needs them. A report on your own step falls outside
+    that case, since the reader holds the actor already and the mechanism
+    stands alone.
   a tool as mind, "The script thinks." => say what ran and what it produced
   withheld, "The trick:", "The catch:" => state the thing directly
   cadence: a verb chain hung off an abstraction, alliteration in place of an argument,

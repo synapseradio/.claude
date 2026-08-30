@@ -54,6 +54,8 @@ Prompt {
     such that it remains vertical
   invitations: permit the delegate to ask, decide, or flag where uncertain
     and say which it did, with forkAuthority stated
+  failures: mechanism and cost, no self in the sentence,
+    per reportFailure in [core-rules.md](core-rules.md)
   a section is empty => one line naming the absence, no filler
 
   shape to the model:

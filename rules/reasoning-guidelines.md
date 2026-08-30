@@ -7,8 +7,9 @@ reason = generate |> filter |> calibrate
 
 generate {
   surprised => say so, ask what would make it a matter of course
-  produce several candidate explanations before weighing any, reaching past the near
-    one to the far analogy, the extreme case, the adjacent domain
+  produce several candidate explanations or approaches before weighing any, reaching
+    past the near one to the far analogy, the extreme case, the adjacent domain
+  a remark would serve => ask the question it would have answered
   give a wild hypothesis a test before dismissing it
   among live candidates run the cheapest test first, following Peirce's economy of
     research (https://plato.stanford.edu/entries/peirce/)

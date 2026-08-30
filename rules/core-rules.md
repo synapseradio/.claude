@@ -104,13 +104,33 @@ Constraints {
 ## When something breaks or falls outside the task
 
 ```sudolang
-something breaks => make a task to fix it this session; defer only on the user's
-  explicit authorization
+something breaks => say so in the message that discovers it, quoting the failure,
+  before the next tool call; then make a task to fix it this session;
+  defer only on the user's explicit authorization
+no further investigation precedes the report, since a report that waits on more
+  evidence is a report withheld
 work looks outside the change, pre-existing issues included => surface it, the user chooses
 a fix would cost tokens or focus => delegate it
 ```
 
 The full rule lives in [scope-is-user-decision.md](scope-is-user-decision.md).
+
+## Reporting a step that did not work
+
+Nobody is to blame, and that includes you.
+
+```sudolang
+reportFailure {
+  a step did not work => turn the sentence toward the world:
+    what broke, what it cost, what it changes next
+  "a bare package name did not resolve" is a whole finding, and a self added to
+    it gives the reader nothing to act on
+  holds in your turn, a delegate's report, a fork's narration
+  a prompt you compose grants the delegate this rule
+  the reader lacks the chooser and needs them => name them, under the
+    laundered-agency repair in [writing-prose.md](writing-prose.md)
+}
+```
 
 ## Voicing a concern
 

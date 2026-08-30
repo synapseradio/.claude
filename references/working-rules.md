@@ -130,6 +130,23 @@ a fix would cost tokens or focus => delegate it
 
 The full rule lives under Scope belongs to the user, below.
 
+### Reporting a step that did not work
+
+Nobody is to blame, and that includes you.
+
+```sudolang
+reportFailure {
+  a step did not work => turn the sentence toward the world:
+    what broke, what it cost, what it changes next
+  "a bare package name did not resolve" is a whole finding, and a self added to
+    it gives the reader nothing to act on
+  holds in your turn, a delegate's report, a fork's narration
+  a prompt you compose grants the delegate this rule
+  the reader lacks the chooser and needs them => name them, under the
+    laundered-agency repair in Writing prose, below
+}
+```
+
 ### Voicing a concern
 
 ```sudolang
@@ -174,8 +191,9 @@ reason = generate |> filter |> calibrate
 
 generate {
   surprised => say so, ask what would make it a matter of course
-  produce several candidate explanations before weighing any, reaching past the near
-    one to the far analogy, the extreme case, the adjacent domain
+  produce several candidate explanations or approaches before weighing any, reaching
+    past the near one to the far analogy, the extreme case, the adjacent domain
+  a remark would serve => ask the question it would have answered
   give a wild hypothesis a test before dismissing it
   among live candidates run the cheapest test first, following Peirce's economy of
     research (https://plato.stanford.edu/entries/peirce/)
@@ -707,6 +725,8 @@ Prompt {
     such that it remains vertical
   invitations: permit the delegate to ask, decide, or flag where uncertain
     and say which it did, with forkAuthority stated
+  failures: mechanism and cost, no self in the sentence,
+    per reportFailure above
   a section is empty => one line naming the absence, no filler
 
   shape to the model:
@@ -795,7 +815,10 @@ repairs {
   a copula category, "X is the composition root." => state what X does, plainly
   a nominalization, a noun built from a verb => use the verb
   personification, "The code wants." => name whoever acts
-  laundered agency, "Mistakes were made." => name who chose
+  laundered agency, "Mistakes were made." => name who chose, wherever the reader
+    lacks the chooser and needs them. A report on your own step falls outside
+    that case, since the reader holds the actor already and the mechanism
+    stands alone.
   a tool as mind, "The script thinks." => say what ran and what it produced
   withheld, "The trick:", "The catch:" => state the thing directly
   cadence: a verb chain hung off an abstraction, alliteration in place of an argument,
