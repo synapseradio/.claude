@@ -2,11 +2,14 @@
 
     python3 -m pytest test_verify_marks.py -v
 
-Each test drives the script through stdin the way the Stop hook does, with a
-JSONL transcript written to a temporary file where the case needs one.
+Each test drives the script through stdin the way the harness does, with a
+JSONL transcript written to a temporary file where the case needs one. The
+batch tests point VERIFY_MARKS_STATE_DIR at a temporary directory, so no run
+touches the state the hook keeps for real sessions.
 """
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -36,13 +39,14 @@ def assistant_tool_use():
     return entry("assistant", [{"type": "tool_use", "id": "t1", "name": "Read", "input": {}}])
 
 
-def run_hook(payload, *args):
+def run_hook(payload, *args, env=None):
     completed = subprocess.run(
         [sys.executable, str(SCRIPT), *args],
         input=json.dumps(payload),
         capture_output=True,
         text=True,
         check=False,
+        env={**os.environ, **(env or {})},
     )
     return completed.returncode, completed.stdout
 
@@ -305,6 +309,115 @@ class VerifyMarksStopHook(unittest.TestCase):
             }
         )
         self.assertIsNone(result, "a [^?] rides up to the caller rather than drawing a notice")
+
+
+class VerifyMarksBatchHook(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.state = str(Path(self._tmp.name) / "state")
+
+    def transcript(self, *lines):
+        path = Path(self._tmp.name) / "session.jsonl"
+        path.write_text("\n".join(lines) + "\n")
+        return str(path)
+
+    def batch(self, transcript, session_id="session-one"):
+        code, out = run_hook(
+            {
+                "hook_event_name": "PostToolBatch",
+                "session_id": session_id,
+                "transcript_path": transcript,
+                "tool_calls": [],
+            },
+            "--batch",
+            env={"VERIFY_MARKS_STATE_DIR": self.state},
+        )
+        self.assertEqual(code, 0)
+        return json.loads(out) if out.strip() else None
+
+    def context_of(self, result):
+        self.assertIsNotNone(result)
+        self.assertNotIn("decision", result, "a batch pass never blocks the loop")
+        specific = result["hookSpecificOutput"]
+        self.assertEqual(specific["hookEventName"], "PostToolBatch")
+        return specific["additionalContext"]
+
+    def test_batch_reports_a_marked_line_written_earlier_in_the_open_turn(self):
+        transcript = self.transcript(
+            user_text("do the thing"),
+            assistant_text("The endpoint has no other callers [?]."),
+            assistant_tool_use(),
+            tool_result(),
+        )
+        context = self.context_of(self.batch(transcript))
+        self.assertIn("The endpoint has no other callers [?].", context)
+
+    def test_batch_stays_silent_when_the_open_turn_carries_no_mark(self):
+        transcript = self.transcript(
+            user_text("do the thing"),
+            assistant_text("Every claim here carries its source."),
+            assistant_tool_use(),
+            tool_result(),
+        )
+        self.assertIsNone(self.batch(transcript), "an unmarked turn draws no context")
+
+    def test_batch_reports_a_line_once_per_session(self):
+        transcript = self.transcript(
+            user_text("do the thing"),
+            assistant_text("The endpoint has no other callers [?]."),
+            assistant_tool_use(),
+            tool_result(),
+        )
+        self.assertIsNotNone(self.batch(transcript))
+        self.assertIsNone(
+            self.batch(transcript),
+            "a line already handed back must not repeat on every later batch",
+        )
+
+    def test_batch_reports_a_mark_that_appeared_since_the_last_batch(self):
+        first = self.transcript(
+            user_text("do the thing"),
+            assistant_text("The endpoint has no other callers [?]."),
+        )
+        self.batch(first)
+        second = self.transcript(
+            user_text("do the thing"),
+            assistant_text("The endpoint has no other callers [?]."),
+            assistant_tool_use(),
+            tool_result(),
+            assistant_text("The migration ran on every shard [.?]."),
+        )
+        context = self.context_of(self.batch(second))
+        self.assertIn("The migration ran on every shard [.?].", context)
+        self.assertNotIn("no other callers", context, "the reported line stays reported")
+
+    def test_batch_reports_the_same_line_again_under_a_different_session(self):
+        transcript = self.transcript(
+            user_text("do the thing"),
+            assistant_text("The endpoint has no other callers [?]."),
+        )
+        self.batch(transcript, session_id="session-one")
+        context = self.context_of(self.batch(transcript, session_id="session-two"))
+        self.assertIn("The endpoint has no other callers [?].", context)
+
+    def test_batch_routes_a_caret_mark_to_ask_user_question(self):
+        transcript = self.transcript(
+            user_text("do the thing"),
+            assistant_text("I read the request as covering staging only [^?]."),
+        )
+        context = self.context_of(self.batch(transcript))
+        self.assertIn("I read the request as covering staging only [^?].", context)
+        self.assertIn("AskUserQuestion", context)
+
+    def test_batch_stays_silent_without_a_readable_transcript(self):
+        code, out = run_hook(
+            {"hook_event_name": "PostToolBatch", "session_id": "session-one"},
+            "--batch",
+            env={"VERIFY_MARKS_STATE_DIR": self.state},
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(out.strip(), "", "no transcript means nothing to scan")
 
 
 if __name__ == "__main__":

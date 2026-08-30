@@ -305,6 +305,18 @@
         ]
       }
     ],
+    "PostToolBatch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3.14 $HOME/.claude/scripts/hooks/verify-marks.py --batch",
+            "timeout": 5,
+            "statusMessage": "Scanning the open turn for unverified marks"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

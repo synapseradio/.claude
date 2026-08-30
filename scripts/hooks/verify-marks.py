@@ -25,11 +25,26 @@ https://docs.claude.com/en/docs/claude-code/hooks
 Run with `--delegate` from SubagentStop, where a `[^?]` rides up to the
 caller untouched: a subagent reaches no user, so the question it stands in
 for travels in the report rather than through AskUserQuestion.
+
+Run with `--batch` from PostToolBatch, which fires after each batch of tool
+calls resolves and hands back `additionalContext` before the next model
+call. A turn that runs long writes a mark many tool calls before it ends, so
+this pass reaches the claim while the turn can still act on it, where the
+Stop pass reaches it only once the turn is over. It never blocks, since
+stopping the agentic loop mid-task costs more than the claim it flags. A
+per-session file under `~/.claude/.tmp/verify-marks` records the lines
+already handed back, so a line draws one report instead of one per batch for
+the rest of the session; a sentence repeated verbatim in a later turn
+therefore reaches the user through the Stop pass alone. Point
+VERIFY_MARKS_STATE_DIR elsewhere to keep a run out of that state.
 """
 
+import contextlib
 import json
+import os
 import re
 import sys
+import time
 from pathlib import Path
 
 MARKS = ("[?]", "[.?]", "[^?]")
@@ -39,6 +54,9 @@ MARK_MEANINGS = {
     "[.?]": "secondhand and ungrounded",
     "[^?]": "awaits an answer only the user supplies",
 }
+
+STATE_ENV = "VERIFY_MARKS_STATE_DIR"
+STALE_SECONDS = 24 * 60 * 60
 
 
 def text_blocks(message):
@@ -220,6 +238,72 @@ def build_reason(lines_by_mark, carried=()):
     )
 
 
+def state_dir():
+    override = os.environ.get(STATE_ENV)
+    if override:
+        return Path(override)
+    return Path.home() / ".claude" / ".tmp" / "verify-marks"
+
+
+def state_path(directory, session_id):
+    safe = "".join(c for c in session_id if c.isalnum() or c in "-_")
+    return directory / f"{safe or 'session'}.json"
+
+
+def prune(directory, now):
+    for path in directory.glob("*.json"):
+        try:
+            if now - path.stat().st_mtime > STALE_SECONDS:
+                path.unlink()
+        except OSError:
+            continue
+
+
+def read_reported(path):
+    try:
+        reported = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return []
+    return reported if isinstance(reported, list) else []
+
+
+def build_context(lines_by_mark):
+    found = ", ".join(lines_by_mark)
+    listing = "\n\n".join(
+        f"Marked {mark} ({MARK_MEANINGS[mark]}):\n" + "\n".join(f"- {line}" for line in lines)
+        for mark, lines in lines_by_mark.items()
+    )
+    steps = []
+    if "[?]" in lines_by_mark or "[.?]" in lines_by_mark:
+        steps.append(
+            "Ground each claim marked [?] or [.?] while the turn is still "
+            "open. External facts: use a purpose-built research tool (the "
+            "tvly CLI, the linkup MCP tools, context7 for library docs). "
+            "Claims about local code or files: read the actual source with "
+            "Read/Grep. Then give the source in your next message, a URL "
+            "for an external fact and a path:line for local code, and "
+            "correct or withdraw any claim the evidence fails to support."
+        )
+    if "[^?]" in lines_by_mark:
+        steps.append(
+            "For each line marked [^?], call AskUserQuestion with the "
+            "question the mark stands in for and the options you would "
+            "offer, before further work rests on the answer. Looking the "
+            "premise up settles nothing: only the user's answer does."
+        )
+    steps.append(
+        "A flagged line that refers to a mark, rather than claiming under "
+        "one, needs no lookup. Name the mark in words and say what became of it."
+    )
+    numbered = "\n".join(f"{n}. {step}" for n, step in enumerate(steps, start=1))
+    return (
+        f"Earlier in this turn you wrote lines marked {found}, each still "
+        f"awaiting resolution:\n\n{listing}\n\n"
+        "Resolve each one now, so the Stop pass at the end of the turn "
+        f"finds nothing left standing.\n{numbered}"
+    )
+
+
 def build_notice(lines_by_mark):
     listing = "\n".join(f"{mark} {line}" for mark, lines in lines_by_mark.items() for line in lines)
     return (
@@ -228,11 +312,7 @@ def build_notice(lines_by_mark):
     )
 
 
-def main():
-    try:
-        payload = json.load(sys.stdin)
-    except ValueError:
-        sys.exit(0)
+def run_stop(payload, delegate):
     # The harness flushes the turn's assistant entries to the transcript
     # AFTER Stop hooks run, so the transcript alone always scans one turn
     # behind. The payload's last_assistant_message carries the final reply
@@ -243,9 +323,6 @@ def main():
     if transcript and Path(transcript).exists():
         blocks = last_turn_text(transcript) + blocks
     lines_by_mark = marked_lines(blocks)
-    # argv carries the mode rather than the payload, so the wiring in
-    # settings.json alone decides which event this run answers.
-    delegate = "--delegate" in sys.argv[1:]
     carried = lines_by_mark.pop("[^?]", []) if delegate else []
     if not lines_by_mark:
         sys.exit(0)
@@ -255,6 +332,62 @@ def main():
     reason = build_reason(lines_by_mark, carried)
     json.dump({"decision": "block", "reason": reason}, sys.stdout)
     sys.exit(0)
+
+
+def run_batch(payload):
+    # PostToolBatch carries no last_assistant_message, and it fires after a
+    # tool result the harness has already written, so the turn's earlier
+    # assistant text stands in the transcript by now.
+    transcript = payload.get("transcript_path", "")
+    if not transcript or not Path(transcript).exists():
+        sys.exit(0)
+    lines_by_mark = marked_lines(last_turn_text(transcript))
+    directory = state_dir()
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        sys.exit(0)
+    prune(directory, time.time())
+    path = state_path(directory, payload.get("session_id") or "session")
+    reported = read_reported(path)
+    fresh = {}
+    for mark, lines in lines_by_mark.items():
+        unseen = [line for line in lines if line not in reported]
+        if unseen:
+            fresh[mark] = unseen
+    if not fresh:
+        sys.exit(0)
+    # A line carrying two marks lands under each of them, so the membership
+    # check keeps it from entering the record twice.
+    for lines in fresh.values():
+        for line in lines:
+            if line not in reported:
+                reported.append(line)
+    with contextlib.suppress(OSError):
+        path.write_text(json.dumps(reported))
+    json.dump(
+        {
+            "hookSpecificOutput": {
+                "hookEventName": "PostToolBatch",
+                "additionalContext": build_context(fresh),
+            }
+        },
+        sys.stdout,
+    )
+    sys.exit(0)
+
+
+def main():
+    try:
+        payload = json.load(sys.stdin)
+    except ValueError:
+        sys.exit(0)
+    # argv carries the mode rather than the payload, so the wiring in
+    # settings.json alone decides which event this run answers.
+    args = sys.argv[1:]
+    if "--batch" in args:
+        run_batch(payload)
+    run_stop(payload, delegate="--delegate" in args)
 
 
 if __name__ == "__main__":

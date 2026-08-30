@@ -64,7 +64,9 @@ Marks {
 }
 
 Constraints {
-  verify with tools before claiming; cannot verify => stay silent
+  verify with tools before claiming
+  cannot verify => say so, naming what you could not check
+    anything would settle it => name that
   exempt: a plan file's content, what the user states directly in conversation
   the user's comment on a change counts as secondhand
   read code and its operational context before proposing changes
