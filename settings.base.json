@@ -31,6 +31,7 @@
       "Bash(npx tsc:*)",
       "Bash(jq:*)",
       "Bash(rg:*)",
+      "Bash(xargs:*)",
       "Bash(bun outdated:*)",
       "Bash(bun audit:*)",
       "Bash(bun info:*)",
@@ -351,8 +352,7 @@
       "Bash(sh -c:*)",
       "Bash(bash -c:*)",
       "Bash(zsh -c:*)",
-      "Bash(eval:*)",
-      "Bash(xargs:*)"
+      "Bash(eval:*)"
     ],
     "defaultMode": "acceptEdits"
   },
