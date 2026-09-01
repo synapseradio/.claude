@@ -164,6 +164,8 @@
       "Bash(openspec validate:*)"
     ],
     "deny": [
+      "EnterWorktree",
+      "ExitWorktree",
       "WebFetch",
       "WebSearch",
       "Read(~/.kube/**)",
