@@ -10,7 +10,7 @@ Constraints {
     remove with `wt remove`, merge back with `wt merge $target`
   the session's working directory stays at the launch checkout:
     address files in the worktree by the absolute path wt prints
-  the worktrunk config, its pre-start hooks included, lives in
-    ~/.dotfiles/.config/worktrunk/
 }
 ```
+
+The worktrunk config, its pre-start hooks included, lives in `~/.dotfiles/.config/worktrunk/`.
