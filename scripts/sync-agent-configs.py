@@ -4,7 +4,9 @@
 `~/.claude` holds the source of truth: `CLAUDE.md`, the rules under
 `rules/`, and the agent definitions under `agents/`. pi and opencode read
 their own formats from their own directories. This script generates those,
-so the three agents carry the same behavioral configuration.
+so the three agents carry the same behavioral configuration, and renders
+`CLAUDE.md` plus the always-on rules into `references/working-rules.md`
+in the order `WORKING_RULES_ORDER` names.
 
 Run it to write, or with `--check` to compare without writing. `--check`
 exits nonzero when any generated file differs from what a write would
@@ -124,6 +126,81 @@ def build_agents_markdown(claude_md: Path, rules_dir: Path) -> str:
         for rule in unconditional_rules(rules_dir)
     ]
     return rewrite_paths("\n\n".join(section.strip("\n") for section in sections) + "\n")
+
+
+WORKING_RULES_ORDER = (
+    "core-rules",
+    "reasoning-guidelines",
+    "ask-user-before-assuming",
+    "scope-is-user-decision",
+    "claims",
+    "epistemic-marks",
+    "writing-prose",
+    "writing-comments",
+    "unasked-asides",
+    "writing-code",
+    "data-modeling",
+    "repairing",
+    "debugging",
+    "search-tools",
+    "structural-search",
+    "never-use-sed",
+    "shell-quoting",
+    "waiting-on-processes",
+    "git-commit",
+    "worktrees",
+    "agent-delegation",
+    "writing-plans",
+    "scratchpad",
+    "persistent-memory",
+)
+
+HEADING = re.compile(r"#{1,6} ")
+
+
+def shift_headings(text: str) -> str:
+    """Every markdown heading one level deeper, with fenced code left as it stands."""
+
+    shifted = []
+    fence: str | None = None
+    for line in text.split("\n"):
+        if fence is None and line.startswith(("```", "~~~")):
+            fence = line[:3]
+        elif fence is not None and line.startswith(fence):
+            fence = None
+        elif fence is None and HEADING.match(line):
+            line = "#" + line
+        shifted.append(line)
+    return "\n".join(shifted)
+
+
+def ordered_rules(rules_dir: Path, order: tuple[str, ...]) -> list[Path]:
+    """The unconditional rules in the given order.
+
+    Raises ValueError naming every stem the order and the directory disagree
+    on, so a new rule lands in the order before a run silently drops it.
+    """
+
+    present = {rule.stem: rule for rule in unconditional_rules(rules_dir)}
+    unlisted = sorted(set(present) - set(order))
+    absent = [stem for stem in order if stem not in present]
+    if unlisted or absent:
+        raise ValueError(
+            f"working rules order disagrees with {rules_dir}: unlisted {unlisted}, absent {absent}"
+        )
+    return [present[stem] for stem in order]
+
+
+def build_working_rules(claude_md: Path, rules_dir: Path, order: tuple[str, ...]) -> str:
+    """CLAUDE.md and the always-on rules as one document, headings under its title."""
+
+    sections = [parse_document(claude_md.read_text(encoding="utf-8")).body]
+    sections += [
+        parse_document(rule.read_text(encoding="utf-8")).body
+        for rule in ordered_rules(rules_dir, order)
+    ]
+    body = "\n\n".join(shift_headings(section.strip("\n")) for section in sections)
+    return rewrite_paths("# Working Rules\n\n" + body + "\n")
 
 
 def rule_instructions(rules_dir: Path) -> list[str]:
@@ -285,10 +362,15 @@ class Targets:
     claude_home: Path
     pi_home: Path
     opencode_home: Path
+    working_rules_order: tuple[str, ...] = WORKING_RULES_ORDER
 
     @property
     def claude_md(self) -> Path:
         return self.claude_home / "CLAUDE.md"
+
+    @property
+    def working_rules(self) -> Path:
+        return self.claude_home / "references" / "working-rules.md"
 
     @property
     def rules_dir(self) -> Path:
@@ -364,6 +446,10 @@ def build_plan(targets: Targets = DEFAULT_TARGETS) -> Plan:
             build_agents_markdown(targets.claude_md, targets.rules_dir),
         ),
         GeneratedFile(targets.opencode_home / "AGENTS.md", build_preamble(targets.claude_md)),
+        GeneratedFile(
+            targets.working_rules,
+            build_working_rules(targets.claude_md, targets.rules_dir, targets.working_rules_order),
+        ),
     ]
     keys = [
         GeneratedKey(

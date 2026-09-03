@@ -190,6 +190,96 @@ class TestBuildAgentsMarkdown:
         )
 
 
+class TestBuildWorkingRules:
+    def _tree(self, tmp_path: pathlib.Path) -> tuple[pathlib.Path, pathlib.Path]:
+        claude_md = _write(
+            tmp_path / "CLAUDE.md",
+            "<hello>\nHi.\n</hello>\n\n# Stance\n\nPlay, per [x](./rules/alpha.md).\n",
+        )
+        rules = tmp_path / "rules"
+        _write(
+            rules / "alpha.md",
+            "# Alpha\n\nApplies always.\n\n## Part\n\n```sudolang\n# inside a fence\n```\n\n\n",
+        )
+        _write(rules / "gated.md", '---\npaths:\n  - "**/*.sh"\n---\n\n# Gated\n')
+        _write(rules / "zeta.md", "# Zeta\n\nZ.\n")
+        return claude_md, rules
+
+    def test_render_opens_on_its_title_then_the_preamble(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+
+        built = sync.build_working_rules(claude_md, rules, ("alpha", "zeta"))
+
+        assert built.startswith("# Working Rules\n\n<hello>\nHi.\n</hello>\n\n## Stance\n\n"), (
+            "the document owns the one h1, so CLAUDE.md's headings sit one level under it"
+        )
+
+    def test_rule_headings_shift_one_level(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+
+        built = sync.build_working_rules(claude_md, rules, ("alpha", "zeta"))
+
+        assert "\n## Alpha\n\nApplies always.\n\n### Part\n" in built, (
+            "a rule's h1 becomes a section and its h2 a subsection of that section"
+        )
+        assert "\n# Alpha\n" not in built, "no rule keeps an h1 beside the document's title"
+
+    def test_hash_inside_a_fence_survives(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+
+        built = sync.build_working_rules(claude_md, rules, ("alpha", "zeta"))
+
+        assert "```sudolang\n# inside a fence\n```" in built, (
+            "a # opening a line inside a code fence is code, not a heading"
+        )
+
+    def test_rules_follow_the_given_order(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+
+        built = sync.build_working_rules(claude_md, rules, ("zeta", "alpha"))
+
+        assert built.index("## Zeta") < built.index("## Alpha"), (
+            "the render reads as one document, so the caller orders it by topic, not by filename"
+        )
+
+    def test_path_scoped_rule_stays_out(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+
+        built = sync.build_working_rules(claude_md, rules, ("alpha", "zeta"))
+
+        assert "Gated" not in built, "the render carries the rules that load every session"
+
+    def test_sections_join_on_one_blank_line_and_the_file_ends_on_one_newline(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+
+        built = sync.build_working_rules(claude_md, rules, ("alpha", "zeta"))
+
+        assert "```\n\n## Zeta\n\nZ.\n" in built and built.endswith("Z.\n"), (
+            "trailing blank lines in a source must not vary the joint"
+        )
+
+    def test_relative_link_in_the_preamble_resolves(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+
+        built = sync.build_working_rules(claude_md, rules, ("alpha", "zeta"))
+
+        assert f"[x]({HOME}/.claude/rules/alpha.md)" in built, (
+            "the render sits under references/, where a link relative to ~/.claude breaks"
+        )
+
+    def test_order_naming_no_file_reports_the_stem(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+
+        with pytest.raises(ValueError, match="ghost"):
+            sync.build_working_rules(claude_md, rules, ("alpha", "zeta", "ghost"))
+
+    def test_unconditional_rule_missing_from_the_order_reports_the_stem(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+
+        with pytest.raises(ValueError, match="zeta"):
+            sync.build_working_rules(claude_md, rules, ("alpha",))
+
+
 AGENT_BODY = "Scout {\n  Options {\n    budget: 1..200 = 40\n  }\n}\n"
 
 
@@ -531,10 +621,20 @@ def targets(tmp_path):
         claude_home=claude_home,
         pi_home=tmp_path / "pi" / "agent",
         opencode_home=tmp_path / "config" / "opencode",
+        working_rules_order=("alpha",),
     )
 
 
 class TestBuildPlan:
+    def test_working_rules_render_lands_under_references(self, targets):
+        plan = sync.build_plan(targets)
+        by_path = {f.path: f.content for f in plan.files}
+        written = by_path[targets.claude_home / "references" / "working-rules.md"]
+
+        assert "Stance." in written and "Alpha {" in written and "Gated {" not in written, (
+            "the render carries the preamble and every always-on rule, and no path-scoped one"
+        )
+
     def test_pi_agents_markdown_carries_the_preamble_and_the_unconditional_rules(self, targets):
         plan = sync.build_plan(targets)
         by_path = {f.path: f.content for f in plan.files}

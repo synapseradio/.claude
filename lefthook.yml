@@ -24,12 +24,15 @@ pre-commit:
     # the very rule files this reads. The script regenerates every output
     # from scratch, so it takes no file arguments; the glob only decides
     # whether a commit touched anything the generated files depend on.
+    # stage_fixed stages only the staged files the glob matched, so the one
+    # output living in this repository is staged by hand.
     - name: sync-agent-configs
       glob:
         - "rules/*.md"
         - "agents/*.md"
         - "CLAUDE.md"
-      run: python3.14 scripts/sync-agent-configs.py
+        - "scripts/sync-agent-configs.py"
+      run: python3.14 scripts/sync-agent-configs.py && git add references/working-rules.md
 
 # pre-push gate: re-runs the check-only side of every linter against the
 # diff being pushed. shellcheck and shfmt -d have no autofix; ruff check

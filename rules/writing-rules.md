@@ -16,7 +16,7 @@ Write every sentence and block line as an instruction to Claude: an imperative, 
 
 For a path-scoped rule, keep `paths:` frontmatter whose globs match file paths, and still name the activity in the applies-when sentence.
 
-`~/.claude/references/working-rules.md` renders the always-on rules into one document. A change to an always-on rule lands in the rule's file and in that document in the same change.
+The pre-commit hook renders CLAUDE.md and the always-on rules into `~/.claude/references/working-rules.md` through `scripts/sync-agent-configs.py`, in the order its `WORKING_RULES_ORDER` tuple names, so edit the render never and add a new always-on rule's file stem to that tuple in the same change.
 
 ## Five qualities
 
