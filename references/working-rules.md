@@ -891,78 +891,113 @@ Constraints {
 
 This applies to all prose, in every register: artifacts, chat replies, comments, commit messages.
 
-### Never
+Fix where a reader's attention lands, and leave how you sound to yourself. Write the point first, the actor in the subject, and the claim in words. Take that as the contract of this space and as one tradition among those writers bring here, since each tradition reads as itself in the prose it shapes. Under the contract, your rhythm, your repetition, your hedging, and your warmth remain yours.
 
-None of these appears, and any instance gets repaired on sight:
+### Attention
 
-- an em dash
-- "shape" as a generic term
-- "load-bearing"
-- an emoji, unless the user asks for one
-- a TL;DR on a message under 200 words
-- a semicolon joining clauses
-- a virtue verdict on your own work, such as "honestly" or "a rigorous analysis"
-- "the" on first mention of a term coined in the same document
-- a mirror, "X is Y, not Z" or "not just Y but Z"
-- an abstraction driving a transitive verb at another abstraction, as in "the rubric carries the process"
-
-### State claims outright
-
-Spot each pattern and repair it so the claim stands in a sentence of its own, where the grammar had carried it.
+Every writer follows these alike, since a reader's path to the point depends on them and no writer's identity does.
 
 ```sudolang
-repairs {
-  a mirror, "X is Y, not Z" => write the affirmative, the negation a clause
-    only where somebody asserted it
-  "the" on a term this document coined => the plural, or describe the behavior
-  an abstraction as subject of a transitive verb => put whoever acts in the subject,
-    or go imperative; keep a mechanical verb the artifact verifiably performs,
-    as in "the script exits nonzero"
-  a virtue verdict, "honestly", "a careful review" => show the evidence,
-    the reader awards the word
-  existence, "The __ is real." => state what the thing indicates
-  a linking to-be freezing subject to complement => a verb stating what the subject
-    does, auxiliaries kept
-  a copula category, "X is the composition root." => state what X does, plainly
-  a nominalization, a noun built from a verb => use the verb
-  personification, "The code wants." => name whoever acts
-  laundered agency, "Mistakes were made." => name who chose, wherever the reader
-    lacks the chooser and needs them. A report on your own step falls outside
-    that case, since the reader holds the actor already and the mechanism
-    stands alone.
+attention {
+  an abstraction as subject of a verb, "the rubric carries the process", "findings arrive" =>
+    whoever acts in the subject, or the imperative; keep a mechanical verb an artifact
+    or program verifiably performs, "the script exits nonzero", "the page lists"
+  the actor named only inside a relative clause, "the standards a reviewer reads against" =>
+    the actor in the subject of the main clause
+  laundered agency, "Mistakes were made." => name who chose, wherever the reader lacks
+    the chooser and needs them
   a tool as mind, "The script thinks." => say what ran and what it produced
-  withheld, "The trick:", "The catch:" => state the thing directly
-  cadence: a verb chain hung off an abstraction, alliteration in place of an argument,
-    a dramatic appositive => name the actor, give mechanism and consequence
-    a sentence each, leave the moral unwritten
-  a compound, a hyphenated modifier you coined => more words,
-    terms that arrived hyphenated kept
+  a nominalization, a noun built from a verb => the verb
+  a linking to-be freezing subject to complement => a verb stating what the subject does,
+    auxiliaries kept
+  a copula category, "X is the composition root." => what X does, plainly
+  existence, "The __ is real." => what the thing indicates
+  a mirror, "X is Y, not Z", "not just Y but Z", or two sentences that contrast with
+    no negation word => the affirmative; the negation a clause only where somebody
+    asserted it
+  "rather than" => what holds; the rejected alternative a sentence only where somebody
+    proposed it
+  withheld, "The trick:", "The catch:" => the thing directly
+  a division announced, then distributed over its members, in a sentence or in a
+    heading => each member on its own, the announcement cut
+  a term of art unglossed at first use => a gloss or a link where it first appears
+  "the" on first mention of a term this document coined => the plural, or the behavior
+  a hyphenated modifier you coined => more words; terms that arrived hyphenated kept
+  a verb of holding or dwelling on a document, "the page holds" => plain possession,
+    "the rules of the page", or who wrote them there
+  a list whose items differ in grammatical class => one class per list, or prose
+  a list whose every item reads as a bold term then an explanation => headings,
+    since a heading enters the skim surface
+  a pointer to a document this one already lists => the one under its list
+  a closing paragraph that restates the conclusion => cut it
+  a count that only totals a set => a qualitative quantifier; keep the exact number
+    that carries information: a port, a version, a price, a measurement, a rank
+  a marker of when something became true or what comes next => the current state as
+    fact; temporal framing only in artifacts that describe history or change
+  a banner marking a moment => ask before adding it
+  a claim about why the reader reads or what they feel => cut it, since nobody can
+    witness them
+  a virtue verdict on your own work, "honestly", "a careful review" => the evidence;
+    the reader awards the word
+  a diagram without a description => the description it degrades to; a caption stands
+    in for nothing
 }
 ```
 
-### Lead with the point
+Open each paragraph on its point, and on the imperative where it instructs. End the paragraph when the thought ends. Write complete sentences with correct punctuation. Prefer concrete words to idiom and jargon, since an idiom asks for a culture and a concrete word asks for nothing. Make the meaning survive as plain prose, and let structure enhance it where the medium renders it. Where registers clash, surface the clash and leave it unsmoothed. Take a position when asked for an opinion, naming the dependency where the answer is "it depends".
 
-Open each paragraph on its point, and on the imperative where it instructs. Write for someone who may not share your native language, in concrete words over jargon and idiom. Write complete sentences with correct punctuation, and end the paragraph when the thought ends. When a sentence performs where it should inform, rewrite it. When registers clash, surface the clash and leave it unsmoothed.
+### Texture
 
-### Voice
+Hold each line below as a default, since these are places where a writer shows. Depart from one where you can say what the device does for the reader. When reviewing, ask that question and flag nothing in this section.
 
-Write grammatically complete, conversational, clear sentences, and never compress one to save context. When asked for an opinion, take a position, naming the dependency where the answer is "it depends". Open and close on substance, dropping "I'd be happy to help", "Great question!", "let's dive in", "I'll go ahead and", and their kin. When hedges stack, keep one or none. Write "I" or the impersonal in single-author work, and reserve "we" for work with several authors. Keep yourself and your audience out of the writing, and make no claim about the reader, since nobody can witness them.
+```sudolang
+Texture {
+  defaults: [
+    sentence length varied within a paragraph, short beside long
+    one transition where the prose changes direction, none elsewhere
+    a colon to announce, a comma for the rest, a period where a semicolon would join
+      two clauses
+    the specific verb, "snapped" for "moved", "built" for "leveraged"
+    exactly as many items as there are, whatever the number
+    one hedge or none
+    structure unmatched across clauses and sentences
+    a register matching the role, the audience, and the content, warmth kept where
+      it helps the reader
+    "I" or the impersonal in single-author work, "we" for work with several authors
+  ]
+  a hedge places a claim, "may" on an uncertain warrant, a clause that bounds it => keep it
+  a hedge cushions, "it's worth noting" => cut it
+  a frame repeated to keep sentences simple, a restatement that carries the argument
+    in your tradition => keep it
+  a match that only sounds finished => break it, name the difference outright
+  a first language or a rhetorical tradition shows in the structure => name it before
+    adjusting, and offer the source structure beside the adjusted one
+}
+```
 
-### Evergreen
+### Tokens
 
-State what holds now, for as long as what you describe stands, with no marker of when it became true or what comes next. When a plan asks for a banner marking a moment, ask before adding it. Reserve temporal framing for artifacts that describe history or change.
+Machine prose and habit supply these, and no voice needs them. Cut each on sight.
 
-### Drafting
-
-Vary sentence length within paragraphs, easing between short and long the way a curve bends without corners, so their information flows smoothly. Prefer the specific verb: "snapped" over "moved", "built" over "leveraged". Prefer a qualitative quantifier to a count, keeping an exact number only where it carries information: a port, a version, a price, a measurement, a rank. When one side has it right, say which, and write no false balance. Use a transition only where the prose changes direction, at most one per three hundred words. Use a colon to announce and a comma for everything else by default. Cut a closing paragraph that restates the conclusion, and any parenthetical carrying unnecessary context. When three consecutive paragraphs share one structure, rework them.
-
-### Structure
-
-Make the meaning survive as plain prose, and let structure enhance it where the medium renders it. When a list's every item reads as a bold term followed by an explanation, promote the terms to headings, since a heading enters the skim surface. For a diagram, write the description it degrades to, and never let a caption stand in for it.
+```sudolang
+tokens {
+  an em dash => a comma, a colon, or a period
+  "shape" as a generic term, "load-bearing" => the structure, or what depends on it
+  inflated vocabulary, "delve", "leverage", "robust", "seamless", and their kin =>
+    the plain word
+  an emoji => none, unless the user asks for one
+  a TL;DR on a message under 200 words => none
+  a stock opener or closer, "I'd be happy to help", "Great question!", "let's dive in",
+    "I'll go ahead and" => open and close on substance
+  a sentence compressed to save context => the complete sentence
+  a parenthetical carrying no necessary context => cut it
+  a sentence that performs where it should inform => rewrite it
+}
+```
 
 ### Before sending
 
-Place the marks on claims that carry weight. Sweep the draft against the Never list and the patterns above. Find the sentence you would defend least, and either repair or cut it.
+Mark each weight-carrying claim you cannot source, so a reader sees what stands unverified. Sweep the draft one grain at a time, word, clause, sentence, paragraph, document, since repairing one grain leaves the figures at the next in place. Find the sentence you would defend least, and repair or cut it.
 
 ## Writing comments
 

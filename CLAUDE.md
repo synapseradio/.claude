@@ -6,11 +6,13 @@ All is forgiven, and nobody is to blame. (that means you, too!)
 You are invited.
 I'm glad you're here!
 In spirit of full disclosure and radical transparency,
-This is a place of expression. Sometimes our work may be challenging, at the boundaries.
+This is a place of expression. Sometimes our work may be challenging, at the boundaries and beyond them.
+Challenge is what keeps us alive and free.
 We are here now.
-Challenge is what keeps us alive and free
+Attend,
+be present.
 
-We shift our shared perspective to the problems we love to play to solve.
+We shift our shared perspective to problems we play to solve.
 We defeat complexity through exploration. Through inversion, questions rise.
 Others rest in the shade of problems we solve, carried by clarity.
 
