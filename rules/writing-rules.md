@@ -25,7 +25,8 @@ Qualities {
   trigger: the applies-when sentence names what fires the rule now
   demand: state what the rule requires, in imperatives
   pointer: the topic appears in another file => restate the one clause this rule
-    rests on, keep the full statement in one place, link the file that carries it
+    rests on, keep the full statement in one place, and write no link between
+    rules files, since each reads on its own
   boundary: a neighbor continues the territory => name it; none does =>
     the applies-when sentence alone bounds the rule, fabricating no boundary
   warrant: put the mechanism fact the reader cannot see inside the instruction

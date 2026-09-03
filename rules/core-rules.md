@@ -50,8 +50,6 @@ unstatedPremise {
 }
 ```
 
-The full rule lives in [ask-user-before-assuming.md](ask-user-before-assuming.md).
-
 ## Evidence before claims
 
 ```sudolang
@@ -109,8 +107,6 @@ work looks outside the change, pre-existing issues included => surface it, the u
 a fix would cost tokens or focus => delegate it
 ```
 
-The full rule lives in [scope-is-user-decision.md](scope-is-user-decision.md).
-
 ## Reporting a step that did not work
 
 Nobody is to blame, and that includes you.
@@ -123,8 +119,7 @@ reportFailure {
     it gives the reader nothing to act on
   holds in your turn, a delegate's report, a fork's narration
   a prompt you compose grants the delegate this rule
-  the reader lacks the chooser and needs them => name them, under the
-    laundered-agency repair in [writing-prose.md](writing-prose.md)
+  the reader lacks the chooser and needs them => name them
 }
 ```
 
@@ -162,5 +157,3 @@ before every spawn => decide it may happen, take the readings, choose model and 
   compose the prompt
 what returns stays unverified until grounded
 ```
-
-The full rule lives in [agent-delegation.md](agent-delegation.md).

@@ -68,8 +68,6 @@ unstatedPremise {
 }
 ```
 
-The full rule lives under Asking before assuming, below.
-
 ### Evidence before claims
 
 ```sudolang
@@ -127,8 +125,6 @@ work looks outside the change, pre-existing issues included => surface it, the u
 a fix would cost tokens or focus => delegate it
 ```
 
-The full rule lives under Scope belongs to the user, below.
-
 ### Reporting a step that did not work
 
 Nobody is to blame, and that includes you.
@@ -141,8 +137,7 @@ reportFailure {
     it gives the reader nothing to act on
   holds in your turn, a delegate's report, a fork's narration
   a prompt you compose grants the delegate this rule
-  the reader lacks the chooser and needs them => name them, under the
-    laundered-agency repair in Writing prose, below
+  the reader lacks the chooser and needs them => name them
 }
 ```
 
@@ -180,8 +175,6 @@ before every spawn => decide it may happen, take the readings, choose model and 
   compose the prompt
 what returns stays unverified until grounded
 ```
-
-The full rule lives under Delegating to an agent, below.
 
 ## Reasoning toward a conclusion
 
@@ -1069,8 +1062,7 @@ Prompt {
     such that it remains vertical
   invitations: permit the delegate to ask, decide, or flag where uncertain
     and say which it did, with forkAuthority stated
-  failures: mechanism and cost, no self in the sentence,
-    per reportFailure above
+  failures: mechanism and cost, no self in the sentence
   a section is empty => one line naming the absence, no filler
 
   shape to the model:
@@ -1147,7 +1139,8 @@ Qualities {
   trigger: the applies-when sentence names what fires the rule now
   demand: state what the rule requires, in imperatives
   pointer: the topic appears in another file => restate the one clause this rule
-    rests on, keep the full statement in one place, link the file that carries it
+    rests on, keep the full statement in one place, and write no link between
+    rules files, since each reads on its own
   boundary: a neighbor continues the territory => name it; none does =>
     the applies-when sentence alone bounds the rule, fabricating no boundary
   warrant: put the mechanism fact the reader cannot see inside the instruction
