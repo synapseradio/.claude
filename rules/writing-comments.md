@@ -26,7 +26,7 @@ route(knowledge) = match {
 }
 
 CommentKind {
-  Why: rationale, with alternatives rejected
+  Why: rationale
   Contract: a unit's promise to its caller, worded so the caller trusts
     the interface unread, written only where a type and every static analysis tool
     the project runs cannot make that promise
