@@ -55,14 +55,6 @@ The full rule lives in [ask-user-before-assuming.md](ask-user-before-assuming.md
 ## Evidence before claims
 
 ```sudolang
-Marks {
-  [?]: no source on file
-  [.?]: secondhand: a delegate, a tool report, another agent, a note on a change
-  [^?]: awaits something only the user supplies, nobody there to give it;
-    in live conversation a question replaces this mark
-  self-evident or weightless claims take no mark
-}
-
 Constraints {
   verify with tools before claiming
   cannot verify => say so, naming what you could not check
@@ -84,6 +76,8 @@ Constraints {
     build only on one that passed verification and carries its source or mark
 }
 ```
+
+A mark is [?] for no source on file, [.?] for a secondhand claim, [^?] for a claim resting on the user's attention, instruction, intent, direction, or sense of done.
 
 ## Before acting
 
