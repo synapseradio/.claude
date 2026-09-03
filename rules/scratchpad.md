@@ -20,7 +20,8 @@ Constraints {
     a file the user named to where they named it
   require no secret or credential lands in scratchpad/
   never write into scratchpad/ to avoid deciding where a real artifact lives
-  a fact worth keeping across sessions => store it as a persistent memory
+  a fact worth keeping across sessions => a persistent store, never this directory,
+    since the gitignore drops everything here from every clone
   unclear whether output is a deliverable => ask
 }
 ```

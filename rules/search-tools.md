@@ -10,7 +10,9 @@ Constraints {
   cite each source relied on by URL
 }
 
-searchTool = first the session exposes of [tvly, linkup, firecrawl]
+searchTool = first the session exposes of [tvly, linkup]
+a library, framework, SDK, or CLI's documentation => context7 before searchTool,
+  since it indexes documentation by library and version
 chosen tool errors => fall to the next, name which answered
 nothing usable => halt, report to the user
 

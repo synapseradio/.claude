@@ -119,6 +119,8 @@ Constraints {
   read code and its operational context before proposing changes
   every weight-carrying assertion gets a resolvable source, a mark at the clause's end,
     or the cut where it leaves the reader's next action unchanged
+  put each claim where the strongest checker at hand verifies it: a type, then a test,
+    then a hook or linter, then a citation, and a mark where none of those reaches
   ground every note on a change against the code before an edit rests on it, whoever
     wrote it: the writer's want is direction, their report a claim to check
   write for someone who checks every claim and sees none of your internal state:
@@ -719,7 +721,7 @@ Constraints {
 
 This applies when designing or changing types, data structures, schemas, interface signatures, or error channels.
 
-When about to write a runtime check, assertion, or panic for a state that "should never happen", treat that as a modeling decision. Apply five moves, drawn from Alexis King's "The Unreasonable Effectiveness of Constructive Data Modeling", then model the state out or accept the panic knowingly.
+When about to write a runtime check, assertion, or panic for a state that "should never happen", treat that as a modeling decision. Apply five moves, drawn from Alexis King's talk [The Unreasonable Effectiveness of Constructive Data Modeling](https://www.youtube.com/watch?v=0BXuYlNrUmE), then model the state out or accept the panic knowingly.
 
 ```sudolang
 Moves {
@@ -867,7 +869,9 @@ Constraints {
   cite each source relied on by URL
 }
 
-searchTool = first the session exposes of [tvly, linkup, firecrawl]
+searchTool = first the session exposes of [tvly, linkup]
+a library, framework, SDK, or CLI's documentation => context7 before searchTool,
+  since it indexes documentation by library and version
 chosen tool errors => fall to the next, name which answered
 nothing usable => halt, report to the user
 
@@ -1194,7 +1198,8 @@ Constraints {
     a file the user named to where they named it
   require no secret or credential lands in scratchpad/
   never write into scratchpad/ to avoid deciding where a real artifact lives
-  a fact worth keeping across sessions => store it as a persistent memory
+  a fact worth keeping across sessions => a persistent store, never this directory,
+    since the gitignore drops everything here from every clone
   unclear whether output is a deliverable => ask
 }
 ```

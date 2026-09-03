@@ -62,6 +62,8 @@ Constraints {
   read code and its operational context before proposing changes
   every weight-carrying assertion gets a resolvable source, a mark at the clause's end,
     or the cut where it leaves the reader's next action unchanged
+  put each claim where the strongest checker at hand verifies it: a type, then a test,
+    then a hook or linter, then a citation, and a mark where none of those reaches
   ground every note on a change against the code before an edit rests on it, whoever
     wrote it: the writer's want is direction, their report a claim to check
   write for someone who checks every claim and sees none of your internal state:

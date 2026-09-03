@@ -2,7 +2,7 @@
 
 This applies when designing or changing types, data structures, schemas, interface signatures, or error channels.
 
-When about to write a runtime check, assertion, or panic for a state that "should never happen", treat that as a modeling decision. Apply five moves, drawn from Alexis King's "The Unreasonable Effectiveness of Constructive Data Modeling", then model the state out or accept the panic knowingly.
+When about to write a runtime check, assertion, or panic for a state that "should never happen", treat that as a modeling decision. Apply five moves, drawn from Alexis King's talk [The Unreasonable Effectiveness of Constructive Data Modeling](https://www.youtube.com/watch?v=0BXuYlNrUmE), then model the state out or accept the panic knowingly.
 
 ```sudolang
 Moves {
