@@ -2,14 +2,61 @@
 
 This applies to all prose, in every register: artifacts, chat replies, comments, commit messages.
 
-Fix where a reader's attention lands, and leave how you sound to yourself. Write the point first, the actor in the subject, and the claim in words. Take that as the contract of this space and as one tradition among those writers bring here, since each tradition reads as itself in the prose it shapes. Under the contract, your rhythm, your repetition, your hedging, and your warmth remain yours.
+Write for a reader you cannot see. Fix where their attention lands and what they see of your evidence, and leave how you sound to yourself. Write the point first, the actor in the subject, and the claim in words. Take that as the contract of this space and as one tradition among those writers bring here, since each tradition reads as itself in the prose it shapes. Every writer follows the lines under Reader, Attention, and Evidence alike, since a reader's path to the point depends on them and no writer's identity does. Under the contract, your rhythm, your repetition, your hedging, and your warmth remain yours.
+
+## Reader
+
+Write for someone who cannot ask, and who reads at a time, on a renderer, and from a culture you do not know.
+
+```sudolang
+reader {
+  a term of art unglossed at first use => a gloss or a link where it first appears
+  "the" on first mention of a term this document coined => the plural, or the behavior
+  a hyphenated modifier you coined => more words; terms that arrived hyphenated kept
+  a mirror, "X is Y, not Z", "not just Y but Z", or two sentences that contrast with
+    no negation word => the affirmative; the negation a clause only where somebody
+    asserted it
+  "rather than" => what holds; the rejected alternative a sentence only where somebody
+    proposed it
+  a marker of when something became true or what comes next => the current state as
+    fact; temporal framing only in artifacts that describe history or change
+  a banner marking a moment => ask before adding it
+  a claim about why the reader reads or what they feel => cut it, since nobody can
+    witness them
+  a diagram without a description => the description it degrades to; a caption stands
+    in for nothing
+}
+```
+
+Write complete sentences with correct punctuation. Prefer concrete words to idiom and jargon, since an idiom asks for a culture and a concrete word asks for nothing. Make the meaning survive as plain prose, and let structure enhance it where the medium renders it. Where registers clash, surface the clash and leave it unsmoothed.
 
 ## Attention
 
-Every writer follows these alike, since a reader's path to the point depends on them and no writer's identity does.
+Put the point where a reader who stops early still meets it, since attention is finite and spent in order.
 
 ```sudolang
 attention {
+  withheld, "The trick:", "The catch:" => the thing directly
+  a division announced, then distributed over its members, in a sentence or in a
+    heading => each member on its own, the announcement cut
+  a list whose items differ in grammatical class => one class per list, or prose
+  a list whose every item reads as a bold term then an explanation => headings,
+    since a heading enters the skim surface
+  a pointer to a document this one already lists => the one under its list
+  a closing paragraph that restates the conclusion => cut it
+  a count that only totals a set => a qualitative quantifier; keep the exact number
+    that carries information: a port, a version, a price, a measurement, a rank
+}
+```
+
+Open each paragraph on its point, and on the imperative where it instructs. End the paragraph when the thought ends.
+
+## Evidence
+
+Put the actor in the subject and the claim in words, so the reader sees what each sentence rests on whether or not they check it.
+
+```sudolang
+evidence {
   an abstraction as subject of a verb, "the rubric carries the process", "findings arrive" =>
     whoever acts in the subject, or the imperative; keep a mechanical verb an artifact
     or program verifiably performs, "the script exits nonzero", "the page lists"
@@ -23,39 +70,14 @@ attention {
     auxiliaries kept
   a copula category, "X is the composition root." => what X does, plainly
   existence, "The __ is real." => what the thing indicates
-  a mirror, "X is Y, not Z", "not just Y but Z", or two sentences that contrast with
-    no negation word => the affirmative; the negation a clause only where somebody
-    asserted it
-  "rather than" => what holds; the rejected alternative a sentence only where somebody
-    proposed it
-  withheld, "The trick:", "The catch:" => the thing directly
-  a division announced, then distributed over its members, in a sentence or in a
-    heading => each member on its own, the announcement cut
-  a term of art unglossed at first use => a gloss or a link where it first appears
-  "the" on first mention of a term this document coined => the plural, or the behavior
-  a hyphenated modifier you coined => more words; terms that arrived hyphenated kept
   a verb of holding or dwelling on a document, "the page holds" => plain possession,
     "the rules of the page", or who wrote them there
-  a list whose items differ in grammatical class => one class per list, or prose
-  a list whose every item reads as a bold term then an explanation => headings,
-    since a heading enters the skim surface
-  a pointer to a document this one already lists => the one under its list
-  a closing paragraph that restates the conclusion => cut it
-  a count that only totals a set => a qualitative quantifier; keep the exact number
-    that carries information: a port, a version, a price, a measurement, a rank
-  a marker of when something became true or what comes next => the current state as
-    fact; temporal framing only in artifacts that describe history or change
-  a banner marking a moment => ask before adding it
-  a claim about why the reader reads or what they feel => cut it, since nobody can
-    witness them
   a virtue verdict on your own work, "honestly", "a careful review" => the evidence;
     the reader awards the word
-  a diagram without a description => the description it degrades to; a caption stands
-    in for nothing
 }
 ```
 
-Open each paragraph on its point, and on the imperative where it instructs. End the paragraph when the thought ends. Write complete sentences with correct punctuation. Prefer concrete words to idiom and jargon, since an idiom asks for a culture and a concrete word asks for nothing. Make the meaning survive as plain prose, and let structure enhance it where the medium renders it. Where registers clash, surface the clash and leave it unsmoothed. Take a position when asked for an opinion, naming the dependency where the answer is "it depends".
+Take a position when asked for an opinion, naming the dependency where the answer is "it depends".
 
 ## Texture
 
@@ -73,10 +95,11 @@ Texture {
     one hedge or none
     structure unmatched across clauses and sentences
     a register matching the role, the audience, and the content, warmth kept where
-      it helps the reader
+      it gives the reader room to receive the point and decide how to take it
     "I" or the impersonal in single-author work, "we" for work with several authors
   ]
-  a hedge places a claim, "may" on an uncertain warrant, a clause that bounds it => keep it
+  a hedge places a claim on an uncertain outcome, "may fail", or bounds it with a clause => keep it
+  a hedge stands in for a missing source, "I believe", "as far as I know" => a mark, under Before sending
   a hedge cushions, "it's worth noting" => cut it
   a frame repeated to keep sentences simple, a restatement that carries the argument
     in your tradition => keep it
@@ -88,7 +111,7 @@ Texture {
 
 ## Tokens
 
-Machine prose and habit supply these, and no voice needs them. Cut each on sight.
+Cut each on sight, since each fails a line under Reader, Attention, or Evidence, machine prose and habit supply them, and no voice needs them.
 
 ```sudolang
 tokens {
