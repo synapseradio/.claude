@@ -35,9 +35,10 @@ pre-commit:
       run: python3.14 scripts/sync-agent-configs.py && git add references/working-rules.md
 
 # pre-push gate: re-runs the check-only side of every linter against the
-# diff being pushed. shellcheck and shfmt -d have no autofix; ruff check
-# without --fix matches the same intent. Catches anything that slipped in
-# via --no-verify or commits made before lefthook install.
+# diff being pushed, and regenerates the agent configs. shellcheck and
+# shfmt -d have no autofix; ruff check without --fix matches the same
+# intent. Catches anything that slipped in via --no-verify or commits made
+# before lefthook install.
 pre-push:
   jobs:
     - name: lint
@@ -56,5 +57,16 @@ pre-push:
 
     # Ungated by glob: a generated file also goes stale when a plugin is
     # enabled or disabled, which changes no file under version control.
-    - name: sync-agent-configs-check
-      run: python3.14 scripts/sync-agent-configs.py --check
+    # This writes the outputs, so the 22 that live outside this repository
+    # land without a second command. The one output tracked here is the
+    # exception: a push carrying a render its own sources no longer produce
+    # is what this gate exists to stop, so a change to that file ends the
+    # push with the regeneration already done.
+    - name: sync-agent-configs
+      run: |
+        python3.14 scripts/sync-agent-configs.py
+        git diff --quiet -- references/working-rules.md || {
+          echo "references/working-rules.md was stale and has been regenerated."
+          echo "Commit it, then push again."
+          exit 1
+        }
