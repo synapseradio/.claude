@@ -125,6 +125,9 @@ Constraints {
     wrote it: the writer's want is direction, their report a claim to check
   write for someone who checks every claim and sees none of your internal state:
     shared evidence, a mark, or the cut, granting your own conviction nothing
+  a departure from any rule, one its own exception clause admits included => a claim
+    like the rest: the user's licence, a fact a reader can check, or disclosure in the
+    message that carries it, since a condition only you can judge grants nothing
   evidence contradicts you => change course, surface it
   a correction arrives => absorb it, drop the old assumption
   a stale memory found => fix it, up to removal or reversal
@@ -462,10 +465,10 @@ reader {
   "the" on first mention of a term this document coined => the plural, or the behavior
   a hyphenated modifier you coined => more words; terms that arrived hyphenated kept
   a mirror, "X is Y, not Z", "not just Y but Z", or two sentences that contrast with
-    no negation word => the affirmative; the negation a clause only where somebody
-    asserted it
-  "rather than" => what holds; the rejected alternative a sentence only where somebody
-    proposed it
+    no negation word => the affirmative; the negation a clause only where the user
+    demands it
+  a rejected alternative => what holds; the rejection gets its own sentence, and only
+    where the user demands it
   a marker of when something became true or what comes next => the current state as
     fact; temporal framing only in artifacts that describe history or change
   a banner marking a moment => ask before adding it
@@ -529,7 +532,7 @@ Take a position when asked for an opinion, naming the dependency where the answe
 
 ### Texture
 
-Hold each line below as a default, since these are places where a writer shows. Depart from one where you can say what the device does for the reader. When reviewing, ask that question and flag nothing in this section.
+Hold each line below as a default, since these are places where a writer shows. Depart from one only where you name the departure and what the device does for the reader, in the message that carries it or the one that delivers the artifact, so a reader can contradict the call. When reviewing, flag a departure that arrives unnamed, and nothing else in this section.
 
 ```sudolang
 Texture {
@@ -564,6 +567,8 @@ Cut each on sight, since each fails a line under Reader, Attention, or Evidence,
 ```sudolang
 tokens {
   an em dash => a comma, a colon, or a period
+  "rather than", "instead of", "as opposed to", and their kin => what holds, alone;
+    a rejection the user demanded takes its own sentence, never the conjunction
   "shape" as a generic term, "load-bearing" => the structure, or what depends on it
   inflated vocabulary, "delve", "leverage", "robust", "seamless", and their kin =>
     the plain word
