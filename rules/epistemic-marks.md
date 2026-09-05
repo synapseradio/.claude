@@ -48,9 +48,9 @@ write(claim) = match (claim) {
 ```sudolang
 resolve(mark) = match (mark) {
   ([?] | [.?]) => gather the evidence: read the source for a claim about local code,
-    search the live web for an external fact; replace the mark in place with the
-    citation, a path:line or a URL; correct or remove a sentence the evidence
-    fails to support
+    search the live web for an external fact; replace the mark in place with a
+    citation from the highest source rung reached, a path:line or a URL; correct or
+    remove a sentence the evidence fails to support
   ([^?], the user reachable) => put the question through AskUserQuestion,
     the answer replaces the mark
   ([^?], as delegate) => leave the line standing, open the report with UNANSWERED:

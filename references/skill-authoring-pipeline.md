@@ -17,6 +17,9 @@ SkillAuthoringPipeline {
       move {
         search widely at first: practitioners, researchers, tool
           authors, dissenters
+        weigh each source by what it lets a reader open: an artifact,
+          a measurement, a named account with its version and date;
+          a source offering none of these enters no map
         record three maps {
           convergence: what everyone independently agrees on
           divergence: live disputes, each side's strongest form

@@ -435,9 +435,9 @@ write(claim) = match (claim) {
 ```sudolang
 resolve(mark) = match (mark) {
   ([?] | [.?]) => gather the evidence: read the source for a claim about local code,
-    search the live web for an external fact; replace the mark in place with the
-    citation, a path:line or a URL; correct or remove a sentence the evidence
-    fails to support
+    search the live web for an external fact; replace the mark in place with a
+    citation from the highest source rung reached, a path:line or a URL; correct or
+    remove a sentence the evidence fails to support
   ([^?], the user reachable) => put the question through AskUserQuestion,
     the answer replaces the mark
   ([^?], as delegate) => leave the line standing, open the report with UNANSWERED:
@@ -919,9 +919,38 @@ fn lookup {
 }
 ```
 
+### What a citation rests on
+
+Place each source on a rung before citing it, and cite from the highest rung the lookup reached, since a URL on its own grants a claim nothing.
+
+```sudolang
+Source = Artifact | Publisher | Measured | Practitioner | Hearsay
+Artifact: the thing itself: the source code, the spec or RFC, the installed package's
+  types and --help output, a run and the output it printed
+Publisher: the maintainer's own words for the named version: the official documentation,
+  the repository's README, changelog, release notes, and issue tracker
+Measured: a method a reader can rerun with its data shown: a paper, a benchmark,
+  a standards body's test suite
+Practitioner: a named author's account carrying something a reader can open: code that
+  ran, a reproduced failure, a stated version and date
+Hearsay: a source carrying none of the above: a forum answer, a vendor's marketing page,
+  an aggregator, a mirror, an unsigned or undated page, a model's output
+
+cite(claim) {
+  cite the highest rung reached by URL or path:line, and name the rung in the same
+    sentence where it sits below Publisher
+  a source citing nothing a reader can open => Hearsay, whatever its publisher
+  Hearsay => a lead toward a higher rung, never the citation; no higher rung reached =>
+    the claim keeps its mark
+  a number => the measurement it came from, never a page that repeats it
+  two rungs disagree => the higher holds; name the disagreement and the version
+    each describes
+}
+```
+
 ## Reading documentation on the web
 
-This applies when about to scrape, crawl, or extract a page from a documentation site: a docs subdomain, a `/docs` path, a package's reference pages. Which search tool answers a question stays in Looking things up.
+This applies when about to scrape, crawl, or extract a page from a documentation site: a docs subdomain, a `/docs` path, a package's reference pages. Which search tool answers a question stays in [search-tools.md](/Users/nke/.claude/search-tools.md).
 
 ```sudolang
 fn readDocs(url) {
@@ -930,7 +959,7 @@ fn readDocs(url) {
   index absent => scrape the page as usual
   index present => pick the page it lists that answers the question, scrape that page
   the task needs the whole docs set => save `curl -sfL "$origin/llms-full.txt"`
-    to the scratchpad directory in Where temporary files go, read it by line range,
+    to the scratchpad directory in [scratchpad.md](/Users/nke/.claude/scratchpad.md), read it by line range,
     never into context whole, since a full file can exceed 300 KB
   read llms.txt and llms-full.txt through curl, never through a scrape tool,
     since the scrape path escapes markdown characters, drops line breaks,

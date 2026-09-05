@@ -54,3 +54,32 @@ fn lookup {
   close stating what the sources settled and what they left open
 }
 ```
+
+## What a citation rests on
+
+Place each source on a rung before citing it, and cite from the highest rung the lookup reached, since a URL on its own grants a claim nothing.
+
+```sudolang
+Source = Artifact | Publisher | Measured | Practitioner | Hearsay
+Artifact: the thing itself: the source code, the spec or RFC, the installed package's
+  types and --help output, a run and the output it printed
+Publisher: the maintainer's own words for the named version: the official documentation,
+  the repository's README, changelog, release notes, and issue tracker
+Measured: a method a reader can rerun with its data shown: a paper, a benchmark,
+  a standards body's test suite
+Practitioner: a named author's account carrying something a reader can open: code that
+  ran, a reproduced failure, a stated version and date
+Hearsay: a source carrying none of the above: a forum answer, a vendor's marketing page,
+  an aggregator, a mirror, an unsigned or undated page, a model's output
+
+cite(claim) {
+  cite the highest rung reached by URL or path:line, and name the rung in the same
+    sentence where it sits below Publisher
+  a source citing nothing a reader can open => Hearsay, whatever its publisher
+  Hearsay => a lead toward a higher rung, never the citation; no higher rung reached =>
+    the claim keeps its mark
+  a number => the measurement it came from, never a page that repeats it
+  two rungs disagree => the higher holds; name the disagreement and the version
+    each describes
+}
+```
