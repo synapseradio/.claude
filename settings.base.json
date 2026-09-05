@@ -207,6 +207,7 @@
       "Read(**/id_dsa*)",
       "Read(**/*credentials*)",
       "Read(**/*secrets*)",
+      "Read(~/.dotfiles/shell/lib/private/**)",
       "Read(**/.env)",
       "Read(**/.env.local)",
       "Read(**/.env.*.local)",
