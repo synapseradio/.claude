@@ -21,6 +21,10 @@
 !scripts/
 !scripts/**
 
+!skills/
+!skills/update-claude-settings/
+!skills/update-claude-settings/**
+
 # Bytecode under scripts/
 scripts/**/__pycache__/
 scripts/**/*.pyc
