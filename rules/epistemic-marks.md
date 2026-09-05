@@ -56,7 +56,7 @@ resolve(mark) = match (mark) {
   ([^?], as delegate) => leave the line standing, open the report with UNANSWERED:
     the question and the options you would have offered, then what got done,
     then what remains undone with the answer each part needs
-  (a line referring to a mark instead of claiming under one) => name the mark in words
+  (a line referring to a mark without claiming under one) => name the mark in words
     and say in the same sentence what became of it, since a bare glyph reads
     as a claim awaiting its source
 }

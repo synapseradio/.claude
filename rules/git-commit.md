@@ -33,6 +33,6 @@ fn commit {
 }
 
 use the fork-based PR workflow on shared branches
-use separate worktrees for parallel work instead of switching branches in one checkout
+use a separate worktree for each parallel line of work
 rebasing => resolve conflicts with -X ours and autosquash by default
 ```

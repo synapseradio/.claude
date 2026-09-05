@@ -94,7 +94,7 @@ GoogleShellStyle {
     controlFlow {
       `; then` and `; do` share the line with if | for | while | until | select
       `else` on its own line; fi/done aligned vertically with their opener
-      for loops spell out `in "$@"` rather than relying on the implicit form
+      for loops spell out `in "$@"`
     }
 
     case {
@@ -168,7 +168,7 @@ GoogleShellStyle {
       never a space-separated string as a pseudo-list
 
       Constraints {
-        command substitution yields a string rather than an array, so
+        command substitution yields one string, so
           declare -a files=($(ls dir)) and mybinary $(get_args) both
           break on whitespace and special characters
         advanced data manipulation => another language

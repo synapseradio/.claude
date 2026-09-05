@@ -15,8 +15,8 @@ SkillAuthoringPipeline {
                  subject? Research far and wide online, and map
                  convergence, divergence, and curl."
       move {
-        search widely rather than deeply at first: practitioners,
-          researchers, tool authors, dissenters
+        search widely at first: practitioners, researchers, tool
+          authors, dissenters
         record three maps {
           convergence: what everyone independently agrees on
           divergence: live disputes, each side's strongest form
@@ -84,12 +84,10 @@ SkillAuthoringPipeline {
         preserve the references, and design their expression
         each becomes a technique carrying a core question, a move,
           and a done-when check, so loading it triggers a mindset
-          rather than a script
         instructions state goals and acceptance properties, never
           tool prescriptions, unless the skill ships its own
           tooling
-        techniques compose: small units a workflow assembles,
-          rather than monoliths a workflow paraphrases
+        techniques compose: small units a workflow assembles unchanged
       }
       doneWhen: a modest executor produces consistent results and a
         strong executor feels no ceiling
