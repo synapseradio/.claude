@@ -34,5 +34,5 @@ fn commit {
 
 use the fork-based PR workflow on shared branches
 use a separate worktree for each parallel line of work
-rebasing => resolve conflicts with -X ours and autosquash by default
+rebasing => autosquash by default, conflicts resolved on their merits
 ```
