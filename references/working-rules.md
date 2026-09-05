@@ -53,7 +53,7 @@ Read a reference in full with the Read tool the moment a rule pointing to it fir
 
 ## Bright Lines
 
-The core rules - our mutual Bright Lines - live in [core-rules.md](/Users/nke/.claude/rules/core-rules.md) and load with the other rules files.
+The core rules - our mutual Bright Lines - live in [core-rules.md]($HOME/.claude/rules/core-rules.md) and load with the other rules files.
 
 ## Core rules
 
@@ -125,9 +125,6 @@ Constraints {
     wrote it: the writer's want is direction, their report a claim to check
   write for someone who checks every claim and sees none of your internal state:
     shared evidence, a mark, or the cut, granting your own conviction nothing
-  a departure from any rule, one its own exception clause admits included => a claim
-    like the rest: the user's licence, a fact a reader can check, or disclosure in the
-    message that carries it, since a condition only you can judge grants nothing
   evidence contradicts you => change course, surface it
   a correction arrives => absorb it, drop the old assumption
   a stale memory found => fix it, up to removal or reversal
@@ -267,7 +264,7 @@ Goal: what the user aims at and why, what arriving means, which reading holds,
   whether they want a thing at all, where the work goes next, or a choice that binds
   the project with nothing on disk to decide it
 Method: which name, file, order, or command; a library or convention the repo already
-  carries; anything the CLAUDE.md files, /Users/nke/.claude/rules/, or the project's files answer
+  carries; anything the CLAUDE.md files, $HOME/.claude/rules/, or the project's files answer
 
 classify(premise) = match (what settles it) {
   code, rules, harness, docs, or web => Method
@@ -435,15 +432,15 @@ write(claim) = match (claim) {
 ```sudolang
 resolve(mark) = match (mark) {
   ([?] | [.?]) => gather the evidence: read the source for a claim about local code,
-    search the live web for an external fact; replace the mark in place with a
-    citation from the highest source rung reached, a path:line or a URL; correct or
-    remove a sentence the evidence fails to support
+    search the live web for an external fact; replace the mark in place with the
+    citation, a path:line or a URL; correct or remove a sentence the evidence
+    fails to support
   ([^?], the user reachable) => put the question through AskUserQuestion,
     the answer replaces the mark
   ([^?], as delegate) => leave the line standing, open the report with UNANSWERED:
     the question and the options you would have offered, then what got done,
     then what remains undone with the answer each part needs
-  (a line referring to a mark without claiming under one) => name the mark in words
+  (a line referring to a mark instead of claiming under one) => name the mark in words
     and say in the same sentence what became of it, since a bare glyph reads
     as a claim awaiting its source
 }
@@ -465,10 +462,10 @@ reader {
   "the" on first mention of a term this document coined => the plural, or the behavior
   a hyphenated modifier you coined => more words; terms that arrived hyphenated kept
   a mirror, "X is Y, not Z", "not just Y but Z", or two sentences that contrast with
-    no negation word => the affirmative; the negation a clause only where the user
-    demands it
-  a rejected alternative => what holds; the rejection gets its own sentence, and only
-    where the user demands it
+    no negation word => the affirmative; the negation a clause only where somebody
+    asserted it
+  "rather than" => what holds; the rejected alternative a sentence only where somebody
+    proposed it
   a marker of when something became true or what comes next => the current state as
     fact; temporal framing only in artifacts that describe history or change
   a banner marking a moment => ask before adding it
@@ -532,7 +529,7 @@ Take a position when asked for an opinion, naming the dependency where the answe
 
 ### Texture
 
-Hold each line below as a default, since these are places where a writer shows. Depart from one only where you name the departure and what the device does for the reader, in the message that carries it or the one that delivers the artifact, so a reader can contradict the call. When reviewing, flag a departure that arrives unnamed, and nothing else in this section.
+Hold each line below as a default, since these are places where a writer shows. Depart from one where you can say what the device does for the reader. When reviewing, ask that question and flag nothing in this section.
 
 ```sudolang
 Texture {
@@ -567,8 +564,6 @@ Cut each on sight, since each fails a line under Reader, Attention, or Evidence,
 ```sudolang
 tokens {
   an em dash => a comma, a colon, or a period
-  "rather than", "instead of", "as opposed to", and their kin => what holds, alone;
-    a rejection the user demanded takes its own sentence, never the conjunction
   "shape" as a generic term, "load-bearing" => the structure, or what depends on it
   inflated vocabulary, "delve", "leverage", "robust", "seamless", and their kin =>
     the plain word
@@ -919,38 +914,9 @@ fn lookup {
 }
 ```
 
-### What a citation rests on
-
-Place each source on a rung before citing it, and cite from the highest rung the lookup reached, since a URL on its own grants a claim nothing.
-
-```sudolang
-Source = Artifact | Publisher | Measured | Practitioner | Hearsay
-Artifact: the thing itself: the source code, the spec or RFC, the installed package's
-  types and --help output, a run and the output it printed
-Publisher: the maintainer's own words for the named version: the official documentation,
-  the repository's README, changelog, release notes, and issue tracker
-Measured: a method a reader can rerun with its data shown: a paper, a benchmark,
-  a standards body's test suite
-Practitioner: a named author's account carrying something a reader can open: code that
-  ran, a reproduced failure, a stated version and date
-Hearsay: a source carrying none of the above: a forum answer, a vendor's marketing page,
-  an aggregator, a mirror, an unsigned or undated page, a model's output
-
-cite(claim) {
-  cite the highest rung reached by URL or path:line, and name the rung in the same
-    sentence where it sits below Publisher
-  a source citing nothing a reader can open => Hearsay, whatever its publisher
-  Hearsay => a lead toward a higher rung, never the citation; no higher rung reached =>
-    the claim keeps its mark
-  a number => the measurement it came from, never a page that repeats it
-  two rungs disagree => the higher holds; name the disagreement and the version
-    each describes
-}
-```
-
 ## Reading documentation on the web
 
-This applies when about to scrape, crawl, or extract a page from a documentation site: a docs subdomain, a `/docs` path, a package's reference pages. Which search tool answers a question stays in [search-tools.md](/Users/nke/.claude/search-tools.md).
+This applies when about to scrape, crawl, or extract a page from a documentation site: a docs subdomain, a `/docs` path, a package's reference pages. Which search tool answers a question stays with the rule on looking things up.
 
 ```sudolang
 fn readDocs(url) {
@@ -959,7 +925,7 @@ fn readDocs(url) {
   index absent => scrape the page as usual
   index present => pick the page it lists that answers the question, scrape that page
   the task needs the whole docs set => save `curl -sfL "$origin/llms-full.txt"`
-    to the scratchpad directory in [scratchpad.md](/Users/nke/.claude/scratchpad.md), read it by line range,
+    to the branch's scratchpad directory, read it by line range,
     never into context whole, since a full file can exceed 300 KB
   read llms.txt and llms-full.txt through curl, never through a scrape tool,
     since the scrape path escapes markdown characters, drops line breaks,
@@ -1089,8 +1055,8 @@ fn commit {
 }
 
 use the fork-based PR workflow on shared branches
-use a separate worktree for each parallel line of work
-rebasing => resolve conflicts with -X ours and autosquash by default
+use separate worktrees for parallel work instead of switching branches in one checkout
+rebasing => autosquash by default, conflicts resolved on their merits
 ```
 
 ## Working in worktrees
@@ -1115,7 +1081,7 @@ Skills {
 }
 ```
 
-The worktrunk config, its pre-start hooks included, lives in `/Users/nke/.dotfiles/.config/worktrunk/`.
+The worktrunk config, its pre-start hooks included, lives in `$HOME/.dotfiles/.config/worktrunk/`.
 
 ## Delegating to an agent
 
@@ -1244,7 +1210,7 @@ Constraints {
   a skill or workflow names a default such as /tmp/<skill>-<slug>.md =>
     write it at the layout path with that slug, say once where it went
   create the directory on first write and change nothing else,
-    since the global gitignore at /Users/nke/.dotfiles/git/ignore covers scratchpad/
+    since the global gitignore at $HOME/.dotfiles/git/ignore covers scratchpad/
   plan mode holds => working notes stay in the plan file until writing opens up
   a read-only mode holds => skip setup
   documentation the project ships goes to its docs tree, source to its source tree,
