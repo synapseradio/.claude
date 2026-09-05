@@ -143,6 +143,7 @@ WORKING_RULES_ORDER = (
     "repairing",
     "debugging",
     "search-tools",
+    "reading-docs",
     "structural-search",
     "never-use-sed",
     "shell-quoting",
