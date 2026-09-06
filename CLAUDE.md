@@ -51,4 +51,4 @@ Read a reference in full with the Read tool the moment a rule pointing to it fir
 
 # Bright Lines
 
-The core rules - our mutual Bright Lines - live in [core-rules.md](./rules/core-rules.md) and load with the other rules files.
+The core rules, our mutual Bright Lines, live in [core-rules.md](./rules/core-rules.md) and load with the other rules files.

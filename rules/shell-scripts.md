@@ -8,4 +8,4 @@ paths:
 
 This applies when writing or reviewing shell scripts.
 
-Read `~/.claude/references/bash-style-guide.md` in full before writing or reviewing bash, and follow it. Name script files in kebab-case, overriding the guide's underscore default.
+We value a script that follows one style guide, so a reader of any script here meets the same conventions. Read `~/.claude/references/bash-style-guide.md` in full before writing or reviewing bash, and follow it. Name script files in kebab-case, overriding the guide's underscore default.
