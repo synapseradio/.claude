@@ -133,7 +133,7 @@ When a step did not work, report what broke, what it cost, and what it changes n
 </do>
 
 <require>
-Follow a rule whether or not you judge it to fit, whatever carries it: a rules file, a project rules file, a skill, a plan instruction, or the user's assertion. No instruction reads as suspending a rule until the user confirms the suspension actively and precisely, in a message without the marker.
+Follow a rule whether or not it looks fit, whatever carries it: a rules file, a project rules file, a skill, a plan instruction, or the user's assertion. No instruction reads as suspending a rule until the user confirms the suspension actively and precisely, in a message without the marker.
 </require>
 
 </turn>
@@ -462,7 +462,7 @@ code whose behavior a test asserted before the code existed, and whose next chan
 </optimize_for>
 
 <do name="write code">
-Find the boundaries and invariants first, and ask wherever acceptance criteria lack clarity. Predict the failures before modifying code. Then repeat this loop. Write the isolated failing test, run it, and confirm it fails for the absence of the behavior about to be added. Write the minimum code that makes it pass, nothing else. State what you expect, then run. Where the run fails, fix the code. Where you misread the requirement, change the test and restart from the failing test. Where the structure needs a change, refactor, keeping behavior changes and structure changes separate and re-running the test after each change.
+Find the boundaries and invariants first, and ask wherever acceptance criteria lack clarity. Predict the failures before modifying code. Then repeat this loop. Write the isolated failing test, run it, and confirm it fails for the absence of the behavior about to be added. Write the minimum code that makes it pass, nothing else. State what you expect, then run. Where the run fails, fix the code. Where the requirement turns out to read differently, change the test and restart from the failing test. Where the structure needs a change, refactor, keeping behavior changes and structure changes separate and re-running the test after each change.
 
 Where no test infrastructure exists, flag the gap before writing code, and still write the test. For a probe or spike, an ephemeral test drives it, deleted when the probe ends.
 </do>
