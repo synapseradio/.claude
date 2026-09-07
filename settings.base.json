@@ -449,6 +449,11 @@
             "type": "command",
             "command": "python3.14 $HOME/.claude/scripts/hooks/verify-marks.py",
             "statusMessage": "Scanning reply for unverified marks"
+          },
+          {
+            "type": "command",
+            "command": "python3.14 $HOME/.claude/scripts/hooks/flag-machine-prose.py",
+            "statusMessage": "Scanning reply for machine prose"
           }
         ]
       }
