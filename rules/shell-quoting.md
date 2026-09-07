@@ -8,11 +8,11 @@ a command that runs as one piece, quoted so the shell reads it whole.
 </optimize_for>
 
 <decide name="quote">
-An argument holding `!`, `?`, `*`, `[`, `]`, `$`, parentheses, or whitespace takes single quotes. Multi-line or special-character content takes a heredoc with a quoted delimiter, <<'EOF'.
+Single-quote an argument that holds `!`, `?`, `*`, `[`, `]`, `$`, parentheses, or whitespace. Put multi-line or special-character content in a heredoc with a quoted delimiter, <<'EOF'.
 </decide>
 
 <require>
-Never nest double quotes. File content never travels through echo or a heredoc into a file.
+Keep double quotes unnested. Carry file content into a file through Write or Edit only.
 </require>
 
 </rule>

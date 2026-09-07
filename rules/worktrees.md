@@ -8,7 +8,7 @@ a worktree the wt CLI created, listed, merged, and removed, with its hooks and c
 </optimize_for>
 
 <define name="commands">
-Create with `wt --yes switch --create $branch`. List with `wt list`. Remove with `wt remove`. Merge back with `wt merge $target`. The worktrunk config, its pre-start hooks included, lives in `~/.dotfiles/.config/worktrunk/`.
+Create with `wt --yes switch --create $branch`. List with `wt list`. Remove with `wt remove`. Merge back with `wt merge $target`. The wt CLI is worktrunk, documented at https://worktrunk.dev, and its config, pre-start hooks included, lives in `~/.dotfiles/.config/worktrunk/`.
 </define>
 
 <decide name="worktree">
@@ -16,7 +16,7 @@ Where the session should work inside the new worktree, invoke worktrunk:wt-switc
 </decide>
 
 <require>
-Manage worktrees through the wt CLI, worktrunk at https://worktrunk.dev, never through the EnterWorktree or ExitWorktree tools.
+Never manage a worktree through the EnterWorktree or ExitWorktree tools.
 </require>
 
 </rule>

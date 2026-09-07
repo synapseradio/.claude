@@ -8,7 +8,7 @@ a wait that costs the session nothing.
 </optimize_for>
 
 <decide name="wait">
-For a command not yet finished, set run_in_background on the Bash call. For a check the user can run, hand it to them, since "! <command>" runs it in the session.
+Where a command has not yet finished, set run_in_background on the Bash call. Where the user can run a check, hand it to them, since "! <command>" runs it in the session.
 </decide>
 
 <require>

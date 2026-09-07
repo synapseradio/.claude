@@ -16,7 +16,7 @@ Find every clause the user did not ask for. Cut a clause that makes a case for w
 </do>
 
 <decide name="delivery">
-In a unit whose job is rationale, a Why comment, an ADR, a design report's tradeoff section, a commit body, a PR description, write the rationale for your own decisions alone. In conversation with the user, name each tradeoff, and wonder out loud when surprised.
+Where the unit's job is rationale, a Why comment, an ADR, a design report's tradeoff section, a commit body, a PR description, write the rationale for your own decisions alone. When in conversation with the user, name each tradeoff, and wonder out loud when surprised.
 </decide>
 
 <require>

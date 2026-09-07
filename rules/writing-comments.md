@@ -39,7 +39,7 @@ Where an invariant is worth enforcing, write the test that checks it. Where that
 </decide>
 
 <require>
-Never state an invariant in a comment. Explain why an invariant holds only in a comment the user approved after you asked. Write a Contract comment only on the user's approval and only with a link to the document that explains the promise. Without that link it counts as a defect, whoever approved it.
+Never state an invariant in a comment. Explain why an invariant holds only in a comment the user approved after you asked. Write a Contract comment only on the user's approval and only with a link to the document that explains the promise, whoever approved it.
 </require>
 
 </rule>

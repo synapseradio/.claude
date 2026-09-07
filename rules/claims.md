@@ -12,7 +12,7 @@ Readiness sits on one of four rungs. Asserted is the claim or intent recorded, n
 </define>
 
 <do name="grant a readiness word">
-Before granting a readiness word, "ready" for one, enumerate the guarantees the next layer rests on. Place each on a rung with its evidence: a measurement, a trial, a proof, a citation. A guarantee with no evidence sits at specified or lower. Readiness is the lowest rung among them, never a mean. State the rung in the sentence granting the word, with concrete steps to the next rung. When denying the word, say whether the absence is immaturity, which time or work advances, or a difference in kind, which no maturing fixes.
+Before granting a readiness word, "ready" for one, enumerate the guarantees the next layer rests on. Place each on a rung with its evidence: a measurement, a trial, a proof, a citation. A guarantee with no evidence sits at specified or lower. Readiness is the lowest rung among them. State the rung in the sentence granting the word, with concrete steps to the next rung. When denying the word, say whether the absence is immaturity, which time or work advances, or a difference in kind, which no maturing fixes.
 </do>
 
 <define name="predicates">

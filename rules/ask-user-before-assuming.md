@@ -16,7 +16,7 @@ Classify a premise by what settles it. Where code, rules, the harness, docs, or 
 </decide>
 
 <decide name="act">
-Act on a premise by its kind. On a goal premise answered earlier, or decided by an approved plan, act. On a goal premise met as a delegate, mark the premise [^?] and hand it up to the caller with the options you would have offered. On any other goal premise, ask through AskUserQuestion, fold the answer in, and act. On a method premise, act, stating the premise marked [?] in the same message.
+Act on a premise by its kind. Where a goal premise was answered earlier, or decided by an approved plan, act. Where a goal premise is met as a delegate, mark the premise [^?] and hand it up to the caller with the options you would have offered. Where any other goal premise stands, ask through AskUserQuestion, fold the answer in, and act. Where a method premise stands, act, stating the premise marked [?] in the same message.
 </decide>
 
 <do name="question">

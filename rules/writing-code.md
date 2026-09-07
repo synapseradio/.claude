@@ -18,7 +18,7 @@ Validate at system boundaries. Before a compatibility layer, ask first. Prefer f
 </do>
 
 <require>
-Never add complexity for a scenario that cannot happen. Never duplicate around a wrong abstraction. Keep the interface from growing with the implementation.
+Never add complexity for a scenario that cannot happen. Never duplicate around a wrong abstraction. Never grow the interface with the implementation.
 </require>
 
 </rule>

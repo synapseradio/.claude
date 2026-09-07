@@ -8,7 +8,7 @@ a fact that the next session's search finds.
 </optimize_for>
 
 <decide name="route">
-A fact belonging to one repository goes to the file memory the harness names in its Memory section, naming the repository inside the entry. Session narrative, a working note, or a run file goes to `scratchpad/$branch/$slug__$DD-MM-YY-HHmm.md`. For any other fact, ask the user which store, and write nothing until they answer.
+Where a fact belongs to one repository, it goes to the file memory the harness names in its Memory section, naming the repository inside the entry. Where a fact is session narrative, a working note, or a run file, it goes to `scratchpad/$branch/$slug__$DD-MM-YY-HHmm.md`. Otherwise, ask the user which store, and write nothing until they answer.
 </decide>
 
 </rule>

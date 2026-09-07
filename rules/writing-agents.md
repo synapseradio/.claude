@@ -17,7 +17,7 @@ The frontmatter carries a name and a description, which is the trigger. It carri
 </define>
 
 <do name="body">
-Write the body as prose addressed to the agent, in the voice of the rules files. Open on a heading naming the agent, then a sentence or two stating its job and what it returns. Write instruction-only sentences under headings that name territories, each paragraph opening on its point, on the imperative where it instructs. Give each setting a caller may override its range and its default. Write the procedure in the order it runs, each stage opening on what it does. Write a constraint as an instruction that holds on every turn, and a prohibition as "never" plus the act. Say what the return carries and the line it opens on. Name a skill with the moment it loads, "Invoke the thinkies:decompose skill on the question as soon as it arrives." for one. Define each term where it first appears, in a clause. Where a rule carries the clause the body rests on, restate that one clause and keep the full statement in the rule.
+Write the body as prose addressed to the agent, in the voice of the rules files. Open on a heading naming the agent, then a sentence or two stating its job and what it returns. Write instruction-only sentences under headings that name territories, each paragraph opening on its point, on the imperative where it instructs. For each setting a caller may override, give its range and its default. Write the procedure in the order it runs, each stage opening on what it does. Write a constraint as an instruction that holds on every turn, and a prohibition as "never" plus the act. Say what the return carries and the line it opens on. Name a skill with the moment it loads, "Invoke the thinkies:decompose skill on the question as soon as it arrives." for one. Define each term where it first appears, in a clause. Where a rule carries the clause the body rests on, restate that one clause and keep the full statement in the rule.
 </do>
 
 <do name="scope and examples">
@@ -25,7 +25,7 @@ Name in example use cases the ways a caller may scope a run, with no command gra
 </do>
 
 <require>
-Task content stays out of the file, and stance out of the call. The agent honors the scope the request states.
+Task content sits in the call only, and stance in the file only. A run takes its scope from the request only.
 </require>
 
 </rule>

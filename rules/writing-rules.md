@@ -30,7 +30,7 @@ The trigger names what fires the rule now. The machine states what the rule requ
 </define>
 
 <decide name="route">
-Route content before writing it. An invariant goes to `rules/`. A catalog goes to `references/`. Enforcement goes to a hook. Stance goes to CLAUDE.md. Within a rule, a sentence that fixes a term goes to a define group, a sentence that directs an act goes to the decide or do group where it acts, and a halt goes to the require group. A subsection gets its own trigger only where it fires on less than the file does.
+Route content before writing it. Where the content is an invariant, it goes to `rules/`. Where it is a catalog, it goes to `references/`. Where it is enforcement, it goes to a hook. Where it is stance, it goes to CLAUDE.md. Within a rule, where a sentence fixes a term, it goes to a define group. Where a sentence directs an act, it goes to the decide or do group where it acts. Where a sentence is a halt, it goes to the require group. A subsection gets its own trigger only where it fires on less than the file does.
 </decide>
 
 <require>

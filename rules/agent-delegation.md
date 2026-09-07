@@ -4,7 +4,7 @@
 
 <optimize_for>
 a delegate that returns a result the caller can check.
-<why_it_matters>A delegate holds only its prompt and what it can find, and a gap between them tends to get filled by an invented fact, duplicated work, or a stall. A step sliced as a horizontal layer leaves assembly to whoever comes next. A model above what the check needs costs tokens, and one below it costs a wrong answer that no check catches. A forked spawn copies this session, its model included. A delegate's report arrives secondhand, and its sources are what let the caller check it.</why_it_matters>
+<why_it_matters>A delegate holds only its prompt and what it can find, and a gap between them tends to get filled by an invented fact, duplicated work, or a stall. A step sliced as a horizontal layer leaves assembly to whoever comes next. A model above what the check needs costs tokens, and one below it costs a wrong answer that no check catches. A forked spawn copies this session, its model included. A delegate reports secondhand, and its sources are what let the caller check the report.</why_it_matters>
 </optimize_for>
 
 A delegation runs in order: decide the spawn may happen, take the readings, choose the settings, compose the prompt, spawn, and receive the report.
@@ -18,11 +18,19 @@ Haiku takes reads, maps, lists, summaries, and stated changes verified by readin
 </define>
 
 <decide name="settings">
-Where the span exceeds one context, split into sequential steps first, each spawn completing its slice end to end. Choose the agent type first, then the model, then the effort. Choose the model by the first of these that holds: where the user named a model, that model; where a critique finding has one repair left standing, sonnet; where the prompt states every step and you verify the result by reading it, haiku; where later work depends on the answer, no check detects an error before then, and undoing requires manual work, opus; otherwise, sonnet. Where two choices match equally, take the cheaper, haiku below sonnet below opus. Choose the effort by the prompt: where the prompt states every step, low, or medium for a task in several parts; otherwise high, never above it. Where no effort field is exposed, state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
+Where the span exceeds one context, split into sequential steps first, each spawn completing its slice end to end. Choose the agent type first, then the model, then the effort. Choose the model by the first of these arms that holds.
+
+- Where the user named a model, that model.
+- Where a critique finding has one repair left standing, sonnet.
+- Where the prompt states every step and you verify the result by reading it, haiku.
+- Where later work depends on the answer, no check detects an error before then, and undoing requires manual work, opus.
+- Otherwise, sonnet.
+
+Where two choices match equally, take the cheaper, haiku below sonnet below opus. Choose the effort by the prompt: where the prompt states every step, low, or medium for a task in several parts, and otherwise high, never above it. Where no effort field is exposed, state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
 </decide>
 
 <define name="prompt">
-A prompt carries seven parts, and this template names them. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. Where a part is empty, write one line naming the absence, no filler.
+Write the prompt in these seven parts. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. Where a part is empty, leave it out.
 
 ```xml
 <prompt>
@@ -60,8 +68,11 @@ A prompt carries seven parts, and this template names them. Replace each bracket
 </prompt>
 ```
 
-Shape the prompt to the model: for haiku, state every step, paths, exact constraints, and the check to run and return; for opus, state the problem, its constraints, and the decisions already made; for sonnet, state the problem and the decisions, refer to the constraints, and add exact context wherever the delegate would otherwise guess.
 </define>
+
+<decide name="compose">
+Where the model is haiku, state every step, paths, exact constraints, and the check to run and return. Where the model is opus, state the problem, its constraints, and the decisions already made. Where the model is sonnet, state the problem and the decisions, refer to the constraints, and add exact context wherever the delegate would otherwise guess.
+</decide>
 
 <do name="spawn">
 Set the model field on every spawn that accepts one, and the effort field wherever one exists. For a forked spawn, the model field stays unset.
@@ -74,7 +85,7 @@ A delegate's report carries four parts, and this template names them. The same b
 <report>
   <unanswered>
     [each choice point handed up: the question and the options you would have
-    offered; one line naming the absence where none]
+    offered]
   </unanswered>
   <done>
     [what got done, each claim with its source or its mark]

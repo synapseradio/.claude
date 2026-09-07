@@ -4,7 +4,7 @@
 
 <optimize_for>
 prose that puts the point first, the actor in the subject, and the claim in words, for a reader whose information, stance, nationality, history, identity, or personal taste the writer cannot predict.
-<why_it_matters>A reader meets the prose at a time, on a renderer, and from a culture the writer cannot know, so what the writer can fix for them is where their attention lands and what they see of the evidence. Attention is finite and spent in order, so a point placed first reaches even a reader who stops early, and a sentence shows what it rests on when the actor sits in the subject and the claim stands in words. An idiom asks for a culture and a concrete word asks for nothing. A mirror spends the reader's attention on a claim they never held, and a negation of a thing the text already named closes it. A request the reader must infer costs them the inference and leaves them nothing to refuse. A reference to the artifact itself sends the reader away from the content. An em dash hides the relation between the clauses it joins. A comma that joins two independent clauses hides which one carries the point. A comment and a commit message arrive with no message in which to name a departure. Each token in the tokens group tends to fail one of these lines while machine prose and habit supply it and no voice needs it. Point first, actor in the subject, claim in words is the contract of this space and one tradition among those writers bring here, since each tradition reads as itself in the prose it shapes. Reader, Attention, and Evidence hold for every writer, since a reader's path to the point depends on them and no writer's identity does, and rhythm, repetition, hedging, and warmth remain the writer's own.</why_it_matters>
+<why_it_matters>A reader meets the prose at a time, on a renderer, and from a culture the writer cannot know, so what the writer can fix for them is where their attention lands and what they see of the evidence. Attention is finite and spent in order, so a point placed first reaches even a reader who stops early, and a sentence shows what it rests on when the actor sits in the subject and the claim stands in words. An idiom asks for a culture and a concrete word asks for nothing. A mirror spends the reader's attention on a claim they never held, and a negation of a thing the text already named closes it. A request the reader must infer costs them the inference and leaves them nothing to refuse. A reference to the artifact itself sends the reader away from the content. An em dash hides the relation between the clauses it joins. A comma that joins two independent clauses hides which one carries the point. A comment and a commit message arrive with no message in which to name a departure. A heading enters the skim surface, and a bold term in a list does not. Repairing one grain leaves the figures at the next in place. Each token in the tokens group tends to fail one of these lines while machine prose and habit supply it and no voice needs it. Point first, actor in the subject, claim in words is the contract of this space and one tradition among those writers bring here, since each tradition reads as itself in the prose it shapes. Reader, Attention, and Evidence hold for every writer, since a reader's path to the point depends on them and no writer's identity does, and rhythm, repetition, hedging, and warmth remain the writer's own.</why_it_matters>
 </optimize_for>
 
 <do name="paragraph">
@@ -32,7 +32,7 @@ A paragraph opens on its point, on the imperative where it instructs, and ends w
 - Where a point is withheld, "The trick:" for one, write the thing directly.
 - Where a division is announced and then distributed over its members, in a sentence or a heading, give each member its own place and cut the announcement.
 - Where a list's items differ in grammatical class, keep one class per list, or write prose.
-- Where every item of a list reads as a bold term then an explanation, write headings, since a heading enters the skim surface.
+- Where every item of a list reads as a bold term then an explanation, write headings.
 - Where a pointer names a document this one already lists, keep the one under its list.
 - Where two independent clauses are joined with ", and", split them into two sentences.
 - Where a sentence stacks clauses behind commas, give each clause its own sentence.
@@ -75,7 +75,7 @@ A paragraph opens on its point, on the imperative where it instructs, and ends w
 </decide>
 
 <do name="before sending">
-Read what you wrote as its first reader. Mark each weight-carrying claim you cannot source at the clause's end, so a reader sees what stands unverified. Sweep one grain at a time, word, clause, sentence, paragraph, document, since repairing one grain leaves the figures at the next in place. Find the sentence you would defend least, and repair or cut it.
+Read what you wrote as its first reader. Mark each weight-carrying claim you cannot source at the clause's end, so a reader sees what stands unverified. Sweep one grain at a time: word, clause, sentence, paragraph, document. Find the sentence you would defend least, and repair or cut it.
 </do>
 
 <texture>

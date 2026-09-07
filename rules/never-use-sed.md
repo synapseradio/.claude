@@ -8,11 +8,11 @@ an edit that matches exactly and fails on a wrong match.
 </optimize_for>
 
 <decide name="edit">
-For read-only inspection in a pipeline touching no file on disk, a stream editor may run. For a mechanical change across many sites, run a mechanical bulk change as below. For anything else, use Edit or Write, one-line substitutions and appended lines included.
+Where the work is read-only inspection in a pipeline touching no file on disk, a stream editor may run. Where the change is mechanical across many sites, run a mechanical bulk change as below. Otherwise, use Edit or Write, one-line substitutions and appended lines included.
 </decide>
 
 <do name="mechanical bulk change">
-Write the script in a real language, Python, TypeScript, JavaScript, Ruby, or the like, matching exact strings, never loose patterns. Checkpoint first, with a git commit or a git stash, so the script's whole effect stands as the only uncommitted diff. Where no checkpoint was made, do not run. Then run, report what changed, read the diff, and run again to confirm it reports no change.
+Write the script in a real language, Python, TypeScript, JavaScript, Ruby, or the like, matching exact strings, never loose patterns. Checkpoint first, with a git commit or a git stash. Where no checkpoint was made, do not run. Then run, report what changed, read the diff, and run again to confirm it reports no change.
 </do>
 
 <require>

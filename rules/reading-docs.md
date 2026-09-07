@@ -12,7 +12,7 @@ Take the origin of the URL, the scheme and host, and run `curl -sfL "$origin/llm
 </do>
 
 <require>
-The llms.txt and llms-full.txt files travel through curl, never through a scrape tool.
+Always fetch llms.txt and llms-full.txt through curl directly.
 </require>
 
 </rule>

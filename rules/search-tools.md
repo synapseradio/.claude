@@ -8,7 +8,7 @@ an answer the reader can trace to the highest source the lookup reached.
 </optimize_for>
 
 <decide name="lookup">
-For a library, framework, SDK, or CLI's documentation, go to context7 first. For deep research, use the linkup MCP tools. For anything else, search the live web through the tvly CLI.
+Where the question is a library, framework, SDK, or CLI's documentation, go to context7 first. Where the question calls for deep research, use the linkup MCP tools. Otherwise, search the live web through the tvly CLI.
 </decide>
 
 <do>
