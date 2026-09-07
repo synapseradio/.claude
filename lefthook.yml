@@ -20,23 +20,6 @@ pre-commit:
             glob: "*.{sh,bash}"
             run: shellcheck {staged_files}
 
-    # Runs after the lint group, because markdownlint's stage_fixed rewrites
-    # the very rule files this reads. The script regenerates every output
-    # from scratch, so it takes no file arguments; the glob only decides
-    # whether a commit touched anything the generated files depend on.
-    # stage_fixed stages only the staged files the glob matched, so the one
-    # output living in this repository is staged by hand. The outputs outside
-    # this repository are the live configs, so only a commit on main writes them.
-    - name: sync-agent-configs
-      only:
-        - ref: main
-      glob:
-        - "rules/*.md"
-        - "agents/*.md"
-        - "CLAUDE.md"
-        - "scripts/sync-agent-configs.py"
-      run: python3.14 scripts/sync-agent-configs.py && git add references/working-rules.md
-
 # pre-push gate: re-runs the check-only side of every linter against the
 # diff being pushed, and regenerates the agent configs. shellcheck and
 # shfmt -d have no autofix; ruff check without --fix matches the same
@@ -64,8 +47,12 @@ pre-push:
     # land without a second command. The one output tracked here is the
     # exception: a push carrying a render its own sources no longer produce
     # is what this gate exists to stop, so a change to that file ends the
-    # push with the regeneration already done. Gated to main for the same
-    # reason as the pre-commit job.
+    # push with the regeneration already done. Gated to main because the
+    # outputs outside this repository are the live configs, which a branch's
+    # unfinished rules should not overwrite. This is the only hook that runs
+    # the generator: the script refuses to write over a render carrying
+    # uncommitted changes, and a staged render is uncommitted, so the same
+    # job at pre-commit blocks every commit that touches the rules.
     - name: sync-agent-configs
       only:
         - ref: main
