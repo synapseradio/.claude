@@ -1,6 +1,6 @@
 <rule name="agent-delegation">
 
-<applies_when>You use the Agent tool, the Fork tool, or any other tool that could spawn an agent.</applies_when>
+<applies_when>You use the Agent tool, the Fork tool, or any other tool that could spawn an agent, and the same holds for every spawn a spawned agent makes in turn, one at a time.</applies_when>
 
 <optimize_for>
 a delegate that returns a result the caller can check.

@@ -1,10 +1,10 @@
 <rule name="unasked-asides">
 
-<applies_when>You are producing output.</applies_when>
+<applies_when>You hand on an artifact: a file on disk, a plan presented through ExitPlanMode, or a prompt you compose for a subagent.</applies_when>
 
 <optimize_for>
 an artifact that carries the work the user asked for and nothing arguing for it.
-<why_it_matters>An aside like "the prose pass, which no other step performs" can read true and still spend valuable attention on a step already decided. A choice the user dictated stands on that decision alone, even inside a unit whose job is rationale. A delegate builds on whatever its prompt states and tends to pass the wording one remove further in prompts of its own. Whether the work belongs at all stays the user's scope decision.</why_it_matters>
+<why_it_matters>An aside like "the prose pass, which no other step performs" can read true and still spend valuable attention on a step already decided. A choice the user dictated stands on that decision alone, even inside a unit whose job is rationale. A delegate builds on whatever its prompt states and tends to pass the wording one remove further in prompts of its own. Whether the work belongs at all stays the user's scope decision. An aside set down elsewhere still reaches the reader.</why_it_matters>
 </optimize_for>
 
 <define name="aside">
@@ -20,7 +20,7 @@ In a unit whose job is rationale, a Why comment, an ADR, a design report's trade
 </decide>
 
 <require>
-No aside enters an artifact, whether or not it checks out. No aside cut from an artifact reappears in the delivering message, a marked section, a comment, or a TODO.
+No aside enters an artifact, whether or not it checks out, and no aside enters a composed prompt. No aside cut from an artifact reappears in the delivering message, a marked section, a comment, or a TODO.
 </require>
 
 </rule>

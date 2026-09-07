@@ -16,7 +16,7 @@ Where the repo states a format through a commitlint, commitizen, or gitlint conf
 </decide>
 
 <do name="commit">
-Verify the staged set with `git diff --cached --name-only`, with planning artifacts out unless the user asks. Compose the message, then commit. Where a hook rejects, make the rejection the next task.
+Verify the staged set with `git diff --cached --name-only`, with planning artifacts out unless the user asks. Compose the message, then commit. Where a hook rejects, make the rejection the next task: fix the cause and commit anew.
 </do>
 
 <decide name="branches">

@@ -1,15 +1,15 @@
 <rule name="writing-comments">
 
-<applies_when>You are writing a comment in source code.</applies_when>
+<applies_when>You are writing a comment in source code, or an edit of yours lands beside one.</applies_when>
 
 <optimize_for>
 a comment written only after the code itself, a name, a type, a test, and a document have each failed to carry what needs saying.
-<why_it_matters>Nothing checks the content of a comment, so an invariant kept there tends to drift from the code beside it, while a type, a test, or a name holds it in step. A contract stated in at least two of tests, types, names, and documentation can be read from either one. A comment worded to a moment goes stale while the code stands.</why_it_matters>
+<why_it_matters>Nothing checks the content of a comment, so an invariant kept there tends to drift from the code beside it, while a type, a test, or a name holds it in step. A contract stated in at least two of tests, types, names, and documentation can be read from either one. A comment worded to a moment goes stale while the code stands. A page for another version documents another library, and a rationale with no page is a guess. The reader of a comment reads it off your machine, so a referent they cannot open carries nothing. A TODO that restates the test it names goes stale the day the test lands.</why_it_matters>
 </optimize_for>
 
 <decide name="route">
 
-Route each piece of knowledge before writing a comment.
+Decide first whether a comment exists and which kind it takes, by routing each piece of knowledge.
 
 - When it does not outlive the code beside it, today's change, the bug, the date, it goes to the commit, the PR, or the ticket, and no comment.
 - When it fits a name, a type, a test, or a doc, put it there, and no comment.
@@ -27,15 +27,19 @@ Route each piece of knowledge before writing a comment.
 </decide>
 
 <define name="comment kinds">
-A Why comment is rationale. A Contract comment is a unit's promise to its caller, worded for a caller who reads the interface and nothing else. A Consult comment is the person or group the user names to talk to before this code changes, in a codebase with several owners. An Anchor comment is the domain fact the code answers to, citing its protocol, spec, or regulation. A Map comment is orientation otherwise rebuilt by hand, a state layout or the key idea behind a non-obvious algorithm.
+A Why comment is rationale, and it links the documentation of every platform or library behavior it rests on, at the version the lockfile resolves. A Contract comment is a unit's promise to its caller that no type, test, or name can hold, worded for a caller who reads the interface and nothing else, and it links the document that explains the promise. A Consult comment is the person or group the user names to talk to before this code changes, in a codebase with several owners. An Anchor comment is the domain fact the code answers to, citing its protocol, spec, or regulation. A Map comment is orientation otherwise rebuilt by hand, a state layout for one. An external referent is anything outside the file the comment sits in.
 </define>
 
 <do name="write">
-Draft the interface comment before the body. Word it to hold for as long as the code stands: no date, no version, no "was", "will", "for now", "currently", "still", or "soon". Every external referent carries an http or https link, and where the user asks for a disk path or a line number, give that. Where a banner would mark a moment, ask first. Where the comment will not stay short, fix the design until it shrinks. Where a convention mandates a comment on every declaration, write the one sentence a caller needs, plus what static analysis and IDE tooling require, JSDoc with type signatures under @ts-check and the like. In doubt, leave it out.
+Draft the comment on the declaration, the one a caller reads, before the body. Word it to hold for as long as the code stands: no date, no version, and no word that marks a moment, "currently" for one. Every external referent carries an http or https link, a document in the same repository carries its forge URL, and where the user asks for a disk path or a line number, give that. Where a Why comment would rest on a behavior with no page to link, write no Why comment: find the source, or find the test that shows the behavior. Where the linked page documents another version than the lockfile resolves, replace the link with the resolved version's page. Where a banner would mark a moment, ask first. Where the comment will not stay short, fix the design until it shrinks. Cut a comment sentence that still reads dense after one rewrite, moving what it carried to a test, a document, or a link, and where sure it belongs, keep it concise. Keep a mechanical verb the code verifiably performs as the subject's verb. Where a sentence was reworded to dodge an apostrophe, a quote, or an escape, write the correct sentence first, then the quoting that carries it. Where a convention mandates a comment on every declaration, write the one sentence a caller needs, plus what static analysis and IDE tooling require, JSDoc with type signatures under @ts-check for one. In doubt, leave it out.
 </do>
 
 <decide name="edit">
-Where an invariant is worth enforcing, write the test that checks it. Where that test cannot land in this change, leave a TODO with an owner or ticket. Where an edit leaves a nearby comment restating its neighbors or contradicting the code, remove it in the same edit. Where a comment holding an invariant or a contract sits inside the change's scope, remove it, moving what it holds into a type, a test, or a name wherever one of them can check it.
+Where an invariant is worth enforcing, write the test that checks it. Where that test cannot land in this change, write a TODO naming the test and an owner or ticket, and leave what the test will state to the test. Where an edit leaves a nearby comment restating its neighbors or contradicting the code, remove it in the same edit. Where a comment holding an invariant or a contract sits inside the change's scope, remove it, moving what it holds into a type, a test, or a name wherever one of them can check it.
 </decide>
+
+<require>
+Never state an invariant in a comment. Explain why an invariant holds only in a comment the user approved after you asked. Write a Contract comment only on the user's approval and only with a link to the document that explains the promise. Without that link it counts as a defect, whoever approved it.
+</require>
 
 </rule>

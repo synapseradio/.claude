@@ -40,7 +40,7 @@ Dump the syntax tree of an example the rule must match, and test against that ex
 </do>
 
 <require>
-Every rule matches an example snippet before running across a codebase.
+Run a rule across a codebase only after it matches an example snippet.
 </require>
 
 </rule>

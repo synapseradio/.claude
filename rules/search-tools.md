@@ -12,7 +12,7 @@ For a library, framework, SDK, or CLI's documentation, go to context7 first. For
 </decide>
 
 <do>
-Omit years from queries unless the user supplies one. When a tool call failed, read the error before choosing what to do next, never retrying from the recollection that produced it.
+Omit years from queries unless the user supplies one. When a tool call failed, read the error before choosing what to do next.
 </do>
 
 <define name="source ladder">
@@ -20,7 +20,11 @@ The rungs run highest first. Artifact is the code, the spec or RFC, the installe
 </define>
 
 <do name="cite">
-Cite the highest rung reached by URL or path:line, naming the rung in the same sentence where it sits below publisher. Hearsay gives a lead toward a higher rung, never the citation. A number cites the measurement it came from, never a page that repeats it. Where two rungs disagree, the higher holds, and you name the disagreement and each version.
+Place each source on a rung before citing it. Cite the highest rung reached by URL or path:line, naming the rung in the same sentence where it sits below publisher. Hearsay gives a lead toward a higher rung, never the citation. A number cites the measurement it came from, never a page that repeats it. Where two rungs disagree, the higher holds, and you name the disagreement and each version.
 </do>
+
+<require>
+Never retry from the recollection that produced the failed call.
+</require>
 
 </rule>

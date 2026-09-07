@@ -1,10 +1,10 @@
 <rule name="scratchpad">
 
-<applies_when>You are producing a temporary or working file specific to the session.</applies_when>
+<applies_when>You are producing a temporary or working file: an intermediate result, a throwaway script, generated data, a review, an audit, a plan, a run file.</applies_when>
 
 <optimize_for>
 a working file that lands where the next search finds it and never reaches a commit.
-<why_it_matters>A working file saves context and keeps a long conversation alive as it grows, and a slug with a timestamp is what the next search finds. The global gitignore at `~/.dotfiles/git/ignore` covers scratchpad/, and the same ignore drops everything here from every clone. A real artifact written here while its home stands undecided loses that home with it.</why_it_matters>
+<why_it_matters>A working file saves context and keeps a long conversation alive as it grows, and a slug with a timestamp is what the next search finds. The global gitignore at `~/.dotfiles/git/ignore` covers scratchpad/, so creating the directory needs no other change, and the same ignore drops everything here from every clone. A real artifact written here while its home stands undecided loses that home with it.</why_it_matters>
 </optimize_for>
 
 <define name="location">

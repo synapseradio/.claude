@@ -16,7 +16,7 @@ Write the script in a real language, Python, TypeScript, JavaScript, Ruby, or th
 </do>
 
 <require>
-No stream editor ever modifies a file, whatever the hook catches: sed, gsed, awk, perl -i, any tool substituting in place from a pattern it never shows you.
+No stream editor ever modifies a file, whatever its name: any tool substituting in place from a pattern it never shows you, sed for one.
 </require>
 
 </rule>
