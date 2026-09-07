@@ -25,8 +25,11 @@ pre-commit:
     # from scratch, so it takes no file arguments; the glob only decides
     # whether a commit touched anything the generated files depend on.
     # stage_fixed stages only the staged files the glob matched, so the one
-    # output living in this repository is staged by hand.
+    # output living in this repository is staged by hand. The outputs outside
+    # this repository are the live configs, so only a commit on main writes them.
     - name: sync-agent-configs
+      only:
+        - ref: main
       glob:
         - "rules/*.md"
         - "agents/*.md"
@@ -61,8 +64,11 @@ pre-push:
     # land without a second command. The one output tracked here is the
     # exception: a push carrying a render its own sources no longer produce
     # is what this gate exists to stop, so a change to that file ends the
-    # push with the regeneration already done.
+    # push with the regeneration already done. Gated to main for the same
+    # reason as the pre-commit job.
     - name: sync-agent-configs
+      only:
+        - ref: main
       run: |
         python3.14 scripts/sync-agent-configs.py
         git diff --quiet -- references/working-rules.md || {
