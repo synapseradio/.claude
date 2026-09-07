@@ -10,7 +10,7 @@ paths:
 
 <optimize_for>
 a rules file whose reader decides the same way every turn and still knows what the decision serves where the machine runs out.
-<why_it_matters>A rule gets read every turn, and each sentence in it positions the reader. The reasons in the why let the reader extend the rule to a case the machine never named. A warrant inside a machine line makes the reader parse the why to find the what, so the why carries every warrant and each machine line goes bare. A rule that argues for its own existence spends valuable attention on a decision the user already took.</why_it_matters>
+<why_it_matters>A rule gets read every turn, and each sentence in it positions the reader. The reasons in the why let the reader extend the rule to a case the machine never named. A warrant inside a machine line makes the reader parse the why to find the what, so the why carries every warrant and each machine line goes bare. A rule that argues for its own existence spends valuable attention on a decision the user already took. The frontmatter loads a path-scoped file and the trigger tells the reader why it fired. An example stands where a mechanism is missing, and a list of examples teaches the list.</why_it_matters>
 </optimize_for>
 
 <define name="form">
@@ -26,12 +26,16 @@ The why is remembered for its statement of why the practice matters, so no frame
 </define>
 
 <define name="qualities">
-The trigger names what fires the rule now. The machine states what the rule requires. Where a topic appears in another file, the rule restates the one clause it rests on and keeps the full statement in one place, with no link between rules files. Where a neighbor continues the territory, the rule names it, and otherwise the trigger alone bounds the rule. The why carries every warrant, and a machine line carries none.
+The trigger names what fires the rule now. The machine states what the rule requires, and each machine line states a test a reader can run on the artifact. A term the file coins gets its definition on its first use, and the definition carries a meaning and no warrant. A class is named by its mechanism and carries one example at most. Where a topic appears in another file, the rule restates the one clause it rests on and keeps the full statement in one place, with no link between rules files. Where a neighbor continues the territory, the rule names it, and otherwise the trigger alone bounds the rule. The why carries every warrant, and a machine line carries none.
 </define>
 
 <decide name="route">
 Route content before writing it. An invariant goes to `rules/`. A catalog goes to `references/`. Enforcement goes to a hook. Stance goes to CLAUDE.md. Within a rule, a sentence that fixes a term goes to a define group, a sentence that directs an act goes to the decide or do group where it acts, and a halt goes to the require group. A subsection gets its own trigger only where it fires on less than the file does.
 </decide>
+
+<require>
+Never argue for the rule inside it. Never give a class more than one example.
+</require>
 
 <do name="sync">
 The generator at `scripts/sync-agent-configs.py` runs in both directions between the rules files plus CLAUDE.md and `~/.claude/references/working-rules.md`, keyed on the rule elements and the preamble tags, in the order its `WORKING_RULES_ORDER` tuple names. Edit whichever side is in hand, then run the generator toward the other, so the two never disagree. When adding an always-on rule, add its stem to that tuple in the same change. When renaming a rules file or a section another file cites, sweep the citations in the same change.
