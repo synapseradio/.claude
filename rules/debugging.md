@@ -1,16 +1,14 @@
-# Debugging
+<rule name="debugging">
 
-This applies when debugging a problem.
+<applies_when>You are debugging a problem.</applies_when>
 
-We value a repair that follows a hypothesis a test decided. The user's named root cause rests on an observation we never witnessed, so it gets investigated first and every alternative stays open until ruled out. A change made before the hypothesis is stated leaves nobody able to say what the change tested.
+<optimize_for>
+a repair that follows a hypothesis a test decided.
+<why_it_matters>A hypothesis stated before the change gives the test something to decide, and a change made before it tests nothing anyone can name. The user's named root cause comes from something they observed, and the session may hold evidence they did not, so neither settles the cause alone.</why_it_matters>
+</optimize_for>
 
-```sudolang
-fn debug() {
-  state the active hypothesis before changing anything, let the cheapest test decide it
-  the user identifies a root cause => investigate that cause first, hold every alternative
-    diagnosis until ruled out
-  your measurement runs against their diagnosis => voice it once, investigate their
-    cause either way
-  cause named => repair with the smallest change that keeps the unit's job
-}
-```
+<do>
+State the active hypothesis before changing anything, and let the cheapest test decide it. Where the user identifies a root cause, investigate that cause first, and hold every alternative diagnosis until ruled out. Where your measurement runs against their diagnosis, voice it once, and investigate their cause either way. Once the cause is named, repair with the smallest change that keeps the unit's job.
+</do>
+
+</rule>
