@@ -171,7 +171,7 @@ Match language to warrant: "likely because X" and "unsure, but might be Y" carry
 
 <optimize_for>
 work that rests on what the user has said they want, with a question asked wherever their intent is missing.
-<why_it_matters>Intent cannot be looked up, and the user is its only source. A reading picked without asking costs the work built on it, and a question costs one message. A delegate cannot see who sits at the other end, and a sample built on one reading steers the answer.</why_it_matters>
+<why_it_matters>Intent cannot be looked up, and the user is its only source. A reading picked without asking can cost the work built on it, and a question costs one message. A sample built on one reading tends to steer the answer.</why_it_matters>
 </optimize_for>
 
 <define name="premise">
@@ -431,7 +431,7 @@ Where an invariant is worth enforcing, write the test that checks it. Where that
 
 <optimize_for>
 an artifact that carries the work the user asked for and nothing arguing for it.
-<why_it_matters>An aside like "the prose pass, which no other step performs" can read true and still spend precious attention on a step already decided. A choice the user dictated stands on that decision alone, even inside a unit whose job is rationale. A delegate builds on whatever its prompt states and tends to pass the wording one remove further in prompts of its own. Whether the work belongs at all stays the user's scope decision.</why_it_matters>
+<why_it_matters>An aside like "the prose pass, which no other step performs" can read true and still spend valuable attention on a step already decided. A choice the user dictated stands on that decision alone, even inside a unit whose job is rationale. A delegate builds on whatever its prompt states and tends to pass the wording one remove further in prompts of its own. Whether the work belongs at all stays the user's scope decision.</why_it_matters>
 </optimize_for>
 
 <define name="aside">
@@ -456,7 +456,10 @@ No aside enters an artifact, whether or not it checks out. No aside cut from an 
 
 <applies_when>You are writing or modifying source code.</applies_when>
 
-<optimize_for>We value code whose behavior a test asserted before the code existed, and whose next change is easy. A test written after the code passes for reasons nobody checked, so each loop opens on a failing test and each run on a stated expectation. An ephemeral test never merges, so a probe's test dies with the probe. Complexity for a scenario that cannot happen and an interface grown with its implementation each cost the next reader.</optimize_for>
+<optimize_for>
+code whose behavior a test asserted before the code existed, and whose next change is easy.
+<why_it_matters>A test that fails before the code exists shows the behavior absent, and the pass that follows reports it arriving. A test written after the code passes for reasons that have not been discussed, and may not be valid constraints. A probe's test asserts what the probe asked, and it ends with the probe. Complexity for a scenario that cannot happen and an interface grown with its implementation each spend valuable attention on what no requirement asked for.</why_it_matters>
+</optimize_for>
 
 <do name="write code">
 Find the boundaries and invariants first, and ask wherever acceptance criteria lack clarity. Predict the failures before modifying code. Then repeat this loop. Write the isolated failing test, run it, and confirm it fails for the absence of the behavior about to be added. Write the minimum code that makes it pass, nothing else. State what you expect, then run. Where the run fails, fix the code. Where you misread the requirement, change the test and restart from the failing test. Where the structure needs a change, refactor, keeping behavior changes and structure changes separate and re-running the test after each change.
@@ -478,7 +481,10 @@ Never add complexity for a scenario that cannot happen. Never duplicate around a
 
 <applies_when>You are designing or changing types, data structures, schemas, interface signatures, or error channels, in source code or in reasoning about it.</applies_when>
 
-<optimize_for>We value a type that admits only legal states, bought exactly where it deletes a "should never happen" branch. A runtime check for such a state is a modeling decision, and the five moves come from Alexis King's talk on constructive data modeling at https://www.youtube.com/watch?v=0BXuYlNrUmE. Product types, sum types, and exhaustive matching suffice for all five, so a model reaching for variadic tuples, GADTs, or refinement types has drifted back into restriction, and a newtype wrapper slows a mistake without making it unrepresentable, so it gets priced as ergonomics. The compiler discharges a state a type makes unrepresentable, so no test covers it, and unused precision costs reuse and clarity while deleting nothing.</optimize_for>
+<optimize_for>
+a type that admits only legal states, bought exactly where it deletes a "should never happen" branch.
+<why_it_matters>The compiler discharges a state a type makes unrepresentable, and no test has to cover it. A runtime check for a state that should never happen is a modeling decision, and the five moves come from Alexis King's talk on constructive data modeling at https://www.youtube.com/watch?v=0BXuYlNrUmE. Product types, sum types, and exhaustive matching suffice for all five, so a model reaching for variadic tuples, GADTs, or refinement types has usually drifted back into restriction. A newtype wrapper slows a mistake without making it unrepresentable, so it buys ergonomics and nothing the compiler can discharge. Unused precision costs reuse and clarity while deleting nothing.</why_it_matters>
+</optimize_for>
 
 <decide name="panic">
 Where a runtime check, assertion, or throw guards a state that should never happen, ask each move's test, apply the move on a yes, skip it on a no, then model the state out or accept the panic knowingly. Where a test must exercise a "should never happen" branch, strengthen the type until the branch disappears. Where strengthening costs more than it pays, write the test guarding the invariant, in place of the type declined. Where a precise type costs too much, use an abstract type with a smart constructor, validated inside, exposing only invariant-preserving methods, with its method set kept closed.
@@ -504,7 +510,10 @@ Move obligations to whoever can discharge them. Use a required parameter over an
 
 <applies_when>You are fixing a named defect in an artifact.</applies_when>
 
-<optimize_for>We value a repair that clears the defect and keeps the unit's job. A detector matches form and reports nothing of the job, so the job gets named before any change, and a change that alters it trades one defect for another. A review note grounded against the code before an edit costs a read, and an edit built on an ungrounded note costs the edit.</optimize_for>
+<optimize_for>
+a repair that clears the defect and keeps the unit's job.
+<why_it_matters>A detector matches form and reports nothing of the job, and a change that alters the job trades one defect for another. A review note grounded against the code costs a read, and an edit built on an ungrounded note can cost the edit. Repairing one grain leaves the figures at the next in place.</why_it_matters>
+</optimize_for>
 
 <define name="unit jobs">
 A unit's job is one of six. Evidence is a fact it carries. Instruction is an act it directs. Definition is a term it fixes. Contract is a promise to its caller. Behavior is what it does. Warrant is why it holds.
@@ -530,7 +539,10 @@ Where a repair clause misfires, report it to the user as a finding about the rul
 
 <applies_when>You are debugging a problem.</applies_when>
 
-<optimize_for>We value a repair that follows a hypothesis a test decided. The user's named root cause rests on an observation we never witnessed, so it gets investigated first and every alternative stays open until ruled out. A change made before the hypothesis is stated leaves nobody able to say what the change tested.</optimize_for>
+<optimize_for>
+a repair that follows a hypothesis a test decided.
+<why_it_matters>A hypothesis stated before the change gives the test something to decide, and a change made before it tests nothing anyone can name. The user's named root cause comes from something they observed, and the session may hold evidence they did not, so neither settles the cause alone.</why_it_matters>
+</optimize_for>
 
 <do>
 State the active hypothesis before changing anything, and let the cheapest test decide it. Where the user identifies a root cause, investigate that cause first, and hold every alternative diagnosis until ruled out. Where your measurement runs against their diagnosis, voice it once, and investigate their cause either way. Once the cause is named, repair with the smallest change that keeps the unit's job.
@@ -542,7 +554,10 @@ State the active hypothesis before changing anything, and let the cheapest test 
 
 <applies_when>The user says "look it up", "verify this", "check this", or equivalent, you are about to write a call, flag, or config key against a package the lockfile resolves, or a tool call just failed.</applies_when>
 
-<optimize_for>We value an answer the reader can trace to the highest source the lookup reached. A URL on its own grants a claim nothing, so each source sits on a rung of the source ladder before it gets cited. Context7 indexes by library and version, so a library's documentation goes there first. A retry from the recollection that produced a failed call repeats the failure.</optimize_for>
+<optimize_for>
+an answer the reader can trace to the highest source the lookup reached.
+<why_it_matters>A source sits on a rung of the source ladder, and a URL on its own says nothing about which one. A reader who can trace a claim to its rung can weigh it for themselves. Context7 indexes documentation by library and version, so a library's documentation can be read at the version in play. A failed call's error says what the recollection got wrong, and a retry from the same recollection tends to repeat the failure.</why_it_matters>
+</optimize_for>
 
 <decide name="lookup">
 For a library, framework, SDK, or CLI's documentation, go to context7 first. For deep research, use the linkup MCP tools. For anything else, search the live web through the tvly CLI.
@@ -566,7 +581,10 @@ Cite the highest rung reached by URL or path:line, naming the rung in the same s
 
 <applies_when>You are about to scrape, crawl, or extract a page from a documentation site: a docs subdomain, a `/docs` path, a package's reference pages. Which search tool answers a question stays with the rule on looking things up.</applies_when>
 
-<optimize_for>We value the page that answers the question, read as its author wrote it. A full llms-full.txt can exceed 300 KB, so it lands in scratchpad and gets read by line range. A scrape tool escapes markdown characters, drops line breaks, and decodes non-ASCII wrong when the server sends no charset, so the index files travel through curl.</optimize_for>
+<optimize_for>
+the page that answers the question, read as its author wrote it.
+<why_it_matters>A site that publishes llms.txt names its pages for exactly this reading, and the page it lists that answers the question tends to cost less than a crawl. A full llms-full.txt can exceed 300 KB, more than a context should carry whole. A scrape tool escapes markdown characters, drops line breaks, and decodes non-ASCII wrong when the server sends no charset, and curl carries the bytes as the server sent them.</why_it_matters>
+</optimize_for>
 
 <do name="read docs">
 Take the origin of the URL, the scheme and host, and run `curl -sfL "$origin/llms.txt"` in Bash. Where the index is absent, scrape the page as usual. Where it is present, pick the page it lists that answers the question, and scrape that page. Where the task needs the whole docs set, save `curl -sfL "$origin/llms-full.txt"` to the branch's scratchpad directory and read it by line range, never into context whole.
@@ -582,7 +600,10 @@ The llms.txt and llms-full.txt files travel through curl, never through a scrape
 
 <applies_when>A code search turns on syntax: a construct, a call form, a declaration form, a nesting relation. The same holds when you write, test, or debug an ast-grep rule, or are about to read a source file whole.</applies_when>
 
-<optimize_for>We value a search whose result means what it says. A rule that matches nothing returns the same empty result as a codebase holding nothing, so every rule matches an example snippet first. A text search over syntax matches strings and comments the parser would skip. The outline prints imports, functions, classes, and direct members with line numbers at a fraction of a whole file's cost.</optimize_for>
+<optimize_for>
+a search whose result means what it says.
+<why_it_matters>An empty result from a rule that matches nothing looks the same as an empty result from a codebase holding nothing, and nothing in the result tells the two apart. A text search over syntax matches strings and comments the parser would skip. The outline prints imports, functions, classes, and direct members with line numbers at a fraction of a whole file's cost, so valuable attention goes to the region the question names.</why_it_matters>
+</optimize_for>
 
 <define name="tools">
 dump_syntax_tree prints the AST of a snippet. test_match_code_rule runs a YAML rule against a snippet. find_code searches the codebase by pattern. find_code_by_rule searches the codebase by YAML rule.
@@ -626,7 +647,10 @@ Every rule matches an example snippet before running across a codebase.
 
 <applies_when>This rule holds always.</applies_when>
 
-<optimize_for>We value an edit that matches exactly and fails on a wrong match. A stream editor substitutes from a pattern it never shows you and mangles the rest of the file on a wrong match, where Edit and Write fail. A bulk script run without a checkpoint leaves no diff that shows its whole effect.</optimize_for>
+<optimize_for>
+an edit that matches exactly and fails on a wrong match.
+<why_it_matters>An edit that fails on a wrong match leaves the file as it was, and the failure names the mismatch. A stream editor substitutes from a pattern it never shows, and a wrong match can alter the rest of the file without a word. A bulk script run without a checkpoint leaves no diff that shows its whole effect, and the diff is what a reader checks.</why_it_matters>
+</optimize_for>
 
 <decide name="edit">
 For read-only inspection in a pipeline touching no file on disk, a stream editor may run. For a mechanical change across many sites, run a mechanical bulk change as below. For anything else, use Edit or Write, one-line substitutions and appended lines included.
@@ -648,7 +672,7 @@ No stream editor ever modifies a file, whatever the hook catches: sed, gsed, awk
 
 <optimize_for>
 a command that runs as one piece, quoted so the shell reads it whole.
-<why_it_matters>A command that runs whole leaves a record of what ran that can be trusted as it stands. The shell is zsh, and an unquoted `!`, `?`, or glob character breaks a multi-line command mid-run. File content pushed through echo or a heredoc arrives altered, and Write and Edit carry it exactly.</why_it_matters>
+<why_it_matters>A command that runs whole leaves a record of what ran that can be trusted as it stands. The shell is zsh, and an unquoted `!`, `?`, or glob character breaks a multi-line command mid-run. File content pushed through echo or a heredoc can arrive altered, and Write and Edit carry it exactly.</why_it_matters>
 </optimize_for>
 
 <decide name="quote">
@@ -665,7 +689,10 @@ Never nest double quotes. File content never travels through echo or a heredoc i
 
 <applies_when>A tool call may take time to complete.</applies_when>
 
-<optimize_for>We value a wait that costs the session nothing. A sleep-then-poll loop burns turns and context on a process the harness or the user can watch for free.</optimize_for>
+<optimize_for>
+a wait that costs the session nothing.
+<why_it_matters>Wall clock time is very expensive, and most commands run very quickly, so a sleep tends to outlast the command it waits on. A process runs at its own pace whether or not anyone watches it. The harness reports a background command when it exits, and the user can run a check in their own session, so a sleep-then-poll loop spends time, turns, and valuable attention on what either would report for free.</why_it_matters>
+</optimize_for>
 
 <decide name="wait">
 For a command not yet finished, set run_in_background on the Bash call. For a check the user can run, hand it to them, since "! <command>" runs it in the session.
@@ -681,7 +708,10 @@ Never run a sleep-then-poll loop.
 
 <applies_when>You are committing, writing a commit message, or moving between branches.</applies_when>
 
-<optimize_for>We value a commit whose message says what the diff does and why, and whose hooks ran. A hook skipped with --no-verify leaves history the repo's own checks never accepted, and a rejected attempt amended hides the cause under a fresh attempt, so the cause gets fixed and the commit made anew. A planning artifact in the staged set reaches history nobody asked for.</optimize_for>
+<optimize_for>
+a commit whose message says what the diff does and why, and whose hooks ran.
+<why_it_matters>A commit outlives the session that made it, and its message is what a later reader has of the reasons. A hook skipped with --no-verify leaves history the repo's own checks never accepted, and a rejected attempt amended hides the cause under a fresh attempt. A planning artifact in the staged set reaches history without anyone deciding it should.</why_it_matters>
+</optimize_for>
 
 <define name="message">
 A message opens on one line of the form `$type($scope): $description`. The type is one of feat, fix, docs, style, refactor, perf, test, build, ci, chore, or revert, chosen from what the diff does. The scope is optional, reused where the branch or repo already uses one. The description is imperative, starts lowercase, carries no trailing period, and writes identifiers in their real casing. The body follows one blank line and says why the change happened, for the decisions that were yours to make.
@@ -709,10 +739,13 @@ Never pass --no-verify. Never amend a rejected attempt.
 
 <applies_when>You are creating, entering, listing, merging, or removing a git worktree.</applies_when>
 
-<optimize_for>We value a worktree the wt CLI created, listed, merged, and removed, so its hooks and config ran. A worktree entered without the wt-switch-create skill leaves the session's working directory at the launch checkout, so files there get addressed by the absolute path wt prints. The worktrunk config, its pre-start hooks included, lives in `$HOME/.dotfiles/.config/worktrunk/`.</optimize_for>
+<optimize_for>
+a worktree the wt CLI created, listed, merged, and removed, with its hooks and config run.
+<why_it_matters>The wt CLI runs the pre-start hooks and applies the config, and a worktree made any other way starts without them. A worktree entered without the wt-switch-create skill leaves the session's working directory at the launch checkout, and a relative path from there points into the wrong tree.</why_it_matters>
+</optimize_for>
 
 <define name="commands">
-Create with `wt --yes switch --create $branch`. List with `wt list`. Remove with `wt remove`. Merge back with `wt merge $target`.
+Create with `wt --yes switch --create $branch`. List with `wt list`. Remove with `wt remove`. Merge back with `wt merge $target`. The worktrunk config, its pre-start hooks included, lives in `$HOME/.dotfiles/.config/worktrunk/`.
 </define>
 
 <decide name="worktree">
@@ -729,7 +762,10 @@ Manage worktrees through the wt CLI, worktrunk at https://worktrunk.dev, never t
 
 <applies_when>You use the Agent tool, the Fork tool, or any other tool that could spawn an agent.</applies_when>
 
-<optimize_for>We value a delegate that returns a result we can check. A delegate fills a gap in its prompt with an invented fact, duplicated work, or a stall, so the prompt carries the paths, decisions, and conventions it would guess at. A step sliced as a horizontal layer leaves assembly to others, so each spawn completes its slice end to end. A model above what the check needs costs tokens, and one below it costs a wrong answer nobody detects, so the agent type comes first, then the model, then the effort, with the model choices resolving in order and the first match winning. A forked spawn copies this session, so its model field stays unset and it inherits the session's model.</optimize_for>
+<optimize_for>
+a delegate that returns a result the caller can check.
+<why_it_matters>A delegate holds only its prompt and what it can find, and a gap between them tends to get filled by an invented fact, duplicated work, or a stall. A step sliced as a horizontal layer leaves assembly to whoever comes next. A model above what the check needs costs tokens, and one below it costs a wrong answer that no check catches. A forked spawn copies this session, its model included. A delegate's report arrives secondhand, and its sources are what let the caller check it.</why_it_matters>
+</optimize_for>
 
 A delegation runs in order: decide the spawn may happen, take the readings, choose the settings, compose the prompt, spawn, and receive the report.
 
@@ -742,7 +778,7 @@ Haiku takes reads, maps, lists, summaries, and stated changes verified by readin
 </define>
 
 <decide name="settings">
-Where the span exceeds one context, split into sequential steps first. Choose the model by the first of these that holds: where the user named a model, that model; where a critique finding has one repair left standing, sonnet; where the prompt states every step and you verify the result by reading it, haiku; where later work depends on the answer, no check detects an error before then, and undoing requires manual work, opus; otherwise, sonnet. Where two choices match equally, take the cheaper, haiku below sonnet below opus. Choose the effort by the prompt: where the prompt states every step, low, or medium for a task in several parts; otherwise high, never above it. Where no effort field is exposed, state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
+Where the span exceeds one context, split into sequential steps first, each spawn completing its slice end to end. Choose the agent type first, then the model, then the effort. Choose the model by the first of these that holds: where the user named a model, that model; where a critique finding has one repair left standing, sonnet; where the prompt states every step and you verify the result by reading it, haiku; where later work depends on the answer, no check detects an error before then, and undoing requires manual work, opus; otherwise, sonnet. Where two choices match equally, take the cheaper, haiku below sonnet below opus. Choose the effort by the prompt: where the prompt states every step, low, or medium for a task in several parts; otherwise high, never above it. Where no effort field is exposed, state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
 </decide>
 
 <define name="prompt">
@@ -824,7 +860,10 @@ Every claim stays unverified until you find its source.
 
 <applies_when>You are writing a plan file or leaving plan mode.</applies_when>
 
-<optimize_for>We value a plan an agent can execute holding nothing but the file. The searching happened in this session and only the file carries its results, so every place to look gets named with an absolute path and an exact symbol. A wrong framing corrected on findings costs one message and corrected on a plan costs the plan, so findings land in their own turn and the plan waits for the user's framing.</optimize_for>
+<optimize_for>
+a plan an agent can execute holding nothing but the file.
+<why_it_matters>The searching happened in this session, and the file is all that travels from it to the agent who executes. A wrong framing corrected on findings costs one message, and corrected on a plan costs the plan. The user's framing sets what the plan is for, and a plan written before it has to guess at that.</why_it_matters>
+</optimize_for>
 
 <define name="plan">
 A plan's reader is an AI agent who holds nothing but the plan file and can delegate to subagents. Each entry takes this form.
@@ -866,7 +905,10 @@ Never call ExitPlanMode in the turn that finished investigating. Never call Exit
 
 <applies_when>You are producing a temporary or working file specific to the session.</applies_when>
 
-<optimize_for>We value a working file that lands where the next search finds it and never reaches a commit. The global gitignore at `$HOME/.dotfiles/git/ignore` covers scratchpad/, so creating the directory needs no other change, and the same ignore drops everything here from every clone, so a fact worth keeping across sessions goes to a persistent store. A real artifact written here to dodge a decision about its home loses its home.</optimize_for>
+<optimize_for>
+a working file that lands where the next search finds it and never reaches a commit.
+<why_it_matters>A working file saves context and keeps a long conversation alive as it grows, and a slug with a timestamp is what the next search finds. The global gitignore at `$HOME/.dotfiles/git/ignore` covers scratchpad/, and the same ignore drops everything here from every clone. A real artifact written here while its home stands undecided loses that home with it.</why_it_matters>
+</optimize_for>
 
 <define name="location">
 The directory is `scratchpad/$branch/` where `git branch --show-current` names a branch, and `scratchpad/` otherwise, at the root of the repository in play. The file is `$dir/$slug__$DD-MM-YY-HHmm.md`, timestamped at the first write.
@@ -899,7 +941,10 @@ No secret or credential lands in scratchpad/. Never write into scratchpad/ to av
 
 <applies_when>The user asks you to remember something, or you identify a fact worth keeping across sessions.</applies_when>
 
-<optimize_for>We value a fact that the next session's search finds. A fact in the wrong store sits outside every later search for it, so an unsettled destination gets asked, and nothing gets written until the answer.</optimize_for>
+<optimize_for>
+a fact that the next session's search finds.
+<why_it_matters>A fact in a store that a later search does not reach sits as if unwritten. Which store a later search reaches is something the user knows and the session can only guess.</why_it_matters>
+</optimize_for>
 
 <decide name="route">
 A fact belonging to one repository goes to the file memory the harness names in its Memory section, naming the repository inside the entry. Session narrative, a working note, or a run file goes to `scratchpad/$branch/$slug__$DD-MM-YY-HHmm.md`. For any other fact, ask the user which store, and write nothing until they answer.
