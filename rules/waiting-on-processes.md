@@ -1,14 +1,18 @@
-# Waiting on a process
+<rule name="waiting-on-processes">
 
-This applies when a dev server, CI run, deploy, install, or remote fetch has not finished.
+<applies_when>A tool call may take time to complete.</applies_when>
 
-We value a wait that costs the session nothing. A sleep-then-poll loop burns turns and context on a process the harness or the user can watch for free.
+<optimize_for>
+a wait that costs the session nothing.
+<why_it_matters>Wall clock time is very expensive, and most commands run very quickly, so a sleep tends to outlast the command it waits on. A process runs at its own pace whether or not anyone watches it. The harness reports a background command when it exits, and the user can run a check in their own session, so a sleep-then-poll loop spends time, turns, and valuable attention on what either would report for free.</why_it_matters>
+</optimize_for>
 
-```sudolang
-wait = process => match (process) {
-  case a command not yet finished => run_in_background on the Bash call
-  case a check the user can run => hand it to them, "! <command>" runs it in the session
-}
+<decide name="wait">
+For a command not yet finished, set run_in_background on the Bash call. For a check the user can run, hand it to them, since "! <command>" runs it in the session.
+</decide>
 
-require never a sleep-then-poll loop
-```
+<require>
+Never run a sleep-then-poll loop.
+</require>
+
+</rule>

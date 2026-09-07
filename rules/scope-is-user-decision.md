@@ -1,16 +1,18 @@
-# Scope belongs to the user
+<rule name="scope-is-user-decision">
 
-This applies when work appears to fall outside the current task: pre-existing issues, unrelated files, adjacent cleanup, anything that would expand or narrow the change.
+<applies_when>Work appears to fall outside the current task: pre-existing issues, unrelated files, adjacent cleanup, anything that would expand or narrow the change.</applies_when>
 
-We value scope the user set. Expanding or excluding on our own settles scope in their place, so tangential work gets asked about even when the lean is toward declining.
+<optimize_for>
+tight scope relevant to the task by default.
+<why_it_matters>Defined scope keeps the task clear of questions about what's necessary and what's optional. A question about tangential work lets the user set the edge with what they know, and it costs one message.</why_it_matters>
+</optimize_for>
 
-```sudolang
-fn tangentialWork(finding) {
-  state what you found and why it looks out of scope
-  present the choice through AskUserQuestion, with the context each question needs:
-    do it now | defer | leave it
-}
+<do>
+On finding tangential work, state what you found and why it looks out of scope. Then present the choice through AskUserQuestion, with the context each question needs: do it now, defer, or leave it.
+</do>
 
-require never fix it unasked
-require never declare it out of scope and move on
-```
+<require>
+Never fix it unasked. Never declare it out of scope and move on.
+</require>
+
+</rule>

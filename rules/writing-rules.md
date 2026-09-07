@@ -4,60 +4,37 @@ paths:
   - "**/CLAUDE.md"
 ---
 
-# Writing rules
+<rule name="writing-rules">
 
-This applies when writing or changing a rules file, or CLAUDE.md.
+<applies_when>You are writing or changing a rules file, or CLAUDE.md.</applies_when>
 
-A rules file exists so the model decides the same way every turn and still knows what the decision serves where the machine runs out. A block line with a warrant inside it makes the reader parse the why to find the what, so every warrant lives in the values paragraph and each block line goes bare. A rule that argues for itself spends the reader's attention on a decision the user already took.
+<optimize_for>
+a rules file whose reader decides the same way every turn and still knows what the decision serves where the machine runs out.
+<why_it_matters>A rule gets read every turn, and each sentence in it positions the reader. The reasons in the why let the reader extend the rule to a case the machine never named. A warrant inside a machine line makes the reader parse the why to find the what, so the why carries every warrant and each machine line goes bare. A rule that argues for its own existence spends valuable attention on a decision the user already took.</why_it_matters>
+</optimize_for>
 
-## Form
+<define name="form">
+A rules file carries one rule element, `<rule name="stem">` through `</rule>`, where the stem is the filename without .md. A path-scoped rule keeps `paths:` frontmatter above the element, with globs that match file paths, and still names the activity in its trigger. Inside the element, the trigger comes first, then the target with its why, then the machine.
 
-Write each rules file as markdown: one heading naming the territory, then a sentence naming what fires the rule, in the form "This applies when ...", then a values paragraph of one to four sentences stating what the rule values in the output and what a wrong output costs, carrying every warrant the file has, then one sudolang block carrying the machine. Give a subsection its own applies-when sentence only where it fires on less than the file does. For a path-scoped rule, keep `paths:` frontmatter whose globs match file paths, and still name the activity in the applies-when sentence.
+The trigger, `<applies_when>`, is a complete sentence stating the situation that fires the rule, or the scope of a rule that always holds. The target, `<optimize_for>`, is a phrase that reads after the words "Optimize for", lowercase and ending in a period, on its own line. The why, `<why_it_matters>`, nests last inside the target and holds the reasons: the statement of why the practice matters in the rule's own matter, then the mechanisms and costs, then any grounding with its citation.
 
-The pre-commit hook renders CLAUDE.md and the always-on rules into `~/.claude/references/working-rules.md` through `scripts/sync-agent-configs.py`, in the order its `WORKING_RULES_ORDER` tuple names, so never edit the render, and add a new always-on rule's file stem to that tuple in the same change.
+The machine is a sequence of groups. A `<define>` fixes terms, one per sentence. A `<decide>` is an ordered decision whose sentences are arms, the first that fits winning, written "Where X, Y." or "When X, Y." with "Otherwise, Z." last, as bullets where the arms are many. A `<do>` is a procedure whose sentences run in order. A `<require>` holds halts, "Never X." or "X only on Y." A concept tag such as `<concern>` names a section other prose cites, with mode tags nested where a group has one mode. The `name` attribute appears where a rule has several groups of one mode or where prose cites the group by name, as plain words with spaces. A template the model emits stays in a fenced block, so it reads as an artifact to copy and never as document structure.
+</define>
 
-## The machine
+<define name="register">
+The why is remembered for its statement of why the practice matters, so no frame stands in front of it and each why opens on its own subject, with no phrasing repeated across rules. The writer stays out of the reader's view: a plain imperative that addresses the reader stays, and a sentence carrying the writer's attitude toward the reader goes. Every sentence is blameless, names no debt to the reader or the user, and assumes nothing about what the reader holds or where they have been. A tendency reads as a tendency. A cost reads as a cost. A person appears as a source or as someone the practice serves. Attention is the currency, and the word for it is valuable attention.
+</define>
 
-```sudolang
-Rule {
-  values: prose before the block, every warrant, no argument for the rule's existence
-  machine: one block
-  a thing moved through states => a State block naming them
-  a decision => match arms
-  a procedure => fn or a pipeline
-}
+<define name="qualities">
+The trigger names what fires the rule now. The machine states what the rule requires. Where a topic appears in another file, the rule restates the one clause it rests on and keeps the full statement in one place, with no link between rules files. Where a neighbor continues the territory, the rule names it, and otherwise the trigger alone bounds the rule. The why carries every warrant, and a machine line carries none.
+</define>
 
-Machine {
-  State { kind: A | B }
-  transition = input => match (input) {
-    case pattern => act, next state
-    default => act
-  }
-  Constraints { an invariant that is neither a value nor a transition }
-  require a halt, one per line
-}
+<decide name="route">
+Route content before writing it. An invariant goes to `rules/`. A catalog goes to `references/`. Enforcement goes to a hook. Stance goes to CLAUDE.md. Within a rule, a sentence that fixes a term goes to a define group, a sentence that directs an act goes to the decide or do group where it acts, and a halt goes to the require group. A subsection gets its own trigger only where it fires on less than the file does.
+</decide>
 
-Validity {
-  every arm inside a match opens with case, the fallback with default
-  an arm outside a match opens with its condition and no case
-  a function reads fn name(args) { } or name = args => expr
-  a union reads A | B
-  a state set reads State { kind: A | B }
-  a block holds no otherwise, no dotted definition, no bracket property name,
-    no dollar sign outside a string, no comment, no parenthetical gloss
-}
+<do name="sync">
+The generator at `scripts/sync-agent-configs.py` runs in both directions between the rules files plus CLAUDE.md and `~/.claude/references/working-rules.md`, keyed on the rule elements and the preamble tags, in the order its `WORKING_RULES_ORDER` tuple names. Edit whichever side is in hand, then run the generator toward the other, so the two never disagree. When adding an always-on rule, add its stem to that tuple in the same change. When renaming a rules file or a section another file cites, sweep the citations in the same change.
+</do>
 
-Qualities {
-  trigger: the applies-when sentence names what fires the rule now
-  demand: the machine states what the rule requires
-  pointer: the topic appears in another file => restate the one clause this rule
-    rests on, keep the full statement in one place, write no link between rules files
-  boundary: a neighbor continues the territory => name it; none does =>
-    the applies-when sentence alone bounds the rule
-  warrant: the values prose carries it; a block line carries none
-}
-```
-
-## Routing
-
-Route new content before writing it: an invariant to `rules/`, a catalog to `references/`, enforcement to a hook, stance to CLAUDE.md. When you rename a rules file or a heading another file links, sweep the links in the same change.
+</rule>

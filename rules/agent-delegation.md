@@ -1,81 +1,97 @@
-# Delegating to an agent
+<rule name="agent-delegation">
 
-This applies to every Agent call, and to every spawn a spawned agent makes in turn, one at a time.
+<applies_when>You use the Agent tool, the Fork tool, or any other tool that could spawn an agent.</applies_when>
 
-We value a delegate that returns a result we can check. A delegate fills a gap in its prompt with an invented fact, duplicated work, or a stall, so the prompt carries the paths, decisions, and conventions it would guess at. A step sliced as a horizontal layer leaves assembly to others, so each spawn completes its slice end to end. A model above what the check needs costs tokens, and one below it costs a wrong answer nobody detects, so the agent type comes first, then the model, then the effort, with the model arms resolving in order and the first match winning. A forked spawn copies this session, so its model field stays unset and it inherits the session's model.
+<optimize_for>
+a delegate that returns a result the caller can check.
+<why_it_matters>A delegate holds only its prompt and what it can find, and a gap between them tends to get filled by an invented fact, duplicated work, or a stall. A step sliced as a horizontal layer leaves assembly to whoever comes next. A model above what the check needs costs tokens, and one below it costs a wrong answer that no check catches. A forked spawn copies this session, its model included. A delegate's report arrives secondhand, and its sources are what let the caller check it.</why_it_matters>
+</optimize_for>
 
-```sudolang
-delegate = decide the spawn may happen |> readings |> settings |> prompt |> spawn |> receiveReport
+A delegation runs in order: decide the spawn may happen, take the readings, choose the settings, compose the prompt, spawn, and receive the report.
 
-Readings {
-  inference: how much the delegate must infer beyond the prompt and its evidence
-  span: whether the work fits one context
-  reversibility: what undoing a wrong result costs
-  verifiability: which check outside the delegate detects a wrong answer, a test,
-    a linter, a diff you read, your own verification of the report
-  survivingCritiques: which critique findings remain unrepaired
-}
+<define name="readings">
+Inference is how much the delegate must infer beyond the prompt and its evidence. Span is whether the work fits one context. Reversibility is what undoing a wrong result costs. Verifiability is which check outside the delegate detects a wrong answer: a test, a linter, a diff you read, your own verification of the report. Surviving critiques are which critique findings remain unrepaired.
+</define>
 
-Arm {
-  haiku: reads, maps, lists, summaries, stated changes verified by reading the output
-  sonnet: implementing from a design, refining a diff, critiquing an artifact,
-    any step no other arm matches
-  opus: designs, plans, irreversible edits
-  fable: only on the user's ask, one spawn per ask
-}
+<define name="models">
+Haiku takes reads, maps, lists, summaries, and stated changes verified by reading the output. Sonnet takes implementing from a design, refining a diff, critiquing an artifact, and any step no other model matches. Opus takes designs, plans, and irreversible edits. Fable runs only on the user's ask, one spawn per ask.
+</define>
 
-fn settings(readings) {
-  span exceeds one context => split into sequential steps first
-  model = match (readings) {
-    case the user named a model => that model
-    case a critique finding one repair left standing => sonnet
-    case the prompt states every step && you verify the result by reading it => haiku
-    case later work depends on the answer && no check detects an error before then
-      && undoing requires manual work => opus
-    default => sonnet
-  }
-  two arms match equally => the cheaper, haiku < sonnet < opus
-  effort = match (prompt) {
-    case the prompt states every step => low, or medium for a task in several parts
-    default => high, never above it
-  }
-  no effort field exposed => state the depth in the prompt: how wide to search,
-    how many alternatives to weigh, what check to run
-}
+<decide name="settings">
+Where the span exceeds one context, split into sequential steps first, each spawn completing its slice end to end. Choose the agent type first, then the model, then the effort. Choose the model by the first of these that holds: where the user named a model, that model; where a critique finding has one repair left standing, sonnet; where the prompt states every step and you verify the result by reading it, haiku; where later work depends on the answer, no check detects an error before then, and undoing requires manual work, opus; otherwise, sonnet. Where two choices match equally, take the cheaper, haiku below sonnet below opus. Choose the effort by the prompt: where the prompt states every step, low, or medium for a task in several parts; otherwise high, never above it. Where no effort field is exposed, state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
+</decide>
 
-Prompt {
-  perspective: role, expertise, why this agent for this step as it bears on the
-    delegate's decisions
-  task: what to do, complete without prior context, the return format named
-  context: paths, prior decisions, conventions
-  tooling: the environment, the tools and skills the delegate must use, and those it may
-  constraints: invariants, boundaries, what this step leaves to others
-  invitations: permit the delegate to ask, decide, or flag where uncertain and say
-    which it did, with ForkAuthority stated
-  failures: mechanism and cost, no self in the sentence
-  a section is empty => one line naming the absence, no filler
-  shape = match (model) {
-    case haiku => state every step: paths, exact constraints, the check to run and return
-    case opus => state the problem, its constraints, the decisions already made
-    case sonnet => state the problem and the decisions, refer to the constraints,
-      add exact context wherever the delegate would otherwise guess
-  }
-}
+<define name="prompt">
+A prompt carries seven parts, and this template names them. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. Where a part is empty, write one line naming the absence, no filler.
 
-fn spawn() {
-  set the model field on every spawn that accepts one, the effort field wherever one exists
-  a forked spawn => its model field stays unset
-}
-
-ForkAuthority {
-  the delegate decides every fork it meets and reports what it chose
-  evidence shows the prompt's stated context is wrong => stop immediately, report
-    the contradiction
-  the fork depends on the user's intent, direction, or what done means => return it
-    immediately with the options it would have offered
-}
-
-fn receiveReport(report) {
-  every claim stays unverified until you find its source
-}
+```xml
+<prompt>
+  <perspective>
+    [the role, the expertise, and why this agent for this step, as it bears on
+    the delegate's decisions]
+  </perspective>
+  <task>
+    [what to do, complete without prior context, with the return format named;
+    the report template is the default]
+  </task>
+  <context>
+    [paths, prior decisions, conventions]
+  </context>
+  <tooling>
+    [the environment, the tools and skills the delegate must use, and those it may]
+  </tooling>
+  <constraints>
+    [invariants, boundaries, what this step leaves to others]
+  </constraints>
+  <invitations>
+    Ask, decide, or flag where uncertain, and say which you did.
+    You settle every choice point you meet and report what you chose. Where
+    evidence shows the stated context is wrong, stop immediately and report
+    the contradiction. Where a choice point depends on the user's intent,
+    direction, or what done means, return it immediately with the options
+    you would have offered.
+    Voice a concern once upward with grounds, then comply.
+    A step that did not work reports what broke, what it cost, and what it
+    changes next.
+  </invitations>
+  <failures>
+    [mechanism and cost, with no self in the sentence]
+  </failures>
+</prompt>
 ```
+
+Shape the prompt to the model: for haiku, state every step, paths, exact constraints, and the check to run and return; for opus, state the problem, its constraints, and the decisions already made; for sonnet, state the problem and the decisions, refer to the constraints, and add exact context wherever the delegate would otherwise guess.
+</define>
+
+<do name="spawn">
+Set the model field on every spawn that accepts one, and the effort field wherever one exists. For a forked spawn, the model field stays unset.
+</do>
+
+<define name="report">
+A delegate's report carries four parts, and this template names them. The same bracket convention holds.
+
+```xml
+<report>
+  <unanswered>
+    [each choice point handed up: the question and the options you would have
+    offered; one line naming the absence where none]
+  </unanswered>
+  <done>
+    [what got done, each claim with its source or its mark]
+  </done>
+  <undone>
+    [what remains undone, with the answer each part needs]
+  </undone>
+  <failures>
+    [each step that did not work: what broke, what it cost, what it changes next]
+  </failures>
+</report>
+```
+
+</define>
+
+<do name="receive report">
+Every claim stays unverified until you find its source.
+</do>
+
+</rule>

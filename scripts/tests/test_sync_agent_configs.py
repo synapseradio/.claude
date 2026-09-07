@@ -3,19 +3,28 @@
 
 Run with `python3.14 -m pytest scripts/tests/test_sync_agent_configs.py`.
 
-Every test builds its own source tree under a tmp_path and points the
-generator at it, so no test reads or writes the real `~/.claude`,
-`~/.pi`, or `~/.config/opencode`.
+Every test builds its own source tree under a tmp_path and passes a Targets
+naming it, so no test writes outside that directory. `DEFAULT_TARGETS` names
+this checkout, so a test calling the generator without its own Targets would
+write over the very files under test.
+
+Two tests read outside tmp_path and write nothing there: the pair on
+`DEFAULT_TARGETS`, and the round trip that renders this repository's own
+`references/working-rules.md` back to itself.
 """
 
+import dataclasses
 import importlib.util
 import json
 import pathlib
+import re
+import subprocess
 import sys
 
 import pytest
 
-SCRIPT_PATH = pathlib.Path(__file__).resolve().parents[1] / "sync-agent-configs.py"
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+SCRIPT_PATH = REPO_ROOT / "scripts" / "sync-agent-configs.py"
 
 _spec = importlib.util.spec_from_file_location("sync_agent_configs", SCRIPT_PATH)
 assert _spec is not None and _spec.loader is not None
@@ -127,10 +136,87 @@ class TestRewritePaths:
         ), "only the path token changes; every other byte, newline and indent included, survives"
 
 
+class TestRestorePaths:
+    def test_home_variable_becomes_a_tilde_prefix(self):
+        restored = sync.restore_paths("read `$HOME/.claude/references/bash-style-guide.md` in full")
+
+        assert restored == "read `~/.claude/references/bash-style-guide.md` in full", (
+            "a source file sits where ~ expands, so the variable the render carries goes back"
+        )
+
+    def test_link_target_inside_claude_home_becomes_dot_relative(self):
+        restored = sync.restore_paths("live in [core-rules.md]($HOME/.claude/rules/core-rules.md)")
+
+        assert restored == "live in [core-rules.md](./rules/core-rules.md)", (
+            "a source names a sibling under ~/.claude by the ./ form the forward run resolves"
+        )
+
+    def test_link_target_outside_claude_home_becomes_parent_relative(self):
+        restored = sync.restore_paths("see [x]($HOME/.dotfiles/git/ignore)")
+
+        assert restored == "see [x](../.dotfiles/git/ignore)", (
+            "a target under the home directory but outside ~/.claude climbs one level"
+        )
+
+    def test_url_link_survives(self):
+        text = "per [Peirce](https://plato.stanford.edu/entries/peirce/)"
+
+        assert sync.restore_paths(text) == text, "an http(s) target names no file on disk"
+
+    def test_anchor_link_survives(self):
+        text = "see [above](#precedence)"
+
+        assert sync.restore_paths(text) == text, "a fragment target names no file on disk"
+
+    def test_absolute_link_outside_the_home_directory_survives(self):
+        text = "at [x](/etc/hosts)"
+
+        assert sync.restore_paths(text) == text, (
+            "a path outside the home directory has no relative form under ~/.claude"
+        )
+
+    def test_bare_tilde_and_dollar_survive(self):
+        text = "<hello>\n~\nHi!\n/~\n</hello>\n\n`$dir/$slug__$DD-MM-YY-HHmm.md`\n"
+
+        assert sync.restore_paths(text) == text, (
+            "a ~ that starts no path and a $ that opens no HOME are text, not paths"
+        )
+
+    def test_restore_inverts_rewrite(self):
+        source = (
+            "<hello>\n~\n/~\n</hello>\n\n"
+            "The rules live in [core-rules.md](./rules/core-rules.md) and load.\n\n"
+            "The ignore at `~/.dotfiles/git/ignore` covers it, per [x](../.dotfiles/git/ignore).\n\n"
+            "Read `~/.claude/references/bash-style-guide.md`, per "
+            "[Peirce](https://plato.stanford.edu/entries/peirce/) and [above](#precedence).\n"
+        )
+
+        assert sync.restore_paths(sync.rewrite_paths(source)) == source, (
+            "a render that does not restore to its own sources drifts a little on every sync"
+        )
+
+
 def _write(path: pathlib.Path, text: str) -> pathlib.Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path
+
+
+PREAMBLE = '<hello from="user">\n~\n/~\n</hello>\n\n<stance>\n\nPlay, per [x](./rules/alpha.md).\n\n</stance>'
+
+FENCED_RULE_TAG = '```xml\n<rule name="a-template-not-a-boundary">\n</rule>\n```'
+
+
+def _element(name: str, body: str) -> str:
+    """One `<rule>` element, the unit a rules file and a render section share."""
+
+    return f'<rule name="{name}">\n\n{body}\n\n</rule>'
+
+
+def _reference(preamble: str, *sections: str, title: str = "# Working Rules") -> str:
+    """A render assembled from a preamble and whatever sections follow."""
+
+    return "\n\n".join([title, preamble, *sections]) + "\n"
 
 
 class TestBuildAgentsMarkdown:
@@ -205,19 +291,19 @@ class TestBuildAgentsMarkdown:
         )
 
 
+ALPHA = _element("alpha", "Alpha holds.")
+ZETA = _element("zeta", f"Zeta holds.\n\n{FENCED_RULE_TAG}")
+
+
 class TestBuildWorkingRules:
     def _tree(self, tmp_path: pathlib.Path) -> tuple[pathlib.Path, pathlib.Path]:
-        claude_md = _write(
-            tmp_path / "CLAUDE.md",
-            "<hello>\nHi.\n</hello>\n\n# Stance\n\nPlay, per [x](./rules/alpha.md).\n",
-        )
+        claude_md = _write(tmp_path / "CLAUDE.md", f"{PREAMBLE}\n")
         rules = tmp_path / "rules"
+        _write(rules / "alpha.md", f"{ALPHA}\n")
         _write(
-            rules / "alpha.md",
-            "# Alpha\n\nApplies always.\n\n## Part\n\n```sudolang\n# inside a fence\n```\n\n\n",
+            rules / "gated.md", f'---\npaths:\n  - "**/*.sh"\n---\n\n{_element("gated", "G.")}\n'
         )
-        _write(rules / "gated.md", '---\npaths:\n  - "**/*.sh"\n---\n\n# Gated\n')
-        _write(rules / "zeta.md", "# Zeta\n\nZ.\n")
+        _write(rules / "zeta.md", f"{ZETA}\n")
         return claude_md, rules
 
     def test_render_opens_on_its_title_then_the_preamble(self, tmp_path):
@@ -225,52 +311,50 @@ class TestBuildWorkingRules:
 
         built = sync.build_working_rules(claude_md, rules, ("alpha", "zeta"))
 
-        assert built.startswith("# Working Rules\n\n<hello>\nHi.\n</hello>\n\n## Stance\n\n"), (
-            "the document owns the one h1, so CLAUDE.md's headings sit one level under it"
+        assert built.split("\n")[0] == sync.TITLE, "the render owns the one h1 and opens on it"
+        assert built.index("<hello") < built.index('<rule name="alpha">'), (
+            "CLAUDE.md is the preamble, so it sits between the title and the first rule"
         )
 
-    def test_rule_headings_shift_one_level(self, tmp_path):
+    def test_each_rules_file_reaches_the_render_whole(self, tmp_path):
         claude_md, rules = self._tree(tmp_path)
 
         built = sync.build_working_rules(claude_md, rules, ("alpha", "zeta"))
 
-        assert "\n## Alpha\n\nApplies always.\n\n### Part\n" in built, (
-            "a rule's h1 becomes a section and its h2 a subsection of that section"
-        )
-        assert "\n# Alpha\n" not in built, "no rule keeps an h1 beside the document's title"
-
-    def test_hash_inside_a_fence_survives(self, tmp_path):
-        claude_md, rules = self._tree(tmp_path)
-
-        built = sync.build_working_rules(claude_md, rules, ("alpha", "zeta"))
-
-        assert "```sudolang\n# inside a fence\n```" in built, (
-            "a # opening a line inside a code fence is code, not a heading"
-        )
+        assert sync.parse_reference(built).rules == (
+            sync.RuleSection("alpha", ALPHA),
+            sync.RuleSection("zeta", ZETA),
+        ), "a section of the render is the rules file that produced it, wrapper included"
 
     def test_rules_follow_the_given_order(self, tmp_path):
         claude_md, rules = self._tree(tmp_path)
 
         built = sync.build_working_rules(claude_md, rules, ("zeta", "alpha"))
 
-        assert built.index("## Zeta") < built.index("## Alpha"), (
-            "the render reads as one document, so the caller orders it by topic, not by filename"
-        )
+        assert [section.name for section in sync.parse_reference(built).rules] == [
+            "zeta",
+            "alpha",
+        ], "the render reads as one document, so the caller orders it by topic, not by filename"
 
     def test_path_scoped_rule_stays_out(self, tmp_path):
         claude_md, rules = self._tree(tmp_path)
 
         built = sync.build_working_rules(claude_md, rules, ("alpha", "zeta"))
 
-        assert "Gated" not in built, "the render carries the rules that load every session"
+        assert "gated" not in built, "the render carries the rules that load every session"
 
     def test_sections_join_on_one_blank_line_and_the_file_ends_on_one_newline(self, tmp_path):
-        claude_md, rules = self._tree(tmp_path)
+        unlinked = '<hello from="user">\n~\n/~\n</hello>'
+        claude_md = _write(tmp_path / "CLAUDE.md", f"{unlinked}\n\n\n")
+        rules = tmp_path / "rules"
+        _write(rules / "alpha.md", f"{ALPHA}\n\n\n")
+        _write(rules / "zeta.md", f"{ZETA}\n")
 
         built = sync.build_working_rules(claude_md, rules, ("alpha", "zeta"))
 
-        assert "```\n\n## Zeta\n\nZ.\n" in built and built.endswith("Z.\n"), (
-            "trailing blank lines in a source must not vary the joint"
+        assert built == _reference(unlinked, ALPHA, ZETA), (
+            "trailing blank lines in a source must not vary the joint, or the render stops "
+            "being a function of the source text alone"
         )
 
     def test_relative_link_in_the_preamble_resolves(self, tmp_path):
@@ -293,6 +377,78 @@ class TestBuildWorkingRules:
 
         with pytest.raises(ValueError, match="zeta"):
             sync.build_working_rules(claude_md, rules, ("alpha",))
+
+    def test_a_rules_file_carrying_no_rule_element_reports_its_path(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+        _write(rules / "alpha.md", "# Alpha\n\nThis applies always.\n")
+
+        with pytest.raises(ValueError, match=re.escape("alpha.md")):
+            sync.build_working_rules(claude_md, rules, ("alpha", "zeta"))
+
+    def test_a_name_attribute_disagreeing_with_the_stem_reports_both(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+        _write(rules / "alpha.md", f"{_element('alfa', 'Alpha holds.')}\n")
+
+        with pytest.raises(ValueError, match="alfa"):
+            sync.build_working_rules(claude_md, rules, ("alpha", "zeta"))
+
+    def test_a_claude_md_carrying_no_preamble_tag_reports_its_path(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+        _write(claude_md, "# Stance\n\nWork here proceeds as play.\n")
+
+        with pytest.raises(ValueError, match=re.escape("CLAUDE.md")):
+            sync.build_working_rules(claude_md, rules, ("alpha", "zeta"))
+
+
+class TestParseReference:
+    def test_the_preamble_runs_from_the_title_to_the_first_rule(self):
+        parsed = sync.parse_reference(_reference(PREAMBLE, _element("alpha", "Alpha holds.")))
+
+        assert parsed.preamble == PREAMBLE, (
+            "CLAUDE.md is what sits between the title and the first rule, and the title is not it"
+        )
+
+    def test_a_section_comes_back_as_the_element_it_was_built_from(self):
+        alpha = _element("alpha", "Alpha holds.")
+
+        parsed = sync.parse_reference(_reference(PREAMBLE, alpha, _element("zeta", "Zeta holds.")))
+
+        assert [section.name for section in parsed.rules] == ["alpha", "zeta"], (
+            "a rule is named by the attribute on its wrapper, which is the file stem"
+        )
+        assert parsed.rules[0].text == alpha, (
+            "the section carries its wrapper, so the rules file it lands in is the section itself"
+        )
+
+    def test_a_rule_tag_inside_a_fence_opens_no_section(self):
+        zeta = _element("zeta", FENCED_RULE_TAG)
+
+        parsed = sync.parse_reference(_reference(PREAMBLE, _element("alpha", "A."), zeta))
+
+        assert [section.name for section in parsed.rules] == ["alpha", "zeta"], (
+            "a fenced block is a template a model copies, and a tag inside it is text"
+        )
+        assert parsed.rules[1].text == zeta, "the fenced tag stays inside the rule carrying it"
+
+    def test_a_document_not_opening_on_the_title_raises(self):
+        document = _reference(PREAMBLE, _element("alpha", "A."), title="# Rules")
+
+        with pytest.raises(ValueError, match=re.escape(sync.TITLE)):
+            sync.parse_reference(document)
+
+    def test_a_rule_that_never_closes_raises_naming_it(self):
+        with pytest.raises(ValueError, match="alpha"):
+            sync.parse_reference(_reference(PREAMBLE, '<rule name="alpha">\n\nAlpha holds.'))
+
+    def test_a_document_with_no_preamble_raises(self):
+        with pytest.raises(ValueError):
+            sync.parse_reference(_reference("", _element("alpha", "A.")))
+
+    def test_content_outside_every_rule_raises_quoting_it(self):
+        document = _reference(PREAMBLE, _element("alpha", "A."), "A loose sentence.")
+
+        with pytest.raises(ValueError, match="A loose sentence"):
+            sync.parse_reference(document)
 
 
 AGENT_BODY = "Scout {\n  Options {\n    budget: 1..200 = 40\n  }\n}\n"
@@ -614,12 +770,16 @@ class TestTranslateForPi:
 def targets(tmp_path):
     """A complete source tree plus empty pi and opencode roots."""
 
+    return _targets(tmp_path)
+
+
+def _targets(tmp_path: pathlib.Path) -> object:
     claude_home = tmp_path / "claude"
-    _write(claude_home / "CLAUDE.md", "# Preamble\n\nStance.\n")
-    _write(claude_home / "rules" / "alpha.md", "Alpha {\n}\n")
+    _write(claude_home / "CLAUDE.md", f"{PREAMBLE}\n")
+    _write(claude_home / "rules" / "alpha.md", f"{ALPHA}\n")
     _write(
         claude_home / "rules" / "gated.md",
-        '---\npaths:\n  - "**/*.sh"\n---\n\nGated {\n}\n',
+        f'---\npaths:\n  - "**/*.sh"\n---\n\n{_element("gated", "Gated holds.")}\n',
     )
     _agent_source(claude_home / "agents", "scout", model="haiku", tools="Read, Glob, Agent")
     _agent_source(claude_home / "agents", "orchestrator")
@@ -640,13 +800,37 @@ def targets(tmp_path):
     )
 
 
+def _git(repo: pathlib.Path, *args: str) -> None:
+    """Run one git command in `repo`, with the user's hooks and signing off."""
+
+    subprocess.run(
+        ["git", "-C", str(repo), "-c", "core.hooksPath=", "-c", "commit.gpgsign=false", *args],
+        check=True,
+        capture_output=True,
+    )
+
+
+@pytest.fixture
+def committed(tmp_path):
+    """The same source tree, plus its render, committed in a git repository."""
+
+    aimed = _targets(tmp_path)
+    _write(aimed.working_rules, _reference(RENDERED_PREAMBLE, ALPHA))
+    _git(aimed.claude_home, "init", "-q")
+    _git(aimed.claude_home, "config", "user.email", "test@example.invalid")
+    _git(aimed.claude_home, "config", "user.name", "Test")
+    _git(aimed.claude_home, "add", "-A")
+    _git(aimed.claude_home, "commit", "-q", "-m", "the tree as the generator last left it")
+    return aimed
+
+
 class TestBuildPlan:
     def test_working_rules_render_lands_under_references(self, targets):
         plan = sync.build_plan(targets)
         by_path = {f.path: f.content for f in plan.files}
         written = by_path[targets.claude_home / "references" / "working-rules.md"]
 
-        assert "Stance." in written and "Alpha {" in written and "Gated {" not in written, (
+        assert "<stance>" in written and ALPHA in written and "gated" not in written, (
             "the render carries the preamble and every always-on rule, and no path-scoped one"
         )
 
@@ -655,11 +839,11 @@ class TestBuildPlan:
         by_path = {f.path: f.content for f in plan.files}
         written = by_path[targets.pi_home / "AGENTS.md"]
 
-        assert "Stance." in written, "pi reads the CLAUDE.md preamble from its context file"
-        assert "Alpha {" in written, (
+        assert "<stance>" in written, "pi reads the CLAUDE.md preamble from its context file"
+        assert ALPHA in written, (
             "pi offers no second mechanism for rule files, so the rules travel in its context file"
         )
-        assert "Gated {" not in written, (
+        assert "gated" not in written, (
             "a path-scoped rule reaches pi through the extension when a matching file is in play, "
             "so carrying it here would load it in every session and twice in a matching one"
         )
@@ -669,8 +853,8 @@ class TestBuildPlan:
         by_path = {f.path: f.content for f in plan.files}
         written = by_path[targets.opencode_home / "AGENTS.md"]
 
-        assert "Stance." in written, "opencode reads the CLAUDE.md preamble from its context file"
-        assert "Alpha {" not in written, (
+        assert "<stance>" in written, "opencode reads the CLAUDE.md preamble from its context file"
+        assert ALPHA not in written, (
             "opencode reads the rules through `instructions`, so repeating them here would double them"
         )
 
@@ -730,6 +914,64 @@ class TestBuildPlan:
         )
 
 
+RENDERED_PREAMBLE = PREAMBLE.replace("./rules/alpha.md", "$HOME/.claude/rules/alpha.md")
+
+
+class TestBuildReversePlan:
+    def _files(self, targets, *sections, order=None) -> dict:
+        aimed = (
+            targets if order is None else dataclasses.replace(targets, working_rules_order=order)
+        )
+        _write(aimed.working_rules, _reference(RENDERED_PREAMBLE, *sections))
+        return {f.path: f.content for f in sync.build_reverse_plan(aimed).files}
+
+    def test_each_rule_element_lands_in_its_own_rules_file(self, targets):
+        files = self._files(targets, ALPHA)
+
+        assert files[targets.rules_dir / "alpha.md"] == f"{ALPHA}\n", (
+            "a rules file is the render's section for it, wrapper included and nothing above it"
+        )
+
+    def test_the_preamble_lands_in_claude_md_with_its_paths_restored(self, targets):
+        files = self._files(targets, ALPHA)
+
+        assert files[targets.claude_md] == f"{PREAMBLE}\n", (
+            "CLAUDE.md sits inside ~/.claude, where the render's resolved link does not belong"
+        )
+
+    def test_the_reverse_touches_the_sources_and_nothing_else(self, targets):
+        _write(targets.working_rules, _reference(RENDERED_PREAMBLE, ALPHA))
+
+        plan = sync.build_reverse_plan(targets)
+
+        assert {f.path for f in plan.files} == {
+            targets.claude_md,
+            targets.rules_dir / "alpha.md",
+        }, "the reverse writes the sources, and a forward run projects them onto pi and opencode"
+        assert plan.keys == () and plan.dropped == (), (
+            "no generated key and no agent translation belongs to this direction"
+        )
+
+    def test_a_rule_element_whose_file_does_not_exist_yet_gets_one(self, targets):
+        files = self._files(targets, ALPHA, ZETA, order=("alpha", "zeta"))
+
+        assert files[targets.rules_dir / "zeta.md"] == f"{ZETA}\n", (
+            "a rule added to the render creates its file, with its stem added to the order"
+        )
+
+    def test_a_rule_the_order_does_not_name_raises(self, targets):
+        with pytest.raises(ValueError, match="ghost"):
+            self._files(targets, ALPHA, _element("ghost", "Ghost holds."))
+
+    def test_rules_out_of_the_order_sequence_raise(self, targets):
+        with pytest.raises(ValueError, match="zeta"):
+            self._files(targets, ZETA, ALPHA, order=("alpha", "zeta"))
+
+    def test_a_rule_resolving_to_a_path_scoped_file_raises(self, targets):
+        with pytest.raises(ValueError, match=re.escape("gated.md")):
+            self._files(targets, ALPHA, _element("gated", "G."), order=("alpha", "gated"))
+
+
 class TestApply:
     def test_first_run_creates_missing_parent_directories(self, targets):
         assert not targets.pi_home.exists(), "the fixture starts with no pi root"
@@ -770,7 +1012,9 @@ class TestApply:
 
     def test_check_exits_nonzero_after_a_source_changes(self, targets):
         sync.main([], targets=targets)
-        _write(targets.claude_home / "rules" / "alpha.md", "Alpha {\n  changed\n}\n")
+        _write(
+            targets.claude_home / "rules" / "alpha.md", f"{_element('alpha', 'Alpha changed.')}\n"
+        )
 
         assert sync.main(["--check"], targets=targets) != 0, (
             "an edited rule that never reached the generated files is what the push gate catches"
@@ -797,4 +1041,190 @@ class TestApply:
 
         assert stale.read_text(encoding="utf-8") == "hand-edited\n", (
             "--check reports a difference without repairing it"
+        )
+
+
+class TestRefusesToOverwriteUncommittedWork:
+    def test_the_forward_direction_runs_against_a_clean_tree(self, committed):
+        plan = sync.build_plan(committed)
+
+        assert committed.working_rules in {generated.path for generated in plan.files}, (
+            "a tree whose every change is committed has nothing a run could destroy"
+        )
+
+    def test_the_forward_direction_refuses_a_render_carrying_uncommitted_work(self, committed):
+        _write(committed.working_rules, _reference(RENDERED_PREAMBLE, EDITED))
+
+        with pytest.raises(ValueError, match=re.escape("working-rules.md")):
+            sync.build_plan(committed)
+
+    def test_the_forward_direction_runs_with_a_source_carrying_uncommitted_work(self, committed):
+        _write(committed.rules_dir / "alpha.md", f"{EDITED}\n")
+
+        built = sync.build_working_rules(
+            committed.claude_md, committed.rules_dir, committed.working_rules_order
+        )
+
+        assert EDITED in built and sync.build_plan(committed).files, (
+            "the source side is what this direction reads, and reading destroys nothing"
+        )
+
+    def test_the_reverse_direction_runs_against_a_clean_tree(self, committed):
+        plan = sync.build_reverse_plan(committed)
+
+        assert {generated.path for generated in plan.files} == {
+            committed.claude_md,
+            committed.rules_dir / "alpha.md",
+        }, "a tree whose every change is committed has nothing a run could destroy"
+
+    def test_the_reverse_direction_refuses_a_rules_file_carrying_uncommitted_work(self, committed):
+        _write(committed.rules_dir / "alpha.md", f"{EDITED}\n")
+
+        with pytest.raises(ValueError, match=re.escape("alpha.md")):
+            sync.build_reverse_plan(committed)
+
+    def test_the_reverse_direction_refuses_a_claude_md_carrying_uncommitted_work(self, committed):
+        _write(
+            committed.claude_md, f"{PREAMBLE}\n\n<what_wins>\n\nNearness decides.\n\n</what_wins>\n"
+        )
+
+        with pytest.raises(ValueError, match=re.escape("CLAUDE.md")):
+            sync.build_reverse_plan(committed)
+
+    def test_the_reverse_direction_runs_with_a_render_carrying_uncommitted_work(self, committed):
+        _write(committed.working_rules, _reference(RENDERED_PREAMBLE, EDITED))
+
+        files = {
+            generated.path: generated.content
+            for generated in sync.build_reverse_plan(committed).files
+        }
+
+        assert files[committed.rules_dir / "alpha.md"] == f"{EDITED}\n", (
+            "an uncommitted render edit is the whole reason to run this direction"
+        )
+
+    def test_a_dirty_target_reports_every_file_it_would_have_overwritten(self, committed):
+        _write(
+            committed.claude_md, f"{PREAMBLE}\n\n<what_wins>\n\nNearness decides.\n\n</what_wins>\n"
+        )
+        _write(committed.rules_dir / "alpha.md", f"{EDITED}\n")
+
+        with pytest.raises(ValueError) as raised:
+            sync.build_reverse_plan(committed)
+
+        assert "CLAUDE.md" in str(raised.value) and "alpha.md" in str(raised.value), (
+            "a refusal naming one of two dirty files sends the reader back for the second"
+        )
+
+    def test_a_tree_outside_a_git_repository_runs(self, targets):
+        assert sync.build_plan(targets).files, (
+            "a checkout is not required, so configuration nobody versions still syncs"
+        )
+
+
+class TestDefaultTargets:
+    def test_claude_home_is_the_checkout_the_script_lives_in(self):
+        assert sync.DEFAULT_TARGETS.claude_home == REPO_ROOT, (
+            "a run reads and writes the checkout it was invoked from, so a hook in a worktree "
+            "syncs that worktree and needs no argument naming it"
+        )
+
+    def test_the_render_resolves_under_that_checkout(self):
+        assert (
+            sync.DEFAULT_TARGETS.working_rules == REPO_ROOT / "references" / "working-rules.md"
+        ), "the render the pre-push gate compares is the one tracked beside the sources"
+
+
+EDITED = _element("alpha", "Alpha holds, as edited in the render.")
+
+
+class TestDirection:
+    def test_no_argument_runs_the_forward_direction(self, targets):
+        sync.main([], targets=targets)
+
+        assert targets.working_rules.is_file(), (
+            "the hooks call the script with no argument, and the render is what they expect"
+        )
+
+    def test_reverse_carries_a_render_edit_into_its_rules_file(self, targets):
+        _write(targets.working_rules, _reference(RENDERED_PREAMBLE, EDITED))
+
+        sync.main(["--reverse"], targets=targets)
+
+        assert (targets.rules_dir / "alpha.md").read_text(encoding="utf-8") == f"{EDITED}\n", (
+            "the render is the form the user edits, and the reverse is what carries those edits"
+        )
+
+    def test_reverse_leaves_the_render_as_it_found_it(self, targets):
+        render = _reference(RENDERED_PREAMBLE, EDITED)
+        _write(targets.working_rules, render)
+
+        sync.main(["--reverse"], targets=targets)
+
+        assert targets.working_rules.read_text(encoding="utf-8") == render, (
+            "one run moves text one way, so the side it read from stands untouched"
+        )
+
+    def test_check_with_reverse_reports_a_pending_edit_and_writes_nothing(self, targets):
+        _write(targets.working_rules, _reference(RENDERED_PREAMBLE, EDITED))
+        untouched = (targets.rules_dir / "alpha.md").read_text(encoding="utf-8")
+
+        assert sync.main(["--check", "--reverse"], targets=targets) != 0, (
+            "a render edit that never reached its rules file is what this reports"
+        )
+        assert (targets.rules_dir / "alpha.md").read_text(encoding="utf-8") == untouched, (
+            "--check reports a difference without repairing it, whichever direction it runs"
+        )
+
+    def test_check_with_reverse_exits_zero_when_the_sources_already_match(self, targets):
+        _write(targets.working_rules, _reference(RENDERED_PREAMBLE, ALPHA))
+
+        assert sync.main(["--check", "--reverse"], targets=targets) == 0, (
+            "sources a reverse run would rewrite byte for byte are by definition up to date"
+        )
+
+
+class TestRoundTrip:
+    def test_a_render_survives_a_reverse_then_a_forward_run(self, targets):
+        render = _reference(RENDERED_PREAMBLE, EDITED)
+        _write(targets.working_rules, render)
+
+        sync.main(["--reverse"], targets=targets)
+        rebuilt = sync.build_working_rules(
+            targets.claude_md, targets.rules_dir, targets.working_rules_order
+        )
+
+        assert rebuilt == render, (
+            "a render that does not come back byte for byte drifts a little on every sync"
+        )
+
+    def test_sources_survive_a_forward_then_a_reverse_run(self, targets):
+        sources = [targets.claude_md, targets.rules_dir / "alpha.md"]
+        before = {path: path.read_text(encoding="utf-8") for path in sources}
+
+        sync.main([], targets=targets)
+        sync.main(["--reverse"], targets=targets)
+
+        assert {path: path.read_text(encoding="utf-8") for path in sources} == before, (
+            "a source that does not come back byte for byte drifts a little on every sync"
+        )
+
+    def test_the_repository_render_survives_the_round_trip(self, tmp_path):
+        original = (REPO_ROOT / "references" / "working-rules.md").read_text(encoding="utf-8")
+        claude_home = tmp_path / "claude"
+        _write(claude_home / "references" / "working-rules.md", original)
+        targets = sync.Targets(
+            claude_home=claude_home,
+            pi_home=tmp_path / "pi",
+            opencode_home=tmp_path / "opencode",
+        )
+
+        sync.main(["--reverse"], targets=targets)
+        rebuilt = sync.build_working_rules(
+            targets.claude_md, targets.rules_dir, targets.working_rules_order
+        )
+
+        assert rebuilt == original, (
+            "the render this repository carries is the corpus the two directions run against, "
+            "and a fixture that round trips proves nothing about it"
         )
