@@ -235,9 +235,10 @@ class Reference:
 def _fence_after(line: str, fence: str | None) -> str | None:
     """The fence state a line leaves behind, given the state it met."""
 
+    stripped = line.lstrip()
     if fence is None:
-        return line[:3] if line.startswith(("```", "~~~")) else None
-    return None if line.startswith(fence) else fence
+        return stripped[:3] if stripped.startswith(("```", "~~~")) else None
+    return None if stripped.startswith(fence) else fence
 
 
 def parse_reference(text: str) -> Reference:

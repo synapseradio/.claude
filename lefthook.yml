@@ -20,6 +20,17 @@ pre-commit:
             glob: "*.{sh,bash}"
             run: shellcheck {staged_files}
 
+    # Sequential, outside the group above: this and markdownlint both rewrite
+    # the same .md files, and lefthook runs top-level jobs one after another
+    # while a group with parallel: true runs its own jobs at once.
+    # https://github.com/evilmartians/lefthook/blob/master/docs/configuration/parallel.md
+    # The script formats the rules files and CLAUDE.md and passes over every
+    # other path it is handed, so the glob here only keeps the job quiet.
+    - name: format-rules-xml
+      glob: "*.md"
+      run: python3.14 scripts/format-rules-xml.py {staged_files}
+      stage_fixed: true
+
 # pre-push gate: re-runs the check-only side of every linter against the
 # diff being pushed, and regenerates the agent configs. shellcheck and
 # shfmt -d have no autofix; ruff check without --fix matches the same
@@ -40,6 +51,9 @@ pre-push:
           - name: shfmt-check
             glob: "*.{sh,bash}"
             run: shfmt -i 2 -d {push_files}
+          - name: format-rules-xml-check
+            glob: "*.md"
+            run: python3.14 scripts/format-rules-xml.py --check {push_files}
 
     # Ungated by glob: a generated file also goes stale when a plugin is
     # enabled or disabled, which changes no file under version control.
