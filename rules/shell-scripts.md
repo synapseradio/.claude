@@ -18,7 +18,7 @@ paths:
   </optimize_for>
 
   <do>
-    Read `~/.claude/references/bash-style-guide.md` in full before writing or reviewing bash, then follow it.
+    Read `~/.claude/references/bash-style-guide.md` in full before writing or reviewing bash, then follow it. Write every script in bash. Open each executable on `#!/bin/bash`.
   </do>
 
   <decide>
