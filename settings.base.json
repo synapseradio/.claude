@@ -406,6 +406,11 @@
             "type": "command",
             "command": "bash $HOME/.claude/scripts/hooks/deny-inplace-stream-edit.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/scripts/hooks/ask-remote-data-send.sh",
+            "timeout": 5
           }
         ]
       }
