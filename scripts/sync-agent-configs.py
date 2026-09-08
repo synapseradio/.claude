@@ -39,7 +39,6 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
-import json
 import sys
 from pathlib import Path
 
@@ -47,28 +46,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "agent-configs"))
 
 from projection import (
     DEFAULT_TARGETS,
-    AgentDefinition,
     GeneratedFile,
-    GeneratedKey,
     Plan,
     Targets,
-    Translation,
-    _map_tools,
-    _render,
     apply_plan,
-    home_relative,
-    parse_document,
-    read_agent,
     refuse_uncommitted,
-    rewrite_paths,
-    unconditional_rules,
 )
 
-# `restore_paths` moved with the reverse-direction render into
-# render-working-rules.py; nothing in this shim's own remaining code calls
-# it, but test_sync_agent_configs.py still reads it from here, so the import
-# re-exports it under its own name rather than let a lint pass drop it.
+# `restore_paths`, `parse_document`, `read_agent`, and `rewrite_paths` moved
+# with the render and translation jobs below; nothing in this shim's own
+# remaining code calls them, but test_sync_agent_configs.py still reads them
+# from here, so each import re-exports its name under itself rather than let
+# a lint pass drop it.
+from projection import parse_document as parse_document
+from projection import read_agent as read_agent
 from projection import restore_paths as restore_paths
+from projection import rewrite_paths as rewrite_paths
 
 # render-working-rules.py is a job, invoked by path and never imported, per
 # the convention every job under agent-configs/ follows. This shim still
@@ -95,159 +88,51 @@ parse_reference = render_working_rules.parse_reference
 build_reverse_plan = render_working_rules.build_reverse_plan
 
 
-def build_preamble(claude_md: Path) -> str:
-    """`CLAUDE.md` alone, with its paths resolved."""
-
-    return rewrite_paths(
-        parse_document(claude_md.read_text(encoding="utf-8")).body.strip("\n") + "\n"
-    )
-
-
-def build_agents_markdown(claude_md: Path, rules_dir: Path) -> str:
-    """Assemble the always-loaded configuration into one AGENTS.md body.
-
-    pi reads one context file per directory and offers no second mechanism
-    for carrying rules as separate files, so its copy holds the preamble and
-    every rule concatenated, frontmatter stripped.
-    """
-
-    sections = [parse_document(claude_md.read_text(encoding="utf-8")).body]
-    sections += [
-        parse_document(rule.read_text(encoding="utf-8")).body
-        for rule in unconditional_rules(rules_dir)
-    ]
-    return rewrite_paths("\n\n".join(section.strip("\n") for section in sections) + "\n")
+# translate-for-pi.py, translate-for-opencode.py, and own-opencode-key.py are
+# jobs, invoked by path and never imported, the same convention
+# render-working-rules.py follows above. This shim still promises
+# `build_agents_markdown`, `resolve_skill_paths`, `translate_for_pi`, and
+# `translate_for_opencode` to whatever already reads them from here, so it
+# loads each job by path exactly as it loads the render job, rather than
+# keeping a second copy of what each job now owns.
+def _load_job(name: str, filename: str):
+    path = Path(__file__).resolve().parent / "agent-configs" / filename
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
-def rule_instructions(rules_dir: Path) -> list[str]:
-    """The `instructions` entries opencode reads the session-wide rules from.
+translate_for_pi_job = _load_job("translate_for_pi_job", "translate-for-pi.py")
+translate_for_opencode_job = _load_job("translate_for_opencode_job", "translate-for-opencode.py")
+own_opencode_key_job = _load_job("own_opencode_key_job", "own-opencode-key.py")
 
-    Each names its canonical path under `~/.claude/rules/`, so an edit to a
-    rule reaches opencode with no run of this script.
-    """
-
-    return [home_relative(rule) for rule in unconditional_rules(rules_dir)]
-
-
-OPENCODE_MODEL_IDS = {
-    "haiku": "anthropic/claude-haiku-4-5",
-    "sonnet": "anthropic/claude-sonnet-4-6",
-    "opus": "anthropic/claude-opus-4-7",
-}
-
-OPENCODE_TOOL_NAMES = {
-    "Read": "read",
-    "Write": "write",
-    "Edit": "edit",
-    "Bash": "bash",
-    "Grep": "grep",
-    "Glob": "glob",
-    "Agent": "task",
-}
-
-PI_TOOL_NAMES = {
-    "Read": "read",
-    "Write": "write",
-    "Edit": "edit",
-    "Bash": "bash",
-    "Grep": "grep",
-    "Glob": "find",
-}
-
-
-def translate_for_opencode(agent: AgentDefinition) -> Translation:
-    frontmatter: dict = {"description": agent.description, "mode": "subagent"}
-    if agent.model is not None:
-        frontmatter["model"] = OPENCODE_MODEL_IDS[agent.model]
-    tools, dropped = _map_tools(agent.tools, OPENCODE_TOOL_NAMES)
-    if tools is not None:
-        frontmatter["tools"] = dict.fromkeys(tools, True)
-    return Translation(content=_render(frontmatter, agent.body), dropped=dropped)
-
-
-def translate_for_pi(agent: AgentDefinition) -> Translation:
-    frontmatter: dict = {"description": agent.description}
-    if agent.model is not None:
-        frontmatter["model"] = agent.model
-    tools, dropped = _map_tools(agent.tools, PI_TOOL_NAMES)
-    if tools is not None:
-        frontmatter["tools"] = ", ".join(tools)
-    frontmatter["inheritSkills"] = True
-    return Translation(content=_render(frontmatter, agent.body), dropped=dropped)
-
-
-def _install_path(records: list[dict]) -> str | None:
-    """Pick the one install a user-level enable turns on.
-
-    A plugin installed against several projects can carry several versions
-    at once. Putting all of them on a skills path loads each skill twice
-    under two versions, so the user-scoped record wins where one exists.
-    """
-
-    for record in records:
-        if record.get("scope") == "user":
-            return record.get("installPath")
-    return records[0].get("installPath") if records else None
-
-
-def resolve_skill_paths(installed_plugins: Path, settings: Path) -> list[str]:
-    plugins = json.loads(installed_plugins.read_text(encoding="utf-8")).get("plugins", {})
-    enabled = json.loads(settings.read_text(encoding="utf-8")).get("enabledPlugins", {})
-
-    resolved = set()
-    for key, is_enabled in enabled.items():
-        if not is_enabled:
-            continue
-        install_path = _install_path(plugins.get(key, []))
-        if install_path is None:
-            continue
-        skills = Path(install_path) / "skills"
-        if skills.is_dir():
-            resolved.add(str(skills))
-    return sorted(resolved)
+build_agents_markdown = translate_for_pi_job.build_agents_markdown
+resolve_skill_paths = translate_for_pi_job.resolve_skill_paths
+translate_for_pi = translate_for_pi_job.translate_for_pi
+translate_for_opencode = translate_for_opencode_job.translate_for_opencode
 
 
 def build_plan(targets: Targets = DEFAULT_TARGETS) -> Plan:
     refuse_uncommitted(targets.claude_home, [targets.working_rules])
-    files = [
-        GeneratedFile(
-            targets.pi_home / "AGENTS.md",
-            build_agents_markdown(targets.claude_md, targets.rules_dir),
-        ),
-        GeneratedFile(targets.opencode_home / "AGENTS.md", build_preamble(targets.claude_md)),
+    pi_plan = translate_for_pi_job.build_plan(targets)
+    opencode_plan = translate_for_opencode_job.build_plan(targets)
+    key_plan = own_opencode_key_job.build_plan(targets)
+    files = (
         GeneratedFile(
             targets.working_rules,
             build_working_rules(targets.claude_md, targets.rules_dir, targets.working_rules_order),
         ),
-    ]
-    keys = [
-        GeneratedKey(
-            targets.opencode_config,
-            "instructions",
-            rule_instructions(targets.rules_dir),
-            after="$schema",
-        )
-    ]
-    dropped: list[tuple[str, str, str]] = []
-
-    for source in sorted(targets.agents_dir.glob("*.md")):
-        agent = read_agent(source)
-        for label, home, translate in (
-            ("opencode", targets.opencode_home, translate_for_opencode),
-            ("pi", targets.pi_home, translate_for_pi),
-        ):
-            translated = translate(agent)
-            files.append(GeneratedFile(home / "agents" / f"{source.stem}.md", translated.content))
-            dropped += [(label, source.stem, tool) for tool in translated.dropped]
-
-    skill_paths = resolve_skill_paths(targets.installed_plugins, targets.settings)
-    files.append(
-        GeneratedFile(
-            targets.skill_paths_file,
-            json.dumps({"paths": skill_paths}, indent=2) + "\n",
-        )
+        *pi_plan.files,
+        *opencode_plan.files,
     )
-    return Plan(files=tuple(files), keys=tuple(keys), dropped=tuple(dropped))
+    return Plan(
+        files=files,
+        keys=key_plan.keys,
+        dropped=pi_plan.dropped + opencode_plan.dropped,
+    )
 
 
 def main(argv: list[str] | None = None, targets: Targets = DEFAULT_TARGETS) -> int:
