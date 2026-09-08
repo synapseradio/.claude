@@ -37,9 +37,22 @@ def state_dir():
     return Path.home() / ".claude" / ".tmp" / "repeat-failure"
 
 
-def state_path(directory, session_id):
-    safe = "".join(c for c in session_id if c.isalnum() or c in "-_")
+def state_path(directory, key):
+    safe = "".join(c for c in key if c.isalnum() or c in "-_")
     return directory / f"{safe or 'session'}.json"
+
+
+def state_key(payload):
+    """The identifier whose streak this payload belongs to.
+
+    Both events fire for a subagent's tool calls, and every hook call in one
+    session carries the same session_id. agent_id, which the harness sends
+    only from within a subagent, is the field that distinguishes a subagent's
+    call from a main-thread one, per
+    https://docs.claude.com/en/docs/claude-code/hooks
+    See test_two_agents_in_one_session_keep_separate_counts.
+    """
+    return payload.get("agent_id") or payload.get("session_id") or "session"
 
 
 def prune(directory, now):
@@ -154,7 +167,7 @@ def main():
         directory.mkdir(parents=True, exist_ok=True)
     except OSError:
         sys.exit(0)
-    path = state_path(directory, payload.get("session_id") or "session")
+    path = state_path(directory, state_key(payload))
     if payload.get("hook_event_name") != "PostToolUseFailure":
         with contextlib.suppress(OSError):
             path.unlink()

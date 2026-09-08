@@ -151,6 +151,33 @@ class RepeatedFailureHook(unittest.TestCase):
         context = other["hookSpecificOutput"]["additionalContext"]
         self.assertNotIn("in a row", context, "another session starts its own streak")
 
+    def test_two_agents_in_one_session_keep_separate_counts(self):
+        # Both events fire for a subagent's tool calls, and every hook call
+        # in one session carries the same session_id. agent_id, present only
+        # from within a subagent, is what tells the two apart.
+        self.failure()
+        other = self.failure(agent_id="agent-two", command="cargo build")
+        context = self.context(other)
+        self.assertNotIn("in a row", context, "another agent starts its own streak")
+
+    def test_one_agents_success_leaves_another_agents_streak_standing(self):
+        self.failure()
+        self.run_hook(
+            {
+                "session_id": "s1",
+                "agent_id": "agent-two",
+                "hook_event_name": "PostToolUse",
+                "tool_name": "Bash",
+                "tool_input": {"command": "ls"},
+            }
+        )
+        context = self.context(self.failure())
+        self.assertIn(
+            "2 tool calls have failed in a row",
+            context,
+            "a subagent's success must not clear the main thread's streak",
+        )
+
     def test_a_failing_edit_names_the_file_it_targeted(self):
         self.run_hook(
             {

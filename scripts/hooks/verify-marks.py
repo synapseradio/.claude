@@ -37,6 +37,12 @@ already handed back, so a line draws one report instead of one per batch for
 the rest of the session; a sentence repeated verbatim in a later turn
 therefore reaches the user through the Stop pass alone. Point
 VERIFY_MARKS_STATE_DIR elsewhere to keep a run out of that state.
+
+PostToolBatch fires from within a subagent too, where it carries agent_id
+and names the session-level transcript, which holds none of that subagent's
+text. This pass scans the subagent's own file instead, derived from the
+session transcript's stem, and keeps a ledger per agent, so a delegate is
+flagged for its own marks alone.
 """
 
 import contextlib
@@ -245,9 +251,48 @@ def state_dir():
     return Path.home() / ".claude" / ".tmp" / "verify-marks"
 
 
-def state_path(directory, session_id):
-    safe = "".join(c for c in session_id if c.isalnum() or c in "-_")
+def state_path(directory, key):
+    safe = "".join(c for c in key if c.isalnum() or c in "-_")
     return directory / f"{safe or 'session'}.json"
+
+
+def state_key(payload):
+    """The identifier whose reported lines this payload's ledger holds.
+
+    Every hook call in one session carries the same session_id. agent_id,
+    which the harness sends only from within a subagent, is the field that
+    distinguishes a subagent's call from a main-thread one, per
+    https://docs.claude.com/en/docs/claude-code/hooks
+    """
+    return payload.get("agent_id") or payload.get("session_id") or "session"
+
+
+def batch_transcript(payload):
+    """The transcript holding text the agent this batch belongs to wrote.
+
+    PostToolBatch carries session_id and transcript_path, and from within a
+    subagent it adds agent_id; agent_transcript_path reaches SubagentStop
+    alone. The harness writes a subagent's turns to
+    `<session transcript stem>/subagents/agent-<agent_id>.jsonl`, putting a
+    workflow agent's file one level deeper, and writes none of them into the
+    session transcript. Where the derived file is absent, this returns
+    nothing, so the pass stays silent instead of handing a delegate the
+    marks another agent wrote.
+    See test_batch_reports_a_delegates_own_mark_from_its_own_transcript.
+    """
+    session = payload.get("transcript_path", "")
+    agent = payload.get("agent_id")
+    if not agent:
+        return session
+    if not session:
+        return ""
+    stem = session[: -len(".jsonl")] if session.endswith(".jsonl") else session
+    try:
+        for found in sorted(Path(stem, "subagents").rglob(f"agent-{agent}.jsonl")):
+            return str(found)
+    except OSError:
+        return ""
+    return ""
 
 
 def prune(directory, now):
@@ -343,7 +388,7 @@ def run_batch(payload):
     # PostToolBatch carries no last_assistant_message, and it fires after a
     # tool result the harness has already written, so the turn's earlier
     # assistant text stands in the transcript by now.
-    transcript = payload.get("transcript_path", "")
+    transcript = batch_transcript(payload)
     if not transcript or not Path(transcript).exists():
         sys.exit(0)
     lines_by_mark = marked_lines(last_turn_text(transcript))
@@ -353,7 +398,7 @@ def run_batch(payload):
     except OSError:
         sys.exit(0)
     prune(directory, time.time())
-    path = state_path(directory, payload.get("session_id") or "session")
+    path = state_path(directory, state_key(payload))
     reported = read_reported(path)
     fresh = {}
     for mark, lines in lines_by_mark.items():

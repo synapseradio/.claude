@@ -265,8 +265,9 @@ class VerifyMarksStopHook(unittest.TestCase):
         # The harness gives every hook call in a session the same common
         # transcript_path (the session-level file), and adds
         # agent_transcript_path only for SubagentStop, naming that subagent's
-        # own file. Scanning transcript_path here would read text a sibling
-        # subagent or the orchestrator wrote to the shared file.
+        # own file. The session file holds the orchestrator's turns, so
+        # scanning transcript_path here would hand a delegate marks the
+        # orchestrator wrote.
         session_transcript = Path(self._tmp.name) / "session.jsonl"
         session_transcript.write_text(
             "\n".join(
@@ -362,14 +363,30 @@ class VerifyMarksBatchHook(unittest.TestCase):
         path.write_text("\n".join(lines) + "\n")
         return str(path)
 
-    def batch(self, transcript, session_id="session-one"):
+    def agent_transcript(self, agent_id, *lines, workflow=None):
+        """A subagent's own transcript, where the harness writes one.
+
+        The path is `<session transcript stem>/subagents/agent-<id>.jsonl`,
+        with a workflow agent's file one level deeper under `workflows/<wf>/`.
+        """
+        directory = Path(self._tmp.name) / "session" / "subagents"
+        if workflow:
+            directory = directory / "workflows" / workflow
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / f"agent-{agent_id}.jsonl"
+        path.write_text("\n".join(lines) + "\n")
+        return str(path)
+
+    def batch(self, transcript, session_id="session-one", **extra):
+        payload = {
+            "hook_event_name": "PostToolBatch",
+            "session_id": session_id,
+            "transcript_path": transcript,
+            "tool_calls": [],
+        }
+        payload.update(extra)
         code, out = run_hook(
-            {
-                "hook_event_name": "PostToolBatch",
-                "session_id": session_id,
-                "transcript_path": transcript,
-                "tool_calls": [],
-            },
+            payload,
             "--batch",
             env={"VERIFY_MARKS_STATE_DIR": self.state},
         )
@@ -449,6 +466,77 @@ class VerifyMarksBatchHook(unittest.TestCase):
         context = self.context_of(self.batch(transcript))
         self.assertIn("I read the request as covering staging only [^?].", context)
         self.assertIn("AskUserQuestion", context)
+
+    def test_batch_reports_a_delegates_own_mark_from_its_own_transcript(self):
+        # PostToolBatch carries session_id, transcript_path and, from within
+        # a subagent, agent_id; agent_transcript_path reaches SubagentStop
+        # alone. The harness writes a subagent's turns to a file of their own
+        # under the session transcript's stem, so the delegate's own marks
+        # are the ones this pass must reach for, and the orchestrator's are
+        # the ones it must leave alone.
+        transcript = self.transcript(
+            user_text("earlier orchestrator turn"),
+            assistant_text("The orchestrator's own claim stands unverified [?]."),
+        )
+        self.agent_transcript(
+            "two",
+            user_text("do the KV-cache task"),
+            assistant_text("The KV-cache holds every shard [?]."),
+        )
+        context = self.context_of(self.batch(transcript, agent_id="two"))
+        self.assertIn("The KV-cache holds every shard [?].", context)
+        self.assertNotIn(
+            "orchestrator's own claim",
+            context,
+            "a delegate must not be handed a mark the orchestrator wrote",
+        )
+
+    def test_batch_reports_a_workflow_delegates_mark_from_its_nested_transcript(self):
+        transcript = self.transcript(user_text("do the thing"))
+        self.agent_transcript(
+            "three",
+            user_text("do the shard task"),
+            assistant_text("The shard count is 12 [?]."),
+            workflow="wf_9f8f2559",
+        )
+        context = self.context_of(self.batch(transcript, agent_id="three"))
+        self.assertIn("The shard count is 12 [?].", context)
+
+    def test_batch_stays_silent_when_a_delegate_has_no_transcript_of_its_own(self):
+        transcript = self.transcript(
+            user_text("do the thing"),
+            assistant_text("The orchestrator's own claim stands unverified [?]."),
+        )
+        self.assertIsNone(
+            self.batch(transcript, agent_id="absent"),
+            "with no transcript of its own a delegate draws nothing, "
+            "rather than falling back to the shared session file",
+        )
+
+    def test_batch_keeps_a_delegates_ledger_apart_from_the_main_threads(self):
+        line = "The endpoint has no other callers [?]."
+        transcript = self.transcript(user_text("do the thing"), assistant_text(line))
+        self.agent_transcript("two", user_text("do the sub task"), assistant_text(line))
+        self.assertIsNotNone(self.batch(transcript, agent_id="two"))
+        context = self.context_of(self.batch(transcript))
+        self.assertIn(
+            line,
+            context,
+            "a delegate's ledger must not suppress the same sentence for the main thread",
+        )
+
+    def test_a_subagent_batch_leaves_the_main_threads_report_standing(self):
+        transcript = self.transcript(
+            user_text("do the thing"),
+            assistant_text("The endpoint has no other callers [?]."),
+        )
+        self.batch(transcript, agent_id="agent-two")
+        context = self.context_of(self.batch(transcript))
+        self.assertIn(
+            "The endpoint has no other callers [?].",
+            context,
+            "a subagent's batch must not record a line the main thread never heard about",
+        )
 
     def test_batch_stays_silent_without_a_readable_transcript(self):
         code, out = run_hook(
