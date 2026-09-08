@@ -383,7 +383,11 @@
       "Bash(sh -c:*)",
       "Bash(bash -c:*)",
       "Bash(zsh -c:*)",
-      "Bash(eval:*)"
+      "Bash(eval:*)",
+      "Bash(knip --fix*)",
+      "Bash(knip * --fix*)",
+      "Bash(bun run knip --fix*)",
+      "Bash(bun run knip * --fix*)"
     ],
     "defaultMode": "acceptEdits"
   },
