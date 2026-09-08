@@ -11,23 +11,27 @@ paths:
 
 <rule name="dependencies">
 
-<applies_when>You are adding, removing, or updating a package dependency.</applies_when>
+  <applies_when>
+    You are adding, removing, or updating a package dependency.
+  </applies_when>
 
-<optimize_for>
-a dependency change the resolver made and the lockfile records.
-<why_it_matters>A hand-edited lockfile or a version pinned on the command line takes the choice from the resolver and leaves the tree in a state the manager never produced. The repo's own dependency docs outrank this rule wherever the two conflict.</why_it_matters>
-</optimize_for>
+  <optimize_for>
+    a dependency change the resolver made and the lockfile records.
+    <why_it_matters>
+      A hand-edited lockfile or a version pinned on the command line takes the choice from the resolver and leaves the tree in a state the manager never produced. The repo's own dependency docs outrank this rule wherever the two conflict.
+    </why_it_matters>
+  </optimize_for>
 
-<decide name="manager">
-Read the manager off the lockfile: bun for bun.lock or bun.lockb, pnpm for pnpm-lock.yaml, yarn for yarn.lock, npm for package-lock.json, cargo for Cargo.lock, and otherwise the tool that writes that lockfile. Where several JavaScript lockfiles are present, take bun, then pnpm, then yarn, then npm.
-</decide>
+  <decide name="manager">
+    Read the manager off the lockfile: bun for bun.lock or bun.lockb, pnpm for pnpm-lock.yaml, yarn for yarn.lock, npm for package-lock.json, cargo for Cargo.lock, and otherwise the tool that writes that lockfile. Where several JavaScript lockfiles are present, take bun, then pnpm, then yarn, then npm.
+  </decide>
 
-<do name="change">
-Where the repo carries its own dependency docs, read them first and follow them over this rule. Detect the manager. Run the manager's own add or remove command, `bun add <name>` for one. Install and audit. Where a version constraint is required, write the version the lockfile resolved in config: a workspace catalog, an overrides block, or the package's own package.json edited as text.
-</do>
+  <do name="change">
+    Where the repo carries its own dependency docs, read them first and follow them over this rule. Detect the manager. Run the manager's own add or remove command, `bun add <name>` for one. Install and audit. Where a version constraint is required, write the version the lockfile resolved in config: a workspace catalog, an overrides block, or the package's own package.json edited as text.
+  </do>
 
-<require>
-Never edit a lockfile by hand. Never pin a version on the CLI, whether as `<name>@<version>` or through a flag that hand-picks a version.
-</require>
+  <require>
+    Never edit a lockfile by hand. Never pin a version on the CLI, whether as `<name>@<version>` or through a flag that hand-picks a version.
+  </require>
 
 </rule>
