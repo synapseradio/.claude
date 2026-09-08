@@ -27,6 +27,9 @@
       "hooks.*.hooks": "hookPayload"
     }
   },
+  "env": {
+    "CLAUDE_CODE_COORDINATOR_FORCE_WORKER_INHERIT_MODEL": "0"
+  },
   "includeCoAuthoredBy": false,
   "includeGitInstructions": true,
   "permissions": {

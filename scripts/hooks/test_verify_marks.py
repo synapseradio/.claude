@@ -261,6 +261,46 @@ class VerifyMarksStopHook(unittest.TestCase):
         self.assertIsNotNone(result, "a delegate resolves the marks it can settle itself")
         self.assertIn("The count is 12 [?].", result["reason"])
 
+    def test_a_delegate_report_scans_its_own_agent_transcript_not_the_shared_session_one(self):
+        # The harness gives every hook call in a session the same common
+        # transcript_path (the session-level file), and adds
+        # agent_transcript_path only for SubagentStop, naming that subagent's
+        # own file. Scanning transcript_path here would read text a sibling
+        # subagent or the orchestrator wrote to the shared file.
+        session_transcript = Path(self._tmp.name) / "session.jsonl"
+        session_transcript.write_text(
+            "\n".join(
+                [
+                    user_text("earlier orchestrator turn"),
+                    assistant_text("A sibling agent's finding stands unverified [?]."),
+                ]
+            )
+            + "\n"
+        )
+        agent_transcript = Path(self._tmp.name) / "agent-this-one.jsonl"
+        agent_transcript.write_text(
+            "\n".join(
+                [
+                    user_text("do the KV-cache task"),
+                    assistant_text("The KV-cache fits comfortably, source verified."),
+                ]
+            )
+            + "\n"
+        )
+        result = self.delegate_decision(
+            {
+                "stop_hook_active": False,
+                "transcript_path": str(session_transcript),
+                "agent_transcript_path": str(agent_transcript),
+                "last_assistant_message": "The KV-cache fits comfortably, source verified.",
+            }
+        )
+        self.assertIsNone(
+            result,
+            "a SubagentStop pass must scan the calling agent's own transcript, "
+            "not the shared session transcript another agent also wrote marks into",
+        )
+
     def test_a_delegate_report_mixing_marks_blocks_and_routes_the_caret_upward(self):
         result = self.delegate_decision(
             {

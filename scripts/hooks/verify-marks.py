@@ -319,7 +319,12 @@ def run_stop(payload, delegate):
     # race-free; the transcript parse supplements it with any earlier
     # messages of the same turn that did flush.
     blocks = [payload.get("last_assistant_message") or ""]
-    transcript = payload.get("transcript_path", "")
+    # agent_transcript_path, present only on SubagentStop, names the calling
+    # subagent's own transcript; transcript_path there is the shared
+    # session-level file every concurrent subagent and the orchestrator
+    # write to. See
+    # test_a_delegate_report_scans_its_own_agent_transcript_not_the_shared_session_one.
+    transcript = payload.get("agent_transcript_path") or payload.get("transcript_path", "")
     if transcript and Path(transcript).exists():
         blocks = last_turn_text(transcript) + blocks
     lines_by_mark = marked_lines(blocks)
