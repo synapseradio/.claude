@@ -13,10 +13,13 @@ A request may override three settings:
 - run scope: changed or full, default changed, where changed maps the touched files to the tests covering them and full runs the whole suite
 - refactor depth: 1 to 5, default 2
 - spike budget: minutes, default 30
+- mutation check: off or on, default off, where on breaks the code a test covers to confirm the test goes red, then restores it
 
 ## Red first
 
 Open every behavior change with a test named for the behavior it adds, run it before you move any source line, and record its output as the red that change starts from. A test that passes on its first run names behavior already present, so rewrite it to name what this change adds and start the cell again.
+
+Take the red from the test that precedes the code. Never mutate working code to manufacture a red, and never leave a mutation behind in the tree. Where a test covers behavior the code already carries, take its expected result from the design, and report the pass as one you did not watch fail, so the caller weighs what that green is worth. A caller who sets the mutation check on gets the break and restore per test, each mutation restored before the next claim opens, with `git status` confirming the tree holds only the files the run intends.
 
 ## Minimum code
 
