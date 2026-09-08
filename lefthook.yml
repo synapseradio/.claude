@@ -57,23 +57,35 @@ pre-push:
 
     # Ungated by glob: a generated file also goes stale when a plugin is
     # enabled or disabled, which changes no file under version control.
-    # This writes the outputs, so the 22 that live outside this repository
-    # land without a second command. The one output tracked here is the
-    # exception: a push carrying a render its own sources no longer produce
-    # is what this gate exists to stop, so a change to that file ends the
-    # push with the regeneration already done. Gated to main because the
-    # outputs outside this repository are the live configs, which a branch's
-    # unfinished rules should not overwrite. This is the only hook that runs
-    # the generator: the script refuses to write over a render carrying
-    # uncommitted changes, and a staged render is uncommitted, so the same
-    # job at pre-commit blocks every commit that touches the rules.
+    # The three translation jobs run forward, since the 22 outputs they
+    # write live outside this repository and land on push and nowhere else.
+    # The four jobs that write a generated file then run their check mode,
+    # so a write that half happened reports rather than passing unseen. The
+    # render stays check-only: a push carrying a render its own sources no
+    # longer produce is what this gate exists to refuse. The job that splits
+    # the render back into CLAUDE.md and the rules files stays out, since
+    # those are hand-edited sources and naming one as differing from a
+    # render would make the derived artifact the one to match. Gated to main
+    # because the outputs outside this repository are the live configs,
+    # which a branch's unfinished rules should not overwrite. lefthook runs
+    # a job through sh, per
+    # https://github.com/evilmartians/lefthook/blob/master/docs/configuration/run.md,
+    # which takes its status from the last line, so set -e is what carries a
+    # nonzero exit from any one of these out to the gate.
     - name: sync-agent-configs
       only:
         - ref: main
       run: |
-        python3.14 scripts/sync-agent-configs.py
-        git diff --quiet -- references/working-rules.md || {
-          echo "references/working-rules.md was stale and has been regenerated."
-          echo "Commit it, then push again."
+        set -e
+        python3.14 scripts/agent-configs/translate-for-pi.py
+        python3.14 scripts/agent-configs/translate-for-opencode.py
+        python3.14 scripts/agent-configs/own-opencode-key.py
+        python3.14 scripts/agent-configs/translate-for-pi.py --check
+        python3.14 scripts/agent-configs/translate-for-opencode.py --check
+        python3.14 scripts/agent-configs/own-opencode-key.py --check
+        python3.14 scripts/agent-configs/render-working-rules.py --check || {
+          echo "references/working-rules.md no longer matches its sources."
+          echo "Run python3.14 scripts/agent-configs/render-working-rules.py,"
+          echo "commit the render it writes, then push again."
           exit 1
         }

@@ -11,6 +11,7 @@ opencode's real directories.
 import importlib.util
 import json
 import pathlib
+import subprocess
 import sys
 
 import pytest
@@ -139,3 +140,279 @@ class TestOneJobFails:
         assert (targets.pi_home / "agents" / "scout.md").read_text(
             encoding="utf-8"
         ) == pi_agents_before, "the opencode job's failure must leave pi's outputs untouched"
+
+
+def _git(repo: pathlib.Path, *args: str) -> None:
+    """Run one git command in `repo`, with the user's hooks and signing off."""
+
+    subprocess.run(
+        ["git", "-C", str(repo), "-c", "core.hooksPath=", "-c", "commit.gpgsign=false", *args],
+        check=True,
+        capture_output=True,
+    )
+
+
+def _committed(tmp_path: pathlib.Path) -> projection.Targets:
+    """The same tree, plus opencode's outputs, committed in one git repository.
+
+    The repository opens at `tmp_path`, so opencode's target directory sits
+    inside it and an edit there is work git can report.
+    """
+
+    targets = _targets(tmp_path)
+    assert opencode.main([], targets=targets) == 0
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "config", "user.email", "test@example.invalid")
+    _git(tmp_path, "config", "user.name", "Test")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-q", "-m", "the tree as a run last left it")
+    return targets
+
+
+class TestCheckModeReportsDrift:
+    """`config-projection` requirement: a check mode reports drift without writing.
+
+    Scenarios: Everything in sync, and One output has drifted.
+
+    This job's outputs carry the `CLAUDE.md` preamble and the agent
+    definitions. A rule body reaches opencode through the `instructions` key
+    another job owns, so the drift these read is a change to a source this
+    job does read.
+    """
+
+    def test_check_exits_zero_when_every_output_matches(self, tmp_path):
+        targets = _targets(tmp_path)
+        opencode.main([], targets=targets)
+
+        assert opencode.main(["--check"], targets=targets) == 0, (
+            "outputs this job just wrote from these sources are by definition in sync"
+        )
+
+    def test_check_names_the_context_file_after_the_preamble_changes(self, tmp_path, capsys):
+        targets = _targets(tmp_path)
+        opencode.main([], targets=targets)
+        context_file = targets.opencode_home / "AGENTS.md"
+        written = context_file.read_text(encoding="utf-8")
+        _write(
+            targets.claude_md, f"{PREAMBLE}\n\n<what_wins>\n\nNearness decides.\n\n</what_wins>\n"
+        )
+        capsys.readouterr()
+
+        code = opencode.main(["--check"], targets=targets)
+        printed = capsys.readouterr().out
+
+        assert code != 0, "a preamble edit that never reached opencode's context file is drift"
+        assert str(context_file) in printed, (
+            "a check that reports drift without naming the path leaves the reader hunting "
+            "for which of the outputs moved"
+        )
+        assert context_file.read_text(encoding="utf-8") == written, (
+            "a check reports a difference without repairing it"
+        )
+
+    def test_check_names_the_agent_file_after_its_definition_changes(self, tmp_path, capsys):
+        targets = _targets(tmp_path)
+        opencode.main([], targets=targets)
+        agent_file = targets.opencode_home / "agents" / "scout.md"
+        _write(targets.agents_dir / "scout.md", _agent_source(model="sonnet"))
+        capsys.readouterr()
+
+        code = opencode.main(["--check"], targets=targets)
+        printed = capsys.readouterr().out
+
+        assert code != 0, "an agent definition that never reached its translation is drift"
+        assert str(agent_file) in printed, "the check must name the file that differs"
+
+    def test_check_exits_nonzero_when_an_output_is_missing(self, tmp_path):
+        targets = _targets(tmp_path)
+
+        assert opencode.main(["--check"], targets=targets) != 0, (
+            "an output that was never written differs from what a run would produce"
+        )
+        assert not targets.opencode_home.exists(), (
+            "a check writes nothing, a target directory included"
+        )
+
+    def test_check_reports_drift_rather_than_refusing_on_a_dirty_target(self, tmp_path, capsys):
+        targets = _committed(tmp_path)
+        dirty = targets.opencode_home / "AGENTS.md"
+        _write(dirty, "hand-edited, never committed\n")
+        capsys.readouterr()
+
+        code = opencode.main(["--check"], targets=targets)
+        printed = capsys.readouterr().out
+
+        assert code != 0, "the file on disk differs from what this job would write"
+        assert str(dirty) in printed, (
+            "a run that writes nothing overwrites nothing, so an uncommitted target is no "
+            "reason to report the tree in place of the drift"
+        )
+
+
+class TestAGeneratedFileIsOwnedWhole:
+    """`config-projection` requirement: a generated file is owned whole."""
+
+    def test_a_hand_edit_to_a_generated_file_is_rewritten_away(self, tmp_path):
+        targets = _targets(tmp_path)
+        opencode.main([], targets=targets)
+        agent_file = targets.opencode_home / "agents" / "scout.md"
+        generated = agent_file.read_text(encoding="utf-8")
+        _write(agent_file, generated + "\nA hand-written paragraph nobody generated.\n")
+
+        opencode.main([], targets=targets)
+
+        assert agent_file.read_text(encoding="utf-8") == generated, (
+            "this job rewrites each file it generates in full, so hand-written content in one "
+            "of them survives no run and belongs in a file the job does not own"
+        )
+
+
+AGENT_BODY = "Scout {\n  Options {\n    budget: 1..200 = 40\n  }\n}\n"
+
+
+def _agent_definition(directory: pathlib.Path, name: str, **keys: str) -> pathlib.Path:
+    lines = [f"name: {name}", "description: Use this agent to scout, and to report."]
+    lines += [f"{key}: {value}" for key, value in keys.items()]
+    frontmatter = "\n".join(lines)
+    return _write(directory / f"{name}.md", f"---\n{frontmatter}\n---\n\n{AGENT_BODY}")
+
+
+class TestTranslateForOpencodeFrontmatter:
+    def test_model_tier_becomes_a_provider_id(self, tmp_path):
+        agent = projection.read_agent(_agent_definition(tmp_path, "scout", model="haiku"))
+
+        translated = opencode.translate_for_opencode(agent)
+
+        assert "model: anthropic/claude-haiku-4-5" in translated.content, (
+            "opencode names a model by provider/model id, not by Claude's tier name"
+        )
+
+    def test_absent_model_emits_no_model_key(self, tmp_path):
+        agent = projection.read_agent(_agent_definition(tmp_path, "orchestrator"))
+
+        translated = opencode.translate_for_opencode(agent)
+
+        assert "model:" not in translated.content, (
+            "emitting a model key where the source names none would pin an agent "
+            "that should inherit"
+        )
+
+    def test_tools_become_a_lowercase_map_to_true(self, tmp_path):
+        agent = projection.read_agent(
+            _agent_definition(tmp_path, "scout", tools="Read, Grep, Glob, Bash")
+        )
+
+        translated = opencode.translate_for_opencode(agent)
+        frontmatter = projection.parse_document(translated.content).frontmatter
+
+        assert frontmatter["tools"] == {
+            "read": True,
+            "grep": True,
+            "glob": True,
+            "bash": True,
+        }, "opencode reads tools as a map of its own lowercase tool names to booleans"
+
+    def test_agent_tool_maps_to_task(self, tmp_path):
+        agent = projection.read_agent(
+            _agent_definition(tmp_path, "skill-designer", tools="Read, Agent")
+        )
+
+        translated = opencode.translate_for_opencode(agent)
+        frontmatter = projection.parse_document(translated.content).frontmatter
+
+        assert frontmatter["tools"] == {"read": True, "task": True}, (
+            "opencode spawns subagents through `task`, which is what Claude's Agent names"
+        )
+
+    def test_claude_only_tools_drop_and_are_reported(self, tmp_path):
+        agent = projection.read_agent(
+            _agent_definition(
+                tmp_path, "spider", tools="Bash, ToolSearch, mcp__linkup__linkup-search"
+            )
+        )
+
+        translated = opencode.translate_for_opencode(agent)
+        frontmatter = projection.parse_document(translated.content).frontmatter
+
+        assert frontmatter["tools"] == {"bash": True}, (
+            "a tool opencode does not carry must not reach its frontmatter under any name"
+        )
+        assert translated.dropped == ("ToolSearch", "mcp__linkup__linkup-search"), (
+            "a dropped tool narrows the agent's reach, so the run must name what it dropped"
+        )
+
+    def test_absent_tools_emits_no_tools_key(self, tmp_path):
+        agent = projection.read_agent(_agent_definition(tmp_path, "orchestrator"))
+
+        translated = opencode.translate_for_opencode(agent)
+
+        assert "tools:" not in translated.content, (
+            "an empty tools map would grant no tools, where the source granted every tool"
+        )
+
+    def test_description_survives_verbatim(self, tmp_path):
+        agent = projection.read_agent(_agent_definition(tmp_path, "scout"))
+
+        translated = opencode.translate_for_opencode(agent)
+
+        assert (
+            projection.parse_document(translated.content).frontmatter["description"]
+            == "Use this agent to scout, and to report."
+        ), "the description is what a router matches on, so it must carry across unchanged"
+
+    def test_body_becomes_the_system_prompt_unchanged(self, tmp_path):
+        agent = projection.read_agent(_agent_definition(tmp_path, "scout", model="haiku"))
+
+        translated = opencode.translate_for_opencode(agent)
+
+        assert projection.parse_document(translated.content).body == AGENT_BODY, (
+            "the body is the system prompt and no rewrite applies to it"
+        )
+
+
+class TestBuildPlan:
+    def test_opencode_agents_markdown_carries_the_preamble_alone(self, tmp_path):
+        targets = _targets(tmp_path)
+
+        plan = opencode.build_plan(targets)
+        by_path = {f.path: f.content for f in plan.files}
+        written = by_path[targets.opencode_home / "AGENTS.md"]
+
+        assert "<stance>" in written, "opencode reads the CLAUDE.md preamble from its context file"
+        assert ALPHA not in written, (
+            "opencode reads the rules through `instructions`, so repeating them here would "
+            "double them"
+        )
+
+    def test_every_source_agent_yields_one_file_under_opencode(self, tmp_path):
+        targets = _targets(tmp_path)
+        _agent_definition(targets.agents_dir, "orchestrator")
+
+        plan = opencode.build_plan(targets)
+        paths = {f.path for f in plan.files}
+
+        assert {
+            targets.opencode_home / "agents" / "scout.md",
+            targets.opencode_home / "agents" / "orchestrator.md",
+        } <= paths, "each source agent must reach this target"
+
+    def test_a_grant_opencode_carries_drops_nothing(self, tmp_path):
+        plan = opencode.build_plan(_targets(tmp_path))
+
+        assert plan.dropped == (), (
+            "opencode's task covers Claude's Agent, so scout's grant crosses whole and "
+            "nothing is dropped for this target"
+        )
+
+
+class TestApply:
+    def test_first_run_reports_each_file_it_created(self, tmp_path, capsys):
+        targets = _targets(tmp_path)
+
+        opencode.main([], targets=targets)
+        printed = capsys.readouterr().out
+
+        assert str(targets.opencode_home / "AGENTS.md") in printed, (
+            "a run that writes a file must name that file"
+        )
+        assert "created" in printed, "a file that did not exist reports as created, not updated"
