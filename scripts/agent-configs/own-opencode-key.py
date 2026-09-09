@@ -29,8 +29,8 @@ from projection import (
 def rule_instructions(rules_dir: Path) -> list[str]:
     """The `instructions` entries opencode reads the session-wide rules from.
 
-    Each names its canonical path under `~/.claude/rules/`, so an edit to a
-    rule reaches opencode with no run of this job.
+    Each names its canonical path under `~/.claude/rulesets/default/`, so an
+    edit to a rule reaches opencode with no run of this job.
     """
 
     return [home_relative(rule) for rule in unconditional_rules(rules_dir)]

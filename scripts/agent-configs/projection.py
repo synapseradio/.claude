@@ -105,7 +105,7 @@ def restore_paths(text: str) -> str:
 # The one place the always-on rule bodies' directory is named. Every job
 # reaches it through `Targets.rules_dir`, so moving the bodies is a change
 # to this string and to nothing inside any job.
-RULES_DIRNAME = "rules"
+RULES_DIRNAME = "rulesets/default"
 
 
 def all_rules(rules_dir: Path) -> list[Path]:

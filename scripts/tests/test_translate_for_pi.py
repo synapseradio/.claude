@@ -56,9 +56,10 @@ AGENT_SOURCE = (
 def _targets(tmp_path: pathlib.Path) -> projection.Targets:
     claude_home = tmp_path / "claude"
     _write(claude_home / "CLAUDE.md", f"{PREAMBLE}\n")
-    _write(claude_home / "rules" / "alpha.md", f"{ALPHA}\n")
+    rules = claude_home / projection.RULES_DIRNAME
+    _write(rules / "alpha.md", f"{ALPHA}\n")
     _write(
-        claude_home / "rules" / "gated.md",
+        rules / "gated.md",
         f'---\npaths:\n  - "**/*.sh"\n---\n\n{_element("gated", "Gated holds.")}\n',
     )
     _write(claude_home / "agents" / "scout.md", AGENT_SOURCE)

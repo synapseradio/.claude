@@ -69,10 +69,11 @@ def _reference(preamble: str, *sections: str, title: str = "# Working Rules") ->
 def _targets(tmp_path: pathlib.Path, *, order=("alpha", "zeta")) -> projection.Targets:
     claude_home = tmp_path / "claude"
     _write(claude_home / "CLAUDE.md", f"{PREAMBLE}\n")
-    _write(claude_home / "rules" / "alpha.md", f"{ALPHA}\n")
-    _write(claude_home / "rules" / "zeta.md", f"{ZETA}\n")
+    rules = claude_home / projection.RULES_DIRNAME
+    _write(rules / "alpha.md", f"{ALPHA}\n")
+    _write(rules / "zeta.md", f"{ZETA}\n")
     _write(
-        claude_home / "rules" / "gated.md",
+        rules / "gated.md",
         f'---\npaths:\n  - "**/*.sh"\n---\n\n{_element("gated", "Gated holds.")}\n',
     )
     return projection.Targets(
@@ -516,7 +517,7 @@ class TestBuildReversePlan:
     def test_each_rule_element_lands_in_its_own_rules_file(self, tmp_path):
         files = self._files(_targets(tmp_path), ALPHA, ZETA)
 
-        assert files[(tmp_path / "claude" / "rules") / "alpha.md"] == f"{ALPHA}\n", (
+        assert files[_targets(tmp_path).rules_dir / "alpha.md"] == f"{ALPHA}\n", (
             "a rules file is the render's section for it, wrapper included and nothing above it"
         )
 
