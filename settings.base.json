@@ -397,6 +397,91 @@
     "defaultMode": "acceptEdits"
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3.14 $HOME/.claude/scripts/hooks/rulesets-deliver.py",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3.14 $HOME/.claude/scripts/hooks/rulesets-deliver.py",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3.14 $HOME/.claude/scripts/hooks/rulesets-deliver.py",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3.14 $HOME/.claude/scripts/hooks/rulesets-deliver.py",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "fork",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3.14 $HOME/.claude/scripts/hooks/rulesets-deliver.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3.14 $HOME/.claude/scripts/hooks/rulesets-deliver.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostModelSwitch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3.14 $HOME/.claude/scripts/hooks/rulesets-deliver.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "InstructionsLoaded": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3.14 $HOME/.claude/scripts/hooks/rulesets-audit.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
@@ -419,6 +504,16 @@
           {
             "type": "command",
             "command": "bash $HOME/.claude/scripts/hooks/ask-remote-data-send.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3.14 $HOME/.claude/scripts/hooks/rulesets-deliver.py",
             "timeout": 5
           }
         ]
