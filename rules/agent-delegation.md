@@ -30,11 +30,11 @@
     - Where later work depends on the answer, no check detects an error before then, and undoing requires manual work, opus.
     - Otherwise, sonnet.
 
-    Where two choices match equally, take the cheaper, haiku below sonnet below opus. Choose the effort by the prompt: where the prompt states every step, low, or medium for a task in several parts, and otherwise high, never above it. Where no effort field is exposed, state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
+    Where two choices match equally, take the cheaper, haiku below sonnet below opus. Choose the effort by the prompt. Where the prompt states every step, choose low, or medium for a task in several parts, and otherwise high, never above it. Where no effort field is exposed, state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
   </decide>
 
   <define name="prompt">
-    Write the prompt in these seven parts. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. Where a part is empty, leave it out.
+    Write the prompt in these seven parts. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. Every pronoun and every pointing noun phrase in the prompt has its referent inside the prompt. Where a part is empty, leave it out.
 
     ```xml
     <prompt>
@@ -88,8 +88,8 @@
     ```xml
     <report>
       <unanswered>
-        [each choice point handed up: the question and the options you would have
-        offered]
+        [each choice point handed up, with the question and the options you would
+        have offered]
       </unanswered>
       <done>
         [what got done, each claim with its source or its mark]

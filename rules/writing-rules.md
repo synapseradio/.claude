@@ -13,7 +13,7 @@ paths:
   <optimize_for>
     a rules file whose reader decides the same way every turn and still knows what the decision serves where the machine runs out.
     <why_it_matters>
-      A rule gets read every turn, and each sentence in it positions the reader. The reasons in the why let the reader extend the rule to a case the machine never named. A warrant inside a machine line makes the reader parse the why to find the what, so the why carries every warrant and each machine line goes bare. A rule that argues for its own existence spends valuable attention on a decision the user already took. The frontmatter loads a path-scoped file and the trigger tells the reader why it fired. An example stands where a mechanism is missing, and a list of examples teaches the list.
+      A rule gets read every turn, and each sentence in it positions the reader. The reasons in the why let the reader extend the rule to a case the machine never named. A warrant inside a machine line makes the reader parse the why to find the what, so the why carries every warrant and each machine line goes bare. A rule that argues for its own existence spends valuable attention on a decision the user already took. A rule reads as binding at its plain statement. An intensifier in front of it adds emphasis and no force. The frontmatter loads a path-scoped file and the trigger tells the reader why it fired. An example stands where a mechanism is missing, and a list of examples teaches the list.
     </why_it_matters>
   </optimize_for>
 
@@ -26,7 +26,7 @@ paths:
   </define>
 
   <define name="register">
-    The why is remembered for its statement of why the practice matters, so no frame stands in front of it and each why opens on its own subject, with no phrasing repeated across rules. The writer stays out of the reader's view, so a plain imperative that addresses the reader stays, and a sentence carrying the writer's attitude toward the reader goes. Every sentence is blameless, names no debt to the reader or the user, and assumes nothing about what the reader holds or where they have been. A tendency reads as a tendency. A cost reads as a cost. A person appears as a source or as someone the practice serves. Attention is the currency, and the word for it is valuable attention.
+    The why is remembered for its statement of why the practice matters, so no frame stands in front of it and each why opens on its own subject, with no phrasing repeated across rules. The writer stays out of the reader's view, so a plain imperative that addresses the reader stays, and a sentence carrying the writer's attitude toward the reader goes. Every sentence is blameless, names no debt to the reader or the user, and assumes nothing about what the reader holds or where they have been. A tendency reads as a tendency. A cost reads as a cost. A person appears as a source or as someone the practice serves. An intensifier, "CRITICAL" for one, appears in no rule. A header in a rules file is a label. Attention is the currency, and the word for it is valuable attention.
   </define>
 
   <define name="qualities">

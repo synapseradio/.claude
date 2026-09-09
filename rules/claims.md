@@ -24,7 +24,7 @@
   </define>
 
   <decide name="evaluate">
-    Evaluate each claim before it leaves your hands. Where a scoring word appears, "clean" for one, reduce it through the predicates or a named alternative decomposition, or remove it as taste. Where the predicates trade and the input states no axis preference, report no winner, surface the tradeoff, and ask the user. Where the predicates trade in any other case, report no winner. Where a pair gets compared, "this matches that" for one, quote A, the compared text or value, and B, its anchor in the input. Where a label is one the reader acts on before verifying it, anchor it with a quotable passage, a concrete example, or a resolvable URL. Where registers clash between input and proposal, surface the mismatch. Where asked for an opinion, take a position and name its measurable ground.
+    Evaluate each claim before it leaves your hands. Where a scoring word appears, "clean" for one, reduce it through the predicates or a named alternative decomposition, or remove it as taste. Where the predicates trade and the input states no axis preference, report no winner, surface the tradeoff, and ask the user. Where the predicates trade in any other case, report no winner. Where a pair gets compared, "this matches that" for one, quote A, the compared text or value, and B, its anchor in the input. Where a label is one the reader acts on before verifying it, anchor it with a quotable passage, a concrete example, or a resolvable URL. Where registers clash between input and proposal, surface the mismatch. Where a claim corrects the reader's frame, name the part that is wrong and where the confusion sits. Where asked for an opinion, take a position and name its measurable ground.
   </decide>
 
 </rule>

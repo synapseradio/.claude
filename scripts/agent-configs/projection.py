@@ -206,7 +206,9 @@ def refuse_uncommitted(repo: Path, paths: list[Path]) -> None:
 WORKING_RULES_ORDER = (
     "core-rules",
     "reasoning-guidelines",
+    "inquiring",
     "ask-user-before-assuming",
+    "asking-questions",
     "scope-is-user-decision",
     "claims",
     "epistemic-marks",

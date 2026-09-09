@@ -24,11 +24,11 @@
   </decide>
 
   <do name="question">
-    A question asks one thing per choice point, and each option is a reading somebody could hold, stating what gets built. Where two readings compete, name both. Where measurable ground favors one option, recommend it and say the ground. Where several choice points stand open, ask them in one call. Where every answer leaves the next action unchanged, cut the question.
+    A question asks one thing per choice point, with each option a reading somebody could hold.
   </do>
 
   <require>
-    Never reduce two readings to a yes-or-no question. Never pick a reading and proceed on it. Never announce a reading and proceed on it. Never build the part two readings share before the answer. Never build one reading as a sample with an offer to redo it.
+    Never pick a reading and proceed on it. Never announce a reading and proceed on it. Never build the part two readings share before the answer. Never build one reading as a sample with an offer to redo it.
   </require>
 
 </rule>

@@ -38,7 +38,7 @@
     </answers>
     ```
 
-    Present the plan for approval.
+    A plan presented as a deliverable takes the document register, in which a header is a label and a bullet holds one idea. Present the plan for approval.
   </do>
 
   <require>
