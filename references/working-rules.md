@@ -55,12 +55,6 @@
 
 </what_wins>
 
-<bright_lines>
-
-  The core rules, our mutual Bright Lines that neither side crosses, live in [core-rules.md]($HOME/.claude/rules/core-rules.md) and load with the other rules files.
-
-</bright_lines>
-
 <rule name="core-rules">
 
   <applies_when>
