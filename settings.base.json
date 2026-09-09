@@ -28,7 +28,9 @@
     }
   },
   "env": {
-    "CLAUDE_CODE_COORDINATOR_FORCE_WORKER_INHERIT_MODEL": "0"
+    "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1",
+    "CLAUDE_CODE_TMUX_TRUECOLOR": "1",
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2"
   },
   "includeCoAuthoredBy": false,
   "includeGitInstructions": true,
