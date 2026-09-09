@@ -176,6 +176,21 @@ def load_manifest(root: pathlib.Path | str | None = None) -> ManifestOk | Manife
     return ManifestOk(tiers=document["tiers"])
 
 
+def all_tiers(root: pathlib.Path | str | None = None) -> tuple[str, ...]:
+    """The five required tiers, then every other tier the manifest names.
+
+    A model wanting its own bodies gets a tier named for its identifier,
+    which `tier_lookup` matches ahead of the family. The manifest is what
+    admits such a tier, so a directory alone still brings none into play.
+    """
+
+    manifest = load_manifest(root)
+    if isinstance(manifest, ManifestError):
+        return tuple(TIERS)
+    extra = sorted(name for name in manifest.tiers if name not in TIERS)
+    return (*TIERS, *extra)
+
+
 def tier_stems(root: pathlib.Path, tier: str) -> tuple[str, ...]:
     """The stems whose bodies one tier's directory holds."""
 
@@ -243,7 +258,7 @@ def compose(tier: str, root: pathlib.Path | str | None = None) -> Composition:
         )
 
     form, findings = _tier_form(tier, manifest.tiers[tier], manifest_file)
-    known = {stem for name in TIERS for stem in tier_stems(base, name)}
+    known = {stem for name in all_tiers(base) for stem in tier_stems(base, name)}
 
     match form:
         case Wildcard(exclude=exclude):
@@ -282,7 +297,7 @@ def report(root: pathlib.Path | str | None = None) -> tuple[Finding, ...]:
         return (Finding("manifest", manifest.message),)
 
     findings: tuple[Finding, ...] = ()
-    for tier in TIERS:
+    for tier in all_tiers(base):
         composed = compose(tier, base)
         findings += composed.findings
         findings += tuple(
@@ -345,7 +360,7 @@ def manifest_stems(root: pathlib.Path | str | None = None) -> set[str]:
     """Every stem any tier's entry names."""
 
     base = _base(root)
-    return {stem for tier in TIERS for stem in compose(tier, base).stems}
+    return {stem for tier in all_tiers(base) for stem in compose(tier, base).stems}
 
 
 # --- Model tier lookup -------------------------------------------------------
@@ -404,17 +419,20 @@ def load_models(root: pathlib.Path | str | None = None) -> dict[str, tuple[str, 
     if not isinstance(document, dict):
         return {}
     result = {}
-    for tier, _ in PROFILE_VARS:
-        patterns = document.get(tier)
+    for tier, patterns in document.items():
         if isinstance(patterns, list):
-            result[tier] = tuple(str(p) for p in patterns)
+            result[str(tier)] = tuple(str(p) for p in patterns)
     return result
 
 
 def tier_lookup(
     identifier: str | None, root: pathlib.Path | str | None = None, env: dict | None = None
 ) -> TierLookup:
-    """Map a model identifier to a tier: profile variables, then built-ins."""
+    """Map a model identifier to a tier.
+
+    The order is a tier named for the identifier, then the profile
+    variables, then the longest matching prefix in the built-in list.
+    """
 
     env = os.environ if env is None else env
     notes: tuple[str, ...] = ()
@@ -423,6 +441,14 @@ def tier_lookup(
             f"{HOST_MANAGED_VAR} is set, so the harness may have used a model the "
             "profile variables do not name",
         )
+
+    # A tier named for the identifier wins, so a model carrying its own bodies
+    # needs no entry anywhere else. Reading the profile variables first would
+    # send `claude-opus-4-8` to the `opus` tier whenever
+    # ANTHROPIC_DEFAULT_OPUS_MODEL names it, and that duplication is what a
+    # model-named directory removes.
+    if identifier and identifier in all_tiers(root):
+        return TierLookup(identifier, f"the tier directory named {identifier}", notes)
 
     matches = [
         (tier, var) for tier, var in PROFILE_VARS if identifier and env.get(var) == identifier
@@ -434,11 +460,19 @@ def tier_lookup(
             notes += (f"the profile variables {names} both name {identifier}",)
         return TierLookup(tier, f"the {var} variable", notes)
 
-    builtin = load_models(root)
-    for tier, _ in PROFILE_VARS:
-        for pattern in builtin.get(tier, ()):
-            if identifier and identifier.startswith(pattern):
-                return TierLookup(tier, "the built-in identifier list", notes)
+    # The longest matching prefix wins, so a more specific entry beats the
+    # family it sits inside.
+    ranked = sorted(
+        (
+            (len(pattern), tier)
+            for tier, patterns in load_models(root).items()
+            for pattern in patterns
+            if identifier and identifier.startswith(pattern)
+        ),
+        reverse=True,
+    )
+    if ranked:
+        return TierLookup(ranked[0][1], "the built-in identifier list", notes)
 
     return TierLookup(None, f"no tier matched the identifier {identifier}", notes)
 
@@ -824,7 +858,10 @@ def build_parser() -> argparse.ArgumentParser:
     subcommands = parser.add_subparsers(dest="command", required=True)
 
     inspect = subcommands.add_parser("inspect", help="print one tier's stems and body paths")
-    inspect.add_argument("--tier", required=True, choices=TIERS)
+    # No static choices: `--root` may point at a manifest naming tiers this
+    # process cannot know, and an unknown tier already reports `missing-tier`
+    # against the manifest that would have admitted it.
+    inspect.add_argument("--tier", required=True, help="a tier the manifest names")
     inspect.add_argument("--root", default=None, help="an alternate rulesets root")
     inspect.set_defaults(handler=command_inspect)
 

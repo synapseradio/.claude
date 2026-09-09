@@ -5,31 +5,71 @@ bodies live outside it, so a session's user rules arrive through a hook that run
 `scripts/rulesets/resolve.py`. A hook that fails to run leaves the session with no rules at all.
 That is the one consequence to hold before changing anything here.
 
-## The five tiers
+## Tiers
 
-One directory per tier: `default`, `fable`, `opus`, `sonnet`, `haiku`. A tier maps to the model a
-session or a delegate runs on, and `default` is where a lookup lands when no identifier matches.
+A tier is one directory, and it maps to the model a session or a delegate runs on. `default` is
+where a lookup lands when no identifier matches.
+
+Five family tiers are required: `default`, `fable`, `opus`, `sonnet`, `haiku`.
+
+Any further tier names one model, and its directory name is the model identifier,
+`claude-opus-4-8` for one. A lookup matches such a tier ahead of the family, so the model needs no
+entry in `models.yaml`.
 
 A stem is a rule filename without its `.md` suffix, `writing-prose` for one. A tier resolves each
 stem it composes to its own directory's file where that file exists, and to `default/`'s file
 otherwise.
 
+## How a model reaches its tier
+
+`tier_lookup` tries three sources in order, and the first match wins.
+
+1. A tier whose name equals the running model identifier.
+2. The four `ANTHROPIC_DEFAULT_*_MODEL` profile variables, in the order `opus`, `sonnet`, `haiku`,
+   `fable`. Two variables naming one identifier resolve to the first in that order, and the
+   delivered text names the collision.
+3. The prefixes in `models.yaml`, where the longest match wins.
+
+The first source sits above the second so that one model lives in one place. With the order
+reversed, `ANTHROPIC_DEFAULT_OPUS_MODEL=claude-opus-4-8` would send that model to the `opus` tier,
+and its own directory would sit unread until someone found the variable.
+
 ## manifest.yaml
 
-The manifest carries one top-level key, `tiers`, whose value maps each of the five tier names to
-that tier's entry. An entry takes one of two forms and never both.
+The manifest carries one top-level key, `tiers`, whose value maps each tier name to that tier's
+entry. An entry takes one of two forms and never both.
 
 - `include: "*"` composes every stem under `default/`. An optional `exclude` list of stems removes
   each one it names.
 - `include:` followed by a list of stems states the composition outright, and carries no `exclude`.
 
-Every tier key is required, so a new tier cannot appear by accident.
+All five family keys are required, so a family tier cannot appear by accident. The manifest is also
+what admits a model tier: a directory with no key here composes nothing, and `check` reports every
+body in it as unreachable.
 
 ## models.yaml
 
-`models.yaml` maps a tier to the model identifier prefixes that resolve to it. A lookup consults it
-only where no `ANTHROPIC_DEFAULT_*_MODEL` variable names the running model. Adding a release means
-adding a prefix, with no code change.
+`models.yaml` maps a family to the identifier prefixes that resolve to it, and the longest matching
+prefix wins. A lookup consults it only where no tier is named for the running identifier and no
+`ANTHROPIC_DEFAULT_*_MODEL` variable names it.
+
+Keep these entries to prefixes a whole family shares. To give one model its own rules, create its
+directory and add its manifest key, as below. A model listed under a family here reads that
+family's bodies, and the entry then has to be found and removed before the model's own directory
+takes effect.
+
+## Adding a tier for one model
+
+To give Opus 4.8 rules of its own:
+
+1. Create `rulesets/claude-opus-4-8/`, naming the directory for the model identifier.
+2. Add a `claude-opus-4-8:` key under `tiers:` in `manifest.yaml`, at `include: "*"`.
+3. Put the bodies that differ in that directory. Every stem with no file there resolves to
+   `default/`.
+4. Confirm it resolves:
+   `python3.14 ../scripts/rulesets/resolve.py inspect --tier claude-opus-4-8`.
+
+Neither step touches `models.yaml`, and neither touches any code.
 
 ## Adding a tier override for one stem
 

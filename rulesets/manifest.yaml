@@ -5,8 +5,13 @@
 # exclusions. `include:` followed by a list of stems states the set
 # outright and carries no `exclude`.
 #
-# Every tier key is required. A missing key is an illegal state, so a new
-# tier cannot appear by accident.
+# The five family tier keys are required. A missing key is an illegal state,
+# so a family tier cannot appear by accident.
+#
+# A key beyond those five names one model, and its name is the model
+# identifier. `tier_lookup` matches such a key ahead of the family, so the
+# model needs no entry in `models.yaml`. Adding one means adding the
+# directory and the key here, with no code change.
 tiers:
   default:
     include: "*"
@@ -17,4 +22,6 @@ tiers:
   sonnet:
     include: "*"
   haiku:
+    include: "*"
+  claude-opus-4-8:
     include: "*"

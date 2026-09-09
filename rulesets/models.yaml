@@ -1,12 +1,19 @@
-# Built-in model identifiers per tier, consulted only where no
-# ANTHROPIC_DEFAULT_*_MODEL variable names the running model. A tier lookup
-# matches the running identifier against these prefixes, so an alias like
-# `opus` and a full identifier like `claude-opus-5` both resolve. Adding a
-# release means adding a prefix here, with no code change.
+# Family prefixes, consulted only where no tier is named for the running
+# identifier and no ANTHROPIC_DEFAULT_*_MODEL variable names it. A lookup
+# matches the running identifier against these prefixes and the longest match
+# wins, so an alias like `opus` and a full identifier like `claude-opus-5`
+# both resolve to the family.
+#
+# Give one model its own rules by creating `rulesets/<identifier>/` and adding
+# that key to `manifest.yaml`. Do not add the identifier here as a second name
+# for a family: a model listed under a family reads that family's bodies, and
+# the entry then has to be found and removed before the model's own directory
+# takes effect. One model, one place.
+#
+# Keep these entries to prefixes a whole family shares.
 opus:
   - opus
   - claude-opus
-  - claude-opus-4-8
 sonnet:
   - sonnet
   - claude-sonnet

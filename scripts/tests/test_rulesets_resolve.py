@@ -823,3 +823,95 @@ class TestDeliveryCheckAndSupersession:
         )
 
         assert code == 0
+
+
+class TestModelNamedTiers:
+    """A tier directory named for a model identifier needs no synonym.
+
+    `models.yaml` maps a family to identifier prefixes. A model wanting its
+    own bodies gets a directory named for its identifier instead, and that
+    directory wins over both the family prefix and the profile variable, so
+    the same model never has to appear in two places.
+    """
+
+    def _root(self, tmp_path, extra_tiers=(), models=None):
+        tiers = every_tier(WILDCARD)
+        for name in extra_tiers:
+            tiers[name] = WILDCARD
+        root = build_root(tmp_path, tiers, {"default": ("alpha", "beta")})
+        for name in extra_tiers:
+            (root / name).mkdir(exist_ok=True)
+        if models is not None:
+            (root / "models.yaml").write_text(yaml.safe_dump(models), encoding="utf-8")
+        return root
+
+    def test_all_tiers_reports_a_manifest_tier_beyond_the_required_five(self, tmp_path):
+        root = self._root(tmp_path, extra_tiers=("claude-opus-4-8",))
+
+        assert "claude-opus-4-8" in resolve.all_tiers(root)
+        assert set(resolve.TIERS) <= set(resolve.all_tiers(root))
+
+    def test_all_tiers_falls_back_to_the_required_five_with_no_manifest(self, tmp_path):
+        assert resolve.all_tiers(tmp_path) == tuple(resolve.TIERS)
+
+    def test_a_tier_named_for_the_identifier_wins_over_the_family_prefix(self, tmp_path):
+        root = self._root(
+            tmp_path,
+            extra_tiers=("claude-opus-4-8",),
+            models={"opus": ["opus", "claude-opus"]},
+        )
+
+        look = resolve.tier_lookup("claude-opus-4-8", root, env={})
+
+        assert look.tier == "claude-opus-4-8"
+
+    def test_a_tier_named_for_the_identifier_wins_over_the_profile_variable(self, tmp_path):
+        root = self._root(
+            tmp_path,
+            extra_tiers=("claude-opus-4-8",),
+            models={"opus": ["opus", "claude-opus"]},
+        )
+        env = {"ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8"}
+
+        look = resolve.tier_lookup("claude-opus-4-8", root, env=env)
+
+        assert look.tier == "claude-opus-4-8"
+
+    def test_an_identifier_with_no_tier_of_its_own_still_takes_the_family(self, tmp_path):
+        root = self._root(tmp_path, models={"opus": ["opus", "claude-opus"]})
+
+        look = resolve.tier_lookup("claude-opus-5", root, env={})
+
+        assert look.tier == "opus"
+
+    def test_load_models_reads_a_key_outside_the_four_families(self, tmp_path):
+        root = self._root(
+            tmp_path,
+            extra_tiers=("claude-opus-4-8",),
+            models={"opus": ["claude-opus"], "claude-opus-4-8": ["claude-opus-4-8-2026"]},
+        )
+
+        assert resolve.load_models(root)["claude-opus-4-8"] == ("claude-opus-4-8-2026",)
+
+    def test_a_model_named_tier_delivers_its_own_bodies(self, tmp_path):
+        root = self._root(tmp_path, extra_tiers=("claude-opus-4-8",))
+        (root / "claude-opus-4-8" / "alpha.md").write_text("Opus 4.8 alpha.\n", encoding="utf-8")
+
+        composed = resolve.compose("claude-opus-4-8", root)
+
+        assert composed.stems == ("alpha", "beta")
+        assert composed.body_paths["alpha"] == root / "claude-opus-4-8" / "alpha.md"
+        assert composed.body_paths["beta"] == root / "default" / "beta.md"
+
+    def test_check_reports_no_illegal_state_for_a_model_named_tier(self, tmp_path):
+        root = self._root(tmp_path, extra_tiers=("claude-opus-4-8",))
+
+        assert resolve.report(root) == ()
+
+    def test_an_unreachable_body_under_a_model_named_tier_is_reported(self, tmp_path):
+        root = self._root(tmp_path, extra_tiers=("claude-opus-4-8",))
+        (root / "claude-opus-4-8" / "orphan.md").write_text("No stem.\n", encoding="utf-8")
+
+        kinds = {f.kind for f in resolve.report(root)}
+
+        assert "unreachable-body" in kinds
