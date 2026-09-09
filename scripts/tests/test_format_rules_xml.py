@@ -230,6 +230,10 @@ class TestOwnership:
             "rules/shell-scripts.md",
             "CLAUDE.md",
             "worktree/rules/git-commit.md",
+            "rulesets/default/writing-prose.md",
+            "rulesets/haiku/writing-prose.md",
+            "rulesets/claude-opus-4-8/core-rules.md",
+            "worktree/rulesets/opus/git-commit.md",
         ],
     )
     def test_a_rules_file_or_claude_md_is_owned(self, path):
@@ -243,6 +247,7 @@ class TestOwnership:
             "README.md",
             "agents/scout.md",
             "rules/testing.py",
+            "rulesets/README.md",
         ],
     )
     def test_every_other_path_passes_through(self, path):
@@ -253,7 +258,7 @@ class TestThisRepository:
     """The rules files and CLAUDE.md of this checkout, path-scoped ones included."""
 
     def test_every_rules_file_and_claude_md_is_already_formatted(self):
-        paths = [*sorted((REPO_ROOT / "rules").glob("*.md")), REPO_ROOT / "CLAUDE.md"]
+        paths = formatter.default_paths()
         assert len(paths) > 1
         unformatted = [
             path.relative_to(REPO_ROOT).as_posix()
@@ -262,3 +267,19 @@ class TestThisRepository:
             != path.read_text(encoding="utf-8")
         ]
         assert unformatted == []
+
+    def test_the_default_set_covers_every_tier_and_the_path_scoped_rules(self):
+        covered = set(formatter.default_paths())
+
+        for tier in sorted((REPO_ROOT / "rulesets").glob("*/")):
+            for body in tier.glob("*.md"):
+                assert body in covered, (
+                    f"{body.relative_to(REPO_ROOT)} carries a rule element, so a run with no "
+                    "argument has to reach it or the pre-push check passes over it"
+                )
+        for scoped in (REPO_ROOT / "rules").glob("*.md"):
+            assert scoped in covered, (
+                f"{scoped.relative_to(REPO_ROOT)} is a path-scoped rule, which still carries the "
+                "tag form"
+            )
+        assert REPO_ROOT / "CLAUDE.md" in covered

@@ -13,9 +13,9 @@ the harness rather than by any reader of the prose. A path-scoped rules file
 is otherwise formatted like every other one, and no output of this script
 depends on which rules the render carries.
 
-With no path argument it formats every file under `rules/` plus `CLAUDE.md`,
-resolved from this script's own location, so a run inside a worktree formats
-that worktree. With `--check` it writes nothing and exits nonzero where any
+With no path argument it formats every body under a `rulesets/` tier, every
+path-scoped rule under `rules/`, and `CLAUDE.md`, resolved from this script's
+own location, so a run inside a worktree formats that worktree. With `--check` it writes nothing and exits nonzero where any
 file would change, which is what the pre-push hook gates on.
 
 Run the tests with `python3.14 -m pytest scripts/tests/test_format_rules_xml.py`.
@@ -211,22 +211,34 @@ def format_text(text: str, path: Path) -> str:
     return prefix + "\n".join(out) + "\n"
 
 
+RULES_DIRNAME = "rules"
+RULESETS_DIRNAME = "rulesets"
+
+
 def default_paths() -> list[Path]:
     root = Path(__file__).resolve().parents[1]
-    return [*sorted((root / "rules").glob("*.md")), root / "CLAUDE.md"]
+    return [
+        *sorted((root / RULESETS_DIRNAME).glob("*/*.md")),
+        *sorted((root / RULES_DIRNAME).glob("*.md")),
+        root / "CLAUDE.md",
+    ]
 
 
 def owns(path: Path) -> bool:
     """Whether this script formats the given path.
 
     A hook hands over every staged markdown file, and the tag form belongs to
-    the rules files and `CLAUDE.md` alone, so every other path passes through
-    untouched.
+    the always-on bodies under a `rulesets/` tier, the path-scoped rules under
+    `rules/`, and `CLAUDE.md`. Every other path passes through untouched, a
+    markdown file sitting directly in `rulesets/` included, since that one
+    carries prose.
     """
 
     if path.suffix != ".md":
         return False
-    return path.name == "CLAUDE.md" or path.parent.name == "rules"
+    if path.name == "CLAUDE.md" or path.parent.name == RULES_DIRNAME:
+        return True
+    return path.parent.parent.name == RULESETS_DIRNAME
 
 
 def main() -> int:
