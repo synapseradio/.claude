@@ -28,42 +28,46 @@ Where two choices match equally, take the cheaper, haiku below sonnet below opus
 
 ### The prompt
 
-Write the prompt in these seven parts. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. Every pronoun and every pointing noun phrase in the prompt has its referent inside the prompt. Where a part is empty, leave it out.
+Write the prompt in these seven parts, each under its heading. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. Every pronoun and every pointing noun phrase in the prompt has its referent inside the prompt. Where a part is empty, leave it out, heading included.
 
-```xml
-<prompt>
-  <perspective>
-    [the role, the expertise, and why this agent for this step, as it bears on
-    the delegate's decisions]
-  </perspective>
-  <task>
-    [what to do, complete without prior context, with the return format named;
-    the report template is the default]
-  </task>
-  <context>
-    [paths, prior decisions, conventions]
-  </context>
-  <tooling>
-    [the environment, the tools and skills the delegate must use, and those it may]
-  </tooling>
-  <constraints>
-    [invariants, boundaries, what this step leaves to others]
-  </constraints>
-  <invitations>
-    Ask, decide, or flag where uncertain, and say which you did.
-    You settle every choice point you meet and report what you chose. Where
-    evidence shows the stated context is wrong, stop immediately and report
-    the contradiction. Where a choice point depends on the user's intent,
-    direction, or what done means, return it immediately with the options
-    you would have offered.
-    Voice a concern once upward with grounds, then comply.
-    A step that did not work reports what broke, what it cost, and what it
-    changes next.
-  </invitations>
-  <failures>
-    [mechanism and cost, with no self in the sentence]
-  </failures>
-</prompt>
+```markdown
+## Perspective
+
+[the role, the expertise, and why this agent for this step, as it bears on
+the delegate's decisions]
+
+## Task
+
+[what to do, complete without prior context, with the return format named;
+the report template is the default]
+
+## Context
+
+[paths, prior decisions, conventions]
+
+## Tooling
+
+[the environment, the tools and skills the delegate must use, and those it may]
+
+## Constraints
+
+[invariants, boundaries, what this step leaves to others]
+
+## Invitations
+
+Ask, decide, or flag where uncertain, and say which you did.
+You settle every choice point you meet and report what you chose. Where
+evidence shows the stated context is wrong, stop immediately and report
+the contradiction. Where a choice point depends on the user's intent,
+direction, or what done means, return it immediately with the options
+you would have offered.
+Voice a concern once upward with grounds, then comply.
+A step that did not work reports what broke, what it cost, and what it
+changes next.
+
+## Failures
+
+[mechanism and cost, with no self in the sentence]
 ```
 
 Where the model is haiku, state every step, paths, exact constraints, and the check to run and return. Where the model is opus, state the problem, its constraints, and the decisions already made. Where the model is sonnet, state the problem and the decisions, refer to the constraints, and add exact context wherever the delegate would otherwise guess.
@@ -74,24 +78,25 @@ Set the model field on every spawn that accepts one, and the effort field wherev
 
 ### The report
 
-A delegate's report carries the four parts this template names. The same bracket convention holds.
+A delegate's report carries the four parts this template names, each under its heading. The same bracket convention holds.
 
-```xml
-<report>
-  <unanswered>
-    [each choice point handed up, with the question and the options you would
-    have offered]
-  </unanswered>
-  <done>
-    [what got done, each claim with its source or its mark]
-  </done>
-  <undone>
-    [what remains undone, with the answer each part needs]
-  </undone>
-  <failures>
-    [each step that did not work: what broke, what it cost, what it changes next]
-  </failures>
-</report>
+```markdown
+## Unanswered
+
+[each choice point handed up, with the question and the options you would
+have offered]
+
+## Done
+
+[what got done, each claim with its source or its mark]
+
+## Undone
+
+[what remains undone, with the answer each part needs]
+
+## Failures
+
+[each step that did not work: what broke, what it cost, what it changes next]
 ```
 
 Every claim stays unverified until you find its source.

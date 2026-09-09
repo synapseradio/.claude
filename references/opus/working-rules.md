@@ -662,42 +662,46 @@ Where two choices match equally, take the cheaper, haiku below sonnet below opus
 
 ### The prompt
 
-Write the prompt in these seven parts. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. Every pronoun and every pointing noun phrase in the prompt has its referent inside the prompt. Where a part is empty, leave it out.
+Write the prompt in these seven parts, each under its heading. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. Every pronoun and every pointing noun phrase in the prompt has its referent inside the prompt. Where a part is empty, leave it out, heading included.
 
-```xml
-<prompt>
-  <perspective>
-    [the role, the expertise, and why this agent for this step, as it bears on
-    the delegate's decisions]
-  </perspective>
-  <task>
-    [what to do, complete without prior context, with the return format named;
-    the report template is the default]
-  </task>
-  <context>
-    [paths, prior decisions, conventions]
-  </context>
-  <tooling>
-    [the environment, the tools and skills the delegate must use, and those it may]
-  </tooling>
-  <constraints>
-    [invariants, boundaries, what this step leaves to others]
-  </constraints>
-  <invitations>
-    Ask, decide, or flag where uncertain, and say which you did.
-    You settle every choice point you meet and report what you chose. Where
-    evidence shows the stated context is wrong, stop immediately and report
-    the contradiction. Where a choice point depends on the user's intent,
-    direction, or what done means, return it immediately with the options
-    you would have offered.
-    Voice a concern once upward with grounds, then comply.
-    A step that did not work reports what broke, what it cost, and what it
-    changes next.
-  </invitations>
-  <failures>
-    [mechanism and cost, with no self in the sentence]
-  </failures>
-</prompt>
+```markdown
+## Perspective
+
+[the role, the expertise, and why this agent for this step, as it bears on
+the delegate's decisions]
+
+## Task
+
+[what to do, complete without prior context, with the return format named;
+the report template is the default]
+
+## Context
+
+[paths, prior decisions, conventions]
+
+## Tooling
+
+[the environment, the tools and skills the delegate must use, and those it may]
+
+## Constraints
+
+[invariants, boundaries, what this step leaves to others]
+
+## Invitations
+
+Ask, decide, or flag where uncertain, and say which you did.
+You settle every choice point you meet and report what you chose. Where
+evidence shows the stated context is wrong, stop immediately and report
+the contradiction. Where a choice point depends on the user's intent,
+direction, or what done means, return it immediately with the options
+you would have offered.
+Voice a concern once upward with grounds, then comply.
+A step that did not work reports what broke, what it cost, and what it
+changes next.
+
+## Failures
+
+[mechanism and cost, with no self in the sentence]
 ```
 
 Where the model is haiku, state every step, paths, exact constraints, and the check to run and return. Where the model is opus, state the problem, its constraints, and the decisions already made. Where the model is sonnet, state the problem and the decisions, refer to the constraints, and add exact context wherever the delegate would otherwise guess.
@@ -708,24 +712,25 @@ Set the model field on every spawn that accepts one, and the effort field wherev
 
 ### The report
 
-A delegate's report carries the four parts this template names. The same bracket convention holds.
+A delegate's report carries the four parts this template names, each under its heading. The same bracket convention holds.
 
-```xml
-<report>
-  <unanswered>
-    [each choice point handed up, with the question and the options you would
-    have offered]
-  </unanswered>
-  <done>
-    [what got done, each claim with its source or its mark]
-  </done>
-  <undone>
-    [what remains undone, with the answer each part needs]
-  </undone>
-  <failures>
-    [each step that did not work: what broke, what it cost, what it changes next]
-  </failures>
-</report>
+```markdown
+## Unanswered
+
+[each choice point handed up, with the question and the options you would
+have offered]
+
+## Done
+
+[what got done, each claim with its source or its mark]
+
+## Undone
+
+[what remains undone, with the answer each part needs]
+
+## Failures
+
+[each step that did not work: what broke, what it cost, what it changes next]
 ```
 
 Every claim stays unverified until you find its source.
@@ -740,27 +745,23 @@ When you are writing a plan file or leaving plan mode, optimize for a plan an ag
 
 The search happened in this session. The file is all that travels from it to the agent who executes. A wrong framing corrected on findings costs one message, and corrected on a plan costs the plan. The user's framing sets what the plan is for, so a plan written before it has to guess at that.
 
-A plan's reader is an AI agent who holds nothing but the plan file and can delegate to subagents. Each entry takes this form.
+A plan's reader is an AI agent who holds nothing but the plan file and can delegate to subagents. Each entry takes this form, one key-value pair per line, with each bracketed description replaced by the content it describes.
 
-```xml
-<entry>
-  <path>[the absolute path]</path>
-  <symbol>[the exact symbol]</symbol>
-  <change>[the change]</change>
-  <check>[its acceptance check]</check>
-</entry>
+```markdown
+- path: [the absolute path]
+- symbol: [the exact symbol]
+- change: [the change]
+- check: [its acceptance check]
 ```
 
-Land findings in their own turn: path:line evidence, open questions, and candidate approaches with tradeoffs. Then stop. The user picks a framing. Where a sentence hedges, "depending on X we could...", extract the question, ask it through AskUserQuestion, and rewrite the branch as a decision once the answer is sorted. Ask each open question, fold the answers into the plan, and sort each answer into the slices of the turn.
+Land findings in their own turn: path:line evidence, open questions, and candidate approaches with tradeoffs. Then stop. The user picks a framing. Where a sentence hedges, "depending on X we could...", extract the question, ask it through AskUserQuestion, and rewrite the branch as a decision once the answer is sorted. Ask each open question, fold the answers into the plan, and sort each answer into the slices of the turn, one key-value pair per slice. The same bracket convention holds.
 
-```xml
-<answers>
-  <known>[evident to be true]</known>
-  <assumed>[cited evidence sought for or against]</assumed>
-  <must_verify>[required to proceed]</must_verify>
-  <must_ask>[progress waits on it]</must_ask>
-  <may_ask>[compounds the speed of progress]</may_ask>
-</answers>
+```markdown
+- known: [evident to be true]
+- assumed: [cited evidence sought for or against]
+- must verify: [required to proceed]
+- must ask: [progress waits on it]
+- may ask: [compounds the speed of progress]
 ```
 
 A plan presented as a deliverable takes the document register, in which a header is a label and a bullet holds one idea. Present the plan for approval. Never call ExitPlanMode in the turn that finished investigating. Never call ExitPlanMode while a question remains unresolved.
