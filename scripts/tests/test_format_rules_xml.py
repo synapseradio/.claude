@@ -243,6 +243,7 @@ class TestOwnership:
         "path",
         [
             "references/working-rules.md",
+            "references/default/working-rules.md",
             "skills/waypoint/SKILL.md",
             "README.md",
             "agents/scout.md",

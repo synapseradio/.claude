@@ -86,6 +86,18 @@ To give `haiku` its own `writing-prose`:
 Deleting `haiku/writing-prose.md` resolves the stem back to `default/writing-prose.md`, and
 `inspect` prints that path.
 
+## The reference file
+
+`references/$tier/working-rules.md` is a generated read of one tier: the preamble from `CLAUDE.md`
+followed by the bodies that tier's own directory holds, in the order the `WORKING_RULES_ORDER` tuple
+in `scripts/agent-configs/projection.py` names. Nothing loads it, and no lookup resolves through it.
+A tier reading a stem from `default/` shows no section for that stem, so the render says which
+bodies the directory itself carries.
+
+`scripts/agent-configs/render-working-rules.py` writes one render per tier directory. `--model NAME`
+scopes a run to the directory it names, `--check` reports drift and writes nothing, and `--reverse`
+splits `default/`'s render back into `CLAUDE.md` and the bodies under `default/`.
+
 ## Commands
 
 Every command takes `--root DIR` to point its reads at an alternate rulesets root, defaulting to

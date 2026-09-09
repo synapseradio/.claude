@@ -42,7 +42,7 @@ paths:
   </require>
 
   <do name="sync">
-    The renderer at `scripts/agent-configs/render-working-rules.py` runs in both directions between the rules files plus CLAUDE.md and `~/.claude/references/working-rules.md`, keyed on the rule elements and the preamble tags, in the order the `WORKING_RULES_ORDER` tuple in `scripts/agent-configs/projection.py` names. It renders forward with no argument and splits the render back with `--reverse`. Edit whichever side is in hand, then run the renderer toward the other, so the two never disagree. When adding an always-on rule, add its stem to that tuple in the same change. When renaming a rules file or a section another file cites, sweep the citations in the same change.
+    The renderer at `scripts/agent-configs/render-working-rules.py` runs in both directions between the bodies under `~/.claude/rulesets/$model/` plus CLAUDE.md and `~/.claude/references/$model/working-rules.md`, keyed on the rule elements and the preamble tags, in the order the `WORKING_RULES_ORDER` tuple in `scripts/agent-configs/projection.py` names. It renders every model forward with no argument, scopes a forward run to one model with `--model`, and splits the `default` model's render back with `--reverse`. Edit whichever side is in hand, then run the renderer toward the other, so the two never disagree. When adding an always-on rule, add its stem to that tuple in the same change. When renaming a rules file or a section another file cites, sweep the citations in the same change.
   </do>
 
 </rule>

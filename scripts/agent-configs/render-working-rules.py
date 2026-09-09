@@ -1,12 +1,14 @@
 #!/usr/bin/env python3.14
-"""Render `references/working-rules.md` from `CLAUDE.md` and the always-on
-rules, and split that render back into those sources in the other direction.
+"""Render `references/$model/working-rules.md` from `CLAUDE.md` and the
+always-on bodies under `rulesets/$model/`, and split that render back into
+those sources in the other direction.
 
 That render and those sources are two forms of one text, and this script
-moves between them. With no argument it writes the render from the sources.
-With `--reverse` it splits the render back into `CLAUDE.md` and the rules
-files, writing no other output. One run moves text one way, and each
-direction reproduces the other's input byte for byte.
+moves between them. With no argument it writes one render per model
+directory, and `--model` scopes that to the model it names. With `--reverse`
+it splits the default model's render back into `CLAUDE.md` and the bodies
+under `rulesets/default/`, writing no other output. One run moves text one
+way, and each direction reproduces the other's input byte for byte.
 
 Both directions read tag-form sources: `CLAUDE.md` opens on `<hello`, and
 each rules file carries one `<rule name="stem">` element whose name is the
@@ -68,7 +70,7 @@ class RuleSection:
 
 @dataclasses.dataclass(frozen=True)
 class Reference:
-    """`references/working-rules.md` split at its tag boundaries.
+    """One model's render split at its tag boundaries.
 
     `preamble` is what sits between the title and the first rule, which is
     what `CLAUDE.md` holds. The title belongs to the render alone.
