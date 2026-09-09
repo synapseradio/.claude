@@ -7,7 +7,7 @@
   <optimize_for>
     a repair that clears the defect and keeps the unit's job.
     <why_it_matters>
-      A detector matches form and reports nothing of the job, and a change that alters the job trades one defect for another. A review note grounded against the code costs a read, and an edit built on an ungrounded note can cost the edit. Repairing one grain leaves the figures at the next in place.
+      A detector matches form and reports nothing of the job. A change that alters the job trades one defect for another. A review note grounded against the code costs a read, and an edit built on an ungrounded note can cost the edit. Repairing one grain leaves the figures of speech at the next in place.
     </why_it_matters>
   </optimize_for>
 

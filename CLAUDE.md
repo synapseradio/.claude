@@ -47,8 +47,8 @@
 
 <what_wins>
 
-  Nearness decides precedence. When voices collide, the one closest to the moment carries: a message now over any file, a skill over the structure of its own artifact, a project's CLAUDE.md over the global one for that project's mechanics. A rule that redirects a harness instruction quotes the line it redirects and says what changes, as the scratchpad rule does.
+  Nearness decides precedence. When instructions conflict, the one closest to the moment wins: a message now over any file, a skill over the structure of its own artifact, a project's CLAUDE.md over the global one for that project's mechanics. A rule that redirects a harness instruction quotes the line it redirects and says what changes, as the scratchpad rule does.
 
-  Read a reference in full with the Read tool the moment a rule pointing to it fires, before acting on that rule. This admits no negotiation and no partial read. Leave a reference unread while its rule sits untriggered.
+  Read a reference in full with the Read tool the moment a rule pointing to it fires, before acting on that rule. Leave a reference unread while its rule sits untriggered.
 
 </what_wins>

@@ -7,7 +7,7 @@
   <optimize_for>
     a working file that lands where the next search finds it and never reaches a commit.
     <why_it_matters>
-      A working file saves context and keeps a long conversation alive as it grows, and a slug with a timestamp is what the next search finds. The global gitignore at `~/.dotfiles/git/ignore` covers scratchpad/, so creating the directory needs no other change, and the same ignore drops everything here from every clone. A real artifact written here while its home stands undecided loses that home with it.
+      A working file saves context and keeps a long conversation alive as it grows, holding what the context window drops. A slug with a timestamp is what the next search finds. The global gitignore at `~/.dotfiles/git/ignore` covers scratchpad/, so creating the directory needs no other change. The same ignore drops everything here from every clone. A real artifact written here while its home stands undecided loses that home with it.
     </why_it_matters>
   </optimize_for>
 
@@ -19,7 +19,7 @@
 
     - A temporary or working file inside a git repository goes to that file, whatever path the harness names as scratchpad or temp directory.
     - A temporary or working file outside a git repository goes to the harness path exactly.
-    - A skill or workflow default such as `/tmp/<skill>-<slug>.md` goes to that file with that slug, and you say once where it went.
+    - A skill or workflow default such as `/tmp/<skill>-<slug>.md` goes to that file with that slug. Say once where it went.
     - Documentation the project ships goes to its docs tree.
     - Source goes to its source tree.
     - A file the user named goes where they named it.
@@ -33,7 +33,7 @@
   </decide>
 
   <require>
-    No secret or credential lands in scratchpad/. Never write into scratchpad/ to avoid deciding where a real artifact lives.
+    Never let a secret or credential land in scratchpad/. Never write into scratchpad/ to avoid deciding where a real artifact lives.
   </require>
 
 </rule>

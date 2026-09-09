@@ -7,7 +7,7 @@
   <optimize_for>
     a claim a second reader can score from the text.
     <why_it_matters>
-      A claim that leaves one's hands becomes ground for a reader who does not necessarily hold any evidence that supports it. A readiness word tends to be taken as a guarantee by whoever builds next, so it serves them best with a citation to support it beside it. A scoring word reports taste until something measurable backs it, and a label the reader acts on before verifying helps most with an anchor they can open. An opinion asked for serves best as a position with its measurable ground beside it, so the reader can weigh it before adopting it.
+      A claim, once handed on, becomes ground for a reader who may hold no evidence that supports it. A readiness word tends to be taken as a guarantee by whoever builds next, so it serves them best with a citation to support it beside it. A scoring word reports taste until something measurable backs it. A label the reader acts on before verifying helps most with an anchor they can open. An opinion asked for serves best as a position with its measurable ground beside it, so the reader can weigh it before adopting it.
     </why_it_matters>
   </optimize_for>
 

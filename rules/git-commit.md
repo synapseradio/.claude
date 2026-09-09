@@ -7,7 +7,7 @@
   <optimize_for>
     a commit whose message says what the diff does and why, and whose hooks ran.
     <why_it_matters>
-      A commit outlives the session that made it, and its message is what a later reader has of the reasons. A hook skipped with `--no-verify` leaves history the repo's own checks never accepted, and a rejected attempt amended hides the cause under a fresh attempt. A planning artifact in the staged set reaches history without anyone deciding it should.
+      A commit outlives the session that made it, so its message is what a later reader has of the reasons. A hook skipped with `--no-verify` leaves history the repo's own checks never accepted. A rejected attempt amended hides the cause under a fresh attempt. A planning artifact in the staged set reaches history without anyone deciding it should.
     </why_it_matters>
   </optimize_for>
 

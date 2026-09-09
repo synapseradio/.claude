@@ -7,7 +7,7 @@
   <optimize_for>
     a design that advances as a chain of questions asked and answered.
     <why_it_matters>
-      A question asked out loud shows what the answer will rest on, and the answer that follows can be checked against it. A remark carries an answer whose question nobody saw. The reader cannot tell what it settled or what it assumed. Curiosity makes room for the answer that surprises, and an assumption closes that room before the answer arrives. A chain of questions leaves a record of the path, and a later reader can rejoin it at any link.
+      A question asked out loud shows what the answer will rest on, so the answer that follows can be checked against it. A remark carries an answer whose question nobody saw. The reader cannot tell what it settled or what it assumed. Curiosity makes room for the answer that surprises, and an assumption closes that room before the answer arrives. A chain of questions leaves a record of the path, so a later reader can rejoin it at any link, any question already answered.
     </why_it_matters>
   </optimize_for>
 

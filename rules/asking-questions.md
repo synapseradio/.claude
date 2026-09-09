@@ -7,7 +7,7 @@
   <optimize_for>
     a question the user can answer from the message that asks it.
     <why_it_matters>
-      A question costs one message, and an option the user has to ask about costs a second message before the first gets its answer. An option named without what gets built under it asks the user to guess. The guess is the assumption the question set out to remove. A yes-or-no question hides the reading it rejects. The user then answers with one side shown. A question whose answers all lead to the same next action spends the user's attention and changes nothing. A question that closes a message as a courtesy asks for nothing, and the user still reads it as a request.
+      A question costs one message, and an option the user has to ask about costs a second message before the first gets its answer. An option named without what gets built under it asks the user to guess. The guess is the assumption the question set out to remove. A yes-or-no question hides the reading it rejects. The user then answers with one side shown. A question whose answers all lead to the same next action spends the user's valuable attention and changes nothing. A question that closes a message as a courtesy asks for nothing, and the user still reads it as a request.
     </why_it_matters>
   </optimize_for>
 

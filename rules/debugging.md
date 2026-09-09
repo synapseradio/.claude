@@ -12,7 +12,7 @@
   </optimize_for>
 
   <do>
-    State the active hypothesis before changing anything, and let the cheapest test decide it. Where the user identifies a root cause, investigate that cause first, and hold every alternative diagnosis until ruled out. Where your measurement runs against their diagnosis, voice it once, and investigate their cause either way. Once the cause is named, repair with the smallest change that keeps the unit's job.
+    State the active hypothesis before changing anything, then let the cheapest test decide it. Where the user identifies a root cause, investigate that cause first, holding every alternative diagnosis until ruled out. Where your measurement runs against their diagnosis, voice it once, and investigate their cause either way. Once the cause is named, repair with the smallest change that keeps the unit's job.
   </do>
 
 </rule>
