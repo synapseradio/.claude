@@ -15,6 +15,7 @@ import re
 import sys
 
 import pytest
+import yaml
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "format-rules-xml.py"
@@ -26,6 +27,27 @@ sys.modules["format_rules_xml"] = formatter
 _spec.loader.exec_module(formatter)
 
 PATH = pathlib.Path("rules/example.md")
+
+
+def named_tiers(manifest: pathlib.Path) -> tuple[str, ...]:
+    """Every tier the manifest names under its `tiers` key, sorted."""
+
+    loaded = yaml.safe_load(manifest.read_text(encoding="utf-8"))
+    return tuple(sorted(loaded["tiers"]))
+
+
+def unnamed_directories(root: pathlib.Path) -> tuple[str, ...]:
+    """Every directory under the rulesets root that the manifest passes over.
+
+    `owns` reads a path's depth, so it claims a body under any directory
+    here. The manifest is what decides which of those directories is a tier,
+    and a directory it passes over holds bodies no tier composes.
+    """
+
+    named = set(named_tiers(root / "manifest.yaml"))
+    return tuple(
+        sorted(child.name for child in root.iterdir() if child.is_dir() and child.name not in named)
+    )
 
 
 def words(text: str) -> str:
@@ -255,6 +277,43 @@ class TestOwnership:
         assert not formatter.owns(pathlib.Path(path))
 
 
+class TestUnnamedDirectories:
+    """`owns` reads a path's depth, and `manifest.yaml` decides what a tier is.
+
+    These build a rulesets root under a tmp_path, so neither reads this
+    repository's own manifest.
+    """
+
+    def _root(self, tmp_path: pathlib.Path, manifest: str, *dirnames: str) -> pathlib.Path:
+        root = tmp_path / "rulesets"
+        for dirname in dirnames:
+            (root / dirname).mkdir(parents=True)
+        (root / "manifest.yaml").write_text(manifest, encoding="utf-8")
+        return root
+
+    def test_a_directory_with_no_manifest_key_is_reported(self, tmp_path):
+        root = self._root(tmp_path, 'tiers:\n  default:\n    include: "*"\n', "default", "haiku")
+
+        assert unnamed_directories(root) == ("haiku",), (
+            "the glob would format haiku's bodies, and no tier composes them"
+        )
+
+    def test_a_root_whose_directories_the_manifest_names_reports_nothing(self, tmp_path):
+        manifest = 'tiers:\n  default:\n    include: "*"\n  haiku:\n    include: "*"\n'
+        root = self._root(tmp_path, manifest, "default", "haiku")
+
+        assert unnamed_directories(root) == ()
+
+    def test_a_manifest_key_with_no_directory_is_left_to_the_resolver(self, tmp_path):
+        manifest = 'tiers:\n  default:\n    include: "*"\n  sonnet:\n    include: "*"\n'
+        root = self._root(tmp_path, manifest, "default")
+
+        assert unnamed_directories(root) == (), (
+            "a key with no directory composes default's bodies, which resolve.py check reports on; "
+            "this reads the other direction alone"
+        )
+
+
 class TestThisRepository:
     """The rules files and CLAUDE.md of this checkout, path-scoped ones included."""
 
@@ -269,14 +328,15 @@ class TestThisRepository:
         ]
         assert unformatted == []
 
-    def test_the_default_set_covers_every_tier_and_the_path_scoped_rules(self):
+    def test_the_default_set_covers_every_manifest_tier_and_the_path_scoped_rules(self):
         covered = set(formatter.default_paths())
 
-        for tier in sorted((REPO_ROOT / "rulesets").glob("*/")):
-            for body in tier.glob("*.md"):
+        for tier in sorted(named_tiers(REPO_ROOT / "rulesets" / "manifest.yaml")):
+            for body in (REPO_ROOT / "rulesets" / tier).glob("*.md"):
                 assert body in covered, (
-                    f"{body.relative_to(REPO_ROOT)} carries a rule element, so a run with no "
-                    "argument has to reach it or the pre-push check passes over it"
+                    f"manifest.yaml names {tier}, whose bodies carry rule elements, so a run "
+                    f"with no argument has to reach {body.relative_to(REPO_ROOT)} or the "
+                    "pre-push check passes over it"
                 )
         for scoped in (REPO_ROOT / "rules").glob("*.md"):
             assert scoped in covered, (
@@ -284,3 +344,12 @@ class TestThisRepository:
                 "tag form"
             )
         assert REPO_ROOT / "CLAUDE.md" in covered
+
+    def test_every_directory_under_rulesets_is_a_tier_the_manifest_names(self):
+        stray = unnamed_directories(REPO_ROOT / "rulesets")
+
+        assert stray == (), (
+            f"{', '.join(stray)} sits under rulesets/ and manifest.yaml names no tier for it, so "
+            "the formatter's glob claims bodies no tier composes. The manifest decides what a "
+            "tier is, so either add the key or move the directory out."
+        )
