@@ -7,7 +7,7 @@
   <optimize_for>
     a plan an agent can execute holding nothing but the file.
     <why_it_matters>
-      The searching happened in this session, and the file is all that travels from it to the agent who executes. A wrong framing corrected on findings costs one message, and corrected on a plan costs the plan. The user's framing sets what the plan is for, and a plan written before it has to guess at that.
+      The search happened in this session. The file is all that travels from it to the agent who executes. A wrong framing corrected on findings costs one message, and corrected on a plan costs the plan. The user's framing sets what the plan is for, so a plan written before it has to guess at that.
     </why_it_matters>
   </optimize_for>
 
@@ -26,7 +26,7 @@
   </define>
 
   <do name="plan">
-    Land findings in their own turn: path:line evidence, open questions, candidate approaches with tradeoffs, then stop. The user picks a framing. Where a sentence hedges, "depending on X we could...", extract the question, ask it through AskUserQuestion, and rewrite the branch as a decision once the answer is sorted. Ask each open question, fold the answers into the plan, and sort each answer into the slices of the turn.
+    Land findings in their own turn: path:line evidence, open questions, and candidate approaches with tradeoffs. Then stop. The user picks a framing. Where a sentence hedges, "depending on X we could...", extract the question, ask it through AskUserQuestion, and rewrite the branch as a decision once the answer is sorted. Ask each open question, fold the answers into the plan, and sort each answer into the slices of the turn.
 
     ```xml
     <answers>
@@ -38,7 +38,7 @@
     </answers>
     ```
 
-    Present the plan for approval.
+    A plan presented as a deliverable takes the document register, in which a header is a label and a bullet holds one idea. Present the plan for approval.
   </do>
 
   <require>

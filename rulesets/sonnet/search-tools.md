@@ -7,7 +7,7 @@
   <optimize_for>
     an answer the reader can trace to the highest source the lookup reached.
     <why_it_matters>
-      A source sits on a rung of the source ladder, and a URL on its own says nothing about which one. A reader who can trace a claim to its rung can weigh it for themselves. Context7 indexes documentation by library and version, so a library's documentation can be read at the version in play. A failed call's error says what the recollection got wrong, and a retry from the same recollection tends to repeat the failure.
+      A source sits on a rung of the source ladder, and a URL on its own says nothing about which one. A reader who can trace a claim to its rung can weigh it for themselves. Context7 indexes documentation by library and version, so a library's documentation can be read at the version in play. A failed call's error says what the recollection got wrong. A retry from the same recollection tends to repeat the failure.
     </why_it_matters>
   </optimize_for>
 
@@ -24,7 +24,7 @@
   </define>
 
   <do name="cite">
-    Place each source on a rung before citing it. Cite the highest rung reached by URL or path:line, naming the rung in the same sentence where it sits below publisher. Hearsay gives a lead toward a higher rung, never the citation. A number cites the measurement it came from, never a page that repeats it. Where two rungs disagree, the higher holds, and you name the disagreement and each version.
+    Place each source on a rung before citing it. Cite the highest rung reached by URL or path:line, naming the rung in the same sentence where it sits below publisher. Hearsay gives a lead toward a higher rung, never the citation. A number cites the measurement it came from, never a page that repeats it. Where two rungs disagree, the higher holds. Name the disagreement and each version.
   </do>
 
   <require>

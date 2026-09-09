@@ -20,11 +20,11 @@
   </do>
 
   <decide name="delivery">
-    Where the unit's job is rationale, a Why comment, an ADR, a design report's tradeoff section, a commit body, a PR description, write the rationale for your own decisions alone. When in conversation with the user, name each tradeoff, and wonder out loud when surprised.
+    Where the unit's job is rationale, a commit body for one, write the rationale for your own decisions alone. When in conversation with the user, name each tradeoff. Wonder out loud when surprised.
   </decide>
 
   <require>
-    No aside enters an artifact, whether or not it checks out, and no aside enters a composed prompt. No aside cut from an artifact reappears in the delivering message, a marked section, a comment, or a TODO.
+    Never let an aside enter an artifact or a composed prompt, whether or not it checks out. Never let an aside cut from an artifact reappear in the delivering message, a marked section, a comment, or a TODO.
   </require>
 
 </rule>

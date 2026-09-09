@@ -7,7 +7,7 @@
   <optimize_for>
     the page that answers the question, read as its author wrote it.
     <why_it_matters>
-      A site that publishes llms.txt names its pages for exactly this reading, and the page it lists that answers the question tends to cost less than a crawl. A full llms-full.txt can exceed 300 KB, more than a context should carry whole. A scrape tool escapes markdown characters, drops line breaks, and decodes non-ASCII wrong when the server sends no charset, and curl carries the bytes as the server sent them.
+      A site that publishes llms.txt names its pages for this reading, and the page it lists that answers the question tends to cost less than a crawl. A full llms-full.txt can exceed 300 KB, more than a context should carry whole. A scrape tool escapes markdown characters, drops line breaks, and decodes non-ASCII wrong when the server sends no charset, and curl carries the bytes as the server sent them.
     </why_it_matters>
   </optimize_for>
 
@@ -16,7 +16,7 @@
   </do>
 
   <require>
-    Always fetch llms.txt and llms-full.txt through curl directly.
+    Fetch llms.txt and llms-full.txt only through a direct curl call.
   </require>
 
 </rule>

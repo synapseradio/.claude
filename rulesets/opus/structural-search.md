@@ -7,7 +7,7 @@
   <optimize_for>
     a search whose result means what it says.
     <why_it_matters>
-      An empty result from a rule that matches nothing looks the same as an empty result from a codebase holding nothing, and nothing in the result tells the two apart. A text search over syntax matches strings and comments the parser would skip. The outline prints imports, functions, classes, and direct members with line numbers at a fraction of a whole file's cost, so valuable attention goes to the region the question names.
+      An empty result from a rule that matches nothing looks the same as an empty result from a codebase holding nothing, so nothing in the result tells the two apart. A text search over syntax matches strings and comments the parser would skip. The outline prints imports, functions, classes, and direct members with line numbers at a fraction of a whole file's cost, so valuable attention goes to the region the question names.
     </why_it_matters>
   </optimize_for>
 
@@ -40,7 +40,7 @@
             stopBy: end
     ```
 
-    Dump the syntax tree of an example the rule must match, and test against that example. Where it matches, run across the codebase. Where it misses, drop sub rules until it matches, repair the failed part, and test again. Where a relational rule finds nothing, set stopBy: end and test again. Where a pattern finds nothing twice, dump the target's syntax tree and rewrite against the node kinds it reports.
+    Dump the syntax tree of an example the rule must match, and test against that example. Where it matches, run across the codebase. Where it misses, drop sub rules until it matches, repair the failed part, and test again. Where a relational rule finds nothing, set `stopBy: end` and test again. Where a pattern finds nothing twice, dump the target's syntax tree and rewrite against the node kinds it reports.
   </do>
 
   <require>
