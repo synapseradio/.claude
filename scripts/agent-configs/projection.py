@@ -102,10 +102,23 @@ def restore_paths(text: str) -> str:
     return text.replace(f"{HOME_VAR}/", "~/")
 
 
-# The one place the always-on rule bodies' directory is named. Every job
-# reaches it through `Targets.rules_dir`, so moving the bodies is a change
-# to this string and to nothing inside any job.
-RULES_DIRNAME = "rulesets/default"
+# The one place the rulesets root is named, and the model whose bodies a job
+# reads with none named. Every job reaches both through `Targets.rules_dir`,
+# so moving the bodies is a change to the names below and to nothing inside
+# any job.
+RULESETS_DIRNAME = "rulesets"
+DEFAULT_MODEL = "default"
+
+
+def model_names(claude_home: Path, rulesets_dirname: str = RULESETS_DIRNAME) -> tuple[str, ...]:
+    """Every model the rulesets root holds a directory for, sorted.
+
+    A directory is what puts a model in play, so a job reaching every model
+    finds them here and needs no list of its own.
+    """
+
+    root = claude_home / rulesets_dirname
+    return tuple(sorted(child.name for child in root.iterdir() if child.is_dir()))
 
 
 def all_rules(rules_dir: Path) -> list[Path]:
@@ -300,7 +313,8 @@ class Targets:
     pi_home: Path
     opencode_home: Path
     working_rules_order: tuple[str, ...] = WORKING_RULES_ORDER
-    rules_dirname: str = RULES_DIRNAME
+    rulesets_dirname: str = RULESETS_DIRNAME
+    model: str = DEFAULT_MODEL
 
     @property
     def claude_md(self) -> Path:
@@ -308,11 +322,21 @@ class Targets:
 
     @property
     def working_rules(self) -> Path:
-        return self.claude_home / "references" / "working-rules.md"
+        return self.claude_home / "references" / self.model / "working-rules.md"
 
     @property
     def rules_dir(self) -> Path:
-        return self.claude_home / self.rules_dirname
+        return self.claude_home / self.rulesets_dirname / self.model
+
+    def for_model(self, model: str) -> Targets:
+        """The same roots, reading and writing one other model's files.
+
+        The rules directory and the reference file both carry the model's
+        name, so they move together and neither can name a model the other
+        does not.
+        """
+
+        return dataclasses.replace(self, model=model)
 
     @property
     def agents_dir(self) -> Path:

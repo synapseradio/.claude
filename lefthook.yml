@@ -20,22 +20,16 @@ pre-commit:
             glob: "*.{sh,bash}"
             run: shellcheck {staged_files}
 
-    # Sequential, outside the group above: this and markdownlint both rewrite
-    # the same .md files, and lefthook runs top-level jobs one after another
-    # while a group with parallel: true runs its own jobs at once.
+    # Sequential, outside the group: this and markdownlint rewrite the same
+    # .md files, and a parallel group runs its jobs at once.
     # https://github.com/evilmartians/lefthook/blob/master/docs/configuration/parallel.md
-    # The script formats the rules files and CLAUDE.md and passes over every
-    # other path it is handed, so the glob here only keeps the job quiet.
     - name: format-rules-xml
       glob: "*.md"
       run: python3.14 scripts/format-rules-xml.py {staged_files}
       stage_fixed: true
 
-# pre-push gate: re-runs the check-only side of every linter against the
-# diff being pushed, and regenerates the agent configs. shellcheck and
-# shfmt -d have no autofix; ruff check without --fix matches the same
-# intent. Catches anything that slipped in via --no-verify or commits made
-# before lefthook install.
+# Re-runs each linter's check-only side against the diff being pushed, and
+# regenerates the agent configs. Catches whatever skipped the commit hook.
 pre-push:
   jobs:
     - name: lint
@@ -55,23 +49,13 @@ pre-push:
             glob: "*.md"
             run: python3.14 scripts/format-rules-xml.py --check {push_files}
 
-    # Ungated by glob: a generated file also goes stale when a plugin is
-    # enabled or disabled, which changes no file under version control.
-    # The three translation jobs run forward, since the 22 outputs they
-    # write live outside this repository and land on push and nowhere else.
-    # The four jobs that write a generated file then run their check mode,
-    # so a write that half happened reports rather than passing unseen. The
-    # render stays check-only: a push carrying a render its own sources no
-    # longer produce is what this gate exists to refuse. The job that splits
-    # the render back into CLAUDE.md and the rules files stays out, since
-    # those are hand-edited sources and naming one as differing from a
-    # render would make the derived artifact the one to match. Gated to main
-    # because the outputs outside this repository are the live configs,
-    # which a branch's unfinished rules should not overwrite. lefthook runs
-    # a job through sh, per
-    # https://github.com/evilmartians/lefthook/blob/master/docs/configuration/run.md,
-    # which takes its status from the last line, so set -e is what carries a
-    # nonzero exit from any one of these out to the gate.
+    # Ungated by glob: enabling a plugin stales a generated file while
+    # changing nothing under version control. The translation jobs write the
+    # live configs outside this repository, so they run on main alone, then
+    # check what they wrote. The render only checks, and the reverse
+    # direction stays out: its targets are hand-edited. set -e carries a
+    # failure out to the gate, which reads the last line's status.
+    # https://github.com/evilmartians/lefthook/blob/master/docs/configuration/run.md
     - name: sync-agent-configs
       only:
         - ref: main
@@ -84,8 +68,9 @@ pre-push:
         python3.14 scripts/agent-configs/translate-for-opencode.py --check
         python3.14 scripts/agent-configs/own-opencode-key.py --check
         python3.14 scripts/agent-configs/render-working-rules.py --check || {
-          echo "references/working-rules.md no longer matches its sources."
+          echo "A reference file under references/ no longer matches its model's bodies."
+          echo "The check named each one above."
           echo "Run python3.14 scripts/agent-configs/render-working-rules.py,"
-          echo "commit the render it writes, then push again."
+          echo "commit the renders it writes, then push again."
           exit 1
         }

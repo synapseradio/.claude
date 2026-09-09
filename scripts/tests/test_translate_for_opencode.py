@@ -68,7 +68,10 @@ def _agent_source(model: str = "haiku", tools: str = "Read, Glob, Agent") -> str
 def _targets(tmp_path: pathlib.Path, *, model: str = "haiku") -> projection.Targets:
     claude_home = tmp_path / "claude"
     _write(claude_home / "CLAUDE.md", f"{PREAMBLE}\n")
-    _write(claude_home / projection.RULES_DIRNAME / "alpha.md", f"{ALPHA}\n")
+    _write(
+        claude_home / projection.RULESETS_DIRNAME / projection.DEFAULT_MODEL / "alpha.md",
+        f"{ALPHA}\n",
+    )
     _write(claude_home / "agents" / "scout.md", _agent_source(model=model))
     _write(claude_home / "plugins" / "installed_plugins.json", json.dumps({"plugins": {}}))
     _write(claude_home / "settings.json", json.dumps({"enabledPlugins": {}}))

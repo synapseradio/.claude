@@ -96,24 +96,24 @@ class TestRulesSourceIsNamedOnce:
     def test_the_source_directory_moves(self, tmp_path):
         tree_a = tmp_path / "a"
         _write(tree_a / "CLAUDE.md", f"{PREAMBLE}\n")
-        _write(tree_a / "rules" / "alpha.md", f"{ALPHA}\n")
+        _write(tree_a / "some-other-root" / "default" / "alpha.md", f"{ALPHA}\n")
 
         tree_b = tmp_path / "b"
         _write(tree_b / "CLAUDE.md", f"{PREAMBLE}\n")
-        _write(tree_b / "rulesets" / "default" / "alpha.md", f"{ALPHA}\n")
+        _write(tree_b / "rulesets" / "haiku" / "alpha.md", f"{ALPHA}\n")
 
         targets_a = projection.Targets(
             claude_home=tree_a,
             pi_home=tmp_path / "pi-a",
             opencode_home=tmp_path / "opencode-a",
-            rules_dirname="rules",
+            rulesets_dirname="some-other-root",
             working_rules_order=("alpha",),
         )
         targets_b = projection.Targets(
             claude_home=tree_b,
             pi_home=tmp_path / "pi-b",
             opencode_home=tmp_path / "opencode-b",
-            rules_dirname="rulesets/default",
+            model="haiku",
             working_rules_order=("alpha",),
         )
 
@@ -376,7 +376,8 @@ class TestDefaultTargets:
     def test_the_render_resolves_under_that_checkout(self):
         assert (
             projection.DEFAULT_TARGETS.working_rules
-            == REPO_ROOT / "references" / "working-rules.md"
+            == REPO_ROOT / "references" / "default" / "working-rules.md"
         ), (
-            "the render this repository's pre-push gate compares is the one tracked beside the sources"
+            "the render this repository's pre-push gate compares is the one tracked beside the "
+            "sources, under the name of the model whose bodies produced it"
         )

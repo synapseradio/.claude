@@ -56,7 +56,7 @@ AGENT_SOURCE = (
 def _targets(tmp_path: pathlib.Path) -> projection.Targets:
     claude_home = tmp_path / "claude"
     _write(claude_home / "CLAUDE.md", f"{PREAMBLE}\n")
-    rules = claude_home / projection.RULES_DIRNAME
+    rules = claude_home / projection.RULESETS_DIRNAME / projection.DEFAULT_MODEL
     _write(rules / "alpha.md", f"{ALPHA}\n")
     _write(
         rules / "gated.md",

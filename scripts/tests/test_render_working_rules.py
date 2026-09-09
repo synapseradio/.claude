@@ -69,7 +69,7 @@ def _reference(preamble: str, *sections: str, title: str = "# Working Rules") ->
 def _targets(tmp_path: pathlib.Path, *, order=("alpha", "zeta")) -> projection.Targets:
     claude_home = tmp_path / "claude"
     _write(claude_home / "CLAUDE.md", f"{PREAMBLE}\n")
-    rules = claude_home / projection.RULES_DIRNAME
+    rules = claude_home / projection.RULESETS_DIRNAME / projection.DEFAULT_MODEL
     _write(rules / "alpha.md", f"{ALPHA}\n")
     _write(rules / "zeta.md", f"{ZETA}\n")
     _write(
@@ -578,7 +578,7 @@ class TestBuildForwardPlan:
 
         plan = render.build_forward_plan(targets)
         by_path = {f.path: f.content for f in plan.files}
-        written = by_path[targets.claude_home / "references" / "working-rules.md"]
+        written = by_path[targets.claude_home / "references" / "default" / "working-rules.md"]
 
         assert "<stance>" in written and ALPHA in written and "gated" not in written, (
             "the render carries the preamble and every always-on rule, and no path-scoped one"
@@ -703,9 +703,10 @@ class TestRoundTrip:
         )
 
     def test_the_repository_render_survives_the_round_trip(self, tmp_path):
-        original = (REPO_ROOT / "references" / "working-rules.md").read_text(encoding="utf-8")
+        default = projection.DEFAULT_TARGETS
+        original = default.working_rules.read_text(encoding="utf-8")
         claude_home = tmp_path / "claude"
-        _write(claude_home / "references" / "working-rules.md", original)
+        _write(claude_home / default.working_rules.relative_to(default.claude_home), original)
         targets = projection.Targets(
             claude_home=claude_home,
             pi_home=tmp_path / "pi",
@@ -720,4 +721,75 @@ class TestRoundTrip:
         assert rebuilt == original, (
             "the render this repository carries is the corpus the two directions run against, "
             "and a fixture that round trips proves nothing about it"
+        )
+
+
+class TestOneReferenceFilePerModel:
+    """Each model's own bodies, rendered under that model's own name."""
+
+    def _tree(self, tmp_path: pathlib.Path) -> projection.Targets:
+        """A checkout whose `haiku` model overrides one of default's two bodies."""
+
+        targets = _targets(tmp_path)
+        _write(
+            targets.claude_home / projection.RULESETS_DIRNAME / "haiku" / "alpha.md",
+            f"{_element('alpha', 'Alpha holds, for haiku.')}\n",
+        )
+        return targets
+
+    def test_every_model_directory_gets_a_render_under_its_own_name(self, tmp_path):
+        targets = self._tree(tmp_path)
+
+        written = {generated.path for generated in render.build_forward_plan(targets).files}
+
+        assert written == {
+            targets.claude_home / "references" / "default" / "working-rules.md",
+            targets.claude_home / "references" / "haiku" / "working-rules.md",
+        }, (
+            "a model reads its own rules, so the reference showing what it reads belongs under "
+            "its own name, and one shared render can only show one model's"
+        )
+
+    def test_a_model_render_carries_that_model_s_own_bodies_alone(self, tmp_path):
+        targets = self._tree(tmp_path)
+
+        rendered = {
+            generated.path.parent.name: generated.content
+            for generated in render.build_forward_plan(targets).files
+        }
+
+        assert "Alpha holds, for haiku." in rendered["haiku"], (
+            "the render for a model reads that model's own directory, so its override is what "
+            "lands there"
+        )
+        assert "Zeta holds." not in rendered["haiku"], (
+            "haiku's directory holds no zeta, and pulling default's in would make the reference "
+            "claim an override the model never carries"
+        )
+        assert "Alpha holds." in rendered["default"] and "Zeta holds." in rendered["default"], (
+            "default's render still carries every body its own directory holds"
+        )
+
+    def test_a_body_the_order_does_not_name_stops_the_run(self, tmp_path):
+        targets = self._tree(tmp_path)
+        _write(
+            targets.claude_home / projection.RULESETS_DIRNAME / "haiku" / "unlisted.md",
+            f"{_element('unlisted', 'Unlisted holds.')}\n",
+        )
+
+        with pytest.raises(ValueError, match="unlisted"):
+            render.build_forward_plan(targets)
+
+    def test_the_check_mode_reports_one_model_render_drifting(self, tmp_path, capsys):
+        targets = self._tree(tmp_path)
+        for generated in render.build_forward_plan(targets, check=True).files:
+            _write(generated.path, generated.content)
+        drifting = targets.claude_home / "references" / "haiku" / "working-rules.md"
+        _write(drifting, drifting.read_text(encoding="utf-8") + "\nhand-added\n")
+
+        code = render.main(["--check"], targets=targets)
+
+        assert code != 0, "a reference file that stopped matching its model's bodies has to report"
+        assert str(drifting) in capsys.readouterr().out, (
+            "the report names the file to regenerate, so a reader fixes the one that drifted"
         )

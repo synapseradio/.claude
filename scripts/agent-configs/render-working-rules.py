@@ -27,11 +27,14 @@ import re
 from pathlib import Path
 
 from projection import (
+    DEFAULT_MODEL,
     DEFAULT_TARGETS,
     GeneratedFile,
     Plan,
     Targets,
+    all_rules,
     apply_plan,
+    model_names,
     ordered_rules,
     parse_document,
     refuse_uncommitted,
@@ -184,18 +187,53 @@ def _carries_frontmatter(path: Path) -> bool:
     )
 
 
+def model_order(targets: Targets) -> tuple[str, ...]:
+    """The order this model's render follows.
+
+    The default model's directory holds every always-on body, so its render
+    follows the whole order and a stem with no file there stops the run.
+    Another model's directory holds the bodies that model overrides, so its
+    render follows the part of the order it holds, and delivery resolves
+    every other stem to the default model's file.
+    """
+
+    if targets.model == DEFAULT_MODEL:
+        return targets.working_rules_order
+    held = {rule.stem for rule in all_rules(targets.rules_dir)}
+    return tuple(stem for stem in targets.working_rules_order if stem in held)
+
+
+def build_one_model(targets: Targets, *, check: bool = False) -> Plan:
+    """The render for the one model `targets` names, and no other."""
+
+    content = build_working_rules(targets.claude_md, targets.rules_dir, model_order(targets))
+    if not check:
+        refuse_uncommitted(targets.claude_home, [targets.working_rules])
+    return Plan(files=(GeneratedFile(targets.working_rules, content),), keys=(), dropped=())
+
+
 def build_forward_plan(targets: Targets = DEFAULT_TARGETS, *, check: bool = False) -> Plan:
-    """The render this job would write forward, from the sources.
+    """One render per model, each from that model's own bodies.
+
+    A model reads its own rules, so the reference showing what it reads
+    carries its name. `targets` names one model, and a run covers every
+    model the rulesets root holds a directory for unless the caller scoped
+    it to one.
 
     The refusal below guards the write, so `check=True` builds the same
     plan `apply_plan` reports drift from, and skips it: a run that only
     reads risks nothing a commit could lose.
     """
 
-    content = build_working_rules(targets.claude_md, targets.rules_dir, targets.working_rules_order)
+    files = []
+    for model in model_names(targets.claude_home, targets.rulesets_dirname):
+        scoped = targets.for_model(model)
+        content = build_working_rules(scoped.claude_md, scoped.rules_dir, model_order(scoped))
+        files.append(GeneratedFile(scoped.working_rules, content))
+
     if not check:
-        refuse_uncommitted(targets.claude_home, [targets.working_rules])
-    return Plan(files=(GeneratedFile(targets.working_rules, content),), keys=(), dropped=())
+        refuse_uncommitted(targets.claude_home, [generated.path for generated in files])
+    return Plan(files=tuple(files), keys=(), dropped=())
 
 
 def build_reverse_plan(targets: Targets = DEFAULT_TARGETS, *, check: bool = False) -> Plan:
@@ -245,7 +283,24 @@ def main(argv: list[str] | None = None, targets: Targets = DEFAULT_TARGETS) -> i
         action="store_true",
         help="split the render back into CLAUDE.md and the rules files, writing no other output",
     )
+    parser.add_argument(
+        "--model",
+        help="render this model's reference file alone, named for its rulesets directory",
+    )
     args = parser.parse_args(argv)
+    if args.reverse and args.model:
+        parser.error(
+            "--reverse runs on the default model's render, whose directory holds every "
+            "always-on body. Which sections another model's render writes back is undecided."
+        )
+    if args.model:
+        held = model_names(targets.claude_home, targets.rulesets_dirname)
+        if args.model not in held:
+            parser.error(f"{args.model!r} names no directory under the rulesets root: {held}")
+        return apply_plan(
+            build_one_model(targets.for_model(args.model), check=args.check), check=args.check
+        )
+
     build = build_reverse_plan if args.reverse else build_forward_plan
     return apply_plan(build(targets, check=args.check), check=args.check)
 
