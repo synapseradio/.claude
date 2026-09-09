@@ -1,0 +1,20 @@
+# Each tier's composition is exactly what its own entry states.
+#
+# A tier takes one of two forms and never both. `include: "*"` with an
+# optional `exclude` list means every stem under `default/` less the
+# exclusions. `include:` followed by a list of stems states the set
+# outright and carries no `exclude`.
+#
+# Every tier key is required. A missing key is an illegal state, so a new
+# tier cannot appear by accident.
+tiers:
+  default:
+    include: "*"
+  fable:
+    include: "*"
+  opus:
+    include: "*"
+  sonnet:
+    include: "*"
+  haiku:
+    include: "*"

@@ -1,0 +1,18 @@
+# Built-in model identifiers per tier, consulted only where no
+# ANTHROPIC_DEFAULT_*_MODEL variable names the running model. A tier lookup
+# matches the running identifier against these prefixes, so an alias like
+# `opus` and a full identifier like `claude-opus-5` both resolve. Adding a
+# release means adding a prefix here, with no code change.
+opus:
+  - opus
+  - claude-opus
+  - claude-opus-4-8
+sonnet:
+  - sonnet
+  - claude-sonnet
+haiku:
+  - haiku
+  - claude-haiku
+fable:
+  - fable
+  - claude-fable
