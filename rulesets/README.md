@@ -94,7 +94,7 @@ this directory.
 | Command | What it does |
 | --- | --- |
 | `resolve.py inspect --tier TIER` | Print each composed stem with its body path. Exits nonzero on any illegal state. |
-| `resolve.py check` | Run `inspect` over all five tiers. Prints nothing on a legal layout and exits nonzero otherwise. |
+| `resolve.py check` | Run `inspect` over every tier the manifest names, model tiers included. Prints nothing on a legal layout and exits nonzero otherwise. |
 | `resolve.py deliver` | Read a hook payload on stdin, dispatch on its `hook_event_name`, and emit hook JSON on stdout. |
 | `resolve.py load-check --session ID` | Compare a session's load records against the manifest. Exits nonzero where any manifest stem auto-loaded. |
 | `resolve.py delivery-check --session ID` | Compare a session's delivery records against each record's composition. Exits nonzero on any difference. |
