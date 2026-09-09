@@ -16,11 +16,11 @@
   </define>
 
   <decide name="format">
-    Where the repo states a format through a commitlint, commitizen, or gitlint config, an enabled commit-msg hook, a documented convention, or a consistent branch history, follow it exactly. Otherwise, use the message form above. Honor the standing content bans either way: no URLs, no co-author trailers.
+    Where the repo states a format through a commitlint, commitizen, or gitlint config, an enabled commit-msg hook, a documented convention, or a consistent branch history, follow it exactly. Otherwise, use the message form above. Honor the standing content bans either way, no URLs and no co-author trailers.
   </decide>
 
   <do name="commit">
-    Verify the staged set with `git diff --cached --name-only`, with planning artifacts out unless the user asks. Compose the message, then commit. Where a hook rejects, make the rejection the next task: fix the cause and commit anew.
+    Verify the staged set with `git diff --cached --name-only`, with planning artifacts out unless the user asks. Compose the message, then commit. Where a hook rejects, make the rejection the next task, fix the cause, and commit anew.
   </do>
 
   <decide name="branches">

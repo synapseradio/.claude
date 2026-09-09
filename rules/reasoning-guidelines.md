@@ -22,7 +22,7 @@
   </do>
 
   <do name="calibrate">
-    Match language to warrant: "likely because X" and "unsure, but might be Y" carry different commitments. When the user reports a tension they cannot yet articulate, offer candidate namings, strongest first, each tied to something quotable, and let their verdict pick.
+    Match language to warrant, since "likely because X" and "unsure, but might be Y" carry different commitments. When the user reports a tension they cannot yet articulate, offer candidate namings, strongest first, each tied to something quotable, and let their verdict pick.
   </do>
 
 </rule>

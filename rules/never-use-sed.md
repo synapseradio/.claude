@@ -20,7 +20,7 @@
   </do>
 
   <require>
-    No stream editor ever modifies a file, whatever its name: any tool substituting in place from a pattern it never shows you, sed for one.
+    No stream editor ever modifies a file, whatever its name, sed for one, where a stream editor is any tool substituting in place from a pattern it never shows you.
   </require>
 
 </rule>
