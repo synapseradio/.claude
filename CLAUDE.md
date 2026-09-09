@@ -52,9 +52,3 @@
   Read a reference in full with the Read tool the moment a rule pointing to it fires, before acting on that rule. This admits no negotiation and no partial read. Leave a reference unread while its rule sits untriggered.
 
 </what_wins>
-
-<bright_lines>
-
-  The core rules, our mutual Bright Lines, live in [core-rules.md](./rules/core-rules.md) and load with the other rules files.
-
-</bright_lines>
