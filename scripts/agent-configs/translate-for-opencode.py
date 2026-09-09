@@ -9,6 +9,8 @@ under opencode's `agents/` directory.
 
 `--check` compares without writing and exits nonzero where any output
 differs from what a write would produce, naming each differing path.
+`--agent` scopes a run to one agent's translation, leaving `AGENTS.md` as it
+stands, since the preamble derives from no single agent.
 
 Every generated file is owned end to end: this job rewrites it whole and
 never merges into hand-written content.
@@ -28,6 +30,7 @@ from projection import (
     Translation,
     _map_tools,
     _render,
+    agent_source,
     apply_plan,
     parse_document,
     read_agent,
@@ -88,6 +91,26 @@ def build_plan(targets: Targets = DEFAULT_TARGETS) -> Plan:
     return Plan(files=tuple(files), keys=(), dropped=tuple(dropped))
 
 
+def build_one_agent(name: str, targets: Targets = DEFAULT_TARGETS) -> Plan:
+    """The translation of the one agent `name` reaches, and no other output.
+
+    The preamble derives from `CLAUDE.md` and from no single agent, so a run
+    scoped to one leaves it as it stands.
+    """
+
+    source = agent_source(targets.agents_dir, name)
+    translated = translate_for_opencode(read_agent(source))
+    return Plan(
+        files=(
+            GeneratedFile(
+                targets.opencode_home / "agents" / f"{source.stem}.md", translated.content
+            ),
+        ),
+        keys=(),
+        dropped=tuple(("opencode", source.stem, tool) for tool in translated.dropped),
+    )
+
+
 def main(argv: list[str] | None = None, targets: Targets = DEFAULT_TARGETS) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -95,7 +118,17 @@ def main(argv: list[str] | None = None, targets: Targets = DEFAULT_TARGETS) -> i
         action="store_true",
         help="write nothing; exit nonzero when any generated file is out of date",
     )
+    parser.add_argument(
+        "--agent",
+        help="translate this agent alone, named for its source file's stem",
+    )
     args = parser.parse_args(argv)
+    if args.agent:
+        try:
+            plan = build_one_agent(args.agent, targets)
+        except ValueError as unreached:
+            parser.error(str(unreached))
+        return apply_plan(plan, check=args.check)
     return apply_plan(build_plan(targets), check=args.check)
 
 

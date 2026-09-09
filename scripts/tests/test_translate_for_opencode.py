@@ -172,6 +172,64 @@ def _committed(tmp_path: pathlib.Path) -> projection.Targets:
     return targets
 
 
+class TestScopingToOneAgent:
+    """A run scoped to one agent translates that source and reads no other."""
+
+    def _two_agents(self, tmp_path: pathlib.Path) -> projection.Targets:
+        targets = _targets(tmp_path)
+        _write(
+            targets.agents_dir / "spider.md",
+            _agent_source().replace("scout", "spider").replace("Scout", "Spider"),
+        )
+        return targets
+
+    def test_the_plan_carries_that_agent_s_file_alone(self, tmp_path):
+        targets = self._two_agents(tmp_path)
+
+        plan = opencode.build_one_agent("spider", targets)
+
+        assert {generated.path for generated in plan.files} == {
+            targets.opencode_home / "agents" / "spider.md"
+        }, "a scoped run writes one agent's translation, and the preamble belongs to no agent"
+
+    def test_a_scoped_run_leaves_another_agent_s_output_alone(self, tmp_path):
+        targets = self._two_agents(tmp_path)
+        assert opencode.main([], targets=targets) == 0
+        scout = targets.opencode_home / "agents" / "scout.md"
+        scout.write_text("a file this run must never reach\n", encoding="utf-8")
+
+        assert opencode.main(["--agent", "spider"], targets=targets) == 0
+
+        assert scout.read_text(encoding="utf-8") == "a file this run must never reach\n", (
+            "scoping to one agent is what lets a run repair one translation while another "
+            "source is mid-edit"
+        )
+
+    def test_a_name_no_source_carries_stops_the_run(self, tmp_path):
+        targets = self._two_agents(tmp_path)
+
+        with pytest.raises(SystemExit) as raised:
+            opencode.main(["--agent", "nobody"], targets=targets)
+
+        assert raised.value.code != 0, (
+            "a misspelled name would otherwise write nothing and report success"
+        )
+
+    def test_the_check_mode_reports_the_scoped_agent_drifting(self, tmp_path, capsys):
+        targets = self._two_agents(tmp_path)
+        assert opencode.main([], targets=targets) == 0
+        _write(targets.agents_dir / "spider.md", _agent_source().replace("scout", "spider"))
+        capsys.readouterr()
+
+        code = opencode.main(["--agent", "spider", "--check"], targets=targets)
+        printed = capsys.readouterr().out
+
+        assert code != 0, "the source changed, so the translation on disk no longer matches it"
+        assert "spider.md" in printed and "scout.md" not in printed, (
+            "a scoped check reports the one agent it was scoped to"
+        )
+
+
 class TestCheckModeReportsDrift:
     """`config-projection` requirement: a check mode reports drift without writing.
 

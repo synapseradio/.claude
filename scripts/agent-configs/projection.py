@@ -121,6 +121,21 @@ def model_names(claude_home: Path, rulesets_dirname: str = RULESETS_DIRNAME) -> 
     return tuple(sorted(child.name for child in root.iterdir() if child.is_dir()))
 
 
+def agent_source(agents_dir: Path, name: str) -> Path:
+    """The source file for one agent, or a ValueError naming what is there.
+
+    A translation job scoped to one agent takes a name from the command line,
+    and the source is what the name has to reach. The error carries the names
+    that do resolve, so a misspelling is fixed from the message.
+    """
+
+    source = agents_dir / f"{name}.md"
+    if not source.is_file():
+        held = tuple(sorted(child.stem for child in agents_dir.glob("*.md")))
+        raise ValueError(f"{name!r} names no agent source under {agents_dir}: {held}")
+    return source
+
+
 def all_rules(rules_dir: Path) -> list[Path]:
     """Every rule file, sorted by filename."""
 
