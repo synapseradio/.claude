@@ -6,6 +6,12 @@ through this module and a hook that fails leaves the session with none.
 The delivery path therefore answers with the `default` tier's bodies
 wherever a tier, a manifest, or a body is unavailable, and names what
 failed in the text it delivers.
+
+Every path derives from the configuration directory, which
+`CLAUDE_CONFIG_DIR` overrides wholesale, so a hardcoded home path would
+read an empty tier directory under a second configuration directory and
+fall open to nothing. The five path functions below are what this module
+and `audit` compute every path through.
 """
 
 import argparse

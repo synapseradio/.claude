@@ -15,8 +15,9 @@ depends on which rules the render carries.
 
 With no path argument it formats every body under a `rulesets/` tier, every
 path-scoped rule under `rules/`, and `CLAUDE.md`, resolved from this script's
-own location, so a run inside a worktree formats that worktree. With `--check` it writes nothing and exits nonzero where any
-file would change, which is what the pre-push hook gates on.
+own location, so a run inside a worktree formats that worktree. With
+`--check` it writes nothing and exits nonzero where any file would change,
+which is what the pre-push hook gates on.
 
 Run the tests with `python3.14 -m pytest scripts/tests/test_format_rules_xml.py`.
 """
