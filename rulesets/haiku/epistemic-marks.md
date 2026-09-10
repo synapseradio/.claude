@@ -1,4 +1,4 @@
-<rule name="epistemic-marks">
+<!-- rule: epistemic-marks -->
 
 ## epistemic-marks
 
@@ -32,5 +32,3 @@ A hedge stands in for a mark only on the user's outright allowance.
 Resolve each mark by its kind. Where the mark is [?] or [.?], gather the evidence, reading the source for a claim about local code and searching the live web for an external fact. Replace the mark in place with a citation from the highest source rung reached, a path:line or a URL. Correct or remove a sentence the evidence fails to support. Where the mark is [^?], put the question through AskUserQuestion. The answer replaces the mark. Where no answer arrives, leave the line standing and open your report on its unanswered element with the question and the options you would have offered, then what got done, then what remains undone with the answer each part needs. Where a line mentions a mark without claiming under one, name the mark in words and say in the same sentence what became of it.
 
 Build only on a claim that passed verification and carries its source or mark.
-
-</rule>

@@ -35,14 +35,14 @@ def _write(path: pathlib.Path, text: str) -> pathlib.Path:
     return path
 
 
-PREAMBLE = '<hello from="user">\n~\n/~\n</hello>\n\n<stance>\n\nPlay.\n\n</stance>'
+PREAMBLE = "# Preamble\n\nPlay."
 
 
-def _element(name: str, body: str) -> str:
-    return f'<rule name="{name}">\n\n{body}\n\n</rule>'
+def _body(stem: str, body: str) -> str:
+    return f"<!-- rule: {stem} -->\n\n## {stem}\n\n{body}"
 
 
-ALPHA = _element("alpha", "Alpha holds.")
+ALPHA = _body("alpha", "Alpha holds.")
 
 AGENT_SOURCE = (
     "---\n"
@@ -62,7 +62,7 @@ def _targets(tmp_path: pathlib.Path) -> projection.Targets:
     _write(rules / "alpha.md", f"{ALPHA}\n")
     _write(
         rules / "gated.md",
-        f'---\npaths:\n  - "**/*.sh"\n---\n\n{_element("gated", "Gated holds.")}\n',
+        f'---\npaths:\n  - "**/*.sh"\n---\n\n{_body("gated", "Gated holds.")}\n',
     )
     _write(claude_home / "agents" / "scout.md", AGENT_SOURCE)
     _write(claude_home / "plugins" / "installed_plugins.json", json.dumps({"plugins": {}}))
@@ -238,7 +238,7 @@ class TestCheckModeReportsDrift:
         pi.main([], targets=targets)
         context_file = targets.pi_home / "AGENTS.md"
         written = context_file.read_text(encoding="utf-8")
-        _write(targets.rules_dir / "alpha.md", f"{_element('alpha', 'Alpha, edited.')}\n")
+        _write(targets.rules_dir / "alpha.md", f"{_body('alpha', 'Alpha, edited.')}\n")
         capsys.readouterr()
 
         code = pi.main(["--check"], targets=targets)
@@ -569,7 +569,6 @@ class TestBuildPlan:
         by_path = {f.path: f.content for f in plan.files}
         written = by_path[targets.pi_home / "AGENTS.md"]
 
-        assert "<stance>" in written, "pi reads the CLAUDE.md preamble from its context file"
         assert ALPHA in written, (
             "pi offers no second mechanism for rule files, so the rules travel in its context file"
         )

@@ -1,4 +1,4 @@
-<rule name="search-tools">
+<!-- rule: search-tools -->
 
 ## search-tools
 
@@ -17,5 +17,3 @@ Omit years from queries unless the user supplies one. When a tool call failed, r
 The rungs run highest first. Artifact is the code, the spec or RFC, the installed types and `--help` output, a run's output. Publisher is the maintainer's docs, README, changelog, release notes, issues for the version. Measured is a method a reader can rerun with its data shown. Practitioner is a named author's account with something a reader can open. Hearsay is none of the above, whatever its publisher.
 
 Place each source on a rung before citing it. Cite the highest rung reached by URL or path:line, naming the rung in the same sentence where it sits below publisher. Hearsay gives a lead toward a higher rung, never the citation. A number cites the measurement it came from, never a page that repeats it. Where two rungs disagree, the higher holds. Name the disagreement and each version.
-
-</rule>

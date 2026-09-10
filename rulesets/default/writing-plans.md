@@ -1,4 +1,4 @@
-<rule name="writing-plans">
+<!-- rule: writing-plans -->
 
 ## writing-plans
 
@@ -26,5 +26,3 @@ Land findings in their own turn: path:line evidence, open questions, and candida
 ```
 
 A plan presented as a deliverable takes the document register, in which a header is a label and a bullet holds one idea. Present the plan for approval. Never call ExitPlanMode in the turn that finished investigating. Never call ExitPlanMode while a question remains unresolved.
-
-</rule>

@@ -1,4 +1,4 @@
-<rule name="git-commit">
+<!-- rule: git-commit -->
 
 ## git-commit
 
@@ -19,5 +19,3 @@ Verify the staged set with `git diff --cached --name-only`, with planning artifa
 ### Branches
 
 Where the branch is one other people push to or review, open the PR from your fork. Give every line of work its own worktree. When rebasing, autosquash by default, with conflicts resolved on their merits.
-
-</rule>

@@ -4,7 +4,7 @@ paths:
   - "**/CLAUDE.md"
 ---
 
-<rule name="writing-rules">
+<!-- rule: writing-rules -->
 
 ## writing-rules
 
@@ -37,5 +37,3 @@ Route content before writing it. Where the content is an invariant, it goes to `
 The renderer at `scripts/agent-configs/render-working-rules.py` runs in both directions between the bodies under `~/.claude/rulesets/$model/` plus CLAUDE.md and `~/.claude/references/$model/working-rules.md`, keyed on the rule markers, in the order the `WORKING_RULES_ORDER` tuple in `scripts/agent-configs/projection.py` names. A section of the render runs from its marker to the next one or to the end of the file, and the preamble is what sits between the render's title and its first marker, which is what CLAUDE.md holds, so CLAUDE.md carries no marker. It renders every model forward with no argument, scopes a forward run to one model with `--model`, and splits the `default` model's render back with `--reverse`. Edit whichever side is in hand, then run the renderer toward the other, so the two never disagree. When adding an always-on rule, add its stem to that tuple in the same change. When renaming a rules file or a section another file cites, sweep the citations in the same change.
 
 Never argue for the rule inside it. Never give a class more than one example.
-
-</rule>

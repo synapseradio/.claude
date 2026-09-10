@@ -1,4 +1,4 @@
-<rule name="writing-code">
+<!-- rule: writing-code -->
 
 ## writing-code
 
@@ -17,5 +17,3 @@ Where no test infrastructure exists, flag the gap before writing code, and still
 Validate at system boundaries. Before a compatibility layer, ask first. Prefer fewer moving parts, fewer dependencies, fewer assumptions. Take the smallest working steps: correct first, clear second, fast third. Where an abstraction turns out wrong, redesign it. Where shared code branches per caller, split it into abstractions each caller owns. Ask how someone changes this next, then make that change easy. Name a thing for what it is. Where a function needs a comment to say what it does, rename it and keep comments for why. Model data with types that admit only legal states, buying precision only where it deletes a "should never happen" branch.
 
 Never add complexity for a scenario that cannot happen. Never duplicate around a wrong abstraction. Never grow the interface with the implementation.
-
-</rule>

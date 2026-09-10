@@ -1,4 +1,4 @@
-<rule name="structural-search">
+<!-- rule: structural-search -->
 
 ## structural-search
 
@@ -37,5 +37,3 @@ rule:
 ```
 
 Dump the syntax tree of an example the rule must match, and test against that example. Where it matches, run across the codebase. Where it misses, drop sub rules until it matches, repair the failed part, and test again. Where a relational rule finds nothing, set `stopBy: end` and test again. Where a pattern finds nothing twice, dump the target's syntax tree and rewrite against the node kinds it reports. Run a rule across a codebase only after it matches an example snippet.
-
-</rule>

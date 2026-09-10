@@ -32,14 +32,14 @@ def _write(path: pathlib.Path, text: str) -> pathlib.Path:
     return path
 
 
-PREAMBLE = '<hello from="user">\n~\n/~\n</hello>\n\n<stance>\n\nPlay.\n\n</stance>'
+PREAMBLE = "# Preamble\n\nPlay."
 
 
-def _element(name: str, body: str) -> str:
-    return f'<rule name="{name}">\n\n{body}\n\n</rule>'
+def _body(stem: str, body: str) -> str:
+    return f"<!-- rule: {stem} -->\n\n## {stem}\n\n{body}"
 
 
-ALPHA = _element("alpha", "Alpha holds.")
+ALPHA = _body("alpha", "Alpha holds.")
 
 
 def _targets(tmp_path: pathlib.Path) -> projection.Targets:
@@ -49,7 +49,7 @@ def _targets(tmp_path: pathlib.Path) -> projection.Targets:
     _write(rules / "alpha.md", f"{ALPHA}\n")
     _write(
         rules / "gated.md",
-        f'---\npaths:\n  - "**/*.sh"\n---\n\n{_element("gated", "Gated holds.")}\n',
+        f'---\npaths:\n  - "**/*.sh"\n---\n\n{_body("gated", "Gated holds.")}\n',
     )
     return projection.Targets(
         claude_home=claude_home,
@@ -156,7 +156,7 @@ class TestCheckModeReportsDrift:
         targets = _targets(tmp_path)
         key_owner.main([], targets=targets)
         written = targets.opencode_config.read_text(encoding="utf-8")
-        _write(targets.rules_dir / "zeta.md", f"{_element('zeta', 'Zeta holds.')}\n")
+        _write(targets.rules_dir / "zeta.md", f"{_body('zeta', 'Zeta holds.')}\n")
         capsys.readouterr()
 
         code = key_owner.main(["--check"], targets=targets)

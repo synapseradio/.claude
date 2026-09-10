@@ -1,10 +1,10 @@
-<rule name="scratchpad">
+<!-- rule: scratchpad -->
 
 ## scratchpad
 
 This rule applies when you are producing a temporary or working file: an intermediate result, a throwaway script, generated data, a review, an audit, a plan, a run file. Optimize for a working file that lands where the next search finds it and never reaches a commit.
 
-A working file saves context and keeps a long conversation alive as it grows, holding what the context window drops. A slug with a timestamp is what the next search finds. The global gitignore at `$HOME/.dotfiles/git/ignore` covers scratchpad/, so creating the directory needs no other change. The same ignore drops everything here from every clone. A real artifact written here while its home stands undecided loses that home with it.
+A working file saves context and keeps a long conversation alive as it grows, holding what the context window drops. A slug with a timestamp is what the next search finds. The global gitignore at `~/.dotfiles/git/ignore` covers scratchpad/, so creating the directory needs no other change. The same ignore drops everything here from every clone. A real artifact written here while its home stands undecided loses that home with it.
 
 ### The location
 
@@ -24,5 +24,3 @@ Where plan mode holds, working notes stay in the plan file until writing opens u
 - Where it is unclear whether the output is a deliverable, ask.
 
 Never let a secret or credential land in scratchpad/. Never write into scratchpad/ to avoid deciding where a real artifact lives.
-
-</rule>

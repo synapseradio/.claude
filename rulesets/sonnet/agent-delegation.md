@@ -1,4 +1,4 @@
-<rule name="agent-delegation">
+<!-- rule: agent-delegation -->
 
 ## agent-delegation
 
@@ -100,5 +100,3 @@ have offered]
 ```
 
 Every claim stays unverified until you find its source.
-
-</rule>

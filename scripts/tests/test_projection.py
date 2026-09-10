@@ -43,14 +43,14 @@ def _write(path: pathlib.Path, text: str) -> pathlib.Path:
     return path
 
 
-PREAMBLE = '<hello from="user">\n~\n/~\n</hello>\n\n<stance>\n\nPlay.\n\n</stance>'
+PREAMBLE = "# Preamble\n\nPlay."
 
 
-def _element(name: str, body: str) -> str:
-    return f'<rule name="{name}">\n\n{body}\n\n</rule>'
+def _body(stem: str, body: str) -> str:
+    return f"<!-- rule: {stem} -->\n\n## {stem}\n\n{body}"
 
 
-ALPHA = _element("alpha", "Alpha holds.")
+ALPHA = _body("alpha", "Alpha holds.")
 HOME = pathlib.Path.home()
 
 AGENT_BODY = "Scout {\n  Options {\n    budget: 1..200 = 40\n  }\n}\n"
@@ -228,7 +228,7 @@ class TestRewritePaths:
         )
 
     def test_bare_tilde_survives(self):
-        text = "<hello>\n~\nHi!\n/~\n</hello>\n"
+        text = "~\nHi!\n/~\n"
 
         assert projection.rewrite_paths(text) == text, (
             "a ~ that starts no path is decoration and must survive byte for byte"
@@ -325,7 +325,7 @@ class TestRestorePaths:
         )
 
     def test_bare_tilde_and_dollar_survive(self):
-        text = "<hello>\n~\nHi!\n/~\n</hello>\n\n`$dir/$slug__$DD-MM-YY-HHmm.md`\n"
+        text = "~\nHi!\n/~\n\n`$dir/$slug__$DD-MM-YY-HHmm.md`\n"
 
         assert projection.restore_paths(text) == text, (
             "a ~ that starts no path and a $ that opens no HOME are text, not paths"
@@ -333,7 +333,7 @@ class TestRestorePaths:
 
     def test_restore_inverts_rewrite(self):
         source = (
-            "<hello>\n~\n/~\n</hello>\n\n"
+            "~\n/~\n\n"
             "The rules live in [core-rules.md](./rules/core-rules.md) and load.\n\n"
             "The ignore at `~/.dotfiles/git/ignore` covers it, per [x](../.dotfiles/git/ignore).\n\n"
             "Read `~/.claude/references/bash-style-guide.md`, per "

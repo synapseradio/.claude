@@ -1,4 +1,4 @@
-<rule name="claims">
+<!-- rule: claims -->
 
 ## claims
 
@@ -17,5 +17,3 @@ Before granting a readiness word, "ready" for one, enumerate the guarantees the 
 Five predicates reduce a scoring word. Surface size is word or line count, or token count. Lexical rarity is word frequency in the corpus, or symbol frequency in the standard library, the ecosystem, and this codebase. Prior knowledge cost is allusions and jargon, or imports outside the standard library, idioms, and named patterns. Indirection depth is nested clauses and metaphor chains, or wrapper layers, higher-order calls, decorator stacks, and macros. Intermediate opacity is elided reasoning steps, or unnamed intermediates and chained expressions. A is plainer than B when A sits at or below B on all five predicates and below B on at least one.
 
 Evaluate each claim before it leaves your hands. Where a scoring word appears, "clean" for one, reduce it through the predicates or a named alternative decomposition, or remove it as taste. Where the predicates trade and the input states no axis preference, report no winner, surface the tradeoff, and ask the user. Where the predicates trade in any other case, report no winner. Where a pair gets compared, "this matches that" for one, quote A, the compared text or value, and B, its anchor in the input. Where a label is one the reader acts on before verifying it, anchor it with a quotable passage, a concrete example, or a resolvable URL. Where registers clash between input and proposal, surface the mismatch. Where a claim corrects the reader's frame, name the part that is wrong and where the confusion sits. Where asked for an opinion, take a position and name its measurable ground.
-
-</rule>

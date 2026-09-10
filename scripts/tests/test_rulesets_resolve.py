@@ -7,6 +7,7 @@ Every test points the resolver at a temporary root, so no test reads or
 writes the live manifest under the configuration directory.
 """
 
+import importlib.util
 import pathlib
 import subprocess
 import sys
@@ -14,9 +15,20 @@ import sys
 import pytest
 import yaml
 
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from rulesets import resolve
+from rulesets import resolve  # noqa: E402  (path must be set before this import)
+
+_RENDER_PATH = REPO_ROOT / "scripts" / "agent-configs" / "render-working-rules.py"
+_spec = importlib.util.spec_from_file_location(
+    "render_working_rules_via_resolve_test", _RENDER_PATH
+)
+assert _spec is not None and _spec.loader is not None
+render = importlib.util.module_from_spec(_spec)
+sys.modules["render_working_rules_via_resolve_test"] = render
+_spec.loader.exec_module(render)
 
 
 @pytest.fixture
@@ -25,8 +37,12 @@ def rulesets_root(tmp_path):
 
     default = tmp_path / "default"
     default.mkdir()
-    (default / "beta.md").write_text("Beta body.\n", encoding="utf-8")
-    (default / "alpha.md").write_text("Alpha body.\n", encoding="utf-8")
+    (default / "beta.md").write_text(
+        f"{resolve.naming_line('beta')}\nBeta body.\n", encoding="utf-8"
+    )
+    (default / "alpha.md").write_text(
+        f"{resolve.naming_line('alpha')}\nAlpha body.\n", encoding="utf-8"
+    )
     return tmp_path
 
 
@@ -34,7 +50,9 @@ def build_root(tmp_path, tiers, bodies):
     """A rulesets root with a manifest and the named bodies.
 
     `tiers` maps a tier to its manifest entry, and `bodies` maps a tier to
-    the stems whose bodies that tier's directory holds.
+    the stems whose bodies that tier's directory holds. Each body opens on
+    its own naming line, since delivery now reads a body verbatim rather
+    than prefixing one.
     """
 
     for tier in resolve.TIERS:
@@ -43,7 +61,7 @@ def build_root(tmp_path, tiers, bodies):
         (tmp_path / tier).mkdir(exist_ok=True)
         for stem in stems:
             (tmp_path / tier / f"{stem}.md").write_text(
-                f"Body of {stem} under {tier}.\n", encoding="utf-8"
+                f"{resolve.naming_line(stem)}\nBody of {stem} under {tier}.\n", encoding="utf-8"
             )
     (tmp_path / "manifest.yaml").write_text(yaml.safe_dump({"tiers": tiers}), encoding="utf-8")
     return tmp_path
@@ -128,6 +146,15 @@ class TestDefaultRuleset:
         alpha_line = resolve.naming_line("alpha")
         assert alpha_line in result.text
         assert result.text.index(alpha_line) < result.text.index("Alpha body.")
+
+    def test_a_body_naming_itself_is_not_named_twice(self, rulesets_root):
+        result = resolve.default_ruleset(rulesets_root)
+
+        alpha_line = resolve.naming_line("alpha")
+        assert result.text.count(alpha_line) == 1, (
+            "a body already opening on its own naming line must reach delivery with that "
+            "line once, not doubled by a second copy delivery adds"
+        )
 
     def test_orders_the_bodies_by_stem(self, rulesets_root):
         result = resolve.default_ruleset(rulesets_root)
@@ -286,6 +313,23 @@ class TestIllegalStates:
         assert len(findings) == 1
         assert str(root / "haiku" / "absent.md") in findings[0].message
         assert str(root / "default" / "absent.md") in findings[0].message
+
+    def test_reports_a_body_missing_its_naming_line(self, tmp_path):
+        root = build_root(tmp_path, every_tier(WILDCARD), {"default": ("alpha",)})
+        (root / "default" / "alpha.md").write_text("Alpha body, no marker.\n", encoding="utf-8")
+
+        findings = [f for f in resolve.report(root) if f.kind == "unnamed-body"]
+
+        assert len(findings) == 1
+        assert str(root / "default" / "alpha.md") in findings[0].message
+        assert resolve.naming_line("alpha") in findings[0].message
+
+    def test_reports_no_unnamed_body_for_a_legal_layout(self, tmp_path):
+        root = build_root(tmp_path, every_tier(WILDCARD), {"default": ("alpha",)})
+
+        findings = [f for f in resolve.report(root) if f.kind == "unnamed-body"]
+
+        assert findings == [], "every body build_root writes already opens on its naming line"
 
     def test_reports_a_missing_tier_key_by_name(self, tmp_path):
         tiers = every_tier(WILDCARD)
@@ -895,7 +939,9 @@ class TestModelNamedTiers:
 
     def test_a_model_named_tier_delivers_its_own_bodies(self, tmp_path):
         root = self._root(tmp_path, extra_tiers=("claude-opus-4-8",))
-        (root / "claude-opus-4-8" / "alpha.md").write_text("Opus 4.8 alpha.\n", encoding="utf-8")
+        (root / "claude-opus-4-8" / "alpha.md").write_text(
+            f"{resolve.naming_line('alpha')}\nOpus 4.8 alpha.\n", encoding="utf-8"
+        )
 
         composed = resolve.compose("claude-opus-4-8", root)
 
@@ -915,3 +961,14 @@ class TestModelNamedTiers:
         kinds = {f.kind for f in resolve.report(root)}
 
         assert "unreachable-body" in kinds
+
+
+class TestNamingLineMatchesTheRendersMarker:
+    """`resolve.py` and `render-working-rules.py` spell one literal each.
+
+    Neither module imports the other, so nothing else in the repository
+    would catch the two literals drifting apart on an edit to either.
+    """
+
+    def test_naming_line_equals_the_renders_marker_line(self):
+        assert resolve.naming_line("alpha") == render.marker_line("alpha")

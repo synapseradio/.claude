@@ -9,6 +9,7 @@ it, so no test reads or writes this checkout's own configuration.
 
 import dataclasses
 import importlib.util
+import itertools
 import pathlib
 import re
 import subprocess
@@ -45,19 +46,19 @@ def _git(repo: pathlib.Path, *args: str) -> None:
     )
 
 
-PREAMBLE = '<hello from="user">\n~\n/~\n</hello>\n\n<stance>\n\nPlay, per [x](./rules/alpha.md).\n\n</stance>'
+PREAMBLE = "## Hello from the user\n\nPlay, per [x](./rules/alpha.md)."
 RENDERED_PREAMBLE = PREAMBLE.replace("./rules/alpha.md", "$HOME/.claude/rules/alpha.md")
 
-FENCED_RULE_TAG = '```xml\n<rule name="a-template-not-a-boundary">\n</rule>\n```'
+FENCED_RULE_MARKER = "```\n<!-- rule: a-template-not-a-boundary -->\n```"
 
 
-def _element(name: str, body: str) -> str:
-    return f'<rule name="{name}">\n\n{body}\n\n</rule>'
+def _body(name: str, text: str) -> str:
+    return f"<!-- rule: {name} -->\n\n## {name}\n\n{text}"
 
 
-ALPHA = _element("alpha", "Alpha holds.")
-ZETA = _element("zeta", f"Zeta holds.\n\n{FENCED_RULE_TAG}")
-EDITED = _element("alpha", "Alpha holds, as edited in the render.")
+ALPHA = _body("alpha", "Alpha holds.")
+ZETA = _body("zeta", f"Zeta holds.\n\n{FENCED_RULE_MARKER}")
+EDITED = _body("alpha", "Alpha holds, as edited in the render.")
 
 
 def _reference(preamble: str, *sections: str, title: str = "# Working Rules") -> str:
@@ -74,7 +75,7 @@ def _targets(tmp_path: pathlib.Path, *, order=("alpha", "zeta")) -> projection.T
     _write(rules / "zeta.md", f"{ZETA}\n")
     _write(
         rules / "gated.md",
-        f'---\npaths:\n  - "**/*.sh"\n---\n\n{_element("gated", "Gated holds.")}\n',
+        f'---\npaths:\n  - "**/*.sh"\n---\n\n{_body("gated", "Gated holds.")}\n',
     )
     return projection.Targets(
         claude_home=claude_home,
@@ -145,11 +146,14 @@ class TestReverseRoundTrip:
 
 
 class TestASourceInTheWrongForm:
-    """Task 3.4: a source in neither tag form stops the run before it writes."""
+    """Task 3.4: a source in the wrong marker form stops the run before it writes."""
 
-    def test_a_claude_md_without_the_preamble_opening_stops_the_run(self, tmp_path):
+    def test_a_claude_md_carrying_a_rule_marker_stops_the_run_naming_it(self, tmp_path):
         targets = _targets(tmp_path)
-        _write(targets.claude_md, "# Stance\n\nNo hello tag here.\n")
+        _write(
+            targets.claude_md,
+            "# Stance\n\n<!-- rule: stance -->\n\n## stance\n\nWork here proceeds as play.\n",
+        )
 
         with pytest.raises(ValueError, match=re.escape(str(targets.claude_md))):
             render.build_forward_plan(targets)
@@ -158,10 +162,10 @@ class TestASourceInTheWrongForm:
             "a source in the wrong form must stop the run before anything is written"
         )
 
-    def test_a_rules_file_without_one_rule_element_stops_the_run_and_names_it(self, tmp_path):
+    def test_a_rules_file_without_one_rule_marker_stops_the_run_and_names_it(self, tmp_path):
         targets = _targets(tmp_path)
         bad = targets.rules_dir / "alpha.md"
-        _write(bad, "# Alpha\n\nThis is not tag form.\n")
+        _write(bad, "# Alpha\n\nThis carries no rule marker.\n")
 
         with pytest.raises(ValueError, match=re.escape(str(bad))):
             render.build_forward_plan(targets)
@@ -199,7 +203,7 @@ class TestCheckModeCarriesNoRefusal:
 
     def test_reverse_check_builds_the_plan_despite_an_uncommitted_source(self, tmp_path):
         targets = _committed(tmp_path)
-        _write(targets.rules_dir / "alpha.md", f"{_element('alpha', 'Alpha, edited.')}\n")
+        _write(targets.rules_dir / "alpha.md", f"{_body('alpha', 'Alpha, edited.')}\n")
 
         plan = render.build_reverse_plan(targets, check=True)
 
@@ -209,7 +213,7 @@ class TestCheckModeCarriesNoRefusal:
 
     def test_reverse_write_refuses_the_same_uncommitted_source(self, tmp_path):
         targets = _committed(tmp_path)
-        _write(targets.rules_dir / "alpha.md", f"{_element('alpha', 'Alpha, edited.')}\n")
+        _write(targets.rules_dir / "alpha.md", f"{_body('alpha', 'Alpha, edited.')}\n")
 
         with pytest.raises(ValueError, match=re.escape("alpha.md")):
             render.build_reverse_plan(targets, check=False)
@@ -233,7 +237,7 @@ class TestCheckModeReportsDrift:
         targets = _targets(tmp_path)
         render.main([], targets=targets)
         rendered = targets.working_rules.read_text(encoding="utf-8")
-        _write(targets.rules_dir / "alpha.md", f"{_element('alpha', 'Alpha, edited.')}\n")
+        _write(targets.rules_dir / "alpha.md", f"{_body('alpha', 'Alpha, edited.')}\n")
         capsys.readouterr()
 
         code = render.main(["--check"], targets=targets)
@@ -276,7 +280,7 @@ class TestCheckModeReportsDrift:
         targets = _targets(tmp_path)
         render.main([], targets=targets)
         drifted = targets.rules_dir / "alpha.md"
-        _write(drifted, f"{_element('alpha', 'Alpha, edited in its own file.')}\n")
+        _write(drifted, f"{_body('alpha', 'Alpha, edited in its own file.')}\n")
         edited = drifted.read_text(encoding="utf-8")
         capsys.readouterr()
 
@@ -294,7 +298,7 @@ class TestCheckModeReportsDrift:
     ):
         targets = _committed(tmp_path)
         drifted = targets.rules_dir / "alpha.md"
-        _write(drifted, f"{_element('alpha', 'Alpha, edited.')}\n")
+        _write(drifted, f"{_body('alpha', 'Alpha, edited.')}\n")
         capsys.readouterr()
 
         code = render.main(["--check", "--reverse"], targets=targets)
@@ -324,7 +328,7 @@ class TestMain:
 
     def test_reverse_carries_a_render_edit_into_its_rules_file(self, tmp_path):
         targets = _targets(tmp_path)
-        edited = _element("alpha", "Alpha, edited in the render.")
+        edited = _body("alpha", "Alpha, edited in the render.")
         _write(
             targets.working_rules,
             "\n\n".join([render.TITLE, PREAMBLE, edited, ZETA]) + "\n",
@@ -365,9 +369,6 @@ class TestBuildWorkingRules:
         built = render.build_working_rules(claude_md, rules, ("alpha", "zeta"))
 
         assert built.split("\n")[0] == render.TITLE, "the render owns the one h1 and opens on it"
-        assert built.index("<hello") < built.index('<rule name="alpha">'), (
-            "CLAUDE.md is the preamble, so it sits between the title and the first rule"
-        )
 
     def test_each_rules_file_reaches_the_render_whole(self, tmp_path):
         claude_md, rules = self._tree(tmp_path)
@@ -377,7 +378,7 @@ class TestBuildWorkingRules:
         assert render.parse_reference(built).rules == (
             render.RuleSection("alpha", ALPHA),
             render.RuleSection("zeta", ZETA),
-        ), "a section of the render is the rules file that produced it, wrapper included"
+        ), "a section of the render is the rules file that produced it, marker included"
 
     def test_rules_follow_the_given_order(self, tmp_path):
         claude_md, rules = self._tree(tmp_path)
@@ -397,7 +398,7 @@ class TestBuildWorkingRules:
         assert "gated" not in built, "the render carries the rules that load every session"
 
     def test_sections_join_on_one_blank_line_and_the_file_ends_on_one_newline(self, tmp_path):
-        unlinked = '<hello from="user">\n~\n/~\n</hello>'
+        unlinked = "## Hello from the user\n\nNo link here to resolve."
         claude_md = _write(tmp_path / "CLAUDE.md", f"{unlinked}\n\n\n")
         rules = tmp_path / "rules"
         _write(rules / "alpha.md", f"{ALPHA}\n\n\n")
@@ -431,79 +432,188 @@ class TestBuildWorkingRules:
         with pytest.raises(ValueError, match="zeta"):
             render.build_working_rules(claude_md, rules, ("alpha",))
 
-    def test_a_rules_file_carrying_no_rule_element_reports_its_path(self, tmp_path):
+    def test_a_rules_file_carrying_no_rule_marker_reports_its_path(self, tmp_path):
         claude_md, rules = self._tree(tmp_path)
         _write(rules / "alpha.md", "# Alpha\n\nThis applies always.\n")
 
         with pytest.raises(ValueError, match=re.escape("alpha.md")):
             render.build_working_rules(claude_md, rules, ("alpha", "zeta"))
 
-    def test_a_name_attribute_disagreeing_with_the_stem_reports_both(self, tmp_path):
+    def test_a_rule_marker_disagreeing_with_the_stem_reports_both(self, tmp_path):
         claude_md, rules = self._tree(tmp_path)
-        _write(rules / "alpha.md", f"{_element('alfa', 'Alpha holds.')}\n")
+        _write(rules / "alpha.md", f"{_body('alfa', 'Alpha holds.')}\n")
 
         with pytest.raises(ValueError, match="alfa"):
             render.build_working_rules(claude_md, rules, ("alpha", "zeta"))
 
-    def test_a_claude_md_carrying_no_preamble_tag_reports_its_path(self, tmp_path):
+    def test_a_claude_md_carrying_a_rule_marker_reports_its_path(self, tmp_path):
         claude_md, rules = self._tree(tmp_path)
-        _write(claude_md, "# Stance\n\nWork here proceeds as play.\n")
+        _write(
+            claude_md,
+            "# Stance\n\n<!-- rule: stance -->\n\n## stance\n\nWork here proceeds as play.\n",
+        )
 
         with pytest.raises(ValueError, match=re.escape("CLAUDE.md")):
             render.build_working_rules(claude_md, rules, ("alpha", "zeta"))
 
+    def test_an_unclosed_fence_in_a_rules_file_stops_the_run(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+        _write(
+            rules / "alpha.md",
+            "<!-- rule: alpha -->\n\n## alpha\n\nA.\n\n```\nno closing fence\n",
+        )
+
+        with pytest.raises(ValueError, match=re.escape(str(rules / "alpha.md"))):
+            render.build_working_rules(claude_md, rules, ("alpha", "zeta"))
+
+    def test_a_body_carrying_a_second_rule_marker_stops_the_run_and_names_it(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+        _write(
+            rules / "alpha.md",
+            "<!-- rule: alpha -->\n\n## alpha\n\nA.\n\n<!-- rule: zeta -->\n\n## zeta\n\nZ.\n",
+        )
+
+        with pytest.raises(ValueError, match=re.escape(str(rules / "alpha.md"))):
+            render.build_working_rules(claude_md, rules, ("alpha", "zeta"))
+
+    def test_a_fenced_marker_is_no_second_marker(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+        _write(
+            rules / "alpha.md",
+            "<!-- rule: alpha -->\n\n## alpha\n\nA.\n\n```\n<!-- rule: zeta -->\n```\n",
+        )
+
+        built = render.build_working_rules(claude_md, rules, ("alpha", "zeta"))
+
+        assert [section.name for section in render.parse_reference(built).rules] == [
+            "alpha",
+            "zeta",
+        ], (
+            "a marker inside a fence is a template a model copies, not a second marker, so "
+            "a body carrying only that stays legal"
+        )
+
+    def test_the_render_survives_markdownlint_structurally(self, tmp_path):
+        claude_md, rules = self._tree(tmp_path)
+        built = render.build_working_rules(claude_md, rules, ("alpha", "zeta"))
+
+        lines = built.split("\n")
+        markers, _ = render._markers_outside_fences(built)
+        for index, _stem in markers:
+            assert lines[index - 1] == "", (
+                "a marker pressed against the line above it is what markdownlint rewrites"
+            )
+            assert lines[index + 1] == "", (
+                "a marker pressed against the ## heading below it is what markdownlint rewrites"
+            )
+
+        for first, second in itertools.pairwise(lines):
+            assert not (first == "" and second == ""), (
+                "a double blank line anywhere is what markdownlint rewrites"
+            )
+
 
 class TestParseReference:
     def test_the_preamble_runs_from_the_title_to_the_first_rule(self):
-        parsed = render.parse_reference(_reference(PREAMBLE, _element("alpha", "Alpha holds.")))
+        parsed = render.parse_reference(_reference(PREAMBLE, _body("alpha", "Alpha holds.")))
 
         assert parsed.preamble == PREAMBLE, (
             "CLAUDE.md is what sits between the title and the first rule, and the title is not it"
         )
 
-    def test_a_section_comes_back_as_the_element_it_was_built_from(self):
-        alpha = _element("alpha", "Alpha holds.")
+    def test_a_section_comes_back_as_the_body_it_was_built_from(self):
+        alpha = _body("alpha", "Alpha holds.")
 
-        parsed = render.parse_reference(
-            _reference(PREAMBLE, alpha, _element("zeta", "Zeta holds."))
-        )
+        parsed = render.parse_reference(_reference(PREAMBLE, alpha, _body("zeta", "Zeta holds.")))
 
         assert [section.name for section in parsed.rules] == ["alpha", "zeta"], (
-            "a rule is named by the attribute on its wrapper, which is the file stem"
+            "a rule is named by the stem in its marker, which is the file stem"
         )
         assert parsed.rules[0].text == alpha, (
-            "the section carries its wrapper, so the rules file it lands in is the section itself"
+            "the section carries its marker, so the rules file it lands in is the section itself"
         )
 
-    def test_a_rule_tag_inside_a_fence_opens_no_section(self):
-        zeta = _element("zeta", FENCED_RULE_TAG)
+    def test_a_rule_marker_inside_a_fence_opens_no_section(self):
+        zeta = _body("zeta", FENCED_RULE_MARKER)
 
-        parsed = render.parse_reference(_reference(PREAMBLE, _element("alpha", "A."), zeta))
+        parsed = render.parse_reference(_reference(PREAMBLE, _body("alpha", "A."), zeta))
 
         assert [section.name for section in parsed.rules] == ["alpha", "zeta"], (
-            "a fenced block is a template a model copies, and a tag inside it is text"
+            "a fenced block is a template a model copies, and a marker inside it is text"
         )
-        assert parsed.rules[1].text == zeta, "the fenced tag stays inside the rule carrying it"
+        assert parsed.rules[1].text == zeta, "the fenced marker stays inside the rule carrying it"
 
     def test_a_document_not_opening_on_the_title_raises(self):
-        document = _reference(PREAMBLE, _element("alpha", "A."), title="# Rules")
+        document = _reference(PREAMBLE, _body("alpha", "A."), title="# Rules")
 
         with pytest.raises(ValueError, match=re.escape(render.TITLE)):
             render.parse_reference(document)
 
-    def test_a_rule_that_never_closes_raises_naming_it(self):
-        with pytest.raises(ValueError, match="alpha"):
-            render.parse_reference(_reference(PREAMBLE, '<rule name="alpha">\n\nAlpha holds.'))
-
     def test_a_document_with_no_preamble_raises(self):
         with pytest.raises(ValueError):
-            render.parse_reference(_reference("", _element("alpha", "A.")))
+            render.parse_reference(_reference("", _body("alpha", "A.")))
 
-    def test_content_outside_every_rule_raises_quoting_it(self):
-        document = _reference(PREAMBLE, _element("alpha", "A."), "A loose sentence.")
+    def test_a_trailing_paragraph_after_the_last_section_lands_inside_it(self):
+        document = _reference(PREAMBLE, _body("alpha", "A."), "A loose sentence.")
 
-        with pytest.raises(ValueError, match="A loose sentence"):
+        parsed = render.parse_reference(document)
+
+        assert parsed.rules[-1].text.endswith("A loose sentence."), (
+            "every line after a marker belongs to the section above it, so a trailing "
+            "paragraph with no marker of its own comes back inside that rule's text"
+        )
+
+    def test_a_document_carrying_no_marker_parses_to_no_section(self):
+        parsed = render.parse_reference(_reference(PREAMBLE))
+
+        assert parsed.rules == () and parsed.preamble == PREAMBLE, (
+            "a render with a preamble and no marker carries no section, and reporting that "
+            "as an empty tuple is what lets the order check name every stem the render lost"
+        )
+
+    def test_a_marker_ends_the_section_above_it(self):
+        parsed = render.parse_reference(
+            _reference(PREAMBLE, _body("alpha", "A."), _body("zeta", "Z."))
+        )
+
+        assert render.marker_line("zeta") not in parsed.rules[0].text, (
+            "a section runs to the next marker, not past it, so the marker that opens the "
+            "next section never lands inside the one above it"
+        )
+
+    def test_a_parsed_section_carries_no_blank_line_from_the_join(self):
+        parsed = render.parse_reference(
+            _reference(PREAMBLE, _body("alpha", "A."), _body("zeta", "Z."))
+        )
+
+        assert not parsed.rules[0].text.endswith("\n") and not parsed.rules[1].text.startswith(
+            "\n"
+        ), (
+            "the blank line between sections belongs to the double-newline join, which the "
+            "closing </rule> used to absorb, so a parsed section neither opens nor closes on it"
+        )
+
+    def test_an_unclosed_fence_raises_in_parse_reference(self):
+        document = _reference(PREAMBLE, _body("alpha", "A.") + "\n\n```\nno closing fence")
+
+        with pytest.raises(ValueError, match=re.escape("```")):
             render.parse_reference(document)
+
+    def test_an_indented_marker_opens_no_section(self):
+        document = _reference(PREAMBLE, "  <!-- rule: zeta -->\n\n## zeta\n\nZ.")
+
+        assert render.parse_reference(document).rules == (), (
+            "matching is fullmatch against a whole line, so a marker indented off column 0 "
+            "opens no section, and a document whose only candidate is indented carries none"
+        )
+
+    def test_a_marker_with_trailing_text_opens_no_section(self):
+        document = _reference(PREAMBLE, "<!-- rule: zeta --> extra\n\n## zeta\n\nZ.")
+
+        assert render.parse_reference(document).rules == (), (
+            "matching is fullmatch against a whole line, so trailing text after the marker "
+            "opens no section, and a document whose only candidate carries it has none"
+        )
 
 
 class TestBuildReversePlan:
@@ -514,11 +624,11 @@ class TestBuildReversePlan:
         _write(aimed.working_rules, _reference(RENDERED_PREAMBLE, *sections))
         return {f.path: f.content for f in render.build_reverse_plan(aimed).files}
 
-    def test_each_rule_element_lands_in_its_own_rules_file(self, tmp_path):
+    def test_each_rule_body_lands_in_its_own_rules_file(self, tmp_path):
         files = self._files(_targets(tmp_path), ALPHA, ZETA)
 
         assert files[_targets(tmp_path).rules_dir / "alpha.md"] == f"{ALPHA}\n", (
-            "a rules file is the render's section for it, wrapper included and nothing above it"
+            "a rules file is the render's section for it, marker included and nothing above it"
         )
 
     def test_the_preamble_lands_in_claude_md_with_its_paths_restored(self, tmp_path):
@@ -544,7 +654,7 @@ class TestBuildReversePlan:
             "no generated key and no agent translation belongs to this direction"
         )
 
-    def test_a_rule_element_whose_file_does_not_exist_yet_gets_one(self, tmp_path):
+    def test_a_rule_body_whose_file_does_not_exist_yet_gets_one(self, tmp_path):
         targets = _targets(tmp_path)
         (targets.rules_dir / "zeta.md").unlink()
 
@@ -556,7 +666,7 @@ class TestBuildReversePlan:
 
     def test_a_rule_the_order_does_not_name_raises(self, tmp_path):
         with pytest.raises(ValueError, match="ghost"):
-            self._files(_targets(tmp_path), ALPHA, ZETA, _element("ghost", "Ghost holds."))
+            self._files(_targets(tmp_path), ALPHA, ZETA, _body("ghost", "Ghost holds."))
 
     def test_rules_out_of_the_order_sequence_raise(self, tmp_path):
         with pytest.raises(ValueError, match="zeta"):
@@ -567,7 +677,7 @@ class TestBuildReversePlan:
             self._files(
                 _targets(tmp_path),
                 ALPHA,
-                _element("gated", "G."),
+                _body("gated", "G."),
                 order=("alpha", "gated"),
             )
 
@@ -580,7 +690,7 @@ class TestBuildForwardPlan:
         by_path = {f.path: f.content for f in plan.files}
         written = by_path[targets.claude_home / "references" / "default" / "working-rules.md"]
 
-        assert "<stance>" in written and ALPHA in written and "gated" not in written, (
+        assert ALPHA in written and "gated" not in written, (
             "the render carries the preamble and every always-on rule, and no path-scoped one"
         )
 
@@ -733,7 +843,7 @@ class TestOneReferenceFilePerModel:
         targets = _targets(tmp_path)
         _write(
             targets.claude_home / projection.RULESETS_DIRNAME / "haiku" / "alpha.md",
-            f"{_element('alpha', 'Alpha holds, for haiku.')}\n",
+            f"{_body('alpha', 'Alpha holds, for haiku.')}\n",
         )
         return targets
 
@@ -774,7 +884,7 @@ class TestOneReferenceFilePerModel:
         targets = self._tree(tmp_path)
         _write(
             targets.claude_home / projection.RULESETS_DIRNAME / "haiku" / "unlisted.md",
-            f"{_element('unlisted', 'Unlisted holds.')}\n",
+            f"{_body('unlisted', 'Unlisted holds.')}\n",
         )
 
         with pytest.raises(ValueError, match="unlisted"):

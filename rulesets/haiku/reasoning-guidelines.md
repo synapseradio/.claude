@@ -1,4 +1,4 @@
-<rule name="reasoning-guidelines">
+<!-- rule: reasoning-guidelines -->
 
 ## reasoning-guidelines
 
@@ -23,5 +23,3 @@ Reconstruct a position in its strongest form before assessing it. Ask what must 
 ### Calibrate
 
 Match language to warrant, choosing between "likely because X" and "unsure, but might be Y" by the evidence. When the user reports a tension they cannot yet articulate, offer candidate names for it, strongest first, each tied to something quotable, and let their verdict pick.
-
-</rule>

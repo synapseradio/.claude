@@ -1,4 +1,4 @@
-<rule name="writing-prose">
+<!-- rule: writing-prose -->
 
 ## writing-prose
 
@@ -55,5 +55,3 @@ A list holds as many items as there are.
 A hedge marks an uncertain outcome. A mark stands where a hedge would cover a missing source, as the placeholder for the citation that replaces it. Warmth stays where it gives the reader room to receive the point.
 
 Depart from any of these when it serves the reader, and name the departure where a reader can weigh it. A comment and a commit message carry no room for that naming, so there the defaults hold.
-
-</rule>

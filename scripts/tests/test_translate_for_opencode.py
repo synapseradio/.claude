@@ -43,14 +43,14 @@ def _write(path: pathlib.Path, text: str) -> pathlib.Path:
     return path
 
 
-PREAMBLE = '<hello from="user">\n~\n/~\n</hello>\n\n<stance>\n\nPlay.\n\n</stance>'
+PREAMBLE = "# Preamble\n\nPlay."
 
 
-def _element(name: str, body: str) -> str:
-    return f'<rule name="{name}">\n\n{body}\n\n</rule>'
+def _body(stem: str, body: str) -> str:
+    return f"<!-- rule: {stem} -->\n\n## {stem}\n\n{body}"
 
 
-ALPHA = _element("alpha", "Alpha holds.")
+ALPHA = _body("alpha", "Alpha holds.")
 
 
 def _agent_source(model: str = "haiku", tools: str = "Read, Glob, Agent") -> str:
@@ -254,9 +254,7 @@ class TestCheckModeReportsDrift:
         opencode.main([], targets=targets)
         context_file = targets.opencode_home / "AGENTS.md"
         written = context_file.read_text(encoding="utf-8")
-        _write(
-            targets.claude_md, f"{PREAMBLE}\n\n<what_wins>\n\nNearness decides.\n\n</what_wins>\n"
-        )
+        _write(targets.claude_md, f"{PREAMBLE}\n\n## What wins\n\nNearness decides.\n")
         capsys.readouterr()
 
         code = opencode.main(["--check"], targets=targets)
@@ -439,7 +437,6 @@ class TestBuildPlan:
         by_path = {f.path: f.content for f in plan.files}
         written = by_path[targets.opencode_home / "AGENTS.md"]
 
-        assert "<stance>" in written, "opencode reads the CLAUDE.md preamble from its context file"
         assert ALPHA not in written, (
             "opencode reads the rules through `instructions`, so repeating them here would "
             "double them"

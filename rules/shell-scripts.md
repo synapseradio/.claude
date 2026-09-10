@@ -4,7 +4,7 @@ paths:
   - "**/{.bashrc,.bash_profile,.zshrc,.profile,.zshenv,.bash_aliases}"
 ---
 
-<rule name="shell-scripts">
+<!-- rule: shell-scripts -->
 
 ## shell-scripts
 
@@ -15,5 +15,3 @@ A shell script runs whatever its text expands to. The shell re-expands text by d
 Read `~/.claude/references/bash-style-guide.md` in full before writing or reviewing bash, then follow it. Write every script in bash. Open each executable on `#!/bin/bash`.
 
 Where the file is a script, name it in kebab-case. Otherwise, take the name the guide gives.
-
-</rule>

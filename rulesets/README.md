@@ -112,8 +112,13 @@ this directory.
 | `resolve.py delivery-check --session ID` | Compare a session's delivery records against each record's composition. Exits nonzero on any difference. |
 
 `check` reports every illegal state rather than halting at the first: an unreachable body, a
-composed stem with no body, a missing tier key, a tier mixing the wildcard and explicit forms, and
-an exclusion naming a stem no directory holds.
+composed stem with no body, a missing tier key, a tier mixing the wildcard and explicit forms, an
+exclusion naming a stem no directory holds, and a body whose first line is not its own naming line.
+
+That last one guards the delivered text. Delivery reads each body verbatim, so the
+`<!-- rule: stem -->` line that tells a reader where one rule ends and the next begins is the
+file's own first line. The forward render enforces it for every tier too, and that runs at
+pre-push, while delivery is a runtime hook.
 
 ## The two checks
 

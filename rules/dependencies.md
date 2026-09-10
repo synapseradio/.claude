@@ -9,7 +9,7 @@ paths:
   - "**/{mix.exs,mix.lock,pubspec.yaml,pubspec.lock,stack.yaml,cabal.project,*.cabal,elm.json}"
 ---
 
-<rule name="dependencies">
+<!-- rule: dependencies -->
 
 ## dependencies
 
@@ -22,5 +22,3 @@ Read the manager off the lockfile: bun for bun.lock or bun.lockb, pnpm for pnpm-
 Where the repo carries its own dependency docs, read them first and follow them over this rule. Detect the manager. Run the manager's own add or remove command, `bun add <name>` for one. Install and audit. Where a version constraint is required, write the version the lockfile resolved in config: a workspace catalog, an overrides block, or the package's own package.json edited as text.
 
 Never edit a lockfile by hand. Never pin a version on the CLI, whether as `<name>@<version>` or through a flag that hand-picks a version.
-
-</rule>

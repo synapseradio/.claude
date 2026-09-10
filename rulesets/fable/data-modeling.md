@@ -1,4 +1,4 @@
-<rule name="data-modeling">
+<!-- rule: data-modeling -->
 
 ## data-modeling
 
@@ -23,5 +23,3 @@ Let types propagate obligations. Link producers and consumers through the type d
 Buy precision where it deletes a panic. Strengthen the type at the site of a "should never happen" throw, and keep the simplest representation at every other site. An email address stays a plain string until code inspects its structure. Test it by asking whether this precision deletes a panic.
 
 Move obligations to whoever can discharge them. Use a required parameter over an optional value, and parse loose input into a precise type once at a boundary and pass it inward. A non-empty list gets parsed at the API edge, where a check returning only a verdict makes every downstream site check again. Test it by asking which side of this boundary can handle the failure.
-
-</rule>

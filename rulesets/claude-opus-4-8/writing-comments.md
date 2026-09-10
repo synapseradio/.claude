@@ -1,4 +1,4 @@
-<rule name="writing-comments">
+<!-- rule: writing-comments -->
 
 ## writing-comments
 
@@ -35,5 +35,3 @@ Never write a comment saying that a condition always holds, never occurs, or mus
 ### Editing beside a comment
 
 Where an invariant is worth enforcing, write the test that checks it. Where that test cannot land in this change, write a TODO naming the test and an owner or ticket, leaving what the test will state to the test. Where an edit leaves a nearby comment restating its neighbors, contradicting the code, or recounting a path the code left behind, remove it in the same edit. Where a comment holding an invariant sits inside the change's scope, remove it, moving what it holds into a type, a test, or a name wherever one of them can check it.
-
-</rule>

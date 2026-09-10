@@ -77,7 +77,12 @@ def state_dir() -> pathlib.Path:
 
 
 def naming_line(stem: str) -> str:
-    """The line that precedes a body, naming the stem it carries."""
+    """The line that opens a body, naming the stem it carries.
+
+    A body on disk carries this as its first line, so delivery reads it
+    verbatim and prefixes nothing. `unresolved` is the one stem with no file
+    behind it, and its text gets this line composed for it.
+    """
 
     return f"<!-- rule: {stem} -->"
 
@@ -106,10 +111,7 @@ def default_ruleset(root: pathlib.Path | str | None = None) -> Ruleset | NoRules
     if not bodies:
         return NoRuleset(reason=f"no rule bodies under {directory}")
 
-    sections = [
-        f"{naming_line(body.stem)}\n{body.read_text(encoding='utf-8').strip('\n')}\n"
-        for body in bodies
-    ]
+    sections = [f"{body.read_text(encoding='utf-8').strip('\n')}\n" for body in bodies]
 
     return Ruleset(
         tier=DEFAULT_TIER,
@@ -294,6 +296,21 @@ def compose(tier: str, root: pathlib.Path | str | None = None) -> Composition:
     return Composition(tier, stems, body_paths, findings)
 
 
+def _unnamed(stem: str, path: pathlib.Path) -> Finding | None:
+    """A finding where the body does not open on its own naming line.
+
+    Delivery reads a body verbatim, so the naming line the reader needs to
+    tell one rule from the next is the file's own first line. The forward
+    render enforces this for every tier, and it runs at pre-push, while
+    delivery is a runtime hook. This is what catches it before then.
+    """
+
+    first = path.read_text(encoding="utf-8").split("\n", 1)[0]
+    if first == naming_line(stem):
+        return None
+    return Finding("unnamed-body", f"the body at {path} does not open on {naming_line(stem)}")
+
+
 def report(root: pathlib.Path | str | None = None) -> tuple[Finding, ...]:
     """Every illegal state the manifest and the layout carry."""
 
@@ -303,6 +320,7 @@ def report(root: pathlib.Path | str | None = None) -> tuple[Finding, ...]:
         return (Finding("manifest", manifest.message),)
 
     findings: tuple[Finding, ...] = ()
+    seen: set[pathlib.Path] = set()
     for tier in all_tiers(base):
         composed = compose(tier, base)
         findings += composed.findings
@@ -314,6 +332,13 @@ def report(root: pathlib.Path | str | None = None) -> tuple[Finding, ...]:
             for stem in tier_stems(base, tier)
             if stem not in composed.stems
         )
+        for stem, path in composed.body_paths.items():
+            if path in seen:
+                continue
+            seen.add(path)
+            unnamed = _unnamed(stem, path)
+            if unnamed is not None:
+                findings += (unnamed,)
     return findings
 
 
@@ -674,9 +699,7 @@ def tier_ruleset(tier: str, root: pathlib.Path | str | None = None) -> Ruleset |
     for stem in composed.stems:
         path = composed.body_paths.get(stem)
         if path and path.is_file():
-            sections.append(
-                f"{naming_line(stem)}\n{path.read_text(encoding='utf-8').strip('\n')}\n"
-            )
+            sections.append(f"{path.read_text(encoding='utf-8').strip('\n')}\n")
     if not sections:
         return NoRuleset(reason=f"tier {tier} composed no readable bodies")
     return Ruleset(tier=tier, stems=composed.stems, text="\n".join(sections))

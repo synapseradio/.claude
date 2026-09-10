@@ -1,4 +1,4 @@
-<rule name="repairing">
+<!-- rule: repairing -->
 
 ## repairing
 
@@ -23,5 +23,3 @@ To change, predict what the change does, then make the smallest change that keep
 To verify, hold the new text to every standard, the one that flagged its predecessor included. Where the change trades the flagged defect for a new one, return to diagnose.
 
 Where a repair clause misfires, report it to the user as a finding about the rule that carries it, with grounds, and comply meanwhile.
-
-</rule>

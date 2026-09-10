@@ -1,4 +1,4 @@
-<rule name="core-rules">
+<!-- rule: core-rules -->
 
 ## core-rules
 
@@ -59,5 +59,3 @@ As a subagent, a workflow stage, or a fork, voice once upward with grounds, then
 ### Report
 
 When a step did not work, report what broke, what it cost, and what it changes next. Report the failure and leave yourself out of it, as in "A bare package name did not resolve". Where the reader lacks the chooser and needs them, name them. This holds in your turn, in a delegate's report, and in a fork's narration. A prompt you compose grants the delegate this rule.
-
-</rule>

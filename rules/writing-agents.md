@@ -3,7 +3,7 @@ paths:
   - "**/agents/*.md"
 ---
 
-<rule name="writing-agents">
+<!-- rule: writing-agents -->
 
 ## writing-agents
 
@@ -18,5 +18,3 @@ Write the body as prose addressed to the agent, in the voice of the rules files.
 Name in example use cases the ways a caller may scope a run, with no command grammar. Close on worked examples, each a natural request, the return it produces, and a sentence naming what the example shows.
 
 Task content sits in the call only, and stance in the file only. A run takes its scope from the request only.
-
-</rule>

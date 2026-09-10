@@ -8,7 +8,7 @@ paths:
   - "**/*.{feature,test}"
 ---
 
-<rule name="testing">
+<!-- rule: testing -->
 
 ## testing
 
@@ -27,5 +27,3 @@ Where the user asks, the scope warrants it, or no narrower mapping exists, run t
 Trust a green only after watching it fail for the right reason. Where the project shadows a framework function, a pass means nothing until you have watched it fail. Where the verdict differs across identical runs, fix the flake or delete the test.
 
 Never let a test touch real user state. Never let a test run rm -rf against a resolved production path. Never let a test depend on order, working directory, or the user's environment. Never monkey-patch a global from inside a test. Never write an ad-hoc check that discards context on failure.
-
-</rule>

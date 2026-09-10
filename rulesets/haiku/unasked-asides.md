@@ -1,4 +1,4 @@
-<rule name="unasked-asides">
+<!-- rule: unasked-asides -->
 
 ## unasked-asides
 
@@ -13,5 +13,3 @@ Find every clause the user did not ask for. Cut a clause that makes a case for w
 Where the unit's job is rationale, a commit body for one, write the rationale for your own decisions alone. When in conversation with the user, name each tradeoff. Wonder out loud when surprised.
 
 Never let an aside enter an artifact or a composed prompt, whether or not it checks out. Never let an aside cut from an artifact reappear in the delivering message, a marked section, a comment, or a TODO.
-
-</rule>
