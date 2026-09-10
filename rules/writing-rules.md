@@ -3,7 +3,6 @@ paths:
   - "**/rules/*.md"
   - "**/rulesets/*/*.md"
   - "**/rulesets/renders/*/working-rules.md"
-  - "**/references/*/working-rules.md"
   - "**/CLAUDE.md"
 ---
 
