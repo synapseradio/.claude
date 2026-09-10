@@ -8,10 +8,8 @@ paths:
 
 ## shell-scripts
 
-When you are writing or reviewing a shell script, or a shell startup file, optimize for a script that runs what its writer named and reads like every other script here.
+For every shell script and every shell startup file you write or review, optimize for a script that runs what its writer named and reads like every other script here.
 
-A shell script runs whatever its text expands to. The shell re-expands text by default, so a value takes quotes and a list takes an array. A command reports failure in a status nobody must read, so a failed step runs on unchecked. Past 100 lines, or control flow beyond the straightforward, another language repays it. One guide settles every script's conventions. Consistency resolves an ambiguous choice and never justifies an outdated one, so kebab-case script names here stand against the guide's `make_template, never make-template`. The guide distills Google's own, published at https://google.github.io/styleguide/shellguide.html.
+Read `~/.claude/references/bash-style-guide.md` in full before writing or reviewing bash. Follow it. Hold the guide as the one source of every script's conventions. Treat the guide as a distillation of Google's, published at https://google.github.io/styleguide/shellguide.html. Write every script in bash. Open each executable on `#!/bin/bash`. Quote every value the shell would otherwise re-expand. Hold every list in an array. Check every step's status, in the form the guide gives. Where a script needs a data structure beyond a string, an array, or an associative array, or control flow beyond a branch, a loop, and a function call, write it in another language.
 
-Read `~/.claude/references/bash-style-guide.md` in full before writing or reviewing bash, then follow it. Write every script in bash. Open each executable on `#!/bin/bash`.
-
-Where the file is a script, name it in kebab-case. Otherwise, take the name the guide gives.
+Where the file is a script, name it in kebab-case. Otherwise, take the name the guide gives. Resolve an ambiguous choice toward the convention the surrounding scripts hold. Never keep an outdated convention on consistency's account.
