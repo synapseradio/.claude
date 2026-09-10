@@ -4,10 +4,11 @@ This plugin delivers everything below the divider into your session, and its
 hooks then check that you cleared the marks it teaches. Text above the
 divider stays on disk.
 
-The body below is byte-identical to the corpus entry the model-scoped-rulesets
-plugin delivers. With both installed a session receives the rule twice, and
-identical text makes that harmless; two wordings of one rule in one context
-would not be. Edit them together or not at all.
+The body below is this rule's one home. The rulesets corpus under
+`~/.claude/rulesets/` composes no `epistemic-marks` stem, so a session
+receives the rule from this plugin alone and never twice. The body keeps the
+form the corpus rules take, which `rules/writing-rules.md` in that root
+prescribes: a universal opener, then instruction only.
 
 A plugin update replaces this file, so keep your own edits elsewhere. There
 is no way to switch this delivery off on its own: `disableAllHooks` silences

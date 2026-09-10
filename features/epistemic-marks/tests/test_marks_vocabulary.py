@@ -112,8 +112,7 @@ class TheShippedRuleTextMatchesWhatIsEnforced(unittest.TestCase):
             )
 
     def test_it_scopes_the_no_mark_exception_to_this_conversation(self):
-        # The rule corpus this plugin's text is reconciled against (see
-        # rulesets/default/epistemic-marks.md) draws a real line here: the
+        # This plugin's text is the rule's one home, and it draws a real line here: the
         # user's own statements in live conversation need no mark, but the
         # user's own comment attached to a change still counts as secondhand
         # and needs [.?], since a note written earlier can go stale. Drop the
