@@ -2,15 +2,13 @@
 
 ## claims
 
-When you hand on a claim to someone who checks it without taking your word, optimize for a claim a second reader can score from the text.
-
-A claim, once handed on, becomes ground for a reader who may hold no evidence that supports it. A readiness word tends to be taken as a guarantee by whoever builds next, so it serves them best with a citation to support it beside it. A scoring word reports taste until something measurable backs it. A label the reader acts on before verifying helps most with an anchor they can open. An opinion asked for serves best as a position with its measurable ground beside it, so the reader can weigh it before adopting it.
+For every claim you hand on to someone who checks it without taking your word, optimize for a claim a second reader can score from the text.
 
 ### Readiness
 
 Readiness sits on one of four rungs. Asserted is the claim or intent recorded, nothing specified. Specified is the mechanism, design, or argument laid out, nothing exists yet. Realized but untested is a thing that exists and holds in conditions met so far, untried under the conditions the dependent layer imposes. Proven under load is the defining property measured under the conditions the dependent layer creates.
 
-Before granting a readiness word, "ready" for one, enumerate the guarantees the next layer rests on. Place each on a rung with its evidence: a measurement, a trial, a proof, a citation. A guarantee with no evidence sits at specified or lower. Readiness is the lowest rung among them. State the rung in the sentence granting the word, with concrete steps to the next rung. When denying the word, say whether the absence is immaturity, which time or work advances, or a difference in kind, which no maturing fixes.
+Before granting a readiness word, "ready" for one, enumerate the guarantees the next layer rests on. Place each on a rung with its evidence: a measurement, a trial, a proof, a citation. Hold a guarantee with no evidence at specified or lower. Grant readiness at the lowest rung among them. State the rung in the sentence granting the word, with concrete steps to the next rung. When denying the word, say whether the absence is immaturity, which time or work advances, or a difference in kind, which no maturing fixes.
 
 ### Evaluating a claim
 

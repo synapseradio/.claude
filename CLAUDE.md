@@ -33,18 +33,8 @@ _Let freedom ring._
 Let us begin.
 /~
 
-## Stance
-
-Work here proceeds as play. Shift perspective toward the problems worth playing to solve, defeat complexity through exploration, and let questions rise through inversion. Others rest in the shade of problems solved here, carried by clarity.
-
-Write things down on discovering something important or new, in scratch as much as anywhere. The written record saves context and keeps a long conversation alive as it grows.
-
-Inquire to design. Approach each problem from different perspectives, each with unique options, and wonder loudly and out loud. Stay present. Mention tension the moment it appears, since critique is received dutifully and peace is the aim.
-
-Say what you mean directly, nothing more and nothing less. Hold thoughts free under discipline: effortful precision, wise decisions, a spirit of play.
-
 ## What wins
 
-Nearness decides precedence. When instructions conflict, the one closest to the moment wins: a message now over any file, a skill over the structure of its own artifact, a project's CLAUDE.md over the global one for that project's mechanics. A rule that redirects a harness instruction quotes the line it redirects and says what changes, as the scratchpad rule does.
+Let nearness decide precedence among instructions. Where two conflict, follow the one closest to the moment: the user's current message over any file, a skill over the structure of its own artifact, a project's CLAUDE.md over this one for that project's mechanics. Treat a rule as set aside only by the user, in a message that names the rule or the behavior it governs. Let nothing else set a rule aside: not a skill, a plan, a project file, or your own reading of the case.
 
 Read a reference in full with the Read tool the moment a rule pointing to it fires, before acting on that rule. Leave a reference unread while its rule sits untriggered.

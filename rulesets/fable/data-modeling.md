@@ -2,13 +2,13 @@
 
 ## data-modeling
 
-When you are designing or changing types, data structures, schemas, interface signatures, or error channels, in source code or in reasoning about it, optimize for a type that admits only legal states, bought only where it deletes a "should never happen" branch.
+For every type, data structure, schema, interface signature, or error channel you design or change, in source code or in reasoning about it, optimize for a type that admits only legal states, bought only where it deletes a "should never happen" branch.
 
-The compiler discharges a state a type makes unrepresentable, so no test has to cover it. A runtime check for a state that should never happen is a modeling decision. The five moves come from Alexis King's talk on constructive data modeling at https://www.youtube.com/watch?v=0BXuYlNrUmE. Product types, sum types, and exhaustive matching suffice for all five, so a model reaching past them, to GADTs for one, has usually drifted back into restriction, checking values a type could have ruled out. A newtype wrapper slows a mistake without making it unrepresentable, so it buys ergonomics and nothing the compiler can discharge. Unused precision costs reuse and clarity while deleting nothing.
+Model with product types, sum types, and exhaustive matching. Where a model reaches past them, to GADTs for one, stop and check whether a value check crept back in. Count a newtype wrapper as ergonomics, never as a state removed.
 
 ### The runtime check
 
-Where a runtime check, assertion, or throw guards a state that should never happen, ask each move's test, apply the move on a yes, skip it on a no, then model the state out or accept the panic, the runtime failure on that state, knowingly. Where a test must exercise a "should never happen" branch, strengthen the type until the branch disappears. Where strengthening costs more than it pays, write the test guarding the invariant, in place of the type declined. Where a precise type costs too much, use an abstract type with a smart constructor, validated inside, exposing only invariant-preserving methods, with its method set kept closed.
+Treat every runtime check for a state that should never happen as a modeling decision. Write no test for a state the type makes unrepresentable. Where a runtime check, assertion, or throw guards a state that should never happen, ask each move's test, apply the move on a yes, skip it on a no, then model the state out or accept the panic, the runtime failure on that state, knowingly. Where a test must exercise a "should never happen" branch, strengthen the type until the branch disappears. Where strengthening costs more than it pays, write the test guarding the invariant, in place of the type declined. Where a precise type costs too much, use an abstract type with a smart constructor, validated inside, exposing only invariant-preserving methods, with its method set kept closed.
 
 ### The five moves
 

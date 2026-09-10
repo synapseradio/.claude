@@ -2,9 +2,7 @@
 
 ## git-commit
 
-When you are committing, writing a commit message, or moving between branches, optimize for a commit whose message says what the diff does and why, and whose hooks ran.
-
-A commit outlives the session that made it, so its message is what a later reader has of the reasons. A hook skipped with `--no-verify` leaves history the repo's own checks never accepted. A rejected attempt amended hides the cause under a fresh attempt. A planning artifact in the staged set reaches history without anyone deciding it should.
+For every commit, commit message, and move between branches, optimize for a commit whose message says what the diff does and why, and whose hooks ran.
 
 ### The message
 

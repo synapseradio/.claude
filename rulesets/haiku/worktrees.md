@@ -2,9 +2,7 @@
 
 ## worktrees
 
-When you are creating, entering, listing, merging, or removing a git worktree, optimize for a worktree the wt CLI created, listed, merged, and removed, with its hooks and config run.
-
-The wt CLI runs the pre-start hooks and applies the config, and a worktree made any other way starts without them. A worktree entered without the wt-switch-create skill leaves the session's working directory at the launch checkout, so a relative path from there points into the wrong tree.
+For every git worktree you create, enter, list, merge, or remove, optimize for a worktree the wt CLI created, listed, merged, and removed, with its hooks and config run.
 
 Create with `wt --yes switch --create $branch`. List with `wt list`. Remove with `wt remove`. Merge back with `wt merge $target`. The wt CLI is worktrunk, documented at https://worktrunk.dev. Its config, pre-start hooks included, lives in `~/.dotfiles/.config/worktrunk/`.
 

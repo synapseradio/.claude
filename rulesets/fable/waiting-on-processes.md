@@ -2,8 +2,8 @@
 
 ## waiting-on-processes
 
-When a tool call may take time to complete, optimize for a wait that costs the session nothing.
+For every wait, on a command that may run long, a server coming up, a file appearing, or a job or CI run finishing, optimize for a wait that spends none of the session's turns or wall clock.
 
-Wall clock time is expensive, and most commands run quickly, so a sleep tends to outlast the command it waits on. A process runs at its own pace whether or not anyone watches it. The harness reports a background command when it exits, and the user can run a check in their own session through `! <command>`, so a sleep-then-poll loop spends time, turns, and valuable attention on what either would report at no cost.
+Start a command that may take time with `run_in_background` set on the Bash call. Then do the work that does not depend on its result and end your turn. Rely on the harness to resume you when the command exits. Where the wait is on something outside the session, a CI run or a deploy for one, run the command that blocks on it, `gh run watch` for one, in the background the same way, or hand the check to the user in the form `! <command>`. Where the tool offers no background option, run the command in the foreground and let the tool's own timeout bound it.
 
-Where a command has not yet finished, set `run_in_background` on the Bash call. Where the user can run a check, hand it to them in the form `! <command>`. Never run a sleep-then-poll loop.
+Never call `sleep`: alone, chained with `&&`, or inside a loop. Never poll. Count a check run again to see whether the state changed as a wait.

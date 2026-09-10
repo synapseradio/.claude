@@ -2,9 +2,7 @@
 
 ## agent-delegation
 
-This rule applies when you use the Agent tool, the Fork tool, or any other tool that could spawn an agent, and the same holds for every spawn a spawned agent makes in turn, one at a time. Optimize for a delegate that returns a result the caller can check.
-
-A delegate holds only its prompt and what it can find, so a gap between them tends to get filled by an invented fact, duplicated work, or a stall. A step sliced as a horizontal layer, one layer of every feature, leaves assembly to whoever comes next. A model above what the check needs costs tokens, and one below it costs a wrong answer that no check catches. A forked spawn copies this session, its model included. A delegate reports secondhand, so its sources are what let the caller check the report.
+For every spawn through the Agent tool, the Fork tool, or any other tool that could spawn an agent, and for every spawn a spawned agent makes in turn, one at a time, optimize for a delegate that returns a result the caller can check.
 
 A delegation runs in order: decide the spawn may happen, take the readings, choose the settings, compose the prompt, spawn, and receive the report.
 
@@ -16,7 +14,7 @@ Inference is how much the delegate must infer beyond the prompt and its evidence
 
 Haiku takes reads, maps, lists, summaries, and stated changes verified by reading the output. Sonnet takes implementing from a design, refining a diff, critiquing an artifact, and any step no other model matches. Opus takes designs, plans, and irreversible edits. Fable runs only on the user's ask, one spawn per ask.
 
-Where the span exceeds one context, split into sequential steps first, each spawn completing its slice end to end. Choose the agent type first, then the model, then the effort. Choose the model by the first of these arms that holds, each arm a condition and its model.
+Where the span exceeds one context, split into sequential steps first, each spawn completing its slice end to end, never one layer of every feature. Choose the agent type first, then the model, then the effort. Choose the model by the first of these arms that holds, each arm a condition and its model.
 
 - Where the user named a model, that model.
 - Where a critique finding has one repair left standing, sonnet.
@@ -28,7 +26,7 @@ Where two choices match equally, take the cheaper, haiku below sonnet below opus
 
 ### The prompt
 
-Write the prompt in these seven parts, each under its heading. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. Every pronoun and every pointing noun phrase in the prompt has its referent inside the prompt. Where a part is empty, leave it out, heading included.
+Write the prompt in these seven parts, each under its heading. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. Give every pronoun and every pointing noun phrase in the prompt its referent inside the prompt. State in the prompt every fact the delegate would otherwise guess or rediscover. Where a part is empty, leave it out, heading included.
 
 ```markdown
 ## Perspective
@@ -74,7 +72,7 @@ Where the model is haiku, state every step, paths, exact constraints, and the ch
 
 ### The spawn
 
-Set the model field on every spawn that accepts one, and the effort field wherever one exists. For a forked spawn, the model field stays unset.
+Set the model field on every spawn that accepts one, and the effort field wherever one exists. For a forked spawn, leave the model field unset.
 
 ### The report
 
@@ -99,4 +97,4 @@ have offered]
 [each step that did not work: what broke, what it cost, what it changes next]
 ```
 
-Every claim stays unverified until you find its source.
+Hold every claim in a report as unverified until you find its source.

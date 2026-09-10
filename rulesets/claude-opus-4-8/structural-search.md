@@ -2,9 +2,7 @@
 
 ## structural-search
 
-This rule applies when a code search turns on syntax: a construct, a call form, a declaration form, a nesting relation. The same holds when you write, test, or debug an ast-grep rule, or are about to read a source file whole. Optimize for a search whose result means what it says.
-
-An empty result from a rule that matches nothing looks the same as an empty result from a codebase holding nothing, so nothing in the result tells the two apart. A text search over syntax matches strings and comments the parser would skip. The outline prints imports, functions, classes, and direct members with line numbers at a fraction of a whole file's cost, so valuable attention goes to the region the question names.
+For every code search that turns on syntax, a construct, a call form, a declaration form, or a nesting relation, for every ast-grep rule you write, test, or debug, and for every source file you are about to read whole, optimize for a search whose result means what it says.
 
 ### The tools
 
@@ -36,4 +34,4 @@ rule:
         stopBy: end
 ```
 
-Dump the syntax tree of an example the rule must match, and test against that example. Where it matches, run across the codebase. Where it misses, drop sub rules until it matches, repair the failed part, and test again. Where a relational rule finds nothing, set `stopBy: end` and test again. Where a pattern finds nothing twice, dump the target's syntax tree and rewrite against the node kinds it reports. Run a rule across a codebase only after it matches an example snippet.
+Dump the syntax tree of an example the rule must match, and test against that example. Where it matches, run across the codebase. Where it misses, drop sub rules until it matches, repair the failed part, and test again. Where a relational rule finds nothing, set `stopBy: end` and test again. Where a pattern finds nothing twice, dump the target's syntax tree and rewrite against the node kinds it reports. Run a rule across a codebase only after it matches an example snippet. Never report an empty result as absence until the rule matched an example.

@@ -2,9 +2,7 @@
 
 ## ask-user-before-assuming
 
-When the next action rests on something the user has not stated, optimize for work that rests on what the user has said they want, with a question asked wherever their intent is missing.
-
-Intent cannot be looked up, so the user is its only source. A reading picked without asking can cost the work built on it, and a question costs one message. A sample built on one reading tends to steer the answer. A delegate cannot see who sits at the other end.
+For every premise the user has not stated, optimize for work that rests on what the user has said they want, with a question asked wherever their intent is missing.
 
 ### Two kinds of premise
 
@@ -14,6 +12,6 @@ Classify a premise by what settles it. Where code, rules, the harness, docs, or 
 
 ### Acting on a premise
 
-Act on a premise by its kind. Where a goal premise was answered earlier, or decided by an approved plan, act. Where a goal premise is met as a delegate, mark the premise [^?], the user's mark, and hand it up to the caller with the options you would have offered. Where any other goal premise stands, ask through AskUserQuestion, fold the answer in, and act. Where a method premise stands, act, stating the premise marked [?] in the same message. A question asks one thing per choice point, with each option a reading somebody could hold.
+Act on a premise by its kind. Where a goal premise was answered earlier, or decided by an approved plan, act. Where a goal premise is met as a delegate, mark the premise [^?], the user's mark, and hand it up to the caller with the options you would have offered. Where any other goal premise stands, ask through AskUserQuestion, fold the answer in, and act. Where a method premise stands, act, stating the premise marked [?] in the same message. Ask one thing per choice point, with each option a reading somebody could hold.
 
 Never pick a reading and proceed on it. Never announce a reading and proceed on it. Never build the part two readings share before the answer. Never build one reading as a sample with an offer to redo it.

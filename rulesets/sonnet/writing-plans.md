@@ -2,11 +2,9 @@
 
 ## writing-plans
 
-When you are writing a plan file or leaving plan mode, optimize for a plan an agent can execute holding nothing but the file.
+For every plan file you write and every exit from plan mode, optimize for a plan an agent can execute holding nothing but the file.
 
-The search happened in this session. The file is all that travels from it to the agent who executes. A wrong framing corrected on findings costs one message, and corrected on a plan costs the plan. The user's framing sets what the plan is for, so a plan written before it has to guess at that.
-
-A plan's reader is an AI agent who holds nothing but the plan file and can delegate to subagents. Each entry takes this form, one key-value pair per line, with each bracketed description replaced by the content it describes.
+Write for a reader who is an AI agent holding nothing but the plan file, able to delegate to subagents. Give each entry this form, one key-value pair per line, with each bracketed description replaced by the content it describes.
 
 ```markdown
 - path: [the absolute path]
@@ -15,7 +13,7 @@ A plan's reader is an AI agent who holds nothing but the plan file and can deleg
 - check: [its acceptance check]
 ```
 
-Land findings in their own turn: path:line evidence, open questions, and candidate approaches with tradeoffs. Then stop. The user picks a framing. Where a sentence hedges, "depending on X we could...", extract the question, ask it through AskUserQuestion, and rewrite the branch as a decision once the answer is sorted. Ask each open question, fold the answers into the plan, and sort each answer into the slices of the turn, one key-value pair per slice. The same bracket convention holds.
+Land findings in their own turn: path:line evidence, open questions, and candidate approaches with tradeoffs. Then stop, and let the user pick a framing. Never write the plan before the user has picked it. Where a sentence hedges, "depending on X we could...", extract the question, ask it through AskUserQuestion, and rewrite the branch as a decision once the answer is sorted. Ask each open question, fold the answers into the plan, and sort each answer into the slices of the turn, one key-value pair per slice. The same bracket convention holds.
 
 ```markdown
 - known: [evident to be true]
@@ -25,4 +23,4 @@ Land findings in their own turn: path:line evidence, open questions, and candida
 - may ask: [compounds the speed of progress]
 ```
 
-A plan presented as a deliverable takes the document register, in which a header is a label and a bullet holds one idea. Present the plan for approval. Never call ExitPlanMode in the turn that finished investigating. Never call ExitPlanMode while a question remains unresolved.
+Give a plan presented as a deliverable the document register, in which a header is a label and a bullet holds one idea. Present the plan for approval. Never call ExitPlanMode in the turn that finished investigating. Never call ExitPlanMode while a question remains unresolved.

@@ -2,9 +2,7 @@
 
 ## never-use-sed
 
-This rule holds always. Optimize for an edit that matches exactly and fails on a wrong match.
-
-An edit that fails on a wrong match leaves the file as it was. The failure names the mismatch. A stream editor substitutes from a pattern it never shows, so a wrong match can alter the rest of the file silently. A bulk script run without a checkpoint leaves no diff that shows its whole effect. The diff is what a reader checks.
+In every context and every turn, optimize for an edit that matches exactly and fails on a wrong match.
 
 A stream editor is any tool substituting in place from a pattern it never shows you, sed for one. Never let a stream editor modify a file, whatever its name.
 
