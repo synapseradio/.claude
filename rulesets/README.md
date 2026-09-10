@@ -1,9 +1,13 @@
 # rulesets
 
 Nothing under this directory auto-loads. The harness eagerly loads `~/.claude/rules/`, and these
-bodies live outside it, so a session's user rules arrive through a hook that runs
-`scripts/rulesets/resolve.py`. A hook that fails to run leaves the session with no rules at all.
-That is the one consequence to hold before changing anything here.
+bodies live outside it, so a session's user rules arrive through a hook the model-scoped-rulesets
+plugin ships. A hook that fails to run leaves the session with no rules at all. That is the one
+consequence to hold before changing anything here.
+
+The plugin carries the mechanism and no rules. This directory carries the rules: the bodies, the
+manifest that composes them, the order the renders follow, and the renders. The plugin finds it at
+`--root`, then `RULESETS_ROOT`, then `~/.claude/rulesets`, which is here.
 
 ## Tiers
 
@@ -36,8 +40,8 @@ and its own directory would sit unread until someone found the variable.
 
 ## manifest.yaml
 
-The manifest carries one top-level key, `tiers`, whose value maps each tier name to that tier's
-entry. An entry takes one of two forms and never both.
+The manifest carries two top-level keys. `tiers` maps each tier name to that tier's entry, and an
+entry takes one of two forms and never both.
 
 - `include: "*"` composes every stem under `default/`. An optional `exclude` list of stems removes
   each one it names.
@@ -46,6 +50,12 @@ entry. An entry takes one of two forms and never both.
 All five family keys are required, so a family tier cannot appear by accident. The manifest is also
 what admits a model tier: a directory with no key here composes nothing, and `check` reports every
 body in it as unreachable.
+
+`order` lists the stems of `default/` in the sequence the renders follow. It is optional, and a
+manifest carrying none renders its stems sorted. Adding an always-on body adds its stem to that
+list in the same change, and `check` reports an `order-mismatch` where the list and the directory
+disagree. Delivery composes in sorted order whatever the list says, so the list orders the renders
+alone.
 
 ## models.yaml
 
@@ -66,8 +76,7 @@ To give Opus 4.8 rules of its own:
 2. Add a `claude-opus-4-8:` key under `tiers:` in `manifest.yaml`, at `include: "*"`.
 3. Put the bodies that differ in that directory. Every stem with no file there resolves to
    `default/`.
-4. Confirm it resolves:
-   `python3.14 ../scripts/rulesets/resolve.py inspect --tier claude-opus-4-8`.
+4. Confirm it resolves: `resolve.py inspect --tier claude-opus-4-8`.
 
 Neither step touches `models.yaml`, and neither touches any code.
 
@@ -78,34 +87,38 @@ To give `haiku` its own `writing-prose`:
 1. Copy the body: `cp default/writing-prose.md haiku/writing-prose.md`.
 2. Edit `haiku/writing-prose.md`. Leave the manifest alone, since `haiku` already composes
    `writing-prose` under `include: "*"`.
-3. Confirm the layout is legal: `python3.14 ../scripts/rulesets/resolve.py check`.
-4. Confirm the override resolves:
-   `python3.14 ../scripts/rulesets/resolve.py inspect --tier haiku` prints `writing-prose` against a
-   path under `haiku/`.
+3. Confirm the layout is legal: `resolve.py check`.
+4. Confirm the override resolves: `resolve.py inspect --tier haiku` prints `writing-prose` against
+   a path under `haiku/`.
 
 Deleting `haiku/writing-prose.md` resolves the stem back to `default/writing-prose.md`, and
 `inspect` prints that path.
 
-## The reference file
+## The renders
 
-`references/$tier/working-rules.md` is a generated read of one tier: the preamble from `CLAUDE.md`
-followed by the bodies that tier's own directory holds, in the order the `WORKING_RULES_ORDER` tuple
-in `scripts/agent-configs/projection.py` names. Nothing loads it, and no lookup resolves through it.
-A tier reading a stem from `default/` shows no section for that stem, so the render says which
-bodies the directory itself carries.
+`renders/$tier/working-rules.md` is a generated read of one tier: the preamble from `CLAUDE.md`
+followed by every body that tier delivers, in the order `manifest.yaml`'s `order` list names.
+Nothing loads it, and no lookup resolves through it. The render composes the way delivery does, so
+a stem the tier holds no body for shows the section it reaches in `default/`, and a stem the tier
+overrides shows the tier's own. The render is what the model reads, not the diff against `default/`.
 
-`scripts/agent-configs/render-working-rules.py` writes one render per tier directory. `--model NAME`
-scopes a run to the directory it names, `--check` reports drift and writes nothing, and `--reverse`
-splits `default/`'s render back into `CLAUDE.md` and the bodies under `default/`.
+`resolve.py render` writes one render per tier directory. `--model NAME` scopes a run to the
+directory it names, `--check` reports drift and writes nothing, and `--reverse` splits `default/`'s
+render back into `CLAUDE.md` and the bodies under `default/`. A run refuses to write over a target
+carrying changes git has not seen.
 
 ## Commands
 
-Every command takes `--root DIR` to point its reads at an alternate rulesets root, defaulting to
-this directory.
+Every command takes `--root DIR` to point its reads at an alternate corpus, defaulting to
+`~/.claude/rulesets`, which is this directory. The commands live at
+`resolve.py` under the installed plugin's `lib/rulesets/`.
 
 | Command | What it does |
 | --- | --- |
 | `resolve.py inspect --tier TIER` | Print each composed stem with its body path. Exits nonzero on any illegal state. |
+| `resolve.py init` | Write a legal and empty corpus: the five tier directories, a manifest composing each, and the family prefixes. Refuses a root that already holds a manifest. |
+| `resolve.py migrate-rules` | Move the frontmatter-less bodies of `~/.claude/rules/` into `default/`, leaving the path-scoped ones where the harness reads them. `--dry-run` prints the moves and makes none, and `--undo` reverses the last run. |
+| `resolve.py render` | Write one render per tier, or check them with `--check`, or split `default/`'s back with `--reverse`. |
 | `resolve.py check` | Run `inspect` over every tier the manifest names, model tiers included. Prints nothing on a legal layout and exits nonzero otherwise. |
 | `resolve.py deliver` | Read a hook payload on stdin, dispatch on its `hook_event_name`, and emit hook JSON on stdout. |
 | `resolve.py load-check --session ID` | Compare a session's load records against the manifest. Exits nonzero where any manifest stem auto-loaded. |
@@ -113,19 +126,23 @@ this directory.
 
 `check` reports every illegal state rather than halting at the first: an unreachable body, a
 composed stem with no body, a missing tier key, a tier mixing the wildcard and explicit forms, an
-exclusion naming a stem no directory holds, and a body whose first line is not its own naming line.
+exclusion naming a stem no directory holds, an order that disagrees with `default/`, a directory
+that is neither a tier nor reserved, and a body whose first line is a rule marker naming a
+different stem.
 
-That last one guards the delivered text. Delivery reads each body verbatim, so the
-`<!-- rule: stem -->` line that tells a reader where one rule ends and the next begins is the
-file's own first line. The forward render enforces it for every tier too, and that runs at
-pre-push, while delivery is a runtime hook.
+That last one guards the delivered text. The `<!-- rule: stem -->` line is what tells a reader
+where one rule ends and the next begins, and the stem is the filename, so delivery derives the line
+for a body carrying none and reads a body carrying its own verbatim. A body carrying someone
+else's names the wrong rule in every context it reaches.
 
 ## The two checks
 
 `load-check` catches a regression that would put these bodies back into every model's context. It
-exempts a CLAUDE.md at any scope, a nested CLAUDE.md, and a path-scoped rule loaded on a
-`path_glob_match` reason. An `include` reason earns no exemption, because a `@path` import of a
-manifest stem loads that stem everywhere.
+exempts by stem and not by load reason: a file named `CLAUDE.md` at any scope is exempt, and so is
+any file whose stem no tier composes, which is how a path-scoped rule under `~/.claude/rules/`
+passes. A file whose stem the manifest names is reported whatever reason loaded it, since a `@path`
+import of a manifest stem puts that stem into every model's context exactly as an eager load
+would.
 
 `delivery-check` confirms each delivery carried the stems its tier composes. It treats a superseded
 switch record as undelivered, since the harness drops a model switch's output where another switch
@@ -134,7 +151,9 @@ follows before the next request.
 ## Where the state lives
 
 `RULESETS_STATE_DIR` overrides the state directory, and `~/.claude/.tmp/rulesets/` is the default.
-`CLAUDE_CONFIG_DIR` overrides the configuration directory that every other path derives from.
+`CLAUDE_CONFIG_DIR` overrides the configuration directory that both the state and this corpus
+derive from. The records sit outside the corpus, so nothing under version control here grows one
+file per session.
 
 - `audit/<session_id>/session.jsonl` holds a session's own load and delivery records.
 - `audit/<session_id>/<agent_id>.jsonl` holds one delegate's records. Records partition by writer

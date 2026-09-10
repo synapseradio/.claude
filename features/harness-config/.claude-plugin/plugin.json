@@ -1,0 +1,22 @@
+{
+  "author": {
+    "name": "synapseradio"
+  },
+  "description": "Configure the Claude Code harness and switch provider profiles without a credential ever entering the repository. Ships the policy floor and its alignment machinery, a profile format whose only credential field is a path to a helper script, activation as a bounded write, value-free diagnostics, and guards that verify every settings variant stays out of git.",
+  "keywords": [
+    "settings",
+    "configuration",
+    "hooks",
+    "permissions",
+    "provider",
+    "model-selection",
+    "profiles",
+    "alignment",
+    "api-key-helper",
+    "secrets-hygiene",
+    "gitignore",
+    "defense-in-depth"
+  ],
+  "name": "harness-config",
+  "version": "1.0.0"
+}

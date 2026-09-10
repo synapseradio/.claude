@@ -9,6 +9,13 @@
 !lefthook.yml
 !.ruff.toml
 !.markdownlint-cli2.jsonc
+!.shellcheckrc
+
+!.claude-plugin/
+!.claude-plugin/**
+
+!features/
+!features/**
 
 !agents/
 !agents/**
@@ -27,8 +34,33 @@
 !skills/update-claude-settings/
 !skills/update-claude-settings/**
 
-# Bytecode under scripts/
+# Bytecode, wherever Python runs from
 scripts/**/__pycache__/
 scripts/**/*.pyc
+features/**/__pycache__/
+features/**/*.pyc
+.pytest_cache/
 # Thinkies persistence data (local, not committed)
 .thinkies/
+
+# A settings variant carries one provider's endpoint, its model pins, and
+# whichever credential source that provider authenticates with, so no variant
+# enters git. These rules sit last on purpose: a later rule wins, so they hold
+# against every allowlist above, !features/** and !scripts/** included, and a
+# variant dropped inside an allowlisted directory stays ignored.
+# settings.base.json is the one tracked settings file, re-admitted right after.
+# Verify with: features/harness-config/scripts/harness-guard.sh ignore
+settings.json
+settings.*.json
+!settings.base.json
+
+# A provider profile names an endpoint and the path to a credential helper.
+# Profiles live in the plugin's persistent data directory, outside any tracked
+# path; this rule holds if one is ever written inside the repository.
+**/profiles/*.json
+
+# An api key helper reads the credential. Only the placeholder template is
+# tracked, and its name ends in .template.sh.
+*api-key*.sh
+*api_key*.sh
+!*api-key*.template.sh

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "bash-guards",
+  "displayName": "Bash guards",
+  "version": "1.0.0",
+  "author": {
+    "name": "synapseradio"
+  },
+  "description": "Four PreToolUse guards on the Bash tool. Three deny outright: printing a secret-shaped environment variable, reading a secret-shaped path, and editing a file in place with a stream editor. The fourth asks before curl sends a body or a file to a host outside loopback.",
+  "keywords": [
+    "security",
+    "hooks",
+    "pretooluse",
+    "secrets",
+    "bash"
+  ]
+}

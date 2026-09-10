@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "claude-root",
+  "description": "The capabilities this ~/.claude root has accumulated, each packaged as a plugin under features/ so its boundary is visible and it installs on its own.",
+  "owner": {
+    "name": "synapseradio"
+  },
+  "defaults": {
+    "author": {
+      "name": "synapseradio"
+    },
+    "category": "development"
+  },
+  "plugins": [
+    {
+      "name": "model-scoped-rulesets",
+      "source": "./features/model-scoped-rulesets",
+      "version": "1.0.0",
+      "description": "Deliver a different set of user rules to each model Claude Code runs, through hooks, with a per-session audit of what loaded and what was delivered."
+    },
+    {
+      "name": "epistemic-marks",
+      "source": "./features/epistemic-marks",
+      "version": "1.0.0",
+      "description": "Blocks a reply, a delegate report, or an open turn that still carries an unverified epistemic mark, and hands back the resolution each mark takes. Teaches the marks and enforces them as one unit: install it and it works, with nothing to configure and nothing to write."
+    },
+    {
+      "name": "bash-guards",
+      "source": "./features/bash-guards",
+      "version": "1.0.0",
+      "description": "Four PreToolUse guards on the Bash tool. Three deny outright: printing a secret-shaped environment variable, reading a secret-shaped path, and editing a file in place with a stream editor. The fourth asks before curl sends a body or a file to a host outside loopback."
+    },
+    {
+      "name": "harness-config",
+      "source": "./features/harness-config",
+      "version": "1.0.0",
+      "description": "Configure the Claude Code harness and switch provider profiles without a credential ever entering the repository. Ships the policy floor and its alignment machinery, a profile format whose only credential field is a path to a helper script, activation as a bounded write, value-free diagnostics, and guards that verify every settings variant stays out of git.",
+      "keywords": [
+        "settings",
+        "configuration",
+        "hooks",
+        "permissions",
+        "provider",
+        "model-selection",
+        "profiles",
+        "alignment",
+        "api-key-helper",
+        "secrets-hygiene",
+        "gitignore",
+        "defense-in-depth"
+      ]
+    }
+  ]
+}

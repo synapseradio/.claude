@@ -1,0 +1,9 @@
+# A script here sources its libraries through ${SCRIPT_DIR} and carries a
+# `# shellcheck source=` directive naming the target. shellcheck follows such a
+# directive only with external sources enabled, and lefthook's pre-commit job
+# passes the staged files alone, so a library left unstaged raises SC1091 on a
+# script that resolves it correctly at run time.
+external-sources=true
+
+# Resolve a ${SCRIPT_DIR}-style source relative to the sourcing script.
+source-path=SCRIPTDIR

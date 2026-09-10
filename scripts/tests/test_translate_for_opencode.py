@@ -34,7 +34,10 @@ def _load(name: str, filename: str):
 
 opencode = _load("translate_for_opencode_test", "translate-for-opencode.py")
 pi = _load("translate_for_pi_test_via_opencode", "translate-for-pi.py")
-render = _load("render_working_rules_test_via_opencode", "render-working-rules.py")
+
+# `projection` puts the plugin's library on `sys.path`, which is how the
+# renderer this scenario runs beside the two jobs is reached.
+from rulesets import render  # noqa: E402  (projection must be imported first)
 
 
 def _write(path: pathlib.Path, text: str) -> pathlib.Path:
@@ -68,10 +71,7 @@ def _agent_source(model: str = "haiku", tools: str = "Read, Glob, Agent") -> str
 def _targets(tmp_path: pathlib.Path, *, model: str = "haiku") -> projection.Targets:
     claude_home = tmp_path / "claude"
     _write(claude_home / "CLAUDE.md", f"{PREAMBLE}\n")
-    _write(
-        claude_home / projection.RULESETS_DIRNAME / projection.DEFAULT_MODEL / "alpha.md",
-        f"{ALPHA}\n",
-    )
+    _write(claude_home / "rulesets" / "default" / "alpha.md", f"{ALPHA}\n")
     _write(claude_home / "agents" / "scout.md", _agent_source(model=model))
     _write(claude_home / "plugins" / "installed_plugins.json", json.dumps({"plugins": {}}))
     _write(claude_home / "settings.json", json.dumps({"enabledPlugins": {}}))
@@ -79,7 +79,7 @@ def _targets(tmp_path: pathlib.Path, *, model: str = "haiku") -> projection.Targ
         claude_home=claude_home,
         pi_home=tmp_path / "pi",
         opencode_home=tmp_path / "opencode",
-        working_rules_order=("alpha",),
+        corpus_root=claude_home / "rulesets",
     )
 
 
@@ -125,10 +125,15 @@ class TestOneJobFails:
 
     def test_opencode_failure_leaves_the_render_and_pi_outputs_intact(self, tmp_path):
         targets = _targets(tmp_path, model="an-unmapped-model")
+        rendering = render.RenderTargets(
+            config_root=targets.claude_home,
+            corpus_root=targets.corpus_root,
+            order=("alpha",),
+        )
 
-        assert render.main([], targets=targets) == 0
+        assert render.main([], targets=rendering) == 0
         assert pi.main([], targets=targets) == 0
-        render_before = targets.working_rules.read_text(encoding="utf-8")
+        render_before = rendering.render_path.read_text(encoding="utf-8")
         pi_agents_before = (targets.pi_home / "agents" / "scout.md").read_text(encoding="utf-8")
 
         with pytest.raises(KeyError, match="an-unmapped-model"):
@@ -137,7 +142,7 @@ class TestOneJobFails:
         assert not (targets.opencode_home / "agents" / "scout.md").exists(), (
             "a job that fails while building its plan must write none of its own outputs"
         )
-        assert targets.working_rules.read_text(encoding="utf-8") == render_before, (
+        assert rendering.render_path.read_text(encoding="utf-8") == render_before, (
             "the opencode job's failure must leave the working-rules render untouched"
         )
         assert (targets.pi_home / "agents" / "scout.md").read_text(

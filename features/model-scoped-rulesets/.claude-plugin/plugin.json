@@ -1,0 +1,10 @@
+{
+  "name": "model-scoped-rulesets",
+  "version": "1.0.0",
+  "description": "Deliver a different set of user rules to each model Claude Code runs, through hooks, with a per-session audit of what loaded and what was delivered.",
+  "keywords": [
+    "rules",
+    "hooks",
+    "models"
+  ]
+}

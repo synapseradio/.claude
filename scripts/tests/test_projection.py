@@ -31,10 +31,14 @@ def _load(name: str, filename: str):
     return module
 
 
-# The two jobs the "Two jobs read one source" scenario names, each loaded the
-# way its own test file loads it.
-render = _load("render_working_rules_via_projection_test", "render-working-rules.py")
+# The two jobs the "Two jobs read one source" scenario names. `projection`
+# puts the plugin's library on `sys.path`, which is how the renderer, now
+# owned by the plugin that owns the rule bodies, is reached.
 pi = _load("translate_for_pi_via_projection_test", "translate-for-pi.py")
+
+from rulesets.documents import ordered_rules  # noqa: E402
+
+from rulesets import render  # noqa: E402  (projection must be imported first)
 
 
 def _write(path: pathlib.Path, text: str) -> pathlib.Path:
@@ -81,7 +85,7 @@ class TestRulesSourceIsNamedOnce:
         rules_dir = tmp_path / "not-called-rules"
         _write(rules_dir / "alpha.md", f"{ALPHA}\n")
 
-        rendered = render.build_working_rules(claude_md, rules_dir, ("alpha",))
+        rendered = render.build_working_rules(claude_md, ordered_rules(rules_dir, ("alpha",)))
         agents_markdown = pi.build_agents_markdown(claude_md, rules_dir)
 
         assert "Alpha holds." in rendered, (
@@ -100,28 +104,26 @@ class TestRulesSourceIsNamedOnce:
 
         tree_b = tmp_path / "b"
         _write(tree_b / "CLAUDE.md", f"{PREAMBLE}\n")
-        _write(tree_b / "rulesets" / "haiku" / "alpha.md", f"{ALPHA}\n")
+        _write(tree_b / "elsewhere" / "default" / "alpha.md", f"{ALPHA}\n")
 
         targets_a = projection.Targets(
             claude_home=tree_a,
             pi_home=tmp_path / "pi-a",
             opencode_home=tmp_path / "opencode-a",
-            rulesets_dirname="some-other-root",
-            working_rules_order=("alpha",),
+            corpus_root=tree_a / "some-other-root",
         )
         targets_b = projection.Targets(
             claude_home=tree_b,
             pi_home=tmp_path / "pi-b",
             opencode_home=tmp_path / "opencode-b",
-            model="haiku",
-            working_rules_order=("alpha",),
+            corpus_root=tree_b / "elsewhere",
         )
 
         rendered_a = render.build_working_rules(
-            targets_a.claude_md, targets_a.rules_dir, targets_a.working_rules_order
+            targets_a.claude_md, ordered_rules(targets_a.rules_dir, ("alpha",))
         )
         rendered_b = render.build_working_rules(
-            targets_b.claude_md, targets_b.rules_dir, targets_b.working_rules_order
+            targets_b.claude_md, ordered_rules(targets_b.rules_dir, ("alpha",))
         )
         assert rendered_a == rendered_b, (
             "moving the named directory to a different path holding the same bodies "
@@ -373,11 +375,8 @@ class TestDefaultTargets:
             "syncs that worktree and needs no argument naming it"
         )
 
-    def test_the_render_resolves_under_that_checkout(self):
-        assert (
-            projection.DEFAULT_TARGETS.working_rules
-            == REPO_ROOT / "references" / "default" / "working-rules.md"
-        ), (
-            "the render this repository's pre-push gate compares is the one tracked beside the "
-            "sources, under the name of the model whose bodies produced it"
+    def test_the_corpus_resolves_under_the_checkout_that_owns_it(self):
+        assert projection.DEFAULT_TARGETS.rules_dir == REPO_ROOT / "rulesets" / "default", (
+            "every job reads the always-on bodies through this one property, so a job naming "
+            "a rules directory of its own would read a corpus the others do not"
         )

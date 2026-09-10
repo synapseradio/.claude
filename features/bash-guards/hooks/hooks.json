@@ -1,0 +1,46 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-secret-leaks.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the command for a secret it would print"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-secret-file-reads.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the command for a secret-shaped path"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-inplace-stream-edit.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the command for an in-place stream edit"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-remote-data-send.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking where the command would send data"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-secret-file-reads.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the path for a secret-shaped location"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -45,7 +45,7 @@ ALPHA = _body("alpha", "Alpha holds.")
 def _targets(tmp_path: pathlib.Path) -> projection.Targets:
     claude_home = tmp_path / "claude"
     _write(claude_home / "CLAUDE.md", f"{PREAMBLE}\n")
-    rules = claude_home / projection.RULESETS_DIRNAME / projection.DEFAULT_MODEL
+    rules = claude_home / "rulesets" / "default"
     _write(rules / "alpha.md", f"{ALPHA}\n")
     _write(
         rules / "gated.md",
@@ -55,7 +55,7 @@ def _targets(tmp_path: pathlib.Path) -> projection.Targets:
         claude_home=claude_home,
         pi_home=tmp_path / "pi",
         opencode_home=tmp_path / "opencode",
-        working_rules_order=("alpha",),
+        corpus_root=claude_home / "rulesets",
     )
 
 

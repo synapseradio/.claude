@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "name": "REPLACE-WITH-THE-PROFILE-NAME",
+  "describe": "One line naming the provider this profile reaches.",
+  "settings": {
+    "apiKeyHelper": "~/.config/REPLACE-WITH-YOUR-PROVIDER/api-key.sh",
+    "env": {
+      "ANTHROPIC_BASE_URL": "https://REPLACE.WITH.YOUR.ENDPOINT/anthropic",
+      "ANTHROPIC_DEFAULT_OPUS_MODEL": "REPLACE-WITH-THE-OPUS-TIER-MODEL-ID",
+      "ANTHROPIC_DEFAULT_OPUS_MODEL_NAME": "Replace With The Picker Label",
+      "ANTHROPIC_DEFAULT_SONNET_MODEL": "REPLACE-WITH-THE-SONNET-TIER-MODEL-ID",
+      "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME": "Replace With The Picker Label",
+      "ANTHROPIC_DEFAULT_HAIKU_MODEL": "REPLACE-WITH-THE-HAIKU-TIER-MODEL-ID",
+      "ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME": "Replace With The Picker Label",
+      "ANTHROPIC_DEFAULT_FABLE_MODEL": "REPLACE-WITH-THE-FABLE-TIER-MODEL-ID",
+      "ANTHROPIC_DEFAULT_FABLE_MODEL_NAME": "Replace With The Picker Label"
+    }
+  }
+}

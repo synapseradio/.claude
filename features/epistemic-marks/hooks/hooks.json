@@ -1,0 +1,50 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver-rule.py\"",
+            "timeout": 5,
+            "statusMessage": "Teaching this session the epistemic marks"
+          }
+        ]
+      }
+    ],
+    "PostToolBatch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/verify-marks.py\" --batch",
+            "timeout": 5,
+            "statusMessage": "Scanning the open turn for unverified marks"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/verify-marks.py\"",
+            "statusMessage": "Scanning reply for unverified marks"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/verify-marks.py\" --delegate",
+            "statusMessage": "Scanning delegate report for unverified marks"
+          }
+        ]
+      }
+    ]
+  }
+}

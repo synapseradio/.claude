@@ -56,10 +56,12 @@ pre-push:
         python3.14 scripts/agent-configs/translate-for-pi.py --check
         python3.14 scripts/agent-configs/translate-for-opencode.py --check
         python3.14 scripts/agent-configs/own-opencode-key.py --check
-        python3.14 scripts/agent-configs/render-working-rules.py --check || {
-          echo "A reference file under references/ no longer matches its model's bodies."
+        python3.14 features/model-scoped-rulesets/lib/rulesets/resolve.py check --root rulesets
+        python3.14 features/model-scoped-rulesets/lib/rulesets/resolve.py render --check \
+          --root rulesets --config-root . || {
+          echo "A render under rulesets/renders/ no longer matches its tier's bodies."
           echo "The check named each one above."
-          echo "Run python3.14 scripts/agent-configs/render-working-rules.py,"
+          echo "Run the same command without --check,"
           echo "commit the renders it writes, then push again."
           exit 1
         }

@@ -25,3 +25,39 @@ tiers:
     include: "*"
   claude-opus-4-8:
     include: "*"
+
+# The sequence a reader meets these rules in, which the renders follow. It is
+# this corpus's own: nothing in the plugin's code names a stem, and a corpus
+# stating no order renders its stems sorted instead.
+#
+# Delivery composes in sorted order regardless, so this list orders the
+# renders alone. Adding an always-on body adds its stem here in the same
+# change, and `check` reports an `order-mismatch` where the two disagree.
+order:
+  - core-rules
+  - reasoning-guidelines
+  - inquiring
+  - ask-user-before-assuming
+  - asking-questions
+  - scope-is-user-decision
+  - claims
+  - epistemic-marks
+  - writing-prose
+  - writing-comments
+  - unasked-asides
+  - writing-code
+  - data-modeling
+  - repairing
+  - debugging
+  - search-tools
+  - reading-docs
+  - structural-search
+  - never-use-sed
+  - shell-quoting
+  - waiting-on-processes
+  - git-commit
+  - worktrees
+  - agent-delegation
+  - writing-plans
+  - scratchpad
+  - persistent-memory

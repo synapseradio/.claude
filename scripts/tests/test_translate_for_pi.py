@@ -21,6 +21,10 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts" / "agent-configs"))
 import projection  # noqa: E402  (path must be set before this import)
 
+# `projection` puts the plugin's library on `sys.path`, which is how the
+# renderer this scenario's render path is derived from is reached.
+from rulesets import render  # noqa: E402  (projection must be imported first)
+
 _PI_PATH = REPO_ROOT / "scripts" / "agent-configs" / "translate-for-pi.py"
 _spec = importlib.util.spec_from_file_location("translate_for_pi_test", _PI_PATH)
 assert _spec is not None and _spec.loader is not None
@@ -58,7 +62,7 @@ AGENT_SOURCE = (
 def _targets(tmp_path: pathlib.Path) -> projection.Targets:
     claude_home = tmp_path / "claude"
     _write(claude_home / "CLAUDE.md", f"{PREAMBLE}\n")
-    rules = claude_home / projection.RULESETS_DIRNAME / projection.DEFAULT_MODEL
+    rules = claude_home / "rulesets" / "default"
     _write(rules / "alpha.md", f"{ALPHA}\n")
     _write(
         rules / "gated.md",
@@ -71,7 +75,7 @@ def _targets(tmp_path: pathlib.Path) -> projection.Targets:
         claude_home=claude_home,
         pi_home=tmp_path / "pi",
         opencode_home=tmp_path / "opencode",
-        working_rules_order=("alpha",),
+        corpus_root=claude_home / "rulesets",
     )
 
 
@@ -134,10 +138,16 @@ class TestRunningOneJobAlone:
 
     def test_pi_alone_leaves_the_render_opencode_and_the_key_untouched(self, tmp_path):
         targets = _targets(tmp_path)
+        rendering = render.RenderTargets(
+            config_root=targets.claude_home,
+            corpus_root=targets.corpus_root,
+            order=("alpha",),
+        )
+        render_path = rendering.render_path
         working_rules_before = "a render this job must never touch\n"
         opencode_agents_before = "an opencode context file this job must never touch\n"
         opencode_config_before = json.dumps({"instructions": ["untouched"]}, indent=2) + "\n"
-        _write(targets.working_rules, working_rules_before)
+        _write(render_path, working_rules_before)
         _write(targets.opencode_home / "AGENTS.md", opencode_agents_before)
         _write(targets.opencode_config, opencode_config_before)
 
@@ -147,7 +157,7 @@ class TestRunningOneJobAlone:
         assert (targets.pi_home / "agents" / "scout.md").is_file(), (
             "the pi job must translate every agent definition into its own directory"
         )
-        assert targets.working_rules.read_text(encoding="utf-8") == working_rules_before, (
+        assert render_path.read_text(encoding="utf-8") == working_rules_before, (
             "a job invoked alone must leave the working-rules render untouched"
         )
         assert (targets.opencode_home / "AGENTS.md").read_text(
