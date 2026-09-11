@@ -12,6 +12,18 @@
         ]
       }
     ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver-rule.py\"",
+            "timeout": 5,
+            "statusMessage": "Teaching this agent the epistemic marks"
+          }
+        ]
+      }
+    ],
     "PostToolBatch": [
       {
         "hooks": [

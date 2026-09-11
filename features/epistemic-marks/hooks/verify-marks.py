@@ -2,13 +2,16 @@
 """The verification pass for epistemic marks, run from three hook events.
 
 Bare from Stop, blocking the stop once and asking for each mark's
-resolution. With --delegate from SubagentStop, where every relay-class mark rides up
-to the caller instead of reaching AskUserQuestion. With --batch from
-PostToolBatch, which never blocks and reports a line once per session.
+resolution. With --delegate from SubagentStop, where a relaying mark is left
+standing for the delegate's own report to carry, since nothing this hook
+returns reaches the caller. With --batch from PostToolBatch, which never
+blocks and reports a line once per session.
 
-A mark surviving a blocked pass reaches the user through systemMessage, since
-stderr from a hook exiting 0 goes to the debug log alone, per
-https://docs.claude.com/en/docs/claude-code/hooks
+A mark surviving a top-level pass reaches the user through systemMessage,
+since stderr from a hook exiting 0 goes to the debug log alone. The same
+finding reaches a delegate through additionalContext, which is what a
+SubagentStop hook has that carries text to the agent that just stopped, per
+https://code.claude.com/docs/en/hooks
 
 epistemic_marks/marks.py holds the vocabulary. The rule text teaching it ships under
 rule-text/ and reaches a session through hooks/deliver-rule.py.
@@ -63,13 +66,28 @@ def run_stop(payload, delegate):
     # The reply stands from here, so the citation check runs only on a pass
     # that is not about to replace it, and its finding rides along with
     # whatever else this pass has to report.
+    # additionalContext continues the subagent where systemMessage did not,
+    # which is the point on a first pass: the delegate rewrites its report
+    # with the question surfaced. On a second pass it is a loop, so the relay
+    # group is withheld once stop_hook_active is set, per the Stop decision
+    # control this event inherits at https://code.claude.com/docs/en/hooks
     notice = build_notice(
         lines_by_mark,
         mentions,
-        delegate,
         unopened(blocks, transcript),
+        carried if not payload.get("stop_hook_active") else None,
     )
-    if notice:
+    if notice and delegate:
+        json.dump(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "SubagentStop",
+                    "additionalContext": notice,
+                }
+            },
+            sys.stdout,
+        )
+    elif notice:
         json.dump({"systemMessage": notice}, sys.stdout)
     sys.exit(0)
 

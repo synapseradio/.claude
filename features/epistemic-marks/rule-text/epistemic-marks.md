@@ -4,11 +4,11 @@ This plugin delivers everything below the divider into your session, and its
 hooks then check that you cleared the marks it teaches. Text above the
 divider stays on disk.
 
-The body below is this rule's one home. The rulesets corpus under
-`~/.claude/rulesets/` composes no `epistemic-marks` stem, so a session
-receives the rule from this plugin alone and never twice. The body keeps the
-form the corpus rules take, which `rules/writing-rules.md` in that root
-prescribes: a universal opener, then instruction only.
+The body below is this rule's one home. This plugin ships it, delivers it,
+and enforces it, and it reaches for no copy anywhere else. The body keeps the
+prose form the rule corpus uses — a universal opener, then instruction only —
+so a session that receives rules from elsewhere reads this one in the same
+voice.
 
 A plugin update replaces this file, so keep your own edits elsewhere. There
 is no way to switch this delivery off on its own: `disableAllHooks` silences

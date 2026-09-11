@@ -19,6 +19,11 @@ from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = PLUGIN_ROOT / "hooks" / "verify-marks.py"
+sys.path.insert(0, str(PLUGIN_ROOT))
+
+# The group headings, imported so a test asserting what rides up anchors on
+# the heading itself rather than on a copy of its wording.
+from epistemic_marks.messages import RELAY_HEADING, SURVIVING_HEADING  # noqa: E402
 
 
 def entry(kind, content):
@@ -134,7 +139,7 @@ class VerifyMarksStopHook(unittest.TestCase):
         self.assertEqual(result["decision"], "block")
         self.assertIn("The delegate reports it migrated [.?].", result["reason"])
 
-    def test_caret_mark_blocks_and_hands_back_the_ask_user_question_resolution(self):
+    def test_caret_mark_blocks_and_hands_back_the_callers_resolution(self):
         result = self.decision(
             {
                 "stop_hook_active": False,
@@ -145,8 +150,29 @@ class VerifyMarksStopHook(unittest.TestCase):
         self.assertEqual(result["decision"], "block")
         reason = result["reason"]
         self.assertIn("I read the request as covering staging only [^?].", reason)
-        self.assertIn("AskUserQuestion", reason)
-        self.assertIn("[^?]", reason.split("\n", 1)[0], "the opening line names the mark it found")
+        self.assertIn(
+            "to your caller",
+            reason,
+            "the caller's mark asks its question one level up",
+        )
+        self.assertNotIn(
+            "AskUserQuestion",
+            reason,
+            "the reader runs on a machine whose toolset this plugin cannot know",
+        )
+
+    def test_the_reason_heads_each_group_with_the_glyph_its_lines_carry(self):
+        result = self.decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": "I read the request as covering staging only [^?].",
+            }
+        )
+        self.assertIn(
+            "\n[^?]\n",
+            result["reason"],
+            "a glyph reaches the output as the heading over the lines carrying it",
+        )
 
     def test_reason_groups_lines_under_the_mark_each_one_carries(self):
         result = self.decision(
@@ -159,8 +185,8 @@ class VerifyMarksStopHook(unittest.TestCase):
             }
         )
         reason = result["reason"]
-        source_heading = reason.index("Marked [?]")
-        question_heading = reason.index("Marked [^?]")
+        source_heading = reason.index("\n[?]\n")
+        question_heading = reason.index("\n[^?]\n")
         source_line = reason.index("No other team depends on this endpoint [?].")
         question_line = reason.index("I read the request as covering staging only [^?].")
         self.assertLess(source_heading, source_line)
@@ -304,18 +330,6 @@ class VerifyMarksStopHook(unittest.TestCase):
         self.assertEqual(result["decision"], "block")
         self.assertIn("came back from a delegate", result["reason"])
 
-    def test_the_reason_offers_the_referral_resolution_beside_the_verification_one(self):
-        result = self.decision(
-            {"stop_hook_active": False, "last_assistant_message": "The count is 12 [?]."}
-        )
-        reason = result["reason"]
-        self.assertIn("refers to a mark", reason, "a line may discuss a mark rather than claim")
-        self.assertIn("in words", reason, "the reference goes in words, never as the glyph")
-        self.assertIn(
-            "what you did about it", reason, "a referral names the action it already took"
-        )
-        self.assertIn("what you do next", reason, "or the action it is about to take")
-
     def test_a_mark_inside_a_longer_code_span_does_not_block(self):
         result = self.decision(
             {
@@ -343,6 +357,19 @@ class VerifyMarksStopHook(unittest.TestCase):
         self.assertEqual(code, 0)
         return json.loads(out) if out.strip() else None
 
+    def delegate_notice(self, result):
+        """The text a SubagentStop pass hands back to the delegate that stopped.
+
+        Nothing a SubagentStop hook returns reaches the caller, so this is the
+        one channel the relay group has: the delegate reads it and writes the
+        items into the report that does reach the caller.
+        """
+        self.assertIsNotNone(result, "a delegate pass with something to say must say it")
+        self.assertNotIn("decision", result, "this pass reports rather than blocks")
+        specific = result["hookSpecificOutput"]
+        self.assertEqual(specific["hookEventName"], "SubagentStop")
+        return specific["additionalContext"]
+
     def test_a_delegate_report_carrying_only_a_caret_mark_does_not_block(self):
         result = self.delegate_decision(
             {
@@ -350,9 +377,38 @@ class VerifyMarksStopHook(unittest.TestCase):
                 "last_assistant_message": "I read the request as covering staging only [^?].",
             }
         )
-        self.assertIsNone(
-            result, "a [^?] must ride up to the caller rather than stall the delegate"
+        self.assertNotIn(
+            "decision",
+            result or {},
+            "a [^?] must ride up to the caller rather than stall the delegate",
         )
+
+    def test_a_delegate_report_carrying_only_a_caret_mark_still_lists_it(self):
+        line = "I read the request as covering staging only [^?]."
+        notice = self.delegate_notice(
+            self.delegate_decision({"stop_hook_active": False, "last_assistant_message": line})
+        )
+        self.assertIn(RELAY_HEADING, notice)
+        self.assertIn(line, notice, "a relay-only report is the case the listing exists for")
+        self.assertIn(
+            "Open your report on the question it carries",
+            notice,
+            "the delegate's own report is what carries the item to the caller",
+        )
+
+    def test_a_delegate_relay_listing_never_travels_as_a_system_message(self):
+        result = self.delegate_decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": "I read the request as covering staging only [^?].",
+            }
+        )
+        self.assertNotIn(
+            "systemMessage",
+            result,
+            "a systemMessage reaches the user, not the delegate whose report carries the item",
+        )
+        self.assertEqual(result["hookSpecificOutput"]["hookEventName"], "SubagentStop")
 
     def test_a_delegate_report_blocks_on_a_source_mark(self):
         result = self.delegate_decision(
@@ -413,11 +469,15 @@ class VerifyMarksStopHook(unittest.TestCase):
         )
         self.assertIsNotNone(result)
         reason = result["reason"]
-        self.assertIn("UNANSWERED", reason)
+        self.assertIn(RELAY_HEADING, reason)
         self.assertIn("I read the request as covering staging only [^?].", reason)
-        self.assertNotIn("call AskUserQuestion with the question", reason)
+        self.assertNotIn(
+            "to your caller, with the options",
+            reason,
+            "from a delegate the caller's mark takes its carry form, never its resolve form",
+        )
 
-    def test_the_main_agent_still_routes_a_caret_mark_to_ask_user_question(self):
+    def test_the_main_agent_still_asks_the_user_a_caret_marks_question(self):
         result = self.decision(
             {
                 "stop_hook_active": False,
@@ -425,10 +485,10 @@ class VerifyMarksStopHook(unittest.TestCase):
             }
         )
         self.assertIsNotNone(result, "without --delegate the caret mark keeps its blocking pass")
-        self.assertIn("AskUserQuestion", result["reason"])
-        self.assertNotIn("UNANSWERED", result["reason"])
+        self.assertIn("to your caller", result["reason"])
+        self.assertNotIn(RELAY_HEADING, result["reason"], "at top level nothing rides up to anyone")
 
-    def test_the_standing_question_blocks_and_routes_to_ask_user_question(self):
+    def test_the_standing_question_blocks_and_routes_to_a_person(self):
         result = self.decision(
             {
                 "stop_hook_active": False,
@@ -438,7 +498,12 @@ class VerifyMarksStopHook(unittest.TestCase):
         self.assertIsNotNone(result, "a [!?] line must block the stop")
         self.assertEqual(result["decision"], "block")
         self.assertIn("Whether to ship behind a flag is unsettled [!?].", result["reason"])
-        self.assertIn("AskUserQuestion", result["reason"])
+        self.assertIn("to a person", result["reason"])
+        self.assertNotIn(
+            "AskUserQuestion",
+            result["reason"],
+            "the reader runs on a machine whose toolset this plugin cannot know",
+        )
 
     def test_a_delegate_report_carrying_only_a_standing_question_does_not_block(self):
         result = self.delegate_decision(
@@ -447,11 +512,13 @@ class VerifyMarksStopHook(unittest.TestCase):
                 "last_assistant_message": "Whether to ship behind a flag is unsettled [!?].",
             }
         )
-        self.assertIsNone(
-            result, "a [!?] must ride up to the caller rather than stall the delegate"
+        self.assertNotIn(
+            "decision",
+            result or {},
+            "a [!?] must ride up to the caller rather than stall the delegate",
         )
 
-    def test_a_delegate_report_tells_the_caller_not_to_absorb_a_standing_question(self):
+    def test_a_delegate_report_says_only_a_person_answers_a_standing_question(self):
         result = self.delegate_decision(
             {
                 "stop_hook_active": False,
@@ -462,9 +529,13 @@ class VerifyMarksStopHook(unittest.TestCase):
         )
         self.assertIsNotNone(result)
         reason = result["reason"]
-        self.assertIn("UNANSWERED", reason)
+        self.assertIn(RELAY_HEADING, reason)
         self.assertIn("Whether to ship behind a flag is unsettled [!?].", reason)
-        self.assertIn("not absorb", reason, "the caller may relay this mark and never answer it")
+        self.assertIn(
+            "only a person answers it",
+            reason,
+            "the caller may relay this mark and never answer it",
+        )
 
     def test_a_delegate_report_lists_the_callers_mark_apart_from_the_standing_question(self):
         caller_line = "I read the request as covering staging only [^?]."
@@ -476,8 +547,13 @@ class VerifyMarksStopHook(unittest.TestCase):
             }
         )
         reason = result["reason"]
-        caller_step = reason.index("[^?] exactly where it stands")
-        human_step = reason.index("[!?] exactly where it stands")
+        caller_step = reason.index("\n[^?]\n")
+        human_step = reason.index("\n[!?]\n")
+        self.assertLess(
+            caller_step,
+            reason.index("only a person answers it"),
+            "the two carry different acts, and the standing question's is the later one",
+        )
         self.assertLess(
             caller_step,
             reason.index(f"- {caller_line}"),
@@ -517,10 +593,8 @@ class VerifyMarksStopHook(unittest.TestCase):
                 ),
             }
         )
-        self.assertIsNotNone(result, "a delegate's surviving claims must not pass in silence")
-        self.assertNotIn("decision", result, "a second pass never blocks again")
-        message = result["systemMessage"]
-        self.assertIn("UNANSWERED", message, "the caller reads an explicit list, not prose")
+        message = self.delegate_notice(result)
+        self.assertIn(SURVIVING_HEADING, message, "the caller reads an explicit list, not prose")
         self.assertIn("The count is 12 [?].", message)
         self.assertIn("The migration ran on every shard [.?].", message)
 
@@ -529,41 +603,65 @@ class VerifyMarksStopHook(unittest.TestCase):
             {"stop_hook_active": True, "last_assistant_message": "The count is 12 [?]."}
         )
         self.assertNotIn(
-            "UNANSWERED",
+            RELAY_HEADING,
             result["systemMessage"],
-            "at top level nothing rides up, so the notice names no report opening",
+            "at top level nothing rides up, so the notice names no relay group",
         )
 
-    def test_a_delegate_first_pass_asks_for_an_unanswered_opening_on_what_it_cannot_ground(self):
+    def test_a_delegate_first_pass_grounds_an_evidence_mark_rather_than_handing_it_up(self):
         result = self.delegate_decision(
             {"stop_hook_active": False, "last_assistant_message": "The count is 12 [?]."}
         )
         reason = result["reason"]
-        self.assertIn("UNANSWERED", reason)
-        self.assertIn(
-            "re-delegates",
+        self.assertIn("Gather the evidence", reason, "a delegate settles what it can settle here")
+        self.assertNotIn(
+            RELAY_HEADING,
             reason,
-            "the delegate is told why the list matters: the caller acts on it",
+            "an evidence mark is the delegate's own to ground, so nothing rides up on it",
         )
 
-    def test_a_main_thread_first_pass_asks_for_no_unanswered_opening_on_evidence_marks(self):
+    def test_a_main_thread_first_pass_hands_an_evidence_mark_to_nobody(self):
         result = self.decision(
             {"stop_hook_active": False, "last_assistant_message": "The count is 12 [?]."}
         )
         self.assertNotIn(
-            "UNANSWERED",
+            RELAY_HEADING,
             result["reason"],
             "at top level the reader is the user, who wants the reply and not a debt list",
         )
 
-    def test_a_delegate_second_pass_stays_silent_on_a_caret_mark(self):
+    def test_a_delegate_second_pass_withholds_the_relay_group(self):
+        # additionalContext continues the subagent, so re-sending the relay
+        # group every pass runs the delegate around the harness's cap of
+        # eight consecutive continuations, wastefully for all eight. The
+        # first pass is the one the listing exists for.
         result = self.delegate_decision(
             {
                 "stop_hook_active": True,
                 "last_assistant_message": "I read the request as covering staging only [^?].",
             }
         )
-        self.assertIsNone(result, "a [^?] rides up to the caller rather than drawing a notice")
+        self.assertIsNone(result, "a relay group re-sent on a second pass is a loop")
+
+    def test_a_delegate_second_pass_keeps_the_surviving_list_it_withholds_the_relay_group_from(
+        self,
+    ):
+        notice = self.delegate_notice(
+            self.delegate_decision(
+                {
+                    "stop_hook_active": True,
+                    "last_assistant_message": (
+                        "The count is 12 [?].\nI read the request as covering staging only [^?]."
+                    ),
+                }
+            )
+        )
+        self.assertIn("The count is 12 [?].", notice, "what stands is still worth reporting")
+        self.assertNotIn(
+            RELAY_HEADING,
+            notice,
+            "the relay group is what continues the subagent, so a second pass drops it",
+        )
 
 
 class VerifyMarksCitationIntegrity(unittest.TestCase):
@@ -775,14 +873,19 @@ class VerifyMarksBatchHook(unittest.TestCase):
         context = self.context_of(self.batch(transcript, session_id="session-two"))
         self.assertIn("The endpoint has no other callers [?].", context)
 
-    def test_batch_routes_a_caret_mark_to_ask_user_question(self):
+    def test_batch_routes_a_caret_mark_to_the_caller(self):
         transcript = self.transcript(
             user_text("do the thing"),
             assistant_text("I read the request as covering staging only [^?]."),
         )
         context = self.context_of(self.batch(transcript))
         self.assertIn("I read the request as covering staging only [^?].", context)
-        self.assertIn("AskUserQuestion", context)
+        self.assertIn("to your caller", context)
+        self.assertNotIn(
+            "AskUserQuestion",
+            context,
+            "the reader runs on a machine whose toolset this plugin cannot know",
+        )
 
     def test_batch_reports_a_delegates_own_mark_from_its_own_transcript(self):
         # PostToolBatch carries session_id, transcript_path and, from within

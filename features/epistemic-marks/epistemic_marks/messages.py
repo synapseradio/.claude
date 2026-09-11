@@ -1,34 +1,43 @@
 """The messages the hooks hand back when they find a mark.
 
-A mark's resolution class decides which instruction appears, and the tokens
-inside the instruction prose come from the vocabulary.
+The rule owns what a mark means; these builders own what to do about one. A
+sentence stating a mark's meaning here would be the rule restated, so the
+glosses live in the rule text alone and each mark carries its own act.
+
+Every string here is read by an agent on a machine whose toolset this plugin
+cannot know, so no generated line names a tool. Each line phrases the act to
+perform rather than the call to make.
 """
 
-from .marks import CALLER, EVIDENCE, HUMAN, MARK_MEANINGS, holds_class, tokens_of_class
+from .marks import MARK_CARRY, MARK_RESOLVE
 
-EVIDENCE_MARKS = " or ".join(tokens_of_class(EVIDENCE))
-CALLER_MARKS = " or ".join(tokens_of_class(CALLER))
-HUMAN_MARKS = " or ".join(tokens_of_class(HUMAN))
-RESEARCH_INSTRUCTIONS = (
-    "External facts: use a purpose-built research tool (the linkup MCP "
-    "tools, the tavily CLI, context7 for library docs). Claims about "
-    "local code or files: read the actual source with Read/Grep."
-)
+# A group heading the marks cannot carry, since only the hook knows this pass
+# is a delegate's and that these lines reach no further from here.
+RELAY_HEADING = "Riding up to your caller, left standing:"
 
-
-def _relay(carried, resolution):
-    """The carried lines whose mark resolves the given way, in one flat list."""
-    return [line for token in tokens_of_class(resolution) for line in carried.get(token, ())]
-
-
-def _bulleted(lines):
-    return "\n".join(f"- {line}" for line in lines)
+# The notice's three headings. A notice reports rather than instructs, so a
+# heading is all the framing each of its groups gets.
+SURVIVING_HEADING = "Left standing after the verification pass:"
+MENTION_HEADING = "Naming a mark rather than claiming under one, so asked nothing of:"
+CITATION_HEADING = "Citing a file nothing in this session opened:"
 
 
 def _listing(lines_by_mark):
-    """The found lines, grouped under the mark each one carries."""
+    """The found lines, grouped under the glyph each one carries."""
     return "\n\n".join(
-        f"Marked {mark} ({MARK_MEANINGS[mark]}):\n" + "\n".join(f"- {line}" for line in lines)
+        f"{mark}\n" + "\n".join(f"- {line}" for line in lines)
+        for mark, lines in lines_by_mark.items()
+    )
+
+
+def _sections(lines_by_mark, instruction):
+    """One subsection per detected mark: the glyph, its act, then its lines.
+
+    Iterating the marks found rather than the vocabulary is what keeps a
+    reply carrying one mark from reading an instruction about another.
+    """
+    return "\n\n".join(
+        f"{mark}\n{instruction[mark]}\n" + "\n".join(f"- {line}" for line in lines)
         for mark, lines in lines_by_mark.items()
     )
 
@@ -36,176 +45,45 @@ def _listing(lines_by_mark):
 def build_reason(lines_by_mark, carried=None, delegate=False):
     """The block message the Stop pass returns on its first pass.
 
-    `carried` holds the relay-class lines a delegate hands upward, keyed by
-    mark, and is empty at top level, where the caller is the user and every
-    class resolves here.
+    `carried` holds the lines a delegate hands upward, keyed by mark, and is
+    empty at top level, where the caller is the user and every mark resolves
+    here. `delegate` picks the noun for what gets re-emitted and nothing else.
     """
-    carried = carried or {}
-    found = ", ".join(lines_by_mark)
-    listing = _listing(lines_by_mark)
-    steps = []
-    if holds_class(lines_by_mark, EVIDENCE):
-        steps.append(
-            f"For each claim marked {EVIDENCE_MARKS}, gather the evidence that "
-            f"would ground it. {RESEARCH_INSTRUCTIONS} Then re-emit the "
-            "original reply verbatim, treating each mark as a template "
-            "slot. A claim that verified keeps its exact sentence, with "
-            "the mark replaced in place by the inline citation: a URL for "
-            "an external fact, a path for local code. A claim that "
-            "failed verification gets its sentence corrected to what the "
-            "evidence supports, or removed if nothing supports it, with a "
-            "parenthetical noting the point could not be verified."
-        )
-    if delegate and holds_class(lines_by_mark, EVIDENCE):
-        steps.append(
-            f"Where a claim marked {EVIDENCE_MARKS} is still unground when "
-            "this pass ends, leave it marked and open the report with "
-            "UNANSWERED: each such claim on its own line, the evidence it "
-            "waits on, and the lookup already tried. You hold the files and "
-            "the tool results, so the caller re-delegates from an explicit "
-            "list and re-verifies from a paragraph."
-        )
-    if holds_class(lines_by_mark, CALLER):
-        steps.append(
-            f"For each line marked {CALLER_MARKS}, your caller is the user, "
-            "so call AskUserQuestion with the question the mark stands in "
-            "for and the options you would offer, then re-emit with the "
-            "mark dropped, since a live question replaces it. Looking the "
-            "premise up settles nothing: only the answer does."
-        )
-    if holds_class(lines_by_mark, HUMAN):
-        steps.append(
-            f"For each line marked {HUMAN_MARKS}, call AskUserQuestion with "
-            "the question the mark stands in for and the options you would "
-            "offer, then re-emit with the mark dropped. A person answers "
-            "this mark and nothing else does, so deciding it yourself "
-            "leaves it unanswered."
-        )
-    if _relay(carried, CALLER):
-        steps.append(
-            f"Leave every line marked {CALLER_MARKS} exactly where it stands, and open "
-            "the report with UNANSWERED: the question each one carries and "
-            "the options you would have offered, then what you did, then "
-            "what you left undone. Calling AskUserQuestion settles nothing "
-            "from here, since only whoever spawned you reaches the user, "
-            "and they may hold the answer themselves. "
-            "The lines that ride up:\n" + _bulleted(_relay(carried, CALLER))
-        )
-    if _relay(carried, HUMAN):
-        steps.append(
-            f"Leave every line marked {HUMAN_MARKS} exactly where it stands, and open "
-            "the report with UNANSWERED: the question each one carries and "
-            "the options you would have offered. Whoever spawned you may "
-            "not absorb one of these: a person answers it, so they relay it "
-            "through AskUserQuestion and report the answer back. Say so in "
-            "the report, so the mark is not mistaken for one the caller "
-            "could settle. "
-            "The lines that ride up:\n" + _bulleted(_relay(carried, HUMAN))
-        )
-    steps.append(
-        "A flagged line that refers to a mark, rather than claiming under "
-        "one, resolves a third way. Keep the reference, name the mark in "
-        "words instead of writing the glyph, and say in the same sentence "
-        'what you did about it or what you do next: "A subagent returned '
-        "a mark handing a decision up to you, so I am putting that "
-        'question through AskUserQuestion." A glyph left standing as a '
-        "reference identifier reads as a claim awaiting its source, and "
-        "this pass cannot tell the two apart."
-    )
-    steps.append(
-        "Change nothing outside the marked sentences: no added commentary, "
-        "no report about the verification, no restructuring. The reader "
-        "sees the same message they would have seen, with sources where "
-        "the marks stood."
-    )
-    numbered = "\n".join(f"{n}. {step}" for n, step in enumerate(steps, start=1))
-    return (
-        f"Your reply carries lines marked {found}, each awaiting resolution:\n\n"
-        f"{listing}\n\n"
-        "Resolve each mark, then re-emit the reply with the marks resolved.\n"
-        f"{numbered}"
-    )
+    parts = [_sections(lines_by_mark, MARK_RESOLVE)] if lines_by_mark else []
+    if carried:
+        parts.append(f"{RELAY_HEADING}\n\n" + _sections(carried, MARK_CARRY))
+    verb = "report" if delegate else "reply"
+    return f"Resolve each mark, then re-emit the {verb}.\n\n" + "\n\n".join(parts)
 
 
 def build_context(lines_by_mark):
     """The additionalContext the batch pass hands back mid-turn."""
-    found = ", ".join(lines_by_mark)
-    listing = _listing(lines_by_mark)
-    steps = []
-    if holds_class(lines_by_mark, EVIDENCE):
-        steps.append(
-            f"Ground each claim marked {EVIDENCE_MARKS} while the turn is "
-            f"still open. {RESEARCH_INSTRUCTIONS} Then give the source in "
-            "your next message, a URL for an external fact and a "
-            "path for local code, and correct or withdraw any claim "
-            "the evidence fails to support."
-        )
-    if holds_class(lines_by_mark, CALLER):
-        steps.append(
-            f"For each line marked {CALLER_MARKS}, call AskUserQuestion with the "
-            "question the mark stands in for and the options you would "
-            "offer, before further work rests on the answer. Looking the "
-            "premise up settles nothing: only the answer does."
-        )
-    if holds_class(lines_by_mark, HUMAN):
-        steps.append(
-            f"For each line marked {HUMAN_MARKS}, call AskUserQuestion with the "
-            "question the mark stands in for, before further work rests on "
-            "the answer. A person answers this mark and nothing else does."
-        )
-    steps.append(
-        "A flagged line that refers to a mark, rather than claiming under "
-        "one, needs no lookup. Name the mark in words and say what became of it."
-    )
-    numbered = "\n".join(f"{n}. {step}" for n, step in enumerate(steps, start=1))
-    return (
-        f"Earlier in this turn you wrote lines marked {found}, each still "
-        f"awaiting resolution:\n\n{listing}\n\n"
-        "Resolve each one now, so the Stop pass at the end of the turn "
-        f"finds nothing left standing.\n{numbered}"
+    return "Resolve each mark now, while the turn is still open.\n\n" + _sections(
+        lines_by_mark, MARK_RESOLVE
     )
 
 
-def _flat(lines_by_mark):
-    return "\n".join(f"{mark} {line}" for mark, lines in lines_by_mark.items() for line in lines)
+def build_notice(lines_by_mark, mentions=None, unopened=None, carried=None):
+    """The report a Stop pass makes on a surviving mark, a mention or a citation.
 
-
-def build_notice(lines_by_mark, mentions=None, delegate=False, unopened=None):
-    """The systemMessage a Stop pass shows for a surviving mark or a skipped mention.
-
+    Nothing here asks for a rewrite: the reply this describes already stands.
     A mention costs nothing to write and exempts the line it sits on, so it
-    reaches the user here rather than passing in silence.
+    reaches the reader here rather than passing in silence.
 
-    The ratchet has one click: this pass never blocks, so a delegate's
-    surviving claims would otherwise become the caller's problem in silence.
-    Under `delegate` they come back as the report's UNANSWERED opening
-    instead, which the caller can re-delegate from.
+    `carried` is the delegate's relay group, which no block carries when the
+    pass finds nothing else. Without it a report whose only mark rides up
+    produces no output at all, and the question dies where it was written.
     """
     parts = []
-    if lines_by_mark and delegate:
-        parts.append(
-            "UNANSWERED: these claims survived the verification pass "
-            "unground, and the report hands them on still marked. Open the "
-            "report on this list, each claim beside the evidence it waits "
-            "on, so the caller re-delegates the lookup rather than repeating "
-            "work you were the cheap place to do:\n" + _flat(lines_by_mark)
-        )
-    elif lines_by_mark:
-        parts.append(
-            "These marks survived the verification pass and stand as written, "
-            "each still awaiting what its mark names:\n" + _flat(lines_by_mark)
-        )
+    if lines_by_mark:
+        parts.append(f"{SURVIVING_HEADING}\n\n" + _listing(lines_by_mark))
+    if carried:
+        parts.append(f"{RELAY_HEADING}\n\n" + _sections(carried, MARK_CARRY))
     if mentions:
-        parts.append(
-            "These lines name a mark in words beside the glyph, so the pass "
-            "read them as documenting the mark rather than claiming under "
-            "it, and asked nothing of them:\n" + _flat(mentions)
-        )
+        parts.append(f"{MENTION_HEADING}\n\n" + _listing(mentions))
     if unopened:
         parts.append(
-            "These citations name a file no Read, Grep or Glob of this "
-            "session opened, so nothing here shows the claim was checked "
-            "against the source it cites:\n"
+            f"{CITATION_HEADING}\n\n"
             + "\n".join(f"- {citation}" for citation in sorted(unopened.values()))
         )
     return "\n\n".join(parts)

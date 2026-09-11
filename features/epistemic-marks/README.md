@@ -7,12 +7,17 @@ Blocks a reply that still carries a claim nobody checked.
 An epistemic mark is a short token written at the end of a clause to say the
 claim in that clause is not yet known. This plugin enforces four:
 
-| Mark | Name | What it says | How it resolves |
-| --- | --- | --- | --- |
-| `[?]` | the unsourced mark | no source on file | a lookup that yields a citation |
-| `[.?]` | the secondhand mark | secondhand and ungrounded | a lookup that yields a citation |
-| `[^?]` | the caller's mark | awaits an answer whoever spawned you can settle | one level up, or the user where nothing spawned you |
-| `[!?]` | the standing question | awaits an answer only a person supplies | a person's answer, relayed upward and never absorbed |
+| Mark | Name | Label |
+| --- | --- | --- |
+| `[?]` | the unsourced mark | `needs_citation` |
+| `[.?]` | the secondhand mark | `needs_verification` |
+| `[^?]` | the caller's mark | `escalate_decision` |
+| `[!?]` | the standing question | `ask_user` |
+
+What each mark means and how it resolves is the rule's to say, and the rule
+text says it. What the plugin holds is what to do about a mark it found: one
+act for the case where this pass can settle it, one for the case where it
+travels in the report instead.
 
 The last two split what used to be one token. A caller receiving a report can
 now tell an item it could settle itself from one that has to reach a person,
@@ -32,10 +37,10 @@ Three events drive it:
   so a mark that outlives its verification stands in front of the user rather
   than looping.
 - **SubagentStop** runs with `--delegate`. A subagent reaches no user, so the
-  caller's mark and the standing question both ride up in the report under an
-  `UNANSWERED` opening, listed apart so the caller knows which is which. A
-  claim the subagent could not ground rides up in that opening too, as an
-  explicit list the caller can re-delegate from rather than re-verify.
+  caller's mark and the standing question are left standing and listed back to
+  the subagent, apart from each other, for its own report to carry to the
+  caller. Nothing this hook returns reaches the caller directly; the report
+  does.
 - **PostToolBatch** runs with `--batch` and never blocks, since stopping the
   agentic loop mid-task costs more than the claim it flags. It reaches a claim
   while the turn can still act on it, and reports each line once per session.
@@ -59,9 +64,16 @@ Install it and it works. There is nothing to configure and nothing to write.
 
 Enforcement on its own would correct a model against something nothing taught
 it, so the teaching ships with it. `rule-text/epistemic-marks.md` holds the
-rule text and a fourth hook delivers it at session start. That hook runs on
+rule text and a delivery hook hands it over at every start. That hook runs on
 every session start, resume, clear, fork and compaction, because injected
 context does not outlive a compaction and each firing restores it.
+
+It runs on **SubagentStart** too, and that half is not a courtesy. The
+verification pass matches literal tokens, so a spawned agent that was never
+taught the vocabulary writes no mark, the scan comes back empty, and the pass
+is inert. Teaching is what produces the signal enforcement exists to find. A
+test reads `hooks/hooks.json` and fails if delivery is wired to only one of
+the two starts.
 
 The two halves are a pair, with no switch between them. `epistemic_marks/marks.py` is the
 vocabulary the hooks enforce, and a test compares the shipped rule text
@@ -69,7 +81,11 @@ against it, so the text a session is taught cannot drift from what gets
 blocked.
 
 This plugin reads none of your files. It imports nothing of yours, opens no
-manifest, and holds no path into your configuration.
+manifest, and holds no path into your configuration. It assumes no other
+plugin is installed and changes nothing depending on whether one is.
+`tests/test_independence.py` holds that promise: no source under
+`epistemic_marks/` or `hooks/` may name a path outside the plugin root, and
+the rule still arrives whole with the home directory pointed at nothing.
 
 ## Installing
 
@@ -77,6 +93,11 @@ manifest, and holds no path into your configuration.
 claude plugin marketplace add <this repository>
 claude plugin install epistemic-marks
 ```
+
+The harness has to support `SubagentStart`, verified on Claude Code 2.1.268.
+One that fires `SubagentStop` and not `SubagentStart` runs the verification
+pass against agents nothing taught, and the plugin cannot detect that from
+inside a hook, so no version floor is enforced.
 
 The hooks need Python 3.14 or later. `hooks/with-python.sh` picks the
 interpreter that runs them, trying `EPISTEMIC_MARKS_PYTHON` first, then
@@ -88,9 +109,10 @@ as `hooks/with-python.sh` explains.
 
 ## Confirming the hooks are live
 
-Run `/hooks` and look for four entries: `with-python.sh` running
-`deliver-rule.py` under `SessionStart`, and `with-python.sh` running
-`verify-marks.py` under `Stop`, `SubagentStop` and `PostToolBatch`.
+Run `/hooks` and look for five entries: `with-python.sh` running
+`deliver-rule.py` under `SessionStart` and `SubagentStart`, and
+`with-python.sh` running `verify-marks.py` under `Stop`, `SubagentStop` and
+`PostToolBatch`.
 
 To watch one fire, write a sentence carrying a mark and end the turn. The
 reply gets blocked once and comes back with the resolution the mark takes. A

@@ -18,10 +18,10 @@ from epistemic_marks.delivery import RULE_BODY, after_divider, rule_text  # noqa
 from epistemic_marks.marks import MARKS  # noqa: E402
 
 
-def run_deliver(source="startup"):
+def run_deliver(source="startup", event="SessionStart"):
     completed = subprocess.run(
         [sys.executable, str(SCRIPT)],
-        input=json.dumps({"hook_event_name": "SessionStart", "source": source}),
+        input=json.dumps({"hook_event_name": event, "source": source}),
         capture_output=True,
         text=True,
         check=False,
@@ -58,10 +58,10 @@ class TheDeliveredTextIsTheTeachingHalf(unittest.TestCase):
         self.assertEqual(rule_text(RULE_BODY.parent / "absent.md"), "")
 
 
-class TheHookDeliversOnEverySessionSource(unittest.TestCase):
-    def context_of(self, out):
+class TheHookDeliversOnEveryStart(unittest.TestCase):
+    def context_of(self, out, event="SessionStart"):
         specific = json.loads(out)["hookSpecificOutput"]
-        self.assertEqual(specific["hookEventName"], "SessionStart")
+        self.assertEqual(specific["hookEventName"], event)
         return specific["additionalContext"]
 
     def test_it_delivers_the_vocabulary(self):
@@ -80,6 +80,18 @@ class TheHookDeliversOnEverySessionSource(unittest.TestCase):
             "a compaction drops injected context, so this firing has to restore it",
         )
 
+    def test_it_delivers_to_a_spawned_agent(self):
+        code, out = run_deliver(event="SubagentStart")
+        self.assertEqual(code, 0)
+        context = self.context_of(out, event="SubagentStart")
+        for token in MARKS:
+            self.assertIn(
+                token,
+                context,
+                f"a delegate never taught {token} writes none, so the SubagentStop "
+                "pass scans text that could not have carried one",
+            )
+
     def test_a_payload_it_cannot_parse_stops_it_quietly(self):
         completed = subprocess.run(
             [sys.executable, str(SCRIPT)],
@@ -91,6 +103,33 @@ class TheHookDeliversOnEverySessionSource(unittest.TestCase):
         )
         self.assertEqual(completed.returncode, 0)
         self.assertEqual(completed.stdout.strip(), "")
+
+
+class TheWiringPairsDeliveryWithEnforcement(unittest.TestCase):
+    """The event axis of the pairing hooks/with-python.sh holds on its own axis.
+
+    A harness that fires SubagentStop and never SubagentStart would run the
+    verification pass against an agent nothing taught. Nothing at runtime
+    detects that, so the wiring is pinned here instead.
+    """
+
+    def events_running(self, script):
+        wiring = json.loads((PLUGIN_ROOT / "hooks" / "hooks.json").read_text())["hooks"]
+        return {
+            event
+            for event, matchers in wiring.items()
+            for matcher in matchers
+            for hook in matcher["hooks"]
+            if script in hook["command"]
+        }
+
+    def test_the_wiring_delivers_on_both_starts(self):
+        self.assertEqual(
+            self.events_running("deliver-rule.py"),
+            {"SessionStart", "SubagentStart"},
+            "delivery dropped on one start leaves that agent untaught, and the "
+            "verification pass then scans text that could carry no mark",
+        )
 
 
 if __name__ == "__main__":

@@ -15,16 +15,17 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PLUGIN_ROOT))
 
 from epistemic_marks.marks import (  # noqa: E402
-    CALLER,
-    EVIDENCE,
-    HUMAN,
-    MARK_MEANINGS,
+    ASK_USER,
+    ESCALATE_DECISION,
+    MARK_CARRY,
     MARK_NAMES,
+    MARK_RESOLVE,
     MARKS,
-    RELAY,
+    NEEDS_CITATION,
+    NEEDS_VERIFICATION,
     RELAY_MARKS,
+    RELAYING,
     VOCABULARY,
-    tokens_of_class,
 )
 
 SHIPPED_RULE_BODY = PLUGIN_ROOT / "rule-text" / "epistemic-marks.md"
@@ -41,16 +42,16 @@ def marks_taught_by(path):
 class TheVocabularyIsInternallyConsistent(unittest.TestCase):
     """Checks that need no rule body, so they always run."""
 
-    def test_every_mark_carries_a_token_a_name_a_gloss_and_a_resolution(self):
+    def test_every_mark_carries_a_token_a_label_a_name_and_both_acts(self):
         for mark in VOCABULARY:
             self.assertTrue(mark.token, "a mark with no token cannot be found in a reply")
+            self.assertTrue(mark.label, f"{mark.token} needs a label naming what it asks for")
             self.assertTrue(mark.name, f"{mark.token} needs a name a sentence can use")
-            self.assertTrue(mark.gloss, f"{mark.token} needs a gloss the block message shows")
-            self.assertIn(
-                mark.resolution,
-                (EVIDENCE, *RELAY),
-                f"{mark.token} must resolve through evidence, through the caller, "
-                "or through a person",
+            self.assertTrue(
+                mark.resolve, f"{mark.token} needs the act to take when it can be settled here"
+            )
+            self.assertTrue(
+                mark.carry, f"{mark.token} needs the act to take when it travels in the report"
             )
 
     def test_no_two_marks_share_a_token(self):
@@ -67,35 +68,72 @@ class TheVocabularyIsInternallyConsistent(unittest.TestCase):
             )
 
     def test_the_derived_lookups_cover_exactly_the_vocabulary(self):
-        self.assertEqual(set(MARK_MEANINGS), set(MARKS))
         self.assertEqual(set(MARK_NAMES), set(MARKS))
+        self.assertEqual(set(MARK_RESOLVE), set(MARKS))
+        self.assertEqual(set(MARK_CARRY), set(MARKS))
 
-    def test_every_mark_outside_the_evidence_class_rides_up_from_a_delegate(self):
-        # run_stop pops exactly RELAY_MARKS out of a delegate's blocking set.
-        # A token whose class is neither EVIDENCE nor a relay class would
-        # block the delegate on a question the delegate cannot reach.
-        outside = tuple(mark.token for mark in VOCABULARY if mark.resolution != EVIDENCE)
+    def test_every_relaying_mark_rides_up_from_a_delegate(self):
+        # run_stop pops exactly RELAY_MARKS out of a delegate's blocking set,
+        # so a relaying label missing from that tuple would block the delegate
+        # on a question the delegate cannot reach.
+        relaying = tuple(mark.token for mark in VOCABULARY if mark.label in RELAYING)
         self.assertEqual(
-            outside,
+            relaying,
             RELAY_MARKS,
-            "a non-evidence token missing from RELAY_MARKS strands a delegate "
+            "a relaying token missing from RELAY_MARKS strands a delegate "
             "on a question only someone above it can answer",
         )
 
-    def test_the_caller_class_and_the_human_class_hold_different_tokens(self):
-        self.assertTrue(tokens_of_class(CALLER), "the caller's mark is what rides one level up")
-        self.assertTrue(tokens_of_class(HUMAN), "the standing question is what reaches a person")
+    def test_the_two_relaying_labels_hold_different_tokens(self):
+        escalating = {m.token for m in VOCABULARY if m.label == ESCALATE_DECISION}
+        asking = {m.token for m in VOCABULARY if m.label == ASK_USER}
+        self.assertTrue(escalating, "the caller's mark is what rides one level up")
+        self.assertTrue(asking, "the standing question is what reaches a person")
         self.assertFalse(
-            set(tokens_of_class(CALLER)) & set(tokens_of_class(HUMAN)),
-            "one token in both classes leaves a caller unable to tell an item it "
+            escalating & asking,
+            "one token under both labels leaves a caller unable to tell an item it "
             "could settle itself from one that must reach a person",
         )
 
-    def test_at_least_one_mark_resolves_through_evidence(self):
+    def test_at_least_one_label_sits_outside_the_relaying_set(self):
         self.assertTrue(
-            tokens_of_class(EVIDENCE),
-            "with no evidence mark the hook would never ask for a citation",
+            [mark for mark in VOCABULARY if mark.label not in RELAYING],
+            "with every mark relaying, a delegate would hand up everything and "
+            "the hook would never ask anyone for a citation",
         )
+
+    def test_every_mark_carries_a_declared_label(self):
+        # A label carries behavior, so adding one means placing it inside
+        # RELAYING or outside on purpose. A label nobody declared reads as
+        # non-relaying by default, silently, and the delegate blocks.
+        declared = {NEEDS_CITATION, NEEDS_VERIFICATION, ESCALATE_DECISION, ASK_USER}
+        for mark in VOCABULARY:
+            with self.subTest(mark=mark.token):
+                self.assertIn(
+                    mark.label,
+                    declared,
+                    f"{mark.token} carries a label nobody declared, so nobody decided "
+                    "whether a delegate settles it here or hands it up",
+                )
+
+    def test_the_relaying_set_names_only_labels_a_mark_carries(self):
+        carried = {mark.label for mark in VOCABULARY}
+        self.assertFalse(
+            RELAYING - carried,
+            f"RELAYING names {sorted(RELAYING - carried)}, which no mark carries, "
+            "so a token was renamed or removed and the set did not follow",
+        )
+
+    def test_no_two_marks_share_an_act(self):
+        for field in ("resolve", "carry"):
+            acts = [getattr(mark, field) for mark in VOCABULARY]
+            with self.subTest(act=field):
+                self.assertEqual(
+                    len(acts),
+                    len(set(acts)),
+                    f"two marks give the same {field} instruction, so one was copied "
+                    "in without being given an act of its own",
+                )
 
 
 class TheShippedRuleTextMatchesWhatIsEnforced(unittest.TestCase):
@@ -117,15 +155,16 @@ class TheShippedRuleTextMatchesWhatIsEnforced(unittest.TestCase):
             "check, so a claim under it leaves the session unverified in silence",
         )
 
-    def test_it_gives_each_mark_the_name_the_messages_use(self):
+    def test_it_gives_each_mark_the_name_a_mention_has_to_use(self):
         body = SHIPPED_RULE_BODY.read_text().lower()
         for token, name in MARK_NAMES.items():
             bare = name.removeprefix("the ").removesuffix(" mark")
             self.assertIn(
                 bare,
                 body,
-                f"the messages call {token} {name!r}, and the shipped rule text never "
-                f"uses {bare!r}, so a writer told to name the mark in words has none",
+                f"scan.py exempts a line only where it calls {token} {name!r}, and the "
+                f"shipped rule text never uses {bare!r}, so a writer told to name the "
+                "mark in words rather than write the glyph has no name to reach for",
             )
 
     def test_it_scopes_the_no_mark_exception_to_this_conversation(self):
