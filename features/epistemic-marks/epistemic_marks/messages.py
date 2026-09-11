@@ -34,7 +34,7 @@ def build_reason(lines_by_mark, carried=()):
             "original reply verbatim, treating each mark as a template "
             "slot. A claim that verified keeps its exact sentence, with "
             "the mark replaced in place by the inline citation: a URL for "
-            "an external fact, a path:line for local code. A claim that "
+            "an external fact, a path for local code. A claim that "
             "failed verification gets its sentence corrected to what the "
             "evidence supports, or removed if nothing supports it, with a "
             "parenthetical noting the point could not be verified."
@@ -91,7 +91,7 @@ def build_context(lines_by_mark):
             f"Ground each claim marked {EVIDENCE_MARKS} while the turn is "
             f"still open. {RESEARCH_INSTRUCTIONS} Then give the source in "
             "your next message, a URL for an external fact and a "
-            "path:line for local code, and correct or withdraw any claim "
+            "path for local code, and correct or withdraw any claim "
             "the evidence fails to support."
         )
     if holds_class(lines_by_mark, ASK):

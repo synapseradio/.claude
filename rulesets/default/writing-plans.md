@@ -13,7 +13,7 @@ Write for a reader who is an AI agent holding nothing but the plan file, able to
 - check: [its acceptance check]
 ```
 
-Land findings in their own turn: path:line evidence, open questions, and candidate approaches with tradeoffs. Then stop, and let the user pick a framing. Never write the plan before the user has picked it. Where a sentence hedges, "depending on X we could...", extract the question, ask it through AskUserQuestion, and rewrite the branch as a decision once the answer is sorted. Ask each open question, fold the answers into the plan, and sort each answer into the slices of the turn, one key-value pair per slice. The same bracket convention holds.
+Land findings in their own turn: evidence by path, open questions, and candidate approaches with tradeoffs. Then stop, and let the user pick a framing. Never write the plan before the user has picked it. Where a sentence hedges, "depending on X we could...", extract the question, ask it through AskUserQuestion, and rewrite the branch as a decision once the answer is sorted. Ask each open question, fold the answers into the plan, and sort each answer into the slices of the turn, one key-value pair per slice. The same bracket convention holds.
 
 ```markdown
 - known: [evident to be true]

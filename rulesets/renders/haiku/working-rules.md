@@ -364,7 +364,7 @@ Omit years from queries unless the user supplies one. When a tool call failed, r
 
 The rungs run highest first. Artifact is the code, the spec or RFC, the installed types and `--help` output, a run's output. Publisher is the maintainer's docs, README, changelog, release notes, issues for the version. Measured is a method a reader can rerun with its data shown. Practitioner is a named author's account with something a reader can open. Hearsay is none of the above, whatever its publisher.
 
-Place each source on a rung before citing it. Cite the highest rung reached by URL or path:line, naming the rung in the same sentence where it sits below publisher. Take hearsay as a lead toward a higher rung, never as the citation. Cite a number to the measurement it came from, never to a page that repeats it. Where two rungs disagree, follow the higher, and name the disagreement and each version.
+Place each source on a rung before citing it. Cite the highest rung reached by URL or path, naming the rung in the same sentence where it sits below publisher. Take hearsay as a lead toward a higher rung, never as the citation. Cite a number to the measurement it came from, never to a page that repeats it. Where two rungs disagree, follow the higher, and name the disagreement and each version.
 
 <!-- rule: reading-docs -->
 
@@ -590,7 +590,7 @@ Write for a reader who is an AI agent holding nothing but the plan file, able to
 - check: [its acceptance check]
 ```
 
-Land findings in their own turn: path:line evidence, open questions, and candidate approaches with tradeoffs. Then stop, and let the user pick a framing. Never write the plan before the user has picked it. Where a sentence hedges, "depending on X we could...", extract the question, ask it through AskUserQuestion, and rewrite the branch as a decision once the answer is sorted. Ask each open question, fold the answers into the plan, and sort each answer into the slices of the turn, one key-value pair per slice. The same bracket convention holds.
+Land findings in their own turn: evidence by path, open questions, and candidate approaches with tradeoffs. Then stop, and let the user pick a framing. Never write the plan before the user has picked it. Where a sentence hedges, "depending on X we could...", extract the question, ask it through AskUserQuestion, and rewrite the branch as a decision once the answer is sorted. Ask each open question, fold the answers into the plan, and sort each answer into the slices of the turn, one key-value pair per slice. The same bracket convention holds.
 
 ```markdown
 - known: [evident to be true]
