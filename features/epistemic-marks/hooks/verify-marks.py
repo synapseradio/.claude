@@ -2,7 +2,7 @@
 """The verification pass for epistemic marks, run from three hook events.
 
 Bare from Stop, blocking the stop once and asking for each mark's
-resolution. With --delegate from SubagentStop, where the user's mark rides up
+resolution. With --delegate from SubagentStop, where every relay-class mark rides up
 to the caller instead of reaching AskUserQuestion. With --batch from
 PostToolBatch, which never blocks and reports a line once per session.
 
@@ -21,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from epistemic_marks.citations import unopened
 from epistemic_marks.ledger import (
     fingerprint,
     prepare,
@@ -31,7 +32,7 @@ from epistemic_marks.ledger import (
     state_path,
     write_reported,
 )
-from epistemic_marks.marks import ASK_MARK
+from epistemic_marks.marks import RELAY_MARKS
 from epistemic_marks.messages import build_context, build_notice, build_reason
 from epistemic_marks.scan import batch_transcript, last_turn_text, marked_lines
 
@@ -47,17 +48,29 @@ def run_stop(payload, delegate):
     transcript = payload.get("agent_transcript_path") or payload.get("transcript_path", "")
     if transcript and Path(transcript).exists():
         blocks = last_turn_text(transcript) + blocks
-    lines_by_mark = marked_lines(blocks)
-    carried = lines_by_mark.pop(ASK_MARK, []) if delegate else []
-    if not lines_by_mark:
-        sys.exit(0)
-    if payload.get("stop_hook_active"):
-        json.dump({"systemMessage": build_notice(lines_by_mark)}, sys.stdout)
-        sys.exit(0)
-    json.dump(
-        {"decision": "block", "reason": build_reason(lines_by_mark, carried)},
-        sys.stdout,
+    lines_by_mark, mentions = marked_lines(blocks)
+    carried = (
+        {token: lines_by_mark.pop(token) for token in RELAY_MARKS if token in lines_by_mark}
+        if delegate
+        else {}
     )
+    if lines_by_mark and not payload.get("stop_hook_active"):
+        json.dump(
+            {"decision": "block", "reason": build_reason(lines_by_mark, carried, delegate)},
+            sys.stdout,
+        )
+        sys.exit(0)
+    # The reply stands from here, so the citation check runs only on a pass
+    # that is not about to replace it, and its finding rides along with
+    # whatever else this pass has to report.
+    notice = build_notice(
+        lines_by_mark,
+        mentions,
+        delegate,
+        unopened(blocks, transcript),
+    )
+    if notice:
+        json.dump({"systemMessage": notice}, sys.stdout)
     sys.exit(0)
 
 
@@ -65,7 +78,7 @@ def run_batch(payload):
     transcript = batch_transcript(payload)
     if not transcript or not Path(transcript).exists():
         sys.exit(0)
-    lines_by_mark = marked_lines(last_turn_text(transcript))
+    lines_by_mark, _mentions = marked_lines(last_turn_text(transcript))
     directory = state_dir()
     if not prepare(directory):
         sys.exit(0)

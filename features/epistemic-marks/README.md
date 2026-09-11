@@ -5,17 +5,25 @@ Blocks a reply that still carries a claim nobody checked.
 ## What it enforces
 
 An epistemic mark is a short token written at the end of a clause to say the
-claim in that clause is not yet known. This plugin enforces three:
+claim in that clause is not yet known. This plugin enforces four:
 
 | Mark | Name | What it says | How it resolves |
 | --- | --- | --- | --- |
 | `[?]` | the unsourced mark | no source on file | a lookup that yields a citation |
 | `[.?]` | the secondhand mark | secondhand and ungrounded | a lookup that yields a citation |
-| `[^?]` | the user's mark | awaits an answer only the user supplies | the user's answer, and nothing else |
+| `[^?]` | the caller's mark | awaits an answer whoever spawned you can settle | one level up, or the user where nothing spawned you |
+| `[!?]` | the standing question | awaits an answer only a person supplies | a person's answer, relayed upward and never absorbed |
 
-A mark inside a fenced code block does not count, and neither does one inside
-a longer inline code span, since a sentence quoting a mark is discussing it
-rather than claiming under it.
+The last two split what used to be one token. A caller receiving a report can
+now tell an item it could settle itself from one that has to reach a person,
+without opening the delegate's transcript.
+
+A mark inside a fenced code block does not count. Neither does one inside a
+longer inline code span, nor one written in a span of its own on a line that
+also calls that mark by name, since a sentence naming the mark it shows is
+documenting the mark rather than claiming under it. A backticked mark on a
+line naming no mark still counts, so the exemption costs a writer the words.
+Every skipped mention is listed back to you, so it never passes in silence.
 
 Three events drive it:
 
@@ -24,10 +32,26 @@ Three events drive it:
   so a mark that outlives its verification stands in front of the user rather
   than looping.
 - **SubagentStop** runs with `--delegate`. A subagent reaches no user, so the
-  user's mark rides up in the report under an `UNANSWERED` opening.
+  caller's mark and the standing question both ride up in the report under an
+  `UNANSWERED` opening, listed apart so the caller knows which is which. A
+  claim the subagent could not ground rides up in that opening too, as an
+  explicit list the caller can re-delegate from rather than re-verify.
 - **PostToolBatch** runs with `--batch` and never blocks, since stopping the
   agentic loop mid-task costs more than the claim it flags. It reaches a claim
   while the turn can still act on it, and reports each line once per session.
+
+## It checks the citations too
+
+A mark is a negative signal: it says a claim has no source yet. The positive
+signal is the citation that replaces it. That makes a fabricated citation the
+cheapest way to look verified, so a `path:line` citation in a reply is
+checked against the `Read`, `Grep` and `Glob` calls of the session.
+
+This never blocks and never asks for a rewrite. A citation naming a file
+nothing in the session opened produces one notice naming the citation. It
+fires on citations the agent wrote itself, so it never has to judge whether a
+turn gathered enough evidence. A citation inside a fenced block is part of an
+example and draws nothing.
 
 ## It teaches the marks and enforces them, as one unit
 

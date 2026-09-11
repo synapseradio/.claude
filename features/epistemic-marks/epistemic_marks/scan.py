@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 
 from .ledger import prepare, state_dir
-from .marks import MARKS
+from .marks import MARK_NAMES, MARKS
 
 SCAN_STATE_SUFFIX = ".scan-offset.json"
 
@@ -141,27 +141,74 @@ def fenced_line_numbers(lines):
     return fenced
 
 
+def _span_token(span):
+    """The mark a code span holds alone, or None where it holds anything else."""
+    token = span.strip("`").strip()
+    return token if token in MARKS else None
+
+
+def names_in_words(line, mark):
+    """Whether the line calls the mark by the name the vocabulary gives it.
+
+    The discriminator comes from MARK_NAMES rather than from a list kept
+    here, so a renamed mark renames what a mention has to say.
+    """
+    return MARK_NAMES[mark].lower() in line.lower()
+
+
+def mentioned_marks(line):
+    """The marks the line writes in a span of their own and names in words beside."""
+    return {
+        token
+        for span in INLINE_CODE.findall(line)
+        if (token := _span_token(span)) and names_in_words(line, token)
+    }
+
+
 def strip_code_spans(line):
-    """The line without its inline code, keeping a span holding a mark alone."""
-    return INLINE_CODE.sub(
-        lambda span: span.group(0) if span.group(0).strip("`").strip() in MARKS else "",
-        line,
-    )
+    """The line without its inline code, keeping a mark the line never names.
+
+    A span holding a mark alone stays in the prose, so backticks around a
+    mark leave it a claim. It drops out only where the same line calls that
+    mark by name, which reads as documenting the mark rather than claiming
+    under it.
+    """
+
+    def keep(span):
+        token = _span_token(span.group(0))
+        return span.group(0) if token and not names_in_words(line, token) else ""
+
+    return INLINE_CODE.sub(keep, line)
 
 
 def marked_lines(blocks):
-    """Lines carrying a mark, keyed by mark, skipping fenced code."""
+    """Lines claiming under a mark and lines merely naming one, each keyed by mark.
+
+    Both mappings skip fenced code. A line reaches the second by writing a
+    mark inside a code span and naming that mark in words on the same line;
+    it blocks nothing, and the Stop pass reports it so the exemption stays
+    visible. One line can reach both mappings, by documenting one mark and
+    claiming under another.
+    """
     lines = [line for block in blocks for line in block.splitlines()]
     fenced = fenced_line_numbers(lines)
     found = {mark: [] for mark in MARKS}
+    named = {mark: [] for mark in MARKS}
     for number, line in enumerate(lines):
         if number in fenced:
             continue
         prose = strip_code_spans(line)
+        stripped = line.strip()
         for mark in MARKS:
-            if mark in prose and line.strip() not in found[mark]:
-                found[mark].append(line.strip())
-    return {mark: hits for mark, hits in found.items() if hits}
+            if mark in prose and stripped not in found[mark]:
+                found[mark].append(stripped)
+        for mark in mentioned_marks(line):
+            if stripped not in named[mark]:
+                named[mark].append(stripped)
+    return (
+        {mark: hits for mark, hits in found.items() if hits},
+        {mark: hits for mark, hits in named.items() if hits},
+    )
 
 
 def batch_transcript(payload):

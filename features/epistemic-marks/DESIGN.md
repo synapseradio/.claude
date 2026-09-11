@@ -120,6 +120,17 @@ dict writes for a message, and demanding one string would damage one of them.
 
 ## What this leaves to whoever changes the plugin
 
-`rule-text/epistemic-marks.md` must teach the three tokens `epistemic_marks/marks.py`
-enforces, and no others. Its wording and structure are otherwise free.
-Running the tests after a change to either side keeps the two in step.
+`rule-text/epistemic-marks.md` must teach exactly the tokens
+`epistemic_marks/marks.py` enforces, and no others. Its wording and structure
+are otherwise free. Running the tests after a change to either side keeps the
+two in step.
+
+A resolution class carries behavior, so adding one means placing it. Every
+class that is not `EVIDENCE` belongs to `RELAY`, which is the set a delegate's
+Stop pass hands to its caller rather than blocking on; a class left out of it
+would strand a delegate on a question only someone above it can answer, and
+`tests/test_marks_vocabulary.py` fails on exactly that. The vocabulary opened
+at three tokens and stands at four: the escalation token split into a
+caller's mark and a standing question, because one token meant both "my
+caller can settle this" and "a person must", and a caller receiving it could
+not tell the two apart.

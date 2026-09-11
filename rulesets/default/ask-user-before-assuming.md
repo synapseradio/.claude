@@ -12,6 +12,6 @@ Classify a premise by what settles it. Where code, rules, the harness, docs, or 
 
 ### Acting on a premise
 
-Act on a premise by its kind. Where a goal premise was answered earlier, or decided by an approved plan, act. Where a goal premise is met as a delegate, mark the premise [^?], the user's mark, and hand it up to the caller with the options you would have offered. Where any other goal premise stands, ask through AskUserQuestion, fold the answer in, and act. Where a method premise stands, act, stating the premise marked [?] in the same message. Ask one thing per choice point, with each option a reading somebody could hold.
+Act on a premise by its kind. Where a goal premise was answered earlier, or decided by an approved plan, act. Where a goal premise is met as a delegate and the caller's own brief could settle it, mark the premise [^?], the caller's mark, and hand it up with the options you would have offered. Where any other goal premise is met as a delegate, mark the premise [!?], the standing question, and hand it up with the options you would have offered. Where any other goal premise stands, ask through AskUserQuestion, fold the answer in, and act. Where a method premise stands, act, stating the premise marked [?] in the same message. Ask one thing per choice point, with each option a reading somebody could hold.
 
 Never pick a reading and proceed on it. Never announce a reading and proceed on it. Never build the part two readings share before the answer. Never build one reading as a sample with an offer to redo it.

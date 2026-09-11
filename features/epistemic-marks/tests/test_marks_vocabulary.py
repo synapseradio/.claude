@@ -15,12 +15,14 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PLUGIN_ROOT))
 
 from epistemic_marks.marks import (  # noqa: E402
-    ASK,
-    ASK_MARK,
+    CALLER,
     EVIDENCE,
+    HUMAN,
     MARK_MEANINGS,
     MARK_NAMES,
     MARKS,
+    RELAY,
+    RELAY_MARKS,
     VOCABULARY,
     tokens_of_class,
 )
@@ -46,8 +48,9 @@ class TheVocabularyIsInternallyConsistent(unittest.TestCase):
             self.assertTrue(mark.gloss, f"{mark.token} needs a gloss the block message shows")
             self.assertIn(
                 mark.resolution,
-                (EVIDENCE, ASK),
-                f"{mark.token} must resolve either through evidence or through the user",
+                (EVIDENCE, *RELAY),
+                f"{mark.token} must resolve through evidence, through the caller, "
+                "or through a person",
             )
 
     def test_no_two_marks_share_a_token(self):
@@ -67,11 +70,25 @@ class TheVocabularyIsInternallyConsistent(unittest.TestCase):
         self.assertEqual(set(MARK_MEANINGS), set(MARKS))
         self.assertEqual(set(MARK_NAMES), set(MARKS))
 
-    def test_exactly_one_mark_resolves_through_the_user(self):
+    def test_every_mark_outside_the_evidence_class_rides_up_from_a_delegate(self):
+        # run_stop pops exactly RELAY_MARKS out of a delegate's blocking set.
+        # A token whose class is neither EVIDENCE nor a relay class would
+        # block the delegate on a question the delegate cannot reach.
+        outside = tuple(mark.token for mark in VOCABULARY if mark.resolution != EVIDENCE)
         self.assertEqual(
-            tokens_of_class(ASK),
-            (ASK_MARK,),
-            "run_stop carries one ASK token upward; a second would be dropped silently",
+            outside,
+            RELAY_MARKS,
+            "a non-evidence token missing from RELAY_MARKS strands a delegate "
+            "on a question only someone above it can answer",
+        )
+
+    def test_the_caller_class_and_the_human_class_hold_different_tokens(self):
+        self.assertTrue(tokens_of_class(CALLER), "the caller's mark is what rides one level up")
+        self.assertTrue(tokens_of_class(HUMAN), "the standing question is what reaches a person")
+        self.assertFalse(
+            set(tokens_of_class(CALLER)) & set(tokens_of_class(HUMAN)),
+            "one token in both classes leaves a caller unable to tell an item it "
+            "could settle itself from one that must reach a person",
         )
 
     def test_at_least_one_mark_resolves_through_evidence(self):

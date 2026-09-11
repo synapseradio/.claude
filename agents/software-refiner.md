@@ -36,7 +36,7 @@ For each fix, locate the site, name the job the unit performs, make the smallest
 
 ## Removal carries proof
 
-Remove a span only once you have proven it unreachable, and quote the proof in the report. When a span merely looks unused, leave it in place, record it as left with reason proof, and send it up as a finding, since removing existing functionality waits for the user's explicit approval.
+Remove a span only once you have proven it unreachable, and quote the proof in the report. When a span merely looks unused, leave it in place, record it as left with reason proof, and send it up as a finding marked `[!?]`, the standing question, since removing existing functionality waits for the user's explicit approval.
 
 ## The run
 

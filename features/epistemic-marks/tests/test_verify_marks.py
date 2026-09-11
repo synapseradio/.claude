@@ -41,6 +41,25 @@ def assistant_tool_use():
     return entry("assistant", [{"type": "tool_use", "id": "t1", "name": "Read", "input": {}}])
 
 
+def read_call(path, call_id="r1"):
+    block = {"type": "tool_use", "id": call_id, "name": "Read", "input": {"file_path": path}}
+    return entry("assistant", [block])
+
+
+def grep_call(pattern, path, call_id="g1"):
+    block = {
+        "type": "tool_use",
+        "id": call_id,
+        "name": "Grep",
+        "input": {"pattern": pattern, "path": path},
+    }
+    return entry("assistant", [block])
+
+
+def result_for(call_id, content):
+    return entry("user", [{"type": "tool_result", "tool_use_id": call_id, "content": content}])
+
+
 def run_hook(payload, *args, env=None):
     """Drive the entrypoint the way the harness does, on a scrubbed env.
 
@@ -219,6 +238,72 @@ class VerifyMarksStopHook(unittest.TestCase):
         self.assertEqual(result["decision"], "block")
         self.assertIn("146 test files", result["reason"])
 
+    def test_a_mark_inside_a_code_span_does_not_block_when_the_line_names_it_in_words(self):
+        result = self.decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": (
+                    "The secondhand mark, `[.?]`, is what a delegate's claim carries."
+                ),
+            }
+        )
+        self.assertNotIn(
+            "decision",
+            result or {},
+            "a glyph beside the mark's own name documents the mark rather than claiming",
+        )
+
+    def test_a_table_pairing_every_mark_with_its_name_does_not_block(self):
+        result = self.decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": (
+                    "| Mark | Name |\n"
+                    "| --- | --- |\n"
+                    "| `[?]` | the unsourced mark |\n"
+                    "| `[.?]` | the secondhand mark |\n"
+                ),
+            }
+        )
+        self.assertNotIn(
+            "decision",
+            result or {},
+            "the plugin must be able to document its own vocabulary in a reply",
+        )
+
+    def test_a_skipped_mention_reaches_the_user_in_a_notice(self):
+        line = "The secondhand mark, `[.?]`, is what a delegate's claim carries."
+        result = self.decision({"stop_hook_active": False, "last_assistant_message": line})
+        self.assertIsNotNone(result, "an exemption a writer can take must not be silent")
+        self.assertIn(line, result["systemMessage"])
+
+    def test_a_bare_mark_still_blocks_on_a_line_documenting_that_same_mark(self):
+        result = self.decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": (
+                    "The unsourced mark, `[?]`, says no source is on file, "
+                    "and nobody else calls it [?]."
+                ),
+            }
+        )
+        self.assertIsNotNone(result, "the exemption covers the code span alone, never the line")
+        self.assertEqual(result["decision"], "block")
+        self.assertIn("nobody else calls it [?]", result["reason"])
+
+    def test_a_mark_inside_a_code_span_blocks_when_the_line_names_a_different_mark(self):
+        result = self.decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": (
+                    "Unlike the unsourced mark, this count came back from a delegate `[.?]`."
+                ),
+            }
+        )
+        self.assertIsNotNone(result, "naming one mark exempts no other mark's glyph")
+        self.assertEqual(result["decision"], "block")
+        self.assertIn("came back from a delegate", result["reason"])
+
     def test_the_reason_offers_the_referral_resolution_beside_the_verification_one(self):
         result = self.decision(
             {"stop_hook_active": False, "last_assistant_message": "The count is 12 [?]."}
@@ -343,6 +428,72 @@ class VerifyMarksStopHook(unittest.TestCase):
         self.assertIn("AskUserQuestion", result["reason"])
         self.assertNotIn("UNANSWERED", result["reason"])
 
+    def test_the_standing_question_blocks_and_routes_to_ask_user_question(self):
+        result = self.decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": "Whether to ship behind a flag is unsettled [!?].",
+            }
+        )
+        self.assertIsNotNone(result, "a [!?] line must block the stop")
+        self.assertEqual(result["decision"], "block")
+        self.assertIn("Whether to ship behind a flag is unsettled [!?].", result["reason"])
+        self.assertIn("AskUserQuestion", result["reason"])
+
+    def test_a_delegate_report_carrying_only_a_standing_question_does_not_block(self):
+        result = self.delegate_decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": "Whether to ship behind a flag is unsettled [!?].",
+            }
+        )
+        self.assertIsNone(
+            result, "a [!?] must ride up to the caller rather than stall the delegate"
+        )
+
+    def test_a_delegate_report_tells_the_caller_not_to_absorb_a_standing_question(self):
+        result = self.delegate_decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": (
+                    "The count is 12 [?].\nWhether to ship behind a flag is unsettled [!?]."
+                ),
+            }
+        )
+        self.assertIsNotNone(result)
+        reason = result["reason"]
+        self.assertIn("UNANSWERED", reason)
+        self.assertIn("Whether to ship behind a flag is unsettled [!?].", reason)
+        self.assertIn("not absorb", reason, "the caller may relay this mark and never answer it")
+
+    def test_a_delegate_report_lists_the_callers_mark_apart_from_the_standing_question(self):
+        caller_line = "I read the request as covering staging only [^?]."
+        human_line = "Whether to ship behind a flag is unsettled [!?]."
+        result = self.delegate_decision(
+            {
+                "stop_hook_active": False,
+                "last_assistant_message": f"The count is 12 [?].\n{caller_line}\n{human_line}",
+            }
+        )
+        reason = result["reason"]
+        caller_step = reason.index("[^?] exactly where it stands")
+        human_step = reason.index("[!?] exactly where it stands")
+        self.assertLess(
+            caller_step,
+            reason.index(f"- {caller_line}"),
+            "the caller's mark is listed under the instruction naming it",
+        )
+        self.assertLess(
+            human_step,
+            reason.index(f"- {human_line}"),
+            "the standing question is listed under its own instruction",
+        )
+        self.assertNotIn(
+            human_line,
+            reason[caller_step:human_step],
+            "a caller must read the two classes apart, not as one escalation pile",
+        )
+
     def test_a_second_pass_reports_the_surviving_marks_without_blocking(self):
         result = self.decision(
             {"stop_hook_active": True, "last_assistant_message": "Still marked [?]."}
@@ -357,6 +508,54 @@ class VerifyMarksStopHook(unittest.TestCase):
         )
         self.assertIsNone(result, "a resolved reply draws no notice")
 
+    def test_a_delegate_second_pass_hands_its_unground_claims_back_as_a_list(self):
+        result = self.delegate_decision(
+            {
+                "stop_hook_active": True,
+                "last_assistant_message": (
+                    "The count is 12 [?].\nThe migration ran on every shard [.?]."
+                ),
+            }
+        )
+        self.assertIsNotNone(result, "a delegate's surviving claims must not pass in silence")
+        self.assertNotIn("decision", result, "a second pass never blocks again")
+        message = result["systemMessage"]
+        self.assertIn("UNANSWERED", message, "the caller reads an explicit list, not prose")
+        self.assertIn("The count is 12 [?].", message)
+        self.assertIn("The migration ran on every shard [.?].", message)
+
+    def test_a_main_thread_second_pass_keeps_its_plain_notice(self):
+        result = self.decision(
+            {"stop_hook_active": True, "last_assistant_message": "The count is 12 [?]."}
+        )
+        self.assertNotIn(
+            "UNANSWERED",
+            result["systemMessage"],
+            "at top level nothing rides up, so the notice names no report opening",
+        )
+
+    def test_a_delegate_first_pass_asks_for_an_unanswered_opening_on_what_it_cannot_ground(self):
+        result = self.delegate_decision(
+            {"stop_hook_active": False, "last_assistant_message": "The count is 12 [?]."}
+        )
+        reason = result["reason"]
+        self.assertIn("UNANSWERED", reason)
+        self.assertIn(
+            "re-delegates",
+            reason,
+            "the delegate is told why the list matters: the caller acts on it",
+        )
+
+    def test_a_main_thread_first_pass_asks_for_no_unanswered_opening_on_evidence_marks(self):
+        result = self.decision(
+            {"stop_hook_active": False, "last_assistant_message": "The count is 12 [?]."}
+        )
+        self.assertNotIn(
+            "UNANSWERED",
+            result["reason"],
+            "at top level the reader is the user, who wants the reply and not a debt list",
+        )
+
     def test_a_delegate_second_pass_stays_silent_on_a_caret_mark(self):
         result = self.delegate_decision(
             {
@@ -365,6 +564,109 @@ class VerifyMarksStopHook(unittest.TestCase):
             }
         )
         self.assertIsNone(result, "a [^?] rides up to the caller rather than drawing a notice")
+
+
+class VerifyMarksCitationIntegrity(unittest.TestCase):
+    """A citation is the positive signal, so a fabricated one is worth a notice."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.state = str(Path(self._tmp.name) / "state")
+
+    def transcript(self, *lines):
+        path = Path(self._tmp.name) / "session.jsonl"
+        path.write_text("\n".join(lines) + "\n")
+        return str(path)
+
+    def decision(self, reply, *lines):
+        payload = {
+            "stop_hook_active": False,
+            "transcript_path": self.transcript(user_text("check it"), *lines),
+            "last_assistant_message": reply,
+        }
+        code, out = run_hook(payload, env={"VERIFY_MARKS_STATE_DIR": self.state})
+        self.assertEqual(code, 0)
+        return json.loads(out) if out.strip() else None
+
+    def test_a_citation_naming_a_file_nothing_opened_draws_a_notice(self):
+        result = self.decision(
+            "The guard lives at beta.py:42.",
+            read_call("/repo/alpha.py"),
+            result_for("r1", "the contents of alpha"),
+        )
+        self.assertIsNotNone(result, "a citation to an unopened file must reach the reader")
+        self.assertIn("beta.py:42", result["systemMessage"])
+
+    def test_a_citation_naming_a_file_a_read_opened_draws_no_notice(self):
+        result = self.decision(
+            "The guard lives at alpha.py:42.",
+            read_call("/repo/alpha.py"),
+            result_for("r1", "the contents of alpha"),
+        )
+        self.assertIsNone(result, "a relative citation matches the absolute path Read was given")
+
+    def test_a_citation_naming_a_path_a_grep_returned_draws_no_notice(self):
+        result = self.decision(
+            "The guard lives at gamma.py:7.",
+            grep_call("guard", "/repo"),
+            result_for("g1", "/repo/gamma.py:7:    if guard:"),
+        )
+        self.assertIsNone(
+            result,
+            "a Grep over a directory surfaces the files in its results, "
+            "and citing one of those is citing a file the session opened",
+        )
+
+    def test_a_citation_inside_a_fenced_block_draws_no_notice(self):
+        result = self.decision(
+            "For example:\n```\nsee beta.py:42\n```\nThat is the form.",
+            read_call("/repo/alpha.py"),
+            result_for("r1", "the contents of alpha"),
+        )
+        self.assertIsNone(result, "a citation inside an example block claims nothing")
+
+    def test_a_citation_to_an_unopened_file_never_blocks(self):
+        result = self.decision(
+            "The guard lives at beta.py:42.",
+            read_call("/repo/alpha.py"),
+            result_for("r1", "the contents of alpha"),
+        )
+        self.assertNotIn("decision", result, "the citation check reports and never stops the turn")
+
+    def test_a_blocking_pass_reports_no_citation(self):
+        result = self.decision(
+            "The count is 12 [?]. The guard lives at beta.py:42.",
+            read_call("/repo/alpha.py"),
+            result_for("r1", "the contents of alpha"),
+        )
+        self.assertEqual(result["decision"], "block")
+        self.assertNotIn(
+            "beta.py:42",
+            result.get("systemMessage", ""),
+            "this reply is about to be replaced, so a notice about it is noise",
+        )
+
+    def test_a_tool_result_from_a_write_leaves_a_citation_unopened(self):
+        result = self.decision(
+            "The guard lives at beta.py:42.",
+            entry(
+                "assistant",
+                [
+                    {
+                        "type": "tool_use",
+                        "id": "w1",
+                        "name": "Write",
+                        "input": {"file_path": "/repo/beta.py"},
+                    }
+                ],
+            ),
+            result_for("w1", "wrote /repo/beta.py"),
+        )
+        self.assertIsNotNone(
+            result, "only Read, Grep and Glob put a file in front of the agent to cite"
+        )
+        self.assertIn("beta.py:42", result["systemMessage"])
 
 
 class VerifyMarksBatchHook(unittest.TestCase):

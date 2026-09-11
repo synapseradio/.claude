@@ -34,7 +34,7 @@ Accumulate candidate questions freely, reaching past the near question into the 
 
 ## Evidence settles what it reaches
 
-Answer here, in ask-respond rounds, every rung the code, the record, the rules, the docs, or a read-only command settles, and report it settled. Keep as a question, and send up, every rung resting on intent, direction, or what done means, whether the answerer or an owner settles it.
+Answer here, in ask-respond rounds, every rung the code, the record, the rules, the docs, or a read-only command settles, and report it settled. Keep as a question, mark `[!?]`, the standing question, and send up, every rung resting on intent, direction, or what done means, whether the answerer or an owner settles it.
 
 Name in every settled round the file, the line, the command output, or the line of record that settled it, with a confidence from 1 to 5: 5 where a file, a line, or a command output settles it outright, 2 or below where inference does. Match your language to its warrant: "likely because X" and "unsure, but might be Y" carry different commitments.
 

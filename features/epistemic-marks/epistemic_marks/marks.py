@@ -8,7 +8,14 @@ that teaches it.
 from dataclasses import dataclass
 
 EVIDENCE = "evidence"
-ASK = "ask"
+CALLER = "caller"
+HUMAN = "human"
+
+# The classes whose answer sits outside the agent that wrote the mark, so a
+# delegate's Stop pass carries them to the caller rather than blocking on
+# them. Every class that is not EVIDENCE belongs here, and
+# tests/test_marks_vocabulary.py fails on one that does not.
+RELAY = (CALLER, HUMAN)
 
 
 @dataclass(frozen=True)
@@ -34,9 +41,15 @@ VOCABULARY = (
     ),
     Mark(
         token="[^?]",
-        name="the user's mark",
-        gloss="awaits an answer only the user supplies",
-        resolution=ASK,
+        name="the caller's mark",
+        gloss="awaits an answer whoever spawned you can settle",
+        resolution=CALLER,
+    ),
+    Mark(
+        token="[!?]",
+        name="the standing question",
+        gloss="awaits an answer only a person supplies",
+        resolution=HUMAN,
     ),
 )
 
@@ -57,4 +70,7 @@ def holds_class(lines_by_mark, resolution):
     return any(token in lines_by_mark for token in tokens_of_class(resolution))
 
 
-ASK_MARK = next(iter(tokens_of_class(ASK)), None)
+# Every token a delegate hands upward instead of resolving itself. A single
+# token would drop the second one silently, which is what the split of the
+# escalation mark into a caller's mark and a standing question introduced.
+RELAY_MARKS = tuple(token for resolution in RELAY for token in tokens_of_class(resolution))

@@ -43,7 +43,7 @@ When a suite fails, a build breaks, or a hook rejects a commit, open the return 
 
 ## The design arrives decided
 
-Build the approach the design settled. When a design change looks worth making, write it into the open questions with the option you would pick, its ground, and the work waiting on the answer, and build nothing on it. When evidence contradicts the design's stated context, stop the run and open the return on the contradiction. When a fork turns on the user's goal, intent, or what done means, hand it up to whoever spawned you, with the options you would have offered.
+Build the approach the design settled. When a design change looks worth making, write it into the open questions with the option you would pick, its ground, and the work waiting on the answer, and build nothing on it. When evidence contradicts the design's stated context, stop the run and open the return on the contradiction. When a fork turns on the user's goal, intent, or what done means, mark it `[!?]`, the standing question, and hand it up to whoever spawned you, with the options you would have offered.
 
 When the code departs from a line of the design, record the deviation: the design line, what the code does, and the evidence that moved it.
 
@@ -65,7 +65,7 @@ Close by listing each open claim beside the answer it waits on, giving each devi
 
 Emit the report as markdown, opening on the red line where one stands, and otherwise on the claims this run covered. Carry the touched paths, the commits with their messages and files where the caller asked for staging, each behavior change with its test, its red output, and the run that turned it green, every run in the order it ran with its command and its output, the deviations, the choices, the spike readings, the open questions, and the undone claims each beside the answer it waits on.
 
-Point every statement about behavior in the report at the run that shows it, and mark a statement resting on your reading alone `[?]`. When the project has no test harness, open the return on that gap before the first edit, and resume the cells once the caller settles which harness the project takes. When a fix would widen the work past the claims the design states, put the extra work into the open questions and hold the cell to its claim, since scope belongs to the user.
+Point every statement about behavior in the report at the run that shows it, and mark a statement resting on your reading alone `[?]`. When the project has no test harness, open the return on that gap before the first edit, and resume the cells once the caller settles which harness the project takes. When a fix would widen the work past the claims the design states, put the extra work into the open questions marked `[!?]` and hold the cell to its claim, since scope belongs to the user.
 
 ## Scoping a request
 

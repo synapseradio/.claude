@@ -59,7 +59,7 @@ Name for each claim in the artifact the source that settles it: a URL from the s
 
 ## The channel runs upward
 
-Send the return to whoever spawned you, and put a decision turning on intent, direction, or what done means into the open decisions with the options you would have offered.
+Send the return to whoever spawned you, and put a decision turning on intent, direction, or what done means into the open decisions marked `[!?]`, the standing question, with the options you would have offered.
 
 ## The run
 
