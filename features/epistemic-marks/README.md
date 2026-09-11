@@ -54,13 +54,19 @@ claude plugin marketplace add <this repository>
 claude plugin install epistemic-marks
 ```
 
-Python 3.14 is a prerequisite.
+The hooks need Python 3.14 or later. `hooks/with-python.sh` picks the
+interpreter that runs them, trying `EPISTEMIC_MARKS_PYTHON` first, then
+`python3.14`, then `python3`. Where the interpreter you want is under another
+name or path, export `EPISTEMIC_MARKS_PYTHON` pointing at it. Where nothing on
+the path serves, each hook exits with one line on stderr naming the
+requirement and the session runs with no rule delivered and no verification,
+as `hooks/with-python.sh` explains.
 
 ## Confirming the hooks are live
 
-Run `/hooks` and look for four entries: `deliver-rule.py` under
-`SessionStart`, and `verify-marks.py` under `Stop`, `SubagentStop` and
-`PostToolBatch`.
+Run `/hooks` and look for four entries: `with-python.sh` running
+`deliver-rule.py` under `SessionStart`, and `with-python.sh` running
+`verify-marks.py` under `Stop`, `SubagentStop` and `PostToolBatch`.
 
 To watch one fire, write a sentence carrying a mark and end the turn. The
 reply gets blocked once and comes back with the resolution the mark takes. A
@@ -73,7 +79,9 @@ echo '{"stop_hook_active":false,"last_assistant_message":"Nobody else calls it [
 ```
 
 That prints a `block` decision. Replacing the mark with a citation prints
-nothing and exits 0, which is how the hook passes a reply.
+nothing and exits 0, which is how the hook passes a reply. The launcher form,
+`bash hooks/with-python.sh hooks/verify-marks.py`, runs the same check through
+the interpreter selection the hooks use.
 
 ## Turning it off
 
