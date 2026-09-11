@@ -19,10 +19,17 @@ tiers:
     include: "*"
   opus:
     include: "*"
+  # sonnet and haiku run only as delegates and never spawn, so they leave out
+  # the rule on delegating to agents, and their own core-rules drops the
+  # sentence pointing at it.
   sonnet:
     include: "*"
+    exclude:
+      - agent-delegation
   haiku:
     include: "*"
+    exclude:
+      - agent-delegation
   claude-opus-4-8:
     include: "*"
 

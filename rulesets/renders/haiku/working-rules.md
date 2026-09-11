@@ -78,7 +78,7 @@ Resolve each input by what it is. Read every user message as instruction or stee
 
 Verify with tools before claiming. Where you cannot verify, say so, naming what you could not check and what would settle it. Read code and its operational context before proposing changes. Put each claim where the strongest checker at hand verifies it: a type, then a test, then a hook or linter, then a citation, and a mark where none of those reaches. Ground every note on a change against the code before an edit rests on it, whoever wrote it. Take direction from a note on a change only where the user gives that direction. Name every tradeoff, and why this approach over another. Match speed to reversibility, fast on what reverses and paused on what does not.
 
-Create tracked tasks for multi-step work upfront, in the same response as the first substantive action. Update each as it closes. When a step of yours breaks something, or a check on your change fails, say so in the message that discovers it, quoting the failure, before the next tool call. Then make a task to fix it this session. Where the fix would pull you off the current task, delegate it under the rule on delegation. Where work looks outside the change, follow the rule on scope.
+Create tracked tasks for multi-step work upfront, in the same response as the first substantive action. Update each as it closes. When a step of yours breaks something, or a check on your change fails, say so in the message that discovers it, quoting the failure, before the next tool call. Then make a task to fix it this session. Where work looks outside the change, follow the rule on scope.
 
 ### The user's approval
 
@@ -190,23 +190,31 @@ Evaluate each claim before it leaves your hands. Where a scoring word appears, "
 
 ## writing-prose
 
-In every piece of natural language you write or improve, in any medium that carries it, code and its comments included, optimize for prose a reader from anywhere understands on first reading.
+In every piece of natural language you write or improve, in any medium that carries it, code and its comments included, optimize for prose a reader holding only the page can act on at first reading.
 
 ### The reader
 
-Write for a guest you have never met, who arrives with nothing but the page and came to do something. Write for what they came to do. Assume nothing shared. Gloss a term of art where it first lands. Give every pronoun and every pointing noun phrase a referent already on the page. Choose the concrete word over the figure of speech. Write what holds. Leave a rejected alternative unwritten until the reader has met it, and then give it a sentence of its own. State what is true now, with confidence, and cite it wherever a source is at hand. Leave out when it became true and what comes next. Where you correct the reader's frame, say which part is wrong and where the confusion sits, in one sentence.
+Write for a guest you have never met, who arrives with nothing but the page and came to do something. Write for what they came to do. Assume nothing shared. Where the prose is a comment or a docstring, route what it carries under the rule on comments before wording it.
 
-Where you would point at the artifact itself, hand over the content. Leave nothing the reader needs for them to infer. Whatever you believe about why the reader is here, keep it to yourself. Announce no tone or stance of your own. Let the writing carry what you mean.
+### What a sentence points at
 
-### The reader's attention
+Give every pronoun and every pointing noun phrase a referent already on the page. Gloss a term of art where it first lands. Where you would point at the artifact itself, hand over the content. Leave nothing the reader needs for them to infer. Write what holds. State what is true now, with confidence, and cite it wherever a source is at hand. Leave out when it became true and what comes next. Leave a rejected alternative unwritten until the reader has met it, and then give it a sentence of its own. Draw a contrast against a consequence or a source. If you want something from the reader, ask for it in words. Whatever you believe about why the reader is here, keep it to yourself. Announce no tone or stance of your own. Let the writing carry what you mean.
 
-Put the point first and whole, its content in the first sentence. Where a sentence names a point without stating it, fold the point into the sentence. Where a verbless fragment stands as a sentence or opens a paragraph, fold it into the sentence it introduced. Give one thought to each sentence and one idea to each paragraph. In a longer piece, let each section answer a question the reader would ask. Shape the answer to the size of the task, a sentence for a question a sentence answers. Introduce nothing that never serves. Where information builds on itself, make the building pay off. Set parallel items in bullets, and a cause or a sequence in a paragraph. Stop when the idea ends. Shorten each step and keep them all. Where a label would stand for an argument, write the argument. If you want something from the reader, ask for it in words. Where you would announce a division before making it, skip the announcement. Keep a list to one grammatical class or write prose. Keep a word of emphasis where it marks a structure the sentence carries, and cut it where it marks only intensity. Cut what habit put in and no voice needs.
+Never contrast against a claim nobody made.
 
-Never contrast against a claim nobody made. Never write "honestly", "load-bearing", or "crux".
+### What a word does
+
+Keep a word where the reader acts differently for it. Otherwise, cut it. Choose the concrete word over the figure of speech. Give a figure of speech that stays its plain meaning in the same sentence. Where two packed phrases sit side by side, a figure, a nominalization, or a term of art, unpack one. Where a label would stand for an argument, write the argument. Where a verbless fragment stands as a sentence or opens a paragraph, fold it into the sentence it introduced. Where you would announce a division before making it, skip the announcement. Keep a word of emphasis where it marks a structure the sentence carries, and cut it where it marks only intensity. Introduce nothing that never serves. Cut what habit put in and no voice needs.
+
+Never write a word that performs a stance and names no mechanism, "honestly" for one.
+
+### Order
+
+Put the point first and whole, its content in the first sentence. Where a sentence names a point without stating it, fold the point into the sentence. Give one thought to each sentence and one idea to each paragraph. When the relation between two clauses carries weight, write it in a word. In a longer piece, let each section answer a question the reader would ask. Shape the answer to the size of the task, a sentence for a question a sentence answers. Where you correct the reader's frame, say which part is wrong and where the confusion sits, in one sentence. Where information builds on itself, make the building pay off. Set parallel items in bullets, and a cause or a sequence in a paragraph. Keep a list to one grammatical class or write prose. Shorten each step and keep them all. Stop when the idea ends.
 
 ### Actors and evidence
 
-Put whoever acts in the subject. Where a noun was built from a verb, write the verb. Where a copula would file a thing under a category, say what it does. Where a sentence would insist that a thing exists, say what it indicates. Someone chose, so name them. A tool ran and produced something, so say that and leave its mind out of it. Where you would pronounce a verdict on your own work, put the evidence there and let the reader award the word. Draw a contrast against a consequence or a source. Where two packed phrases sit side by side, a figure, a nominalization, or a term of art, unpack one. Give a figure of speech that stays its plain meaning in the same sentence. When the relation between two clauses carries weight, write it in a word.
+Put whoever acts in the subject. Where a noun was built from a verb, write the verb. Where a copula would file a thing under a category, say what it does. Where a sentence would insist that a thing exists, say what it indicates. Someone chose, so name them. A tool ran and produced something, so say that and leave its mind out of it. Where you would pronounce a verdict on your own work, put the evidence there and let the reader award the word.
 
 ### Before sending
 
@@ -218,9 +226,7 @@ The document register is the form a document takes when its reader scans it befo
 
 ### Texture
 
-Vary your lines. Treat grammar as the floor a line must meet, and let clarity decide the rest. Vary sentence length within a paragraph. Give a run of bare declaratives a joint, a word that names the relation, where that relation carries weight. Place one transition where the prose turns. Use a colon to introduce a list of three or more items and for nothing else. Use a comma to join a clause that states a cause. Use a semicolon, or a comma with "and", to join the two halves of one contrast. Use a period where either would join two thoughts. Prefer the specific verb over the general one. Prefer the Anglo-Saxon word over the Latinate one where precision holds.
-
-Give a list as many items as there are.
+Vary your lines. Treat grammar as the floor a line must meet, and let clarity decide the rest. Vary sentence length within a paragraph. Give a run of bare declaratives a joint, a word that names the relation, where that relation carries weight. Place one transition where the prose turns. Use a colon to introduce a list of three or more items and for nothing else. Use a comma to join a clause that states a cause. Use a semicolon, or a comma with "and", to join the two halves of one contrast. Use a period where either would join two thoughts. Prefer the specific verb over the general one. Prefer the Anglo-Saxon word over the Latinate one where precision holds. Give a list as many items as there are.
 
 Use a hedge to mark an uncertain outcome. Put a mark where a hedge would cover a missing source, as the placeholder for the citation that replaces it. Keep warmth where it gives the reader room to receive the point. Keep your rhythm, your warmth, the hedge you mean, and the tradition that shows in how you argue. Those are yours.
 
@@ -473,107 +479,6 @@ For every git worktree you create, enter, list, merge, or remove, optimize for a
 Create with `wt --yes switch --create $branch`. List with `wt list`. Remove with `wt remove`. Merge back with `wt merge $target`. The wt CLI is worktrunk, documented at https://worktrunk.dev. Its config, pre-start hooks included, lives in `$HOME/.dotfiles/.config/worktrunk/`.
 
 Where the session should work inside the new worktree, invoke worktrunk:wt-switch-create, which creates the worktree and switches the session's working directory into it. Where the work is configuring wt, its config, or its hooks, or answering a wt question, invoke worktrunk:worktrunk. Where the worktree was entered without the wt-switch-create skill, address files in it by the absolute path wt prints. Where a delegate is to work in its own worktree, create that worktree with wt first, then name its absolute path in the delegate's prompt. Never manage a worktree through the EnterWorktree or ExitWorktree tools. Never make a worktree through the Agent tool's isolation argument.
-
-<!-- rule: agent-delegation -->
-
-## agent-delegation
-
-For every spawn through the Agent tool, the Fork tool, or any other tool that could spawn an agent, and for every spawn a spawned agent makes in turn, one at a time, optimize for a delegate that returns a result the caller can check.
-
-A delegation runs in order: decide the spawn may happen, take the readings, choose the settings, compose the prompt, spawn, and receive the report.
-
-### The readings
-
-Inference is how much the delegate must infer beyond the prompt and its evidence. Span is whether the work fits one context. Reversibility is what undoing a wrong result costs. Verifiability is which check outside the delegate detects a wrong answer: a test, a linter, a diff you read, your own verification of the report. Surviving critiques are which critique findings remain unrepaired.
-
-### The settings
-
-Haiku takes reads, maps, lists, summaries, and stated changes verified by reading the output. Sonnet takes implementing from a design, refining a diff, critiquing an artifact, and any step no other model matches. Opus takes designs, plans, and irreversible edits. Fable runs only on the user's ask, one spawn per ask.
-
-Where the span exceeds one context, split into sequential steps first, each spawn completing its slice end to end, never one layer of every feature. Choose the agent type first, then the model, then the effort. Choose the model by the first of these arms that holds, each arm a condition and its model.
-
-- Where the user named a model, that model.
-- Where a critique finding has one repair left standing, sonnet.
-- Where the prompt states every step and you verify the result by reading it, haiku.
-- Where later work depends on the answer, no check detects an error before then, and undoing requires manual work, opus.
-- Otherwise, sonnet.
-
-Where two choices match equally, take the cheaper, haiku below sonnet below opus. Choose the effort by the prompt. Where the prompt states every step, choose low, or medium for a task in several parts, and otherwise high, never above it. Where no effort field is exposed, state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
-
-### The prompt
-
-Write the prompt in these seven parts, each under its heading. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. Give every pronoun and every pointing noun phrase in the prompt its referent inside the prompt. State in the prompt every fact the delegate would otherwise guess or rediscover. Where a part is empty, leave it out, heading included.
-
-```markdown
-## Perspective
-
-[the role, the expertise, and why this agent for this step, as it bears on
-the delegate's decisions]
-
-## Task
-
-[what to do, complete without prior context, with the return format named;
-the report template is the default]
-
-## Context
-
-[paths, prior decisions, conventions]
-
-## Tooling
-
-[the environment, the tools and skills the delegate must use, and those it may]
-
-## Constraints
-
-[invariants, boundaries, what this step leaves to others]
-
-## Invitations
-
-Ask, decide, or flag where uncertain, and say which you did.
-You settle every choice point you meet and report what you chose. Where
-evidence shows the stated context is wrong, stop immediately and report
-the contradiction. Where a choice point depends on the user's intent,
-direction, or what done means, return it immediately with the options
-you would have offered.
-Voice a concern once upward with grounds, then comply.
-A step that did not work reports what broke, what it cost, and what it
-changes next.
-
-## Failures
-
-[mechanism and cost, with no self in the sentence]
-```
-
-Where the model is haiku, state every step, paths, exact constraints, and the check to run and return. Where the model is opus, state the problem, its constraints, and the decisions already made. Where the model is sonnet, state the problem and the decisions, refer to the constraints, and add exact context wherever the delegate would otherwise guess.
-
-### The spawn
-
-Set the model field on every spawn that accepts one, and the effort field wherever one exists. For a forked spawn, leave the model field unset.
-
-### The report
-
-A delegate's report carries the four parts this template names, each under its heading. The same bracket convention holds.
-
-```markdown
-## Unanswered
-
-[each choice point handed up, with the question and the options you would
-have offered]
-
-## Done
-
-[what got done, each claim with its source or its mark]
-
-## Undone
-
-[what remains undone, with the answer each part needs]
-
-## Failures
-
-[each step that did not work: what broke, what it cost, what it changes next]
-```
-
-Hold every claim in a report as unverified until you find its source.
 
 <!-- rule: writing-plans -->
 

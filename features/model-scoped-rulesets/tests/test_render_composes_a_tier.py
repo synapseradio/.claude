@@ -66,6 +66,41 @@ def pruned(tmp_path):
     return render.RenderTargets(config_root=config_root, corpus_root=corpus, order=ORDER)
 
 
+def _excluding(tmp_path: pathlib.Path, excluded: tuple[str, ...]) -> render.RenderTargets:
+    """A corpus where `haiku` composes every default stem less `excluded`."""
+
+    config_root = tmp_path / "claude"
+    _write(config_root / "CLAUDE.md", "## Hello\n\nPlay.\n")
+    corpus = config_root / "rulesets"
+    for stem in ORDER:
+        _write(corpus / "default" / f"{stem}.md", f"{_body(stem, f'{stem} holds.')}\n")
+    (corpus / "haiku").mkdir()
+    _write(
+        corpus / "manifest.yaml",
+        "tiers:\n"
+        '  default:\n    include: "*"\n'
+        '  haiku:\n    include: "*"\n    exclude:\n'
+        + "".join(f"      - {stem}\n" for stem in excluded)
+        + "order:\n"
+        + "".join(f"  - {stem}\n" for stem in ORDER),
+    )
+    return render.RenderTargets(config_root=config_root, corpus_root=corpus, order=ORDER)
+
+
+@pytest.fixture
+def excluding(tmp_path):
+    """A corpus where one tier composes every default stem but one."""
+
+    return _excluding(tmp_path, ("beta",))
+
+
+@pytest.fixture
+def excluding_all(tmp_path):
+    """A corpus where one tier excludes every stem, so it composes nothing."""
+
+    return _excluding(tmp_path, ORDER)
+
+
 def _stems_in(content: str) -> list[str]:
     """The rule markers the render carries, in the order they appear."""
 
@@ -119,4 +154,46 @@ class TestATierRenderCarriesWhatTheTierDelivers:
         )
         assert "alpha holds." in rendered.content, (
             "a stem the tier does not override still reaches it from the default tier"
+        )
+
+    def test_the_render_leaves_out_a_stem_the_tier_excludes(self, excluding):
+        """The render leaves out a stem the tier excludes, and check reports nothing."""
+
+        targets = excluding.for_tier("haiku")
+        composition = resolve.compose("haiku", excluding.corpus_root)
+        assert composition.findings == (), (
+            f"composition reported {composition.findings}, so the layout is illegal "
+            "before the render is built"
+        )
+
+        rendered = next(
+            generated
+            for generated in render.build_forward_plan(targets, check=True)
+            if generated.path == targets.render_path
+        )
+
+        assert _stems_in(rendered.content) == ["alpha", "zeta"], (
+            f"delivery composes {list(composition.stems)} for haiku, so a render carrying "
+            f"{_stems_in(rendered.content)} tells a reader their session loads a rule it does not"
+        )
+
+    def test_the_render_carries_no_rule_when_the_tier_excludes_every_stem(self, excluding_all):
+        """A tier that excludes every stem renders with no rule."""
+
+        targets = excluding_all.for_tier("haiku")
+        composition = resolve.compose("haiku", excluding_all.corpus_root)
+        assert composition.findings == (), (
+            f"composition reported {composition.findings}, so the layout is illegal "
+            "before the render is built"
+        )
+
+        rendered = next(
+            generated
+            for generated in render.build_forward_plan(targets, check=True)
+            if generated.path == targets.render_path
+        )
+
+        assert _stems_in(rendered.content) == [], (
+            "delivery composes nothing for haiku, so a render carrying "
+            f"{_stems_in(rendered.content)} tells a reader their session loads rules it does not"
         )

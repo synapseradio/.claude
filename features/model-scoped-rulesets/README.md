@@ -108,9 +108,11 @@ stem the manifest names is reported whatever reason loaded it.
 
 ## The renders
 
-A render is one tier read as a single document: the preamble from `CLAUDE.md`, then the bodies that
-tier's own directory holds, in the order the manifest's `order` list names. A manifest stating no
-order renders sorted. Nothing loads a render and no lookup resolves through it. The two directions
+A render is one tier read as a single document: the preamble from `CLAUDE.md`, then every body the
+tier delivers, in the order the manifest's `order` list names. The render composes the way delivery
+does: a stem the tier holds no body for shows `default/`'s body, a stem the tier overrides shows the
+tier's own, and a stem the tier's manifest entry leaves out is absent. A manifest stating no order
+renders sorted. Nothing loads a render and no lookup resolves through it. The two directions
 reproduce each other byte for byte, and a write refuses over a target carrying changes git has not
 seen.
 

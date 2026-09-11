@@ -367,10 +367,11 @@ def corpus_order(targets: RenderTargets) -> tuple[str, ...]:
 def tier_order(targets: RenderTargets) -> tuple[str, ...]:
     """The order this tier's render follows.
 
-    Every tier follows the whole corpus order, because every tier delivers
-    the whole corpus order: a stem the tier holds no body for composes to
-    the default tier's file. A stem no tier resolves is left out here and
-    reported by `compose` as a `no-body` finding rather than rendered empty.
+    Every tier follows the corpus order, less the stems it does not deliver:
+    those its manifest entry leaves out, and those it composes but nothing
+    resolves, which `compose` reports as a `no-body` finding rather than
+    rendered empty. A stem the tier holds no body for still renders, from
+    the default tier's file.
     """
 
     resolved = resolved_bodies(targets)
@@ -380,19 +381,15 @@ def tier_order(targets: RenderTargets) -> tuple[str, ...]:
 def resolved_bodies(targets: RenderTargets) -> dict[str, pathlib.Path]:
     """Each stem this tier delivers, mapped to the file it resolves to.
 
-    `resolve.compose` is the authority on that mapping, and it is what runs
-    wherever the corpus states a manifest. A corpus stating none still
-    renders -- `corpus_order` promises a fresh corpus renders before anyone
-    writes a list, and `compose` reports a missing manifest as a finding and
-    composes nothing -- so the same tier-then-default fallback is applied
-    directly for that case. The two agree by construction; the duplication
-    is the price of the manifest staying optional, and it belongs in
-    `compose` the day the manifest becomes required.
+    `resolve.compose` decides that mapping wherever the corpus states a
+    manifest, even one composing nothing for this tier. A corpus stating
+    none still renders, so this function applies the same tier-then-default
+    fallback itself.
     """
 
-    composed = resolve.compose(targets.tier, targets.corpus_root).body_paths
-    if composed:
-        return dict(composed)
+    composition = _composition(targets)
+    if composition is not None:
+        return dict(composition.body_paths)
 
     resolved: dict[str, pathlib.Path] = {}
     for stem in corpus_order(targets):
@@ -403,6 +400,35 @@ def resolved_bodies(targets: RenderTargets) -> dict[str, pathlib.Path]:
         elif fallback.is_file():
             resolved[stem] = fallback
     return resolved
+
+
+def expected_stems(targets: RenderTargets) -> tuple[str, ...]:
+    """Each stem this tier must resolve to a body.
+
+    Where the corpus states a manifest, this is the tier's composition,
+    which already leaves out what the tier's entry excludes. Where it states
+    none, this is every stem the order names, matching the fallback in
+    `resolved_bodies`.
+    """
+
+    composition = _composition(targets)
+    if composition is not None:
+        return composition.stems
+    return corpus_order(targets)
+
+
+def _composition(targets: RenderTargets) -> resolve.Composition | None:
+    """This tier's composition, or None where the corpus states no manifest.
+
+    `compose` answers a missing or unparseable manifest with a `manifest`
+    finding and no stems. A tier that excludes every stem also yields no
+    stems, so the finding, not the empty result, tells the two apart.
+    """
+
+    composition = resolve.compose(targets.tier, targets.corpus_root)
+    if any(finding.kind == "manifest" for finding in composition.findings):
+        return None
+    return composition
 
 
 def _tier_body_paths(targets: RenderTargets) -> tuple[pathlib.Path, ...]:
@@ -426,7 +452,10 @@ def _tier_body_paths(targets: RenderTargets) -> tuple[pathlib.Path, ...]:
         rule.stem for path in directories if path.is_dir() for rule in unconditional_rules(path)
     }
     unlisted = sorted(held - set(order))
-    absent = [stem for stem in order if stem not in resolved]
+    # A stem is absent where the tier composes it and nothing resolves it, so
+    # the composition, not the order, decides which stems need a body.
+    expected = set(expected_stems(targets))
+    absent = [stem for stem in order if stem in expected and stem not in resolved]
     if unlisted or absent:
         raise ValueError(
             f"working rules order disagrees with {targets.tier_dir}: "
