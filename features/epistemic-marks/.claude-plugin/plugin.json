@@ -1,6 +1,6 @@
 {
   "name": "epistemic-marks",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Blocks a reply, a delegate report, or an open turn that still carries an unverified epistemic mark, and hands back the resolution each mark takes. Teaches the marks and enforces them as one unit: install it and it works, with nothing to configure and nothing to write.",
   "license": "MIT",
   "keywords": [
