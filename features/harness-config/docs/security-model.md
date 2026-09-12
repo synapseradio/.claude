@@ -160,6 +160,7 @@ Three places need to compare values, and each avoids surfacing them:
 | Is the active profile's endpoint the one in `settings.json`? | `harness-doctor.sh` hashes both sides with `shasum -a 256`, compares the hashes, and prints `match` or `differ`. A hash of an endpoint is not the endpoint. |
 | Does `settings.json` already hold every path the profile declares? | Compares the two key-path sets, which carry no values. |
 | Is a variant aligned with base? | `predicates.jq` returns violations. The `floor` predicate prints only base's own leaf pairs, and precondition 3 requires base to name nothing exempt, so those values are policy by construction. |
+| What would the merge change in a variant? | The `merge` mode of `predicates.jq` is the one mode whose output carries variant values, under `result`. `harness-align-apply.sh` writes that output to a scratch file under the plugin data directory, which the deny rules cover, extracts `result` straight into the variant's temporary file, and prints only the ledger: a path, a verdict, and a count per line. A conflict prints its kind and its path, never the two values that disagree. |
 
 One change to `predicates.jq` follows from this rule. Its
 `value-carries-no-locator` check printed the offending string, which is how an

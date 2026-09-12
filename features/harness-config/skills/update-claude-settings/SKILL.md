@@ -169,17 +169,33 @@ routine run.
      | sort | .[]'
    ```
 
-2. Confirm each enumerated variant is readable. Two mechanisms can refuse a
-   read: the `Read(...)` entries in `permissions.deny`, and the PreToolUse
-   hooks that base registers, which cover the Read tool and Bash alike. A
-   variant whose name matches a secret-shaped pattern is the case to expect.
-   Where a read comes back denied, leave that variant out of this sweep,
-   report it to the user with the exact command that got denied, and name the
-   two ways forward: the user runs the reads in the session with
-   `! COMMAND`, or the user amends whichever rule refused it. Do not
-   restructure a command to slip past the guard.
+2. Run the mechanical merge, first dry, then for real. It reads every
+   variant itself, so the `Read(...)` deny rules never stand in its way, and
+   it prints paths, verdicts, and counts and never a value:
 
-3. Run [Reconcile](#reconcile) on each readable variant in that order.
+   ```bash
+   "${CLAUDE_PLUGIN_ROOT}/scripts/harness-align-apply.sh" --dry-run
+   "${CLAUDE_PLUGIN_ROOT}/scripts/harness-align-apply.sh"
+   ```
+
+   Per variant it runs AuditBase, Survey, Project, Seal, Apply, Verify, and
+   Resurvey from [Reconcile](#reconcile), backing each file up under the
+   plugin data directory before it writes. It exits 0 when every variant
+   ended in `Aligned`, 11 for `HaltBaseInvalid`, 14 for `HaltReverted`, and
+   13 when a variant holds a fork only a human settles. Such a variant is
+   left untouched, and each fork is printed as `conflict`, its kind, and
+   its path.
+
+3. Run `Consult` from [Reconcile](#reconcile) on each conflict the script
+   named, with the path in hand, then run the script again. A conflict's
+   question needs both values, and two mechanisms can refuse the read: the
+   `Read(...)` entries in `permissions.deny`, and the PreToolUse hooks that
+   base registers, which cover the Read tool and Bash alike. Where a read
+   comes back denied, leave that variant for this sweep, report it to the
+   user with the exact command that got denied, and name the two ways
+   forward: the user runs the read in the session with `! COMMAND`, or the
+   user amends whichever rule refused it. Do not restructure a command to
+   slip past the guard.
 
 4. Where a Reconcile ends in `LiftAccepted`, write the accepted lift into
    base and restart the sweep from step 1. Restarting terminates, because

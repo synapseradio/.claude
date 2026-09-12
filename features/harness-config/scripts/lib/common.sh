@@ -125,6 +125,101 @@ harness::gates_filter() {
   printf '%s/scripts/lib/profile-gates.jq\n' "$(harness::plugin_root)"
 }
 
+harness::predicates_filter() {
+  printf '%s/skills/update-claude-settings/references/predicates.jq\n' \
+    "$(harness::plugin_root)"
+}
+
+harness::backups_dir() {
+  printf '%s/backups\n' "$(harness::data_dir)"
+}
+
+#######################################
+# Name every variant: the files matching the user-scope glob, minus base,
+# minus every basename the registry lists under notAVariant. Read from the
+# glob rather than from a list, since a profile gets added or renamed without
+# notice.
+# Arguments:
+#   $1: the config root.
+#   $2: the base settings file.
+# Outputs:
+#   One absolute path per line, in lexical order.
+#######################################
+harness::variants() {
+  local config="$1"
+  local base="$2"
+  local skip
+  skip="$(jq -r '[ (.alignment.notAVariant // [])[] ] | join(" ")' -- "${base}")"
+  local candidate name keep skipped
+  while IFS= read -r candidate; do
+    [[ -n "${candidate}" ]] || continue
+    name="$(basename -- "${candidate}")"
+    [[ "${name}" != "settings.base.json" ]] || continue
+    keep=1
+    for skipped in ${skip}; do
+      [[ "${name}" != "${skipped}" ]] || keep=0
+    done
+    if ((keep == 1)); then
+      printf '%s\n' "${candidate}"
+    fi
+  done < <(find "${config}" -maxdepth 1 \
+    \( -name 'settings.json' -o -name 'settings.*.json' \) 2>/dev/null | sort)
+}
+
+#######################################
+# Run one alignment predicate and report it by name and violation path.
+# Arguments:
+#   $1: the mode name.
+#   $2: the base settings file.
+#   $3: the variant file.
+# Returns:
+#   0 when the predicate holds.
+#######################################
+harness::run_predicate() {
+  local mode="$1"
+  local base="$2"
+  local variant="$3"
+  local filter result ok
+  filter="$(harness::predicates_filter)"
+  # jq exits 2 on a missing file and still prints a result computed from what
+  # it read, so the exit status gets read alongside "ok".
+  if ! result="$(jq -s --arg mode "${mode}" -f "${filter}" -- "${base}" "${variant}")"; then
+    harness::report fail "${mode}" "jq could not evaluate the predicate"
+    return 1
+  fi
+  ok="$(printf '%s' "${result}" | jq -r '.ok')"
+  if [[ "${ok}" == "true" ]]; then
+    harness::report pass "${mode}" ""
+    return 0
+  fi
+  harness::report fail "${mode}" \
+    "$(printf '%s' "${result}" | jq -r '
+        [ (.violations // [])[] | (.path // .entry // (.lists | tostring) // "?") ]
+        | unique | join(" ")')"
+  return 1
+}
+
+#######################################
+# Fail unless base passes the audit-base predicate, reporting the checks
+# that failed by name.
+# Arguments:
+#   $1: the base settings file.
+# Returns:
+#   0 when the floor is fit to propagate.
+#######################################
+harness::audit_base() {
+  local base="$1"
+  local audit
+  audit="$(jq -s --arg mode audit-base -f "$(harness::predicates_filter)" -- "${base}" "${base}")" || true
+  if [[ "$(printf '%s' "${audit}" | jq -r '.ok')" == "true" ]]; then
+    harness::report pass "audit-base" "the floor is fit to propagate"
+    return 0
+  fi
+  harness::report fail "audit-base" \
+    "$(printf '%s' "${audit}" | jq -r '[ .checks[] | select(.ok == false) | .name ] | join(" ")')"
+  return 1
+}
+
 #######################################
 # Rewrite a leading home directory as a tilde, which removes the account
 # identifier from anything printed. Every command that prints a filesystem

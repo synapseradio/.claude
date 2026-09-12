@@ -343,6 +343,7 @@ and it would put the answer inside a file the plugin must not read by value.
 | `harness-guard.sh scripts` | none | Checks every script the plugin ships for a forbidden construct | 0 when clean, 10 otherwise |
 | `harness-guard.sh all` | none | Runs the three guards above in order | 0 when all pass |
 | `harness-align-check.sh` | none | Runs `audit-base` and the three verification predicates over every variant, value-free, and reports per variant | 0 when every variant is aligned, 11 otherwise |
+| `harness-align-apply.sh [--dry-run] [--variant NAME]` | optional flags | Runs the Reconcile machine's mechanical states over every variant through the `merge` mode of `predicates.jq`: backs up, seals, writes, verifies, and resurveys. Prints paths, verdicts, and counts, never a value. A variant holding a fork only a human settles is left untouched and its conflicts named | 0 when every swept variant is aligned, 11 when base fails its audit, 13 when a variant holds a conflict, 14 when a write failed verification and the backup was restored |
 
 Distinct exit statuses matter because a caller distinguishes "no profile
 active" from "validation failed" without parsing prose.
@@ -414,4 +415,4 @@ each one is also a copy-pasteable command a user runs alone.
 | `settings.json` | Activation writes the declared paths | The write is bounded to the paths the active profile declares. Every other key survives. |
 | `.gitignore` at the repository root | `harness-setup.sh` installs the variant rules and `harness-guard.sh ignore` verifies them | Setup appends rules and never rewrites the allowlist. The verification runs `git check-ignore -v` per name, so an allowlist widened for another purpose shows up as a failure. |
 | `skills/harness-profiles/` and `skills/update-claude-settings/` | The two skills call these scripts | A skill names a script by `${CLAUDE_PLUGIN_ROOT}` and never by an absolute path. |
-| `references/predicates.jq` | `harness-align-check.sh` and the skill both invoke it | The modes and their output shape stay as they are, with one change recorded in the security model: `value-carries-no-locator` reports a classification rather than the offending string. |
+| `references/predicates.jq` | `harness-align-check.sh`, `harness-align-apply.sh`, and the skill all invoke it | The modes and their output shape stay as they are, with one change recorded in the security model: `value-carries-no-locator` reports a classification rather than the offending string. |
