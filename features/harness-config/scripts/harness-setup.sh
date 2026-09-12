@@ -147,9 +147,13 @@ install_deny_rules() {
     return 0
   fi
 
+  # Append the rules the floor lacks after the ones it holds. A sort-based
+  # dedupe would reorder every existing entry, which turns a five-line change
+  # into a diff over the whole list.
   tmp="${base}.harness-tmp"
   jq --argjson want "$(deny_fragment)" '
-    .permissions.deny = ((.permissions.deny // []) + $want | unique_by(.))
+    (.permissions.deny // []) as $have
+    | .permissions.deny = $have + [ $want[] | select(IN($have[]) | not) ]
   ' -- "${base}" >"${tmp}"
   jq -e . -- "${tmp}" >/dev/null || {
     rm -f -- "${tmp}"

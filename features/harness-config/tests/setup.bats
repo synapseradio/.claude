@@ -54,3 +54,16 @@ teardown() {
   [ "${status}" -eq 0 ]
   [[ "${output}" == *"deny-rules"*"already present"* ]]
 }
+
+# bats test_tags=integration
+@test "setup appends the deny rules after the floor's own and reorders none" {
+  jq '.permissions.deny = ["Bash(sudo *)", "Bash(rm -rf /*)", "Read(~/.claude/plugins/data/**)"]' \
+    "${CLAUDE_CONFIG_DIR}/settings.base.json" >"${CLAUDE_CONFIG_DIR}/base.tmp"
+  mv "${CLAUDE_CONFIG_DIR}/base.tmp" "${CLAUDE_CONFIG_DIR}/settings.base.json"
+  run bash "${SCRIPTS}/harness-setup.sh"
+  [ "${status}" -eq 0 ]
+  run jq -c '.permissions.deny' "${CLAUDE_CONFIG_DIR}/settings.base.json"
+  # The floor's own order survives, "sudo" ahead of "rm" ahead of the rule it
+  # already held, and the four it lacked follow in the fragment's order.
+  [ "${output}" = '["Bash(sudo *)","Bash(rm -rf /*)","Read(~/.claude/plugins/data/**)","Read(**/settings.json)","Read(**/settings.*.json)","Read(~/.claude/agents/**)","Read(**/.claude/agents/**)"]' ]
+}
