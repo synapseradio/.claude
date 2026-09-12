@@ -130,8 +130,11 @@ install_deny_rules() {
     return 1
   fi
 
+  # Bind the floor's list before iterating the wanted rules: inside `$want[]`
+  # the input is one rule string, so `.permissions` there indexes a string.
   added="$(jq -r --argjson want "$(deny_fragment)" '
-    ([ $want[] | select(IN((.permissions.deny // [])[]) | not) ]) | length
+    (.permissions.deny // []) as $have
+    | [ $want[] | select(IN($have[]) | not) ] | length
   ' -- "${base}")"
 
   if [[ "${added}" == "0" ]]; then
