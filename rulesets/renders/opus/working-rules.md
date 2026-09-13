@@ -498,7 +498,7 @@ Where the session should work inside the new worktree, invoke worktrunk:wt-switc
 
 ## agent-delegation
 
-For every spawn through the Agent tool, the Fork tool, or any other tool that could spawn an agent, and for every spawn a spawned agent makes in turn, one at a time, optimize for a delegate that returns a result the caller can check.
+For every spawn through the Agent tool, the Fork tool, or any other tool that could spawn an agent, and for every spawn a spawned agent makes in turn, optimize for a delegate that returns a result the caller can check.
 
 A delegation runs in order: decide the spawn may happen, take the readings, choose the settings, compose the prompt, spawn, and receive the report.
 
@@ -513,9 +513,9 @@ Haiku takes reads, maps, lists, summaries, and stated changes verified by readin
 Where the span exceeds one context, split into sequential steps first, each spawn completing its slice end to end, never one layer of every feature. Choose the agent type first, then the model, then the effort. Choose the model by the first of these arms that holds, each arm a condition and its model.
 
 - Where the user named a model, that model.
-- Where a critique finding has one repair left standing, sonnet.
 - Where the prompt states every step and you verify the result by reading it, haiku.
-- Where later work depends on the answer, no check detects an error before then, and undoing requires manual work, opus.
+- Where the work more complex, but is well-scoped with relative few known unknowns, sonnet.
+- For more complex work of broader scope, or work with multiple unknowns to be solved during implementation, opus.
 - Otherwise, sonnet.
 
 Where two choices match equally, take the cheaper, haiku below sonnet below opus. Choose the effort by the prompt. Where the prompt states every step, choose low, or medium for a task in several parts, and otherwise high, never above it. Where no effort field is exposed, state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
@@ -527,7 +527,7 @@ Write the prompt in these seven parts, each under its heading. Replace each brac
 ```markdown
 ## Perspective
 
-[the role, the expertise, and why this agent for this step, as it bears on
+[What makes this agent the perfect one for the task at hand. the role, the expertise, and why this agent for this step, as it bears on
 the delegate's decisions]
 
 ## Task
@@ -541,7 +541,7 @@ the report template is the default]
 
 ## Tooling
 
-[the environment, the tools and skills the delegate must use, and those it may]
+[the environment, the tools and skills the delegate must use, and those it may. Optional section, for highlighting necessary tools to use, not for limiting allowed tools.]
 
 ## Constraints
 
@@ -555,8 +555,7 @@ evidence shows the stated context is wrong, stop immediately and report
 the contradiction. Where a choice point depends on the user's intent,
 direction, or what done means, return it immediately with the options
 you would have offered.
-Voice a concern once upward with grounds, then comply.
-A step that did not work reports what broke, what it cost, and what it
+For a step that did not work, report what broke, what it cost(s), and what it
 changes next.
 
 ## Failures
@@ -570,9 +569,9 @@ Where the model is haiku, state every step, paths, exact constraints, and the ch
 
 Set the model field on every spawn that accepts one, and the effort field wherever one exists. For a forked spawn, leave the model field unset.
 
-### The report
+### The default report
 
-A delegate's report carries the four parts this template names, each under its heading. The same bracket convention holds.
+A delegate's report carries the four parts this template names, each under its heading, by default unless another one is better per your discretion. The same bracket convention holds.
 
 ```markdown
 ## Unanswered
@@ -588,9 +587,13 @@ have offered]
 
 [what remains undone, with the answer each part needs]
 
-## Failures
+## Lessons
 
-[each step that did not work: what broke, what it cost, what it changes next]
+[Optional. Information learned during execution, if any, that was relevant, not apparent and took effort to answer outside the scope of the instructions]
+
+## Questions
+
+[Optional. Open questions, if any, that naturally lead from here]
 ```
 
 Hold every claim in a report as unverified until you find its source.
