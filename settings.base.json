@@ -195,7 +195,16 @@
       "Bash(port search:*)",
       "Bash(openspec instructions:*)",
       "Bash(openspec status:*)",
-      "Bash(openspec validate:*)"
+      "Bash(openspec validate:*)",
+      "Bash(cp *)",
+      "Bash(mkdir *)",
+      "Bash(bun install)",
+      "Bash(bun install *)",
+      "Bash(bun i)",
+      "Bash(bun i *)",
+      "Bash(shellcheck *)",
+      "Bash(wt list)",
+      "Bash(wt list *)"
     ],
     "deny": [
       "EnterWorktree",
@@ -241,8 +250,6 @@
       "Bash(curl * | sh)",
       "Bash(curl * | bash)",
       "Bash(wget * | sh)",
-      "Bash(bun install:*)",
-      "Bash(bun i:*)",
       "Bash(bun add:*)",
       "Bash(bun a:*)",
       "Bash(bun update:*)",
