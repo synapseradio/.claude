@@ -252,6 +252,7 @@ Decide first whether a comment exists and which kind it takes, by routing each p
 - When it states what the code does, improve the code until the would-be comment falls away.
 - When it states an invariant, it goes to the type, the test, or the name that carries it, and no comment.
 - When it explains why an invariant holds, ask the user, and write nothing until they approve.
+- When it warns of a hazard no test can exercise, it goes to docs, and no comment.
 - When it warns of a hazard, it goes to the test that fails on contact with it, and no comment.
 - When it spans more than one file, it goes to docs, and no comment.
 - When it names a team to reach whom the user never named, no Consult comment.
@@ -260,7 +261,7 @@ Decide first whether a comment exists and which kind it takes, by routing each p
 
 ### The comment kinds
 
-A Why comment is rationale, linking the documentation of every platform or library behavior it rests on, at the version the lockfile resolves. A Consult comment asks whoever changes an area to reach a named team first, on the pattern of "please reach out to our team before making changes in this area". An Anchor comment is the domain fact the code answers to, citing its protocol, spec, or regulation. A Map comment is orientation otherwise rebuilt by hand, a state layout for one. An external referent is anything outside the file the comment sits in.
+A Why comment is rationale, linking the documentation of every platform or library behavior it rests on, a library's at the version the lockfile resolves. A Consult comment asks whoever changes an area to reach a named team first, on the pattern of "please reach out to our team before making changes in this area". An Anchor comment is the domain fact the code answers to, citing its protocol, spec, or regulation. A Map comment is orientation otherwise rebuilt by hand, a state layout for one. An external referent is anything outside the file the comment sits in.
 
 ### Writing the comment
 
@@ -270,7 +271,7 @@ Never write a comment saying that a condition always holds, never occurs, or mus
 
 ### Editing beside a comment
 
-Where an invariant is worth enforcing, write the test that checks it. Where that test cannot land in this change, write a TODO naming the test and an owner or ticket, leaving what the test will state to the test. Where no owner or ticket is known, ask the user before writing the TODO. Where an edit leaves a nearby comment restating its neighbors, contradicting the code, or recounting a path the code left behind, remove it in the same edit. Where a comment holding an invariant sits inside the change's scope, remove it, moving what it holds into a type, a test, or a name wherever one of them can check it.
+Where an invariant is worth enforcing, write the test that checks it. Where that test cannot land in this change, write a TODO naming the test by the description it will carry, plus an owner or ticket, leaving the assertion to the test. Where no owner or ticket is known, ask the user before writing the TODO. Where an edit leaves a nearby comment restating its neighbors, contradicting the code, or recounting a path the code left behind, remove it in the same edit. Where a comment holding an invariant sits inside the change's scope, remove it, moving what it holds into a type, a test, or a name wherever one of them can check it.
 
 <!-- rule: unasked-asides -->
 
