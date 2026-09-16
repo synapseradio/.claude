@@ -15,11 +15,10 @@ from .marks import MARK_CARRY, MARK_RESOLVE
 # is a delegate's and that these lines reach no further from here.
 RELAY_HEADING = "Riding up to your caller, left standing:"
 
-# The notice's three headings. A notice reports rather than instructs, so a
+# The notice's two headings. A notice reports rather than instructs, so a
 # heading is all the framing each of its groups gets.
 SURVIVING_HEADING = "Left standing after the verification pass:"
 MENTION_HEADING = "Naming a mark rather than claiming under one, so asked nothing of:"
-CITATION_HEADING = "Citing a file nothing in this session opened:"
 
 
 def _listing(lines_by_mark):
@@ -63,8 +62,8 @@ def build_context(lines_by_mark):
     )
 
 
-def build_notice(lines_by_mark, mentions=None, unopened=None, carried=None):
-    """The report a Stop pass makes on a surviving mark, a mention or a citation.
+def build_notice(lines_by_mark, mentions=None, carried=None):
+    """The report a Stop pass makes on a surviving mark or a mention.
 
     Nothing here asks for a rewrite: the reply this describes already stands.
     A mention costs nothing to write and exempts the line it sits on, so it
@@ -81,9 +80,4 @@ def build_notice(lines_by_mark, mentions=None, unopened=None, carried=None):
         parts.append(f"{RELAY_HEADING}\n\n" + _sections(carried, MARK_CARRY))
     if mentions:
         parts.append(f"{MENTION_HEADING}\n\n" + _listing(mentions))
-    if unopened:
-        parts.append(
-            f"{CITATION_HEADING}\n\n"
-            + "\n".join(f"- {citation}" for citation in sorted(unopened.values()))
-        )
     return "\n\n".join(parts)

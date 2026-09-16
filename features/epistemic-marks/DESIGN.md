@@ -142,8 +142,17 @@ on a machine whose toolset this plugin cannot know, so no generated line names
 a tool, and every line phrases the act to perform rather than the call to
 make. `tests/test_messages.py` asserts that over the builders' output rather
 than the module source, which is what catches a name reintroduced through an
-f-string. Matching is exempt: `citations.py` names the tools that open a file
-because it is recognizing tool calls, not writing prose.
+f-string.
+
+## Why citations are not checked here
+
+An earlier version matched `path:line` citations in a reply against the
+`Read`, `Grep` and `Glob` calls in the session transcript and reported any
+it could not match. It was removed. In practice it flagged files read through
+a shell, files a delegate opened in its own transcript, and example paths.
+Its notice also reported without asking for anything, so it spurred no
+action. Whether a sentence carries weight, and whether a delegate owed
+citations at all, are judgments. The rule text now carries that obligation.
 
 ## What a SubagentStop hook can hand back
 

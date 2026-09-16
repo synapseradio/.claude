@@ -24,7 +24,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from epistemic_marks.citations import unopened
 from epistemic_marks.ledger import (
     fingerprint,
     prepare,
@@ -63,9 +62,6 @@ def run_stop(payload, delegate):
             sys.stdout,
         )
         sys.exit(0)
-    # The reply stands from here, so the citation check runs only on a pass
-    # that is not about to replace it, and its finding rides along with
-    # whatever else this pass has to report.
     # additionalContext continues the subagent where systemMessage did not,
     # which is the point on a first pass: the delegate rewrites its report
     # with the question surfaced. On a second pass it is a loop, so the relay
@@ -74,7 +70,6 @@ def run_stop(payload, delegate):
     notice = build_notice(
         lines_by_mark,
         mentions,
-        unopened(blocks, transcript),
         carried if not payload.get("stop_hook_active") else None,
     )
     if notice and delegate:

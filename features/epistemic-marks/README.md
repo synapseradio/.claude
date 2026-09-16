@@ -45,18 +45,19 @@ Three events drive it:
   agentic loop mid-task costs more than the claim it flags. It reaches a claim
   while the turn can still act on it, and reports each line once per session.
 
-## It checks the citations too
+## Citations live in the rule, not the hooks
 
 A mark is a negative signal: it says a claim has no source yet. The positive
-signal is the citation that replaces it. That makes a fabricated citation the
-cheapest way to look verified, so a `path:line` citation in a reply is
-checked against the `Read`, `Grep` and `Glob` calls of the session.
+signal is the citation that replaces it. The hooks check marks only. The rule
+text teaches citations: a delegate cites what it reports, a caller relays a
+cited claim with its citation and no mark, opens a citation a decision rests
+on, and resumes a delegate that left a weight-carrying claim uncited.
 
-This never blocks and never asks for a rewrite. A citation naming a file
-nothing in the session opened produces one notice naming the citation. It
-fires on citations the agent wrote itself, so it never has to judge whether a
-turn gathered enough evidence. A citation inside a fenced block is part of an
-example and draws nothing.
+That split is deliberate. A script can tell which files a transcript opened,
+but not which sentences carry weight. It misses files read through a shell
+and files a delegate opened in its own transcript. It also flags example
+paths, and a delegate spawned to produce work rather than findings owes no
+citations at all. Those are judgments, so the rule leaves them to the agent.
 
 ## It teaches the marks and enforces them, as one unit
 

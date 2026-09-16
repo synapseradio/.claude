@@ -16,7 +16,6 @@ sys.path.insert(0, str(PLUGIN_ROOT))
 
 from epistemic_marks.marks import MARK_CARRY, MARK_RESOLVE, MARKS  # noqa: E402
 from epistemic_marks.messages import (  # noqa: E402
-    CITATION_HEADING,
     MENTION_HEADING,
     RELAY_HEADING,
     SURVIVING_HEADING,
@@ -65,11 +64,7 @@ class NoGeneratedStringNamesATool(unittest.TestCase):
         return {
             "reason": build_reason(self.every_mark(), self.every_mark(), delegate=True),
             "context": build_context(self.every_mark()),
-            "notice": build_notice(
-                self.every_mark(),
-                self.every_mark(),
-                {"beta.py": "beta.py:42"},
-            ),
+            "notice": build_notice(self.every_mark(), self.every_mark(), self.every_mark()),
         }
 
     def test_no_builder_names_a_tool(self):
@@ -85,7 +80,7 @@ class NoGeneratedStringNamesATool(unittest.TestCase):
 
 class TheHeadingsStayDistinct(unittest.TestCase):
     def test_no_two_headings_share_their_text(self):
-        headings = (RELAY_HEADING, SURVIVING_HEADING, MENTION_HEADING, CITATION_HEADING)
+        headings = (RELAY_HEADING, SURVIVING_HEADING, MENTION_HEADING)
         self.assertEqual(
             len(set(headings)),
             len(headings),

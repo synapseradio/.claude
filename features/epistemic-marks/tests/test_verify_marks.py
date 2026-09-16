@@ -46,25 +46,6 @@ def assistant_tool_use():
     return entry("assistant", [{"type": "tool_use", "id": "t1", "name": "Read", "input": {}}])
 
 
-def read_call(path, call_id="r1"):
-    block = {"type": "tool_use", "id": call_id, "name": "Read", "input": {"file_path": path}}
-    return entry("assistant", [block])
-
-
-def grep_call(pattern, path, call_id="g1"):
-    block = {
-        "type": "tool_use",
-        "id": call_id,
-        "name": "Grep",
-        "input": {"pattern": pattern, "path": path},
-    }
-    return entry("assistant", [block])
-
-
-def result_for(call_id, content):
-    return entry("user", [{"type": "tool_result", "tool_use_id": call_id, "content": content}])
-
-
 def run_hook(payload, *args, env=None):
     """Drive the entrypoint the way the harness does, on a scrubbed env.
 
@@ -662,109 +643,6 @@ class VerifyMarksStopHook(unittest.TestCase):
             notice,
             "the relay group is what continues the subagent, so a second pass drops it",
         )
-
-
-class VerifyMarksCitationIntegrity(unittest.TestCase):
-    """A citation is the positive signal, so a fabricated one is worth a notice."""
-
-    def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self._tmp.cleanup)
-        self.state = str(Path(self._tmp.name) / "state")
-
-    def transcript(self, *lines):
-        path = Path(self._tmp.name) / "session.jsonl"
-        path.write_text("\n".join(lines) + "\n")
-        return str(path)
-
-    def decision(self, reply, *lines):
-        payload = {
-            "stop_hook_active": False,
-            "transcript_path": self.transcript(user_text("check it"), *lines),
-            "last_assistant_message": reply,
-        }
-        code, out = run_hook(payload, env={"VERIFY_MARKS_STATE_DIR": self.state})
-        self.assertEqual(code, 0)
-        return json.loads(out) if out.strip() else None
-
-    def test_a_citation_naming_a_file_nothing_opened_draws_a_notice(self):
-        result = self.decision(
-            "The guard lives at beta.py:42.",
-            read_call("/repo/alpha.py"),
-            result_for("r1", "the contents of alpha"),
-        )
-        self.assertIsNotNone(result, "a citation to an unopened file must reach the reader")
-        self.assertIn("beta.py:42", result["systemMessage"])
-
-    def test_a_citation_naming_a_file_a_read_opened_draws_no_notice(self):
-        result = self.decision(
-            "The guard lives at alpha.py:42.",
-            read_call("/repo/alpha.py"),
-            result_for("r1", "the contents of alpha"),
-        )
-        self.assertIsNone(result, "a relative citation matches the absolute path Read was given")
-
-    def test_a_citation_naming_a_path_a_grep_returned_draws_no_notice(self):
-        result = self.decision(
-            "The guard lives at gamma.py:7.",
-            grep_call("guard", "/repo"),
-            result_for("g1", "/repo/gamma.py:7:    if guard:"),
-        )
-        self.assertIsNone(
-            result,
-            "a Grep over a directory surfaces the files in its results, "
-            "and citing one of those is citing a file the session opened",
-        )
-
-    def test_a_citation_inside_a_fenced_block_draws_no_notice(self):
-        result = self.decision(
-            "For example:\n```\nsee beta.py:42\n```\nThat is the form.",
-            read_call("/repo/alpha.py"),
-            result_for("r1", "the contents of alpha"),
-        )
-        self.assertIsNone(result, "a citation inside an example block claims nothing")
-
-    def test_a_citation_to_an_unopened_file_never_blocks(self):
-        result = self.decision(
-            "The guard lives at beta.py:42.",
-            read_call("/repo/alpha.py"),
-            result_for("r1", "the contents of alpha"),
-        )
-        self.assertNotIn("decision", result, "the citation check reports and never stops the turn")
-
-    def test_a_blocking_pass_reports_no_citation(self):
-        result = self.decision(
-            "The count is 12 [?]. The guard lives at beta.py:42.",
-            read_call("/repo/alpha.py"),
-            result_for("r1", "the contents of alpha"),
-        )
-        self.assertEqual(result["decision"], "block")
-        self.assertNotIn(
-            "beta.py:42",
-            result.get("systemMessage", ""),
-            "this reply is about to be replaced, so a notice about it is noise",
-        )
-
-    def test_a_tool_result_from_a_write_leaves_a_citation_unopened(self):
-        result = self.decision(
-            "The guard lives at beta.py:42.",
-            entry(
-                "assistant",
-                [
-                    {
-                        "type": "tool_use",
-                        "id": "w1",
-                        "name": "Write",
-                        "input": {"file_path": "/repo/beta.py"},
-                    }
-                ],
-            ),
-            result_for("w1", "wrote /repo/beta.py"),
-        )
-        self.assertIsNotNone(
-            result, "only Read, Grep and Glob put a file in front of the agent to cite"
-        )
-        self.assertIn("beta.py:42", result["systemMessage"])
 
 
 class VerifyMarksBatchHook(unittest.TestCase):
