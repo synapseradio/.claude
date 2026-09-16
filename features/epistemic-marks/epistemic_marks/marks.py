@@ -48,13 +48,14 @@ VOCABULARY = (
         label=NEEDS_CITATION,
         name="the unsourced mark",
         resolve=(
-            "Gather the evidence for each claim below. Replace the mark in place "
-            "with the source you reached, a path or a URL. Narrow any statements the "
-            "evidence narrows, and remove one it contradicts."
+            "Gather the evidence for each claim below now: read the code it "
+            "describes or fetch the page it rests on. Replace the mark in place "
+            "with that source, a path with its line or a URL. Narrow a claim the "
+            "evidence narrows. Remove a claim the evidence contradicts."
         ),
         carry=(
-            "Leave each claim below marked and open your report on it, beside the "
-            "evidence it waits on and the lookup already tried."
+            "Keep each claim below marked. Open your report on it, stating the "
+            "evidence it waits on and the lookup you already tried."
         ),
     ),
     Mark(
@@ -62,12 +63,14 @@ VOCABULARY = (
         label=NEEDS_VERIFICATION,
         name="the secondhand mark",
         resolve=(
-            "Verify each relayed claim below against its own source. Replace the "
-            "mark in place with that source. Narrow or remove any statements the "
+            "Check each relayed claim below against its own source now. Where the "
+            "claim came with a citation, write that citation in place of the mark. "
+            "Where it came without one, ask the delegate that wrote it for the "
+            "source, or find the source yourself. Narrow or remove a claim the "
             "source does not back."
         ),
         carry=(
-            "Leave each claim below marked and open your report on it, beside the "
+            "Keep each claim below marked. Open your report on it, naming the "
             "source that would settle it."
         ),
     ),
@@ -76,11 +79,11 @@ VOCABULARY = (
         label=ESCALATE_DECISION,
         name="the caller's mark",
         resolve=(
-            "Put the question each line below stands on to your caller, with the "
-            "options you would offer, and let the answer replace the mark."
+            "Put the question behind each line below to your caller now, with the "
+            "options you would offer. Replace the mark with the answer."
         ),
         carry=(
-            "Leave each line below exactly where it stands. Open your report on the "
+            "Leave each line below exactly as it stands. Open your report on the "
             "question it carries, with the options you would have offered."
         ),
     ),
@@ -89,13 +92,14 @@ VOCABULARY = (
         label=ASK_USER,
         name="the standing question",
         resolve=(
-            "Put the question each line below stands on to a person, with the "
-            "options you would offer, and let the answer replace the mark."
+            "Put the question behind each line below to a person now, with the "
+            "options you would offer. Replace the mark with their answer, and "
+            "never answer it yourself."
         ),
         carry=(
-            "Leave each line below exactly where it stands. Open your report on the "
-            "question it carries, with situational context for clarity. Say "
-            "that the decision must be made by the user"
+            "Leave each line below exactly as it stands, since only a person "
+            "answers it. Open your report on the question it carries, with the "
+            "context a person needs to decide it."
         ),
     ),
 )

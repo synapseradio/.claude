@@ -137,6 +137,16 @@ a two-mark reply ran 342 words, of which roughly 280 restated the rule
 verbatim. The glosses went; the acts stayed, one per mark, emitted only for a
 mark the pass actually found.
 
+Every group an agent reads carries its act, including the notice's groups:
+a surviving mark is listed under its carry act, and a mention under the
+check its writer owes. A bare list reports the state and leaves the agent
+with nothing to do about it. Each output states what it found, then what to
+do now, in plain terms rather than as an out-of-band command, since the
+harness warns that `additionalContext` framed that way can read as an
+injection. A top-level second-pass notice goes to the user as a
+`systemMessage` and never reaches the agent, so there the act tells the user
+what the reply left undone.
+
 One constraint governs every generated string. The output is read by an agent
 on a machine whose toolset this plugin cannot know, so no generated line names
 a tool, and every line phrases the act to perform rather than the call to

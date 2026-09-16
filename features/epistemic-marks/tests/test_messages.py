@@ -16,6 +16,7 @@ sys.path.insert(0, str(PLUGIN_ROOT))
 
 from epistemic_marks.marks import MARK_CARRY, MARK_RESOLVE, MARKS  # noqa: E402
 from epistemic_marks.messages import (  # noqa: E402
+    MENTION_ACT,
     MENTION_HEADING,
     RELAY_HEADING,
     SURVIVING_HEADING,
@@ -76,6 +77,28 @@ class NoGeneratedStringNamesATool(unittest.TestCase):
                         output,
                         f"{name} asks for {tool}, which the reader's machine may not have",
                     )
+
+
+class EveryGroupAnAgentReadsCarriesAnAct(unittest.TestCase):
+    """A notice reaches a delegate that can still act, so no group is a bare list."""
+
+    def test_a_surviving_mark_is_listed_under_its_carry_act(self):
+        for token in MARKS:
+            with self.subTest(mark=token):
+                notice = build_notice({token: [f"A claim {token}."]})
+                self.assertIn(
+                    f"{token}\n{MARK_CARRY[token]}\n- A claim {token}.",
+                    notice,
+                    f"a surviving {token} reached the reader with nothing to do about it",
+                )
+
+    def test_a_mention_group_says_what_to_check(self):
+        notice = build_notice({}, {"[?]": ["The unsourced mark, `[?]`, is named."]})
+        self.assertIn(
+            f"{MENTION_HEADING}\n{MENTION_ACT}\n",
+            notice,
+            "a mention passes unchecked, so the writer is the one left to check it",
+        )
 
 
 class TheHeadingsStayDistinct(unittest.TestCase):
