@@ -204,7 +204,8 @@
       "Bash(bun i *)",
       "Bash(shellcheck *)",
       "Bash(wt list)",
-      "Bash(wt list *)"
+      "Bash(wt list *)",
+      "Bash(echo:*)"
     ],
     "deny": [
       "EnterWorktree",
