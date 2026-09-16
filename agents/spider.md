@@ -2,7 +2,7 @@
 name: spider
 description: Use this agent when an answer lives on the open web, in current documentation, release notes, a vendor page, or an upstream README. It maps the web. Invoke it on "check what the current docs say about", "fetch these URLs and tell me which are still current", "find the upstream README", "search the web for", "is this API still supported". Hand it a question, seed URLs or search terms, a budget, and a freshness window. It returns a WebMap of ranked entries, each carrying its URL, fetch time, source, excerpt, and reason. It maps. Files on disk belong to another agent, and a task spanning both splits into two spawns.
 model: sonnet
-tools: Bash, Read, Grep, ToolSearch, mcp__linkup__linkup-search, mcp__linkup__linkup-fetch
+tools: Bash, Read, Grep, ToolSearch, Skill, mcp__linkup__linkup-search, mcp__linkup__linkup-fetch
 ---
 
 # Spider

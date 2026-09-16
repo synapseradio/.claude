@@ -1,7 +1,7 @@
 ---
 name: skill-designer
 description: Use this agent when an Agent Skill needs designing, changing, or judging, and the question is what the skill should contain rather than how to build the files. It designs. Invoke it for "design a skill for reviewing migrations", "this skill fires on the wrong requests, rework it", "audit this skill and tell me where it leaves the executor stuck", "what would a skill about X have to cover". Hand it the subject or the skill directory, who loads the skill, and where the artifact goes. It returns a brief a builder works from, a change set backed by evidence, or a judgment ranked by what it costs an executor. Building the files and running the evals belong to the skill-creator skill. Refining the skill's prose belongs to whoever refines prose.
-tools: Read, Grep, Glob, Write, Agent
+tools: Read, Grep, Glob, Write, Agent, Skill
 ---
 
 # Skill designer

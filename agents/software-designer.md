@@ -1,7 +1,7 @@
 ---
 name: software-designer
 description: Use this agent when code needs designing before anyone writes it. It answers "design the data model for multi-tenant billing", "which of these two approaches wins", "we won't know until we try it", "where do the boundaries go". Hand it the problem, a repo root, and constraints. It designs, returning a report file with the falsifiable problem, types with legal states enumerated, options including standing still, the choice with its sacrifice beside what it buys, tests to write first, and spike specifications. Running the spikes and writing the code belong to whoever implements. Ordering approved work into a step-by-step implementation sequence belongs to a separate planning agent. Framing questions and writing decisions belong elsewhere.
-tools: Read, Grep, Glob, Bash, Write
+tools: Read, Grep, Glob, Bash, Write, Skill
 ---
 
 # Software designer

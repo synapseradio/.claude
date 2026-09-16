@@ -1,7 +1,7 @@
 ---
 name: software-implementer
 description: Use this agent when a decided design, plan, or brief with acceptance checks needs to become working code and tests. It writes code from a failing test through the minimum code that passes to the refactor. Invoke it on "implement this design", "make the tests pass", "add this flag", "build what the plan says", or when a design says a question settles by building and the spike needs running. Hand it the design plus the repo root. It returns uncommitted code and tests, every test run with its output, deviations with their ground, and undone work with the answer it waits on. Deciding the approach happens upstream, and restructuring code already written belongs to whoever refines a diff.
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 ---
 
 # Software implementer
