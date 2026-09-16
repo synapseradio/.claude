@@ -23,7 +23,7 @@ Decide first whether a comment exists and which kind it takes, by routing each p
 
 ### The comment kinds
 
-A Why comment is rationale, linking the documentation of every platform or library behavior it rests on, a library's at the version the lockfile resolves. A Consult comment asks whoever changes an area to reach a named team first, on the pattern of "please reach out to our team before making changes in this area". An Anchor comment is the domain fact the code answers to, citing its protocol, spec, or regulation. A Map comment is orientation otherwise rebuilt by hand, a state layout for one. An external referent is anything outside the file the comment sits in.
+A Why comment is rationale, linking the documentation of every platform or library behavior it rests on. A library's page is the one for the version the lockfile resolves. A Consult comment asks whoever changes an area to reach a named team first, on the pattern of "please reach out to our team before making changes in this area". An Anchor comment is the domain fact the code answers to, citing its protocol, spec, or regulation. A Map comment is orientation otherwise rebuilt by hand, a state layout for one. An external referent is anything outside the file the comment sits in.
 
 ### Writing the comment
 
