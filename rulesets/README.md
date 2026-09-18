@@ -4,6 +4,12 @@ Claude Code loads every file under `~/.claude/rules/` into every context, whiche
 rule only a large model can follow reaches a small one too, and a rule a small model needs reaches
 the large one. This directory gives each model its own set of rules instead.
 
+This README covers the corpus: the rule bodies, the manifest that composes them, and the commands
+that read both. The plugin that delivers the corpus to a session covers the rest, and its README at
+`../features/model-scoped-rulesets/README.md` is where to start if you have not met it: what the
+plugin is for, the hooks it runs on, how a delegate resolves its tier, and a five-minute walk
+through one rule reaching one model.
+
 ## Terms
 
 - A **rule** is one instruction set with one name, `writing-prose` for one.
@@ -17,14 +23,22 @@ the large one. This directory gives each model its own set of rules instead.
   next begins. A body may open on its own marker or carry none. Delivery derives the line for a
   body carrying none and reads a body carrying its own verbatim.
 - A **tier** is one directory of bodies, mapped to the model a session or a delegate runs on.
+- A **family tier** is one of the five this corpus requires: `default`, `fable`, `opus`, `sonnet`,
+  and `haiku`. The last four name the model lines `models.yaml` maps identifiers to, so every
+  identifier beginning `claude-haiku` reads the `haiku` tier. A tier named for one model
+  identifier, `claude-opus-4-8` for one, sits beside those five.
 - A **composition** is the set of stems one tier delivers, each resolved to the body it reads.
+- A **delivery** is one tier's text reaching one session or delegate, carried by a hook the
+  model-scoped-rulesets plugin registers.
+- A **part** is one slice of a delivery, headed with its place in the whole, `part 3 of 8` for one.
+  A tier arrives as parts, and each part carries whole bodies.
 - A **render** is one tier read as a single document, written by `resolve.py render`.
 
 ## Layout
 
 ```text
 rulesets/
-  manifest.yaml            which stems each tier composes, and the order the renders follow
+  manifest.yaml            which stems each tier composes, and the order delivery and the renders follow
   models.yaml              the identifier prefixes each family tier answers to
   default/                 the bodies every tier falls back to
   fable/ opus/ sonnet/ haiku/
@@ -58,9 +72,10 @@ All five family keys are required, so a family tier cannot appear by accident. A
 once it has both a directory and a key: a directory with no key composes nothing, and `check`
 reports every body in it as unreachable.
 
-The manifest's `order` key lists the stems of `default/` in the sequence the renders follow. It is
-optional, and a manifest carrying none renders sorted. Delivery composes in sorted order whatever
-the list says, so the list orders the renders alone.
+The manifest's `order` key lists the stems of `default/` in the sequence delivery and the renders
+both follow. It is optional, and a manifest carrying none composes sorted. Delivery packs whole
+bodies into parts in this order, so stems listed next to each other arrive next to each other, and a
+group of them can fill a part of its own.
 
 `models.yaml` maps each family to the identifier prefixes that resolve to it, and the longest
 matching prefix wins. Keep its entries to prefixes a whole family shares. A model listed under a
@@ -69,14 +84,16 @@ model's own directory takes effect.
 
 ## How the rules reach a session
 
-Nothing here loads on its own. A hook from the model-scoped-rulesets plugin delivers each session
-its tier, so if the hook fails, the session runs with no rules.
+A hook from the model-scoped-rulesets plugin delivers each session its tier, and that hook is the
+channel these bodies travel by, so a session whose hook fails runs on whatever the harness loaded by
+itself.
 
-The plugin carries the mechanism and no rules. This directory carries the rules: the bodies, the
-manifest that composes them, the order the renders follow, and the renders. The plugin finds it at
-`--root`, then `RULESETS_ROOT`, then `~/.claude/rulesets`, which is this directory. Every command
-this README names is `resolve.py` under the installed plugin's `lib/rulesets/`, and each takes
-`--root DIR` to read a corpus other than this one. The plugin's own README, at
+The plugin carries the resolver, the hooks, and the packer that splits a tier into parts. This
+directory carries the rules: the bodies, the manifest that composes them, the order delivery and the
+renders follow, and the renders. The plugin finds it at `--root`, then `RULESETS_ROOT`, then
+`~/.claude/rulesets`, which is this directory. Every command this README names is `resolve.py` under
+the installed plugin's `lib/rulesets/`, and each takes `--root DIR` to read a corpus other than this
+one. The plugin's own README, at
 `../features/model-scoped-rulesets/README.md`, covers the hooks, how a delegate resolves, and the
 interpreter it runs on.
 
@@ -90,9 +107,8 @@ The lookup tries three sources in order, and the first match wins.
    delivered text names the collision.
 3. The prefixes in `models.yaml`.
 
-The first source sits above the second so that one model lives in one place. With the order
-reversed, `ANTHROPIC_DEFAULT_OPUS_MODEL=claude-opus-4-8` would send that model to the `opus` tier,
-and its own directory would sit unread until someone found the variable.
+The first source sits above the second, so a model with its own directory reads that directory even
+where a profile variable names it too, and one model lives in one place.
 
 ## Recipes
 
@@ -140,10 +156,11 @@ No step touches `models.yaml` or any code.
 ## The renders
 
 `renders/<tier>/working-rules.md` shows what a model on that tier reads, as one document: the
-preamble from `CLAUDE.md`, then every body the tier delivers, in the order the manifest's `order`
-list names. The render composes the way delivery does. A stem the tier holds no body for shows the
-section it reaches in `default/`, a stem the tier overrides shows the tier's own, and a stem the
-tier excludes is left out. Nothing loads a render, and no lookup resolves through it.
+preamble, which is the text of `CLAUDE.md` in the configuration directory, then every body the tier
+delivers, in the order the manifest's `order` list names. The render composes the way delivery does.
+A stem the tier holds no body for shows the section it reaches in `default/`, a stem the tier
+overrides shows the tier's own, and a stem the tier excludes is left out. A render is for a reader,
+and delivery and every lookup read the bodies themselves.
 
 `resolve.py render` writes one render per tier directory.
 
@@ -164,11 +181,11 @@ the render current, restore the render with `git checkout HEAD -- <path>` instea
 | `check` | Run `inspect` over every tier the manifest names. Prints nothing on a legal layout and exits nonzero otherwise. |
 | `inspect --tier TIER` | Print each composed stem with its body path. Exits nonzero on any illegal state. |
 | `render` | Write one render per tier, or check them with `--check`, or split `default/`'s back with `--reverse`. |
-| `init` | Write a legal and empty corpus: the five tier directories, a manifest composing each, and the family prefixes. Refuses a root that already holds a manifest. |
-| `migrate-rules` | Move the frontmatter-less bodies of `~/.claude/rules/` into `default/`, leaving the path-scoped ones where the harness reads them. `--dry-run` prints the moves and makes none, and `--undo` reverses the last run. |
+| `init` | Write a legal and empty corpus: the five family tier directories, a manifest composing each, and `models.yaml`. Refuses a root that already holds a manifest. |
+| `migrate-rules` | Move each body of `~/.claude/rules/` that loads into every context into `default/`, and leave the ones whose `paths:` frontmatter scopes them to named files where the harness reads them. `--dry-run` prints the moves and makes none, and `--undo` reverses the last run. |
 | `deliver` | Read a hook payload on stdin and emit hook JSON on stdout. The hooks run this command. |
 | `deliveries --session ID` | Print one line per delivery that reached a context. |
-| `delivery-check --session ID` | Compare a session's deliveries against each record's composition. Exits nonzero on any difference. |
+| `delivery-check --session ID` | Compare each delivery's stems against its composition, and each part from 2 to P against its own writer's emitted record, digest included. Exits nonzero on any difference. |
 | `load-check --session ID` | Compare a session's load records against the manifest. Exits nonzero where any manifest stem auto-loaded. |
 
 ## What check reports
@@ -181,7 +198,7 @@ carries one of these kinds.
 | `manifest` | The manifest is missing or does not parse. |
 | `missing-tier` | A family tier has no key under `tiers`. |
 | `bad-form` | A tier's entry is not a mapping, or states no `include` of either form. |
-| `mixed-form` | A tier mixes the wildcard into an include list, or states an include list beside an `exclude`. |
+| `mixed-form` | A tier mixes the wildcard `include: "*"` into an include list, or states an include list beside an `exclude`. |
 | `stale-exclusion` | An `exclude` names a stem no tier directory holds. |
 | `no-body` | A composed stem has no body in the tier's directory nor in `default/`. |
 | `unreachable-body` | A body sits in a tier directory and reaches no composition. |
@@ -191,6 +208,8 @@ carries one of these kinds.
 | `reserved-tier` | A manifest key names a reserved directory. |
 | `dangling-reference` | A body cites a file under `references/` that is not there. |
 | `external-reference` | A body cites `~/.claude/references/`, which the corpus does not carry. |
+| `oversize-body` | A body is longer than one part's budget, so it fills a part by itself. |
+| `too-many-parts` | A tier composes more text than the ten part slots carry. |
 
 `misnamed-body` guards the delivered text: a body carrying another stem's marker names the wrong
 rule in every context it reaches.
@@ -199,14 +218,17 @@ rule in every context it reaches.
 
 `load-check` catches a regression that would put these bodies back into every model's context. It
 exempts by stem and not by load reason. A file named `CLAUDE.md` at any scope is exempt, and so is
-any file whose stem no tier composes, which is how a path-scoped rule under `~/.claude/rules/`
-passes. A file whose stem the manifest names is reported whatever reason loaded it, since a
-`@path` import of a manifest stem puts that stem into every model's context exactly as an eager
-load would.
+any file whose stem no tier composes, which is how a rule under `~/.claude/rules/` whose `paths:`
+frontmatter scopes it to named files passes. A file whose stem the manifest names is reported
+whatever reason loaded it, since a `@path` import of a manifest stem puts that stem into every
+model's context exactly as an eager load would.
 
-`delivery-check` confirms each delivery carried the stems its tier composes. It treats a superseded
-switch record as undelivered, since the harness drops a model switch's output where another switch
-follows before the next request.
+`delivery-check` confirms each delivery carried the stems its tier composes, and that each part from
+2 to P has its own emitted record from that delivery's own writer. It compares each emitted digest
+against the sha256 of that part as this corpus composes now, so a body edited since a session ran
+shows as a digest that disagrees. It counts only the last of several switch records sharing one
+prompt identifier, since the harness drops a model switch's output where another switch follows in
+the same prompt.
 
 ## Where the state lives
 
@@ -216,8 +238,10 @@ control here grows one file per session. `RULESETS_STATE_DIR` overrides the stat
 directory that both the state and this corpus derive from.
 
 - `audit/<session_id>/session.jsonl` holds a session's own load and delivery records.
-- `audit/<session_id>/<agent_id>.jsonl` holds one delegate's records. Records partition by writer
-  because a delegate can carry its parent's session identifier and two delegates can run at once.
+- `audit/<session_id>/session.part<k>.jsonl` holds one part's emitted record, one file per part.
+- `audit/<session_id>/<agent_id>.jsonl` and `<agent_id>.part<k>.jsonl` hold one delegate's records.
+  Records partition by writer because a delegate can carry its parent's session identifier and two
+  delegates can run at once.
 - `audit/<session_id>/spawns.jsonl` holds the model a caller named for each spawn, which a
   delegate's start reads.
 - `tiers/<session_id>` holds the session's resolved tier, which a later delivery reads where no
