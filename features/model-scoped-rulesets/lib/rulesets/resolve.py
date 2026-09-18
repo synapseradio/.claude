@@ -1045,12 +1045,17 @@ def load_models(root: pathlib.Path | str | None = None) -> dict[str, tuple[str, 
 
 
 def tier_lookup(
-    identifier: str | None, root: pathlib.Path | str | None = None, env: dict | None = None
+    identifier: object, root: pathlib.Path | str | None = None, env: dict | None = None
 ) -> TierLookup:
     """Map a model identifier to a tier.
 
     The order is a tier named for the identifier, then the profile
-    variables, then the longest matching prefix in the built-in list.
+    variables, then the longest matching prefix in the built-in list. Every
+    caller's identifier passes through here before it is matched, so the
+    one guard against a non-string value lives here rather than at each of
+    the five places an identifier enters: an identifier that is not a
+    string counts as unmapped, named with its value and its type, and
+    nothing downstream ever sees it.
     """
 
     env = os.environ if env is None else env
@@ -1059,6 +1064,17 @@ def tier_lookup(
         notes += (
             f"{HOST_MANAGED_VAR} is set, so the harness may have used a model the "
             "profile variables do not name",
+        )
+
+    if identifier is not None and not isinstance(identifier, str):
+        return TierLookup(
+            None,
+            "a non-string identifier",
+            (
+                *notes,
+                f"the model identifier {identifier!r} was a {type(identifier).__name__}, not "
+                "a string, so it counts as unmapped",
+            ),
         )
 
     # A tier named for the identifier wins, so a model carrying its own bodies
@@ -1096,7 +1112,7 @@ def tier_lookup(
     return TierLookup(None, f"no tier matched the identifier {identifier}", notes)
 
 
-def _fall_open(source: str, identifier: str, notes: tuple[str, ...]) -> Resolution:
+def _fall_open(source: str, identifier: object, notes: tuple[str, ...]) -> Resolution:
     """Deliver `default` and say which identifier went unmatched."""
 
     return Resolution(

@@ -791,6 +791,15 @@ class TestTierLookup:
 
         assert resolve.tier_lookup("claude-opus-9-newname", tmp_path, {}).tier == "opus"
 
+    def test_a_non_string_identifier_is_treated_as_unmapped(self, full_root):
+        result = resolve.tier_lookup(12345, full_root, {})
+
+        assert result.tier is None
+        assert any("12345" in note and "int" in note for note in result.notes)
+
+    def test_a_string_identifier_still_resolves_after_the_type_guard(self, full_root):
+        assert resolve.tier_lookup("claude-haiku-4-5", full_root, {}).tier == "haiku"
+
 
 class TestSessionResolution:
     def test_the_harness_model_decides_and_the_environment_is_not_read(self, full_root):
@@ -830,6 +839,27 @@ class TestSessionResolution:
 
         assert result.tier == "default"
         assert result.source == "no model identifier was available"
+
+    def test_a_non_string_model_falls_open_to_default_with_a_note(self, full_root):
+        payload = {"model": 12345, "session_id": "s1"}
+
+        result = resolve.session_resolution(payload, full_root, None, {})
+
+        assert result.tier == "default"
+        assert any("12345" in note and "int" in note for note in result.notes)
+
+    def test_a_non_string_model_delivers_default_and_raises_nothing_from_any_part(
+        self, full_root, tmp_path
+    ):
+        state = tmp_path / "state"
+        payload = {"hook_event_name": "SessionStart", "session_id": "s1", "model": 12345}
+
+        out = resolve.deliver_payload(payload, full_root, state, {}, part=1)
+        text = out["hookSpecificOutput"]["additionalContext"]
+
+        assert "tier default" in text
+        assert "12345" in text and "int" in text
+        assert resolve.deliver_payload(payload, full_root, state, {}, part=2) == {}
 
 
 class TestDelegateResolution:
@@ -1018,6 +1048,20 @@ class TestSwitchAndDelivery:
 
         assert resolve.deliver_payload(payload, full_root, state, {}) == {}
 
+    def test_a_non_string_to_model_falls_open_to_default(self, full_root, tmp_path):
+        state = tmp_path / "state"
+        payload = {
+            "hook_event_name": "PostModelSwitch",
+            "session_id": "s1",
+            "from_model": "claude-opus-9-9",
+            "to_model": ["claude-haiku-4-5"],
+            "prompt_id": "p1",
+        }
+
+        out = resolve.deliver_payload(payload, full_root, state, {})
+
+        assert "tier default" in out["hookSpecificOutput"]["additionalContext"]
+
     def test_the_delivered_header_names_the_tier_and_count_and_the_trailer_names_the_source(
         self, full_root, tmp_path
     ):
@@ -1081,6 +1125,14 @@ class TestSwitchChecksThePayload:
     def test_no_from_model_delivers(self, full_root, tmp_path):
         state = tmp_path / "state"
         payload = self._payload(from_model=None, to_model="claude-haiku-4-5")
+
+        assert resolve.deliver_payload(payload, full_root, state, {}) != {}
+
+    def test_a_non_string_from_model_counts_as_absent_so_the_switch_delivers(
+        self, full_root, tmp_path
+    ):
+        state = tmp_path / "state"
+        payload = self._payload(from_model=12345, to_model="claude-haiku-4-5")
 
         assert resolve.deliver_payload(payload, full_root, state, {}) != {}
 
