@@ -52,9 +52,9 @@ tiers:
 # this corpus's own: nothing in the plugin's code names a stem, and a corpus
 # stating no order renders its stems sorted instead.
 #
-# Delivery composes in sorted order regardless, so this list orders the
-# renders alone. Adding an always-on body adds its stem here in the same
-# change, and `check` reports an `order-mismatch` where the two disagree.
+# Delivery and the renders both follow this list. Adding an always-on body
+# adds its stem here in the same change, and `check` reports an
+# `order-mismatch` where the two disagree.
 order:
   - core-rules
   - marked-messages

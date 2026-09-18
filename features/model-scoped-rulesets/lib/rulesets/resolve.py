@@ -78,6 +78,12 @@ def _documents():
 DEFAULT_TIER = "default"
 TIERS = (DEFAULT_TIER, "fable", "opus", "sonnet", "haiku")
 
+# A whole delivery splits into at most this many parts, each at most this
+# many characters, so a tier grown past what one part carries still lands
+# within what a harness will accept.
+PART_SLOTS = 10
+PART_BUDGET = 9000
+
 # A directory beside the tiers that carries no rule bodies. A manifest key
 # naming one is an illegal state, and so is a directory in neither this set
 # nor the manifest.
@@ -163,11 +169,17 @@ def named_body(stem: str, text: str) -> str:
 
 @dataclasses.dataclass(frozen=True)
 class Ruleset:
-    """A tier's composed text and the stems it carries."""
+    """A tier's composed text and the stems it carries.
+
+    `sections` names each body beside the stem it belongs to, in the same
+    composed order `text` joins them in, which is what a packer groups into
+    parts without reading the corpus again.
+    """
 
     tier: str
     stems: tuple[str, ...]
     text: str
+    sections: tuple[tuple[str, str], ...]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -259,12 +271,16 @@ def default_ruleset(root: pathlib.Path | str | None = None) -> Ruleset | NoRules
     if not bodies:
         return NoRuleset(reason=f"no rule bodies under {directory}")
 
-    sections = [f"{named_body(body.stem, body.read_text(encoding='utf-8'))}\n" for body in bodies]
+    sections = tuple(
+        (body.stem, f"{named_body(body.stem, body.read_text(encoding='utf-8'))}\n")
+        for body in bodies
+    )
 
     return Ruleset(
         tier=DEFAULT_TIER,
         stems=tuple(body.stem for body in bodies),
-        text="\n".join(sections),
+        text="\n".join(body for _, body in sections),
+        sections=sections,
     )
 
 
@@ -279,6 +295,7 @@ class Finding:
 @dataclasses.dataclass(frozen=True)
 class ManifestOk:
     tiers: dict[str, object]
+    order: tuple[str, ...] | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -337,7 +354,9 @@ def _load_manifest_cached(
         return ManifestError(message=f"the manifest at {path} did not parse: {exc}")
     if not isinstance(document, dict) or not isinstance(document.get("tiers"), dict):
         return ManifestError(message=f"the manifest at {path} carries no tiers mapping")
-    return ManifestOk(tiers=document["tiers"])
+    order = document.get("order")
+    stated_order = tuple(str(stem) for stem in order) if isinstance(order, list) else None
+    return ManifestOk(tiers=document["tiers"], order=stated_order)
 
 
 def load_manifest(root: pathlib.Path | str | None = None) -> ManifestOk | ManifestError:
@@ -362,18 +381,16 @@ def load_order(root: pathlib.Path | str | None = None) -> tuple[str, ...] | None
     The order belongs to the corpus, since it is the sequence a reader meets
     the rules in. A corpus stating none renders its stems sorted, which is
     the order delivery composes them in.
+
+    This reads through `load_manifest`'s cache rather than parsing the file
+    again, so a call here during a delivery that has already read the
+    manifest for its tiers costs a lookup rather than a second parse.
     """
 
-    path = _base(root) / "manifest.yaml"
-    if not path.is_file():
+    manifest = load_manifest(root)
+    if isinstance(manifest, ManifestError):
         return None
-    try:
-        document = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except yaml.YAMLError:
-        return None
-    if not isinstance(document, dict) or not isinstance(document.get("order"), list):
-        return None
-    return tuple(str(stem) for stem in document["order"])
+    return manifest.order
 
 
 def all_tiers(root: pathlib.Path | str | None = None) -> tuple[str, ...]:
@@ -462,7 +479,10 @@ def compose(tier: str, root: pathlib.Path | str | None = None) -> Composition:
 
     match form:
         case Wildcard(exclude=exclude):
-            stems = tuple(s for s in tier_stems(base, DEFAULT_TIER) if s not in exclude)
+            present = tuple(s for s in tier_stems(base, DEFAULT_TIER) if s not in exclude)
+            stated = load_order(base) or ()
+            ranked = {stem: index for index, stem in enumerate(stated)}
+            stems = tuple(sorted(present, key=lambda stem: (ranked.get(stem, len(stated)), stem)))
             findings += tuple(
                 Finding(
                     "stale-exclusion",
@@ -610,6 +630,49 @@ def _order_findings(base: pathlib.Path) -> tuple[Finding, ...]:
     return findings
 
 
+def _part_findings(base: pathlib.Path, tiers: tuple[str, ...]) -> tuple[Finding, ...]:
+    """Where a tier's packing would outrun what a delivery carries.
+
+    A body already past the budget sits alone in its own part, which
+    `pack_parts` already handles, and this only says so before delivery
+    does. A tier whose sections together pack past the slot count would
+    need a part a delivery has nowhere to put, which is the harder failure:
+    packing does not refuse it, so nothing else would report it either. A
+    body shared by several tiers is reported once, by the first tier that
+    reaches it.
+    """
+
+    findings: tuple[Finding, ...] = ()
+    seen: set[pathlib.Path] = set()
+    for tier in tiers:
+        ruleset = tier_ruleset(tier, base)
+        if isinstance(ruleset, NoRuleset):
+            continue
+        if len(pack_parts(ruleset.sections)) > PART_SLOTS:
+            findings += (
+                Finding(
+                    "too-many-parts",
+                    f"tier {tier} packs its {len(ruleset.stems)} stems into more than "
+                    f"{PART_SLOTS} parts",
+                ),
+            )
+        for stem, body in ruleset.sections:
+            own = base / tier / f"{stem}.md"
+            path = own if own.is_file() else base / DEFAULT_TIER / f"{stem}.md"
+            if path in seen:
+                continue
+            seen.add(path)
+            if len(body) > PART_BUDGET:
+                findings += (
+                    Finding(
+                        "oversize-body",
+                        f"the body at {path} is {len(body)} characters, past the "
+                        f"{PART_BUDGET}-character part budget",
+                    ),
+                )
+    return findings
+
+
 def report(root: pathlib.Path | str | None = None) -> tuple[Finding, ...]:
     """Every illegal state the manifest and the layout carry."""
 
@@ -619,7 +682,9 @@ def report(root: pathlib.Path | str | None = None) -> tuple[Finding, ...]:
         return (Finding("manifest", manifest.message),)
 
     tiers = all_tiers(base)
-    findings: tuple[Finding, ...] = _layout_findings(base, tiers) + _order_findings(base)
+    findings: tuple[Finding, ...] = (
+        _layout_findings(base, tiers) + _order_findings(base) + _part_findings(base, tiers)
+    )
     seen: set[pathlib.Path] = set()
     for tier in tiers:
         composed = compose(tier, base)
@@ -1240,17 +1305,88 @@ def tier_ruleset(tier: str, root: pathlib.Path | str | None = None) -> Ruleset |
     for stem in composed.stems:
         path = composed.body_paths.get(stem)
         if path and path.is_file():
-            sections.append(f"{named_body(stem, path.read_text(encoding='utf-8'))}\n")
+            sections.append((stem, f"{named_body(stem, path.read_text(encoding='utf-8'))}\n"))
     if not sections:
         return NoRuleset(reason=f"tier {tier} composed no readable bodies")
-    return Ruleset(tier=tier, stems=composed.stems, text="\n".join(sections))
+    return Ruleset(
+        tier=tier,
+        stems=composed.stems,
+        text="\n".join(body for _, body in sections),
+        sections=tuple(sections),
+    )
 
 
-def delivery_header(tier: str, source: str, stem_count: int, notes: tuple[str, ...]) -> str:
-    """The opening line naming the tier, its source, and the stem count."""
+def pack_parts(
+    sections: tuple[tuple[str, str], ...], budget: int = PART_BUDGET
+) -> tuple[tuple[tuple[str, str], ...], ...]:
+    """Group whole sections into parts, none past `budget` characters.
 
-    lines = [f"<!-- ruleset: tier {tier}, from {source}, {stem_count} stems -->"]
+    Pure and greedy: it reads nothing beyond `sections`, in the order it is
+    handed, and a section stays whole, joining the part it best fits rather
+    than splitting across two. A section whose own body already outruns the
+    budget sits alone in its part, since no split would bring it under.
+    """
+
+    parts: list[tuple[tuple[str, str], ...]] = []
+    current: list[tuple[str, str]] = []
+    current_len = 0
+
+    def flush() -> None:
+        nonlocal current, current_len
+        if current:
+            parts.append(tuple(current))
+            current = []
+            current_len = 0
+
+    for stem, body in sections:
+        body_len = len(body)
+        if body_len > budget:
+            flush()
+            parts.append(((stem, body),))
+            continue
+        addition = body_len + 1 if current else body_len
+        if current and current_len + addition > budget:
+            flush()
+            addition = body_len
+        current.append((stem, body))
+        current_len += addition
+
+    flush()
+    return tuple(parts)
+
+
+def part_text(part: tuple[tuple[str, str], ...]) -> str:
+    """One part's text: its bodies joined, mirroring `tier_ruleset`'s join."""
+
+    return "\n".join(body for _, body in part)
+
+
+def delivery_header(tier: str, stem_count: int, part: int, total: int) -> str:
+    """The opening line naming the tier, its stem count, and this part.
+
+    A function of the corpus and the tier alone: no source, no note, no
+    timestamp, session id, or path ever reaches it. A tier packing into one
+    part keeps the short form, so a reader who never sees more than one part
+    never sees it counted.
+    """
+
+    if total > 1:
+        return f"<!-- ruleset: tier {tier}, {stem_count} stems, part {part} of {total} -->"
+    return f"<!-- ruleset: tier {tier}, {stem_count} stems -->"
+
+
+def delivery_trailer(source: str, notes: tuple[str, ...], switch: bool = False) -> str:
+    """The lines that close the last part: the source, then each note.
+
+    A switch adds one further note of its own, since the earlier ruleset a
+    switch replaces is not restated and the reader needs telling it is
+    still there, above this one.
+    """
+
+    lines = [f"<!-- ruleset: from {source} -->"]
     lines += [f"<!-- note: {note} -->" for note in notes]
+    if switch:
+        lines.append("<!-- note: the earlier ruleset remains in the conversation above -->")
     return "\n".join(lines)
 
 
@@ -1267,9 +1403,18 @@ class Delivered:
 
 
 def _delivered(res: Resolution, event: str, scope: str, root) -> Delivered:
-    """Compose the resolution's tier, falling open to `default` if it can't."""
+    """Compose the resolution's tier, falling open to `default` if it can't.
+
+    The whole ruleset still lands as one string: this composes the header,
+    the body, and the trailer itself rather than handing separate parts to
+    its caller, since splitting one delivery into several answers is the
+    next change, not this one. It packs as a single part, part 1 of 1, for
+    that reason: a tier that would pack past one part still delivers whole
+    here, and only the header and trailer wording moves ahead of that.
+    """
 
     tier, source, notes = res.tier, res.source, res.notes
+    switch = scope == "switch"
     ruleset = tier_ruleset(tier, root)
     if isinstance(ruleset, NoRuleset):
         fallback = default_ruleset(root)
@@ -1277,11 +1422,14 @@ def _delivered(res: Resolution, event: str, scope: str, root) -> Delivered:
             notes = (*notes, f"tier {tier} was unavailable ({ruleset.reason}), so default was used")
             tier, ruleset = DEFAULT_TIER, fallback
         else:
-            text = delivery_header(tier, source, 0, (*notes, ruleset.reason))
-            return Delivered(event, text, tier, source, (), scope)
+            header = delivery_header(tier, 0, 1, 1)
+            trailer = delivery_trailer(source, (*notes, ruleset.reason), switch=switch)
+            return Delivered(event, f"{header}\n\n{trailer}", tier, source, (), scope)
 
-    header = delivery_header(tier, source, len(ruleset.stems), notes)
-    return Delivered(event, f"{header}\n\n{ruleset.text}", tier, source, ruleset.stems, scope)
+    header = delivery_header(tier, len(ruleset.stems), 1, 1)
+    trailer = delivery_trailer(source, notes, switch=switch)
+    text = f"{header}\n\n{ruleset.text}\n\n{trailer}"
+    return Delivered(event, text, tier, source, ruleset.stems, scope)
 
 
 def deliver_payload(
@@ -1357,11 +1505,7 @@ def deliver_payload(
     if scope in ("session", "switch") and session_id:
         audit.write_tier(session_id, delivered.tier, state)
 
-    text = delivered.text
-    if scope == "switch":
-        text += "\n<!-- note: the earlier ruleset remains in the conversation above -->"
-
-    return {"hookSpecificOutput": {"hookEventName": event, "additionalContext": text}}
+    return {"hookSpecificOutput": {"hookEventName": event, "additionalContext": delivered.text}}
 
 
 def _effective_deliveries(records: list[dict]) -> list[dict]:

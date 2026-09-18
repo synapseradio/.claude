@@ -252,6 +252,33 @@ class TestComposition:
 
         assert resolve.compose("haiku", root).stems == ("alpha", "gamma")
 
+    def test_a_wildcard_tier_composes_in_the_manifest_order(self, tmp_path):
+        root = build_root(
+            tmp_path,
+            every_tier(WILDCARD),
+            {"default": ("alpha", "beta", "gamma")},
+        )
+        _state_order(root, ["gamma", "alpha", "beta"])
+
+        assert resolve.compose("haiku", root).stems == ("gamma", "alpha", "beta"), (
+            "the order is the sequence a reader meets the rules in, and a wildcard tier "
+            "composing sorted regardless would deliver a different sequence than the one "
+            "the render follows"
+        )
+
+    def test_a_stem_the_order_omits_follows_sorted(self, tmp_path):
+        root = build_root(
+            tmp_path,
+            every_tier(WILDCARD),
+            {"default": ("alpha", "beta", "gamma", "delta")},
+        )
+        _state_order(root, ["gamma"])
+
+        assert resolve.compose("haiku", root).stems == ("gamma", "alpha", "beta", "delta"), (
+            "a stem the order leaves out still has to compose, and sorted after the stated "
+            "order is where it lands since the order names no place for it"
+        )
+
     def test_omits_an_excluded_stem(self, tmp_path):
         root = build_root(
             tmp_path,
@@ -496,6 +523,49 @@ class TestIllegalStates:
         kinds = {f.kind for f in resolve.report(root)}
 
         assert {"missing-tier", "mixed-form", "unreachable-body"} <= kinds
+
+    def test_reports_an_oversize_body(self, tmp_path):
+        root = build_root(tmp_path, every_tier(WILDCARD), {"default": ("alpha",)})
+        (root / "default" / "alpha.md").write_text(
+            f"{resolve.naming_line('alpha')}\n{'x' * 11000}\n", encoding="utf-8"
+        )
+
+        findings = [f for f in resolve.report(root) if f.kind == "oversize-body"]
+
+        assert len(findings) == 1
+        assert str(root / "default" / "alpha.md") in findings[0].message
+
+    def test_reports_nothing_oversize_for_a_body_under_the_budget(self, tmp_path):
+        root = build_root(tmp_path, every_tier(WILDCARD), {"default": ("alpha",)})
+        (root / "default" / "alpha.md").write_text(
+            f"{resolve.naming_line('alpha')}\n{'x' * 100}\n", encoding="utf-8"
+        )
+
+        findings = [f for f in resolve.report(root) if f.kind == "oversize-body"]
+
+        assert findings == []
+
+    def test_reports_a_tier_that_packs_past_ten_parts(self, tmp_path):
+        stems = tuple(f"stem{i}" for i in range(11))
+        root = build_root(
+            tmp_path,
+            every_tier(WILDCARD) | {"haiku": {"include": list(stems)}},
+            {"default": ("alpha",), "haiku": stems},
+        )
+        for stem in stems:
+            (root / "haiku" / f"{stem}.md").write_text(
+                f"{resolve.naming_line(stem)}\n{'x' * 7950}\n", encoding="utf-8"
+            )
+
+        findings = [f for f in resolve.report(root) if f.kind == "too-many-parts"]
+
+        assert len(findings) == 1
+        assert "haiku" in findings[0].message
+
+    def test_reports_nothing_for_a_tier_that_packs_within_ten_parts(self, three_stems):
+        findings = [f for f in resolve.report(three_stems) if f.kind == "too-many-parts"]
+
+        assert findings == []
 
 
 class TestManifestErrors:
@@ -931,7 +1001,9 @@ class TestSwitchAndDelivery:
 
         assert resolve.deliver_payload(payload, full_root, state, {}) == {}
 
-    def test_the_delivered_header_names_the_tier_source_and_count(self, full_root, tmp_path):
+    def test_the_delivered_header_names_the_tier_and_count_and_the_trailer_names_the_source(
+        self, full_root, tmp_path
+    ):
         state = tmp_path / "state"
         payload = {
             "hook_event_name": "SessionStart",
@@ -945,8 +1017,109 @@ class TestSwitchAndDelivery:
 
         header = text.splitlines()[0]
         assert "tier haiku" in header
-        assert "claude-haiku-4-5" in header
         assert "3 stems" in header
+        assert "claude-haiku-4-5" not in header, (
+            "a header is a function of the corpus and the tier alone, so the source now "
+            "closes the trailer instead of opening the header"
+        )
+        assert "claude-haiku-4-5" in text, "the source still reaches the reader, from the trailer"
+
+
+class TestPacking:
+    """`pack_parts` groups a tier's sections into whole, ordered parts.
+
+    It is pure: given the same sections it composes the same parts, whatever
+    resolved them, and it never reads a source or a note, since a header and
+    a part's body are a function of the corpus and the tier alone.
+    """
+
+    def _sections(self, *bodies):
+        return tuple((f"stem{i}", body) for i, body in enumerate(bodies))
+
+    def test_parts_concatenate_to_the_tier_text_byte_for_byte(self, three_stems):
+        ruleset = resolve.tier_ruleset("haiku", three_stems)
+
+        parts = resolve.pack_parts(ruleset.sections)
+
+        assert "\n".join(resolve.part_text(p) for p in parts) == ruleset.text
+
+    def test_no_body_splits_across_parts(self):
+        sections = self._sections("a" * 4000 + "\n", "b" * 4000 + "\n", "c" * 4000 + "\n")
+
+        parts = resolve.pack_parts(sections, budget=9000)
+
+        for stem, body in sections:
+            carriers = [part for part in parts if (stem, body) in part]
+            assert len(carriers) == 1, f"{stem} must sit whole in exactly one part"
+
+    def test_a_body_over_budget_sits_alone_in_its_part(self):
+        oversized = ("big", "x" * 9500 + "\n")
+        sections = (("small", "y" * 10 + "\n"), oversized, ("small2", "z" * 10 + "\n"))
+
+        parts = resolve.pack_parts(sections, budget=9000)
+
+        oversized_parts = [part for part in parts if oversized in part]
+        assert len(oversized_parts) == 1
+        assert oversized_parts[0] == (oversized,)
+
+    def test_packing_takes_sections_only_and_never_reads_source_or_notes(self):
+        sections = self._sections("alpha\n", "beta\n")
+
+        parts = resolve.pack_parts(sections)
+
+        assert parts == ((("stem0", "alpha\n"), ("stem1", "beta\n")),), (
+            "pack_parts takes only the sections and a budget, so nothing about a source or a "
+            "note can shape a part boundary"
+        )
+
+    def test_two_resolutions_of_one_tier_from_different_sources_yield_byte_identical_parts(
+        self, tmp_path
+    ):
+        (tmp_path / "first").mkdir()
+        (tmp_path / "second").mkdir()
+        first = build_root(
+            tmp_path / "first", every_tier(WILDCARD), {"default": ("alpha", "beta", "gamma")}
+        )
+        second = build_root(
+            tmp_path / "second", every_tier(WILDCARD), {"default": ("alpha", "beta", "gamma")}
+        )
+
+        parts_from_first = resolve.pack_parts(resolve.tier_ruleset("haiku", first).sections)
+        parts_from_second = resolve.pack_parts(resolve.tier_ruleset("haiku", second).sections)
+
+        assert parts_from_first == parts_from_second, (
+            "a header and a part's body are a function of the corpus and the tier alone, so "
+            "two resolutions of the same content from different roots pack identically"
+        )
+
+
+class TestPartHeaders:
+    def test_a_one_part_tier_keeps_the_short_header(self):
+        assert resolve.delivery_header("haiku", 3, 1, 1) == "<!-- ruleset: tier haiku, 3 stems -->"
+
+    def test_a_multi_part_header_names_the_part_and_the_total(self):
+        header = resolve.delivery_header("haiku", 12, 2, 4)
+
+        assert header == "<!-- ruleset: tier haiku, 12 stems, part 2 of 4 -->"
+
+    def test_the_trailer_names_the_source(self):
+        assert resolve.delivery_trailer("the tier directory", ()) == (
+            "<!-- ruleset: from the tier directory -->"
+        )
+
+    def test_the_trailer_lists_each_note_after_the_source(self):
+        trailer = resolve.delivery_trailer("src", ("note one", "note two"))
+
+        assert trailer == (
+            "<!-- ruleset: from src -->\n<!-- note: note one -->\n<!-- note: note two -->"
+        )
+
+    def test_a_switch_trailer_closes_on_the_standing_note(self):
+        trailer = resolve.delivery_trailer("src", ("a note",), switch=True)
+
+        assert trailer.splitlines()[-1] == (
+            "<!-- note: the earlier ruleset remains in the conversation above -->"
+        )
 
 
 class TestDeliveryCheckAndSupersession:
