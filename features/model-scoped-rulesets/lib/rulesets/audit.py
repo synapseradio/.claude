@@ -80,6 +80,24 @@ def append_record(
     return True
 
 
+def _read_jsonl(path: pathlib.Path) -> list[dict]:
+    """One file's complete records, skipping a line that does not parse."""
+
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    records = []
+    for line in lines:
+        try:
+            parsed = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            records.append(parsed)
+    return records
+
+
 def read_records(session_id: str, state: pathlib.Path | str | None = None) -> list[dict]:
     """Every complete record for a session and its delegates.
 
@@ -93,17 +111,33 @@ def read_records(session_id: str, state: pathlib.Path | str | None = None) -> li
 
     records = []
     for path in sorted(directory.glob("*.jsonl")):
-        try:
-            lines = path.read_text(encoding="utf-8").splitlines()
-        except OSError:
-            continue
-        for line in lines:
-            try:
-                parsed = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if isinstance(parsed, dict):
-                records.append(parsed)
+        records += _read_jsonl(path)
+    return records
+
+
+def read_records_for(
+    session_id: str,
+    agent_id: str | None = None,
+    state: pathlib.Path | str | None = None,
+) -> list[dict]:
+    """One writer's own records: its first-part file and every part file beside it.
+
+    `read_records` flattens every writer's files into one list; a caller
+    that needs to tell one writer's records from another's, such as a
+    check correlating a delivery to what its own writer emitted, reads by
+    writer instead.
+    """
+
+    directory = session_dir(session_id, state)
+    if not directory.is_dir():
+        return []
+
+    stem = _safe(agent_id) if agent_id else SESSION_FILE.removesuffix(".jsonl")
+    paths = sorted(directory.glob(f"{stem}.jsonl")) + sorted(directory.glob(f"{stem}.part*.jsonl"))
+
+    records = []
+    for path in paths:
+        records += _read_jsonl(path)
     return records
 
 

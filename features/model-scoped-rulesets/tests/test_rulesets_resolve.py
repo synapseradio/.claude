@@ -1191,6 +1191,11 @@ class TestPartHeaders:
             "<!-- note: the earlier ruleset remains in the conversation above -->"
         )
 
+    def test_a_short_note_passes_through_a_budget_unchanged(self):
+        trailer = resolve.delivery_trailer("src", ("a short note",), budget=1000)
+
+        assert trailer == "<!-- ruleset: from src -->\n<!-- note: a short note -->"
+
 
 class TestDeliverByPart:
     """Each slot resolves, composes, and packs on its own, and returns its part.
@@ -1300,6 +1305,74 @@ class TestDeliverByPart:
 
         assert resolve.deliver_payload(payload, root, state, {}, part=1) == {}
         assert resolve._audit().read_spawns("s1", "p1", "scout", state) == ["claude-haiku-4-5"]
+
+
+class TestPartCap:
+    """The last part's header, body, and trailer together stay within the cap.
+
+    `NoRuleset.reason` joins one message per missing stem with no bound, so
+    a fallback note built from it needs clipping before it reaches a part
+    that could otherwise cross what a harness will accept.
+    """
+
+    def _probe_root(self, tmp_path):
+        root = tmp_path
+        for tier in resolve.TIERS:
+            (root / tier).mkdir(exist_ok=True)
+        (root / "default" / "alpha.md").write_text("x" * 8900 + "\n", encoding="utf-8")
+        missing_stems = [f"missing{i}" for i in range(60)]
+        tiers = {
+            "default": {"include": "*"},
+            "haiku": {"include": missing_stems},
+            "opus": {"include": "*"},
+            "sonnet": {"include": "*"},
+            "fable": {"include": "*"},
+        }
+        (root / "manifest.yaml").write_text(yaml.safe_dump({"tiers": tiers}), encoding="utf-8")
+        (root / "models.yaml").write_text("haiku: [haiku, claude-haiku]\n", encoding="utf-8")
+        return root
+
+    def test_a_long_fallback_reason_still_delivers_a_part_at_or_under_the_cap(self, tmp_path):
+        root = self._probe_root(tmp_path)
+        state = tmp_path / "state"
+        payload = {
+            "hook_event_name": "SessionStart",
+            "session_id": "probe-session",
+            "model": "claude-haiku-4-5",
+        }
+
+        out = resolve.deliver_payload(payload, root, state, {}, part=1)
+        text = out["hookSpecificOutput"]["additionalContext"]
+
+        assert len(text) <= 10000
+        assert "haiku" in text
+
+    def test_part_boundaries_are_identical_with_and_without_a_long_note(
+        self, multi_part_root, tmp_path
+    ):
+        ruleset = resolve.tier_ruleset("haiku", multi_part_root)
+        parts_list = resolve.pack_parts(ruleset.sections)
+        total = len(parts_list)
+
+        short = resolve.Resolution("haiku", "src", ("short note",))
+        long = resolve.Resolution("haiku", "src", ("x" * 9000,))
+
+        for part in range(1, total + 1):
+            expected_header = resolve.delivery_header("haiku", len(ruleset.stems), part, total)
+            expected_body = resolve.part_text(parts_list[part - 1])
+            prefix = f"{expected_header}\n\n{expected_body}"
+
+            short_delivered = resolve._delivered(
+                short, "SessionStart", "session", multi_part_root, part
+            )
+            long_delivered = resolve._delivered(
+                long, "SessionStart", "session", multi_part_root, part
+            )
+
+            assert short_delivered.text.startswith(prefix)
+            assert long_delivered.text.startswith(prefix)
+            if part == total:
+                assert len(long_delivered.text) <= 10000
 
 
 class TestDeliveryCheckAndSupersession:
@@ -1445,6 +1518,117 @@ class TestDeliveryCheckAcrossParts:
         self._deliver(payload, full_root, state, 1)
 
         assert self._check("s1", full_root, state) == 0
+
+
+class TestDeliveryCheckByWriter:
+    """Emitted records correlate to a delivery by the writer that made it, and by count."""
+
+    def _delivery(
+        self, audit, session, tier, source, stems, scope, root, parts, agent_id=None, state=None
+    ):
+        audit.append_record(
+            audit.delivery_record(
+                session, tier, source, stems, scope, agent_id=agent_id, root=root, parts=parts
+            ),
+            session_id=session,
+            agent_id=agent_id,
+            state=state,
+        )
+
+    def _check(self, session, root, state):
+        return resolve.main(
+            ["delivery-check", "--session", session, "--root", str(root), "--state", str(state)]
+        )
+
+    def test_a_delegates_missing_parts_are_not_masked_by_the_sessions_own(
+        self, full_root, tmp_path, capsys
+    ):
+        state = tmp_path / "state"
+        audit = resolve._audit()
+        stems = ("alpha", "beta", "gamma")
+
+        self._delivery(
+            audit, "s1", "haiku", "session source", stems, "session", full_root, 3, state=state
+        )
+        audit.append_record(
+            audit.emitted_record("s1", "haiku", 2, 3, ("x",), "digestA2"),
+            session_id="s1",
+            state=state,
+            part=2,
+        )
+        audit.append_record(
+            audit.emitted_record("s1", "haiku", 3, 3, ("y",), "digestA3"),
+            session_id="s1",
+            state=state,
+            part=3,
+        )
+        self._delivery(
+            audit,
+            "s1",
+            "haiku",
+            "delegate source",
+            stems,
+            "delegate",
+            full_root,
+            3,
+            agent_id="delegateB",
+            state=state,
+        )
+        # delegateB's own parts 2 and 3 never emitted
+
+        code = self._check("s1", full_root, state)
+
+        assert code != 0
+        out = capsys.readouterr().out
+        assert "part 2" in out and "never emitted" in out
+        assert "part 3" in out and "never emitted" in out
+
+    def test_two_deliveries_from_one_writer_need_two_emitted_sets(
+        self, full_root, tmp_path, capsys
+    ):
+        state = tmp_path / "state"
+        audit = resolve._audit()
+        stems = ("alpha", "beta", "gamma")
+
+        self._delivery(audit, "s1", "haiku", "first", stems, "session", full_root, 2, state=state)
+        self._delivery(audit, "s1", "haiku", "second", stems, "session", full_root, 2, state=state)
+        audit.append_record(
+            audit.emitted_record("s1", "haiku", 2, 2, ("x",), "digestOnly"),
+            session_id="s1",
+            state=state,
+            part=2,
+        )
+
+        code = self._check("s1", full_root, state)
+
+        assert code != 0
+        out = capsys.readouterr().out
+        assert out.count("never emitted") == 1
+
+    def test_an_emitted_digest_that_disagrees_with_the_current_composition_is_reported(
+        self, multi_part_root, tmp_path, capsys
+    ):
+        state = tmp_path / "state"
+        payload = {
+            "hook_event_name": "SessionStart",
+            "session_id": "s1",
+            "model": "claude-haiku-4-5",
+        }
+        resolve.deliver_payload(payload, multi_part_root, state, {}, part=1)
+        audit = resolve._audit()
+        audit.append_record(
+            audit.emitted_record("s1", "haiku", 2, 3, ("stem1",), "not-the-real-digest"),
+            session_id="s1",
+            state=state,
+            part=2,
+        )
+        resolve.deliver_payload(payload, multi_part_root, state, {}, part=3)
+
+        code = self._check("s1", multi_part_root, state)
+
+        assert code != 0
+        out = capsys.readouterr().out
+        assert "part 2" in out and "digest" in out
 
 
 class TestModelNamedTiers:

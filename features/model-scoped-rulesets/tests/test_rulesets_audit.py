@@ -271,6 +271,39 @@ class TestPartWritesPartitionByFile:
         )
 
 
+class TestReadRecordsForOneWriter:
+    """`read_records_for` reads one writer's own files, never another's."""
+
+    def test_reads_a_delegates_records_across_its_part_files(self, state):
+        audit.append_record(
+            {"kind": "delivery", "n": 1}, session_id="s1", agent_id="a1", state=state
+        )
+        audit.append_record(
+            {"kind": "emitted", "n": 2}, session_id="s1", agent_id="a1", state=state, part=2
+        )
+        audit.append_record({"kind": "emitted", "n": 3}, session_id="s1", state=state, part=2)
+
+        records = audit.read_records_for("s1", "a1", state)
+
+        assert sorted(r["n"] for r in records) == [1, 2]
+
+    def test_reads_the_sessions_own_records_when_no_writer_is_named(self, state):
+        audit.append_record({"kind": "delivery", "n": 1}, session_id="s1", state=state)
+        audit.append_record({"kind": "emitted", "n": 2}, session_id="s1", state=state, part=2)
+        audit.append_record(
+            {"kind": "delivery", "n": 3}, session_id="s1", agent_id="a1", state=state
+        )
+
+        records = audit.read_records_for("s1", None, state)
+
+        assert sorted(r["n"] for r in records) == [1, 2]
+
+    def test_yields_nothing_for_a_writer_with_no_records(self, state):
+        audit.append_record({"kind": "delivery", "n": 1}, session_id="s1", state=state)
+
+        assert audit.read_records_for("s1", "absent", state) == []
+
+
 class TestPartialLines:
     def test_skips_a_truncated_final_line_and_yields_the_rest(self, state):
         audit.append_record({"n": 1}, session_id="abc", state=state)

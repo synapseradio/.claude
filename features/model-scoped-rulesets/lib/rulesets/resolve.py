@@ -83,6 +83,12 @@ TIERS = (DEFAULT_TIER, "fable", "opus", "sonnet", "haiku")
 PART_SLOTS = 10
 PART_BUDGET = 9000
 
+# The most one delivered part -- header, body, and trailer together -- may
+# carry. A fallback reason has no bound of its own, so the trailer clips a
+# note against this cap rather than let one reach a harness whole.
+PART_CAP = 10000
+NOTE_CLIP_SUFFIX = " (clipped; check lists the rest)"
+
 # A directory beside the tiers that carries no rule bodies. A manifest key
 # naming one is an illegal state, and so is a directory in neither this set
 # nor the manifest.
@@ -1339,13 +1345,41 @@ def delivery_header(tier: str, stem_count: int, part: int, total: int) -> str:
     return f"<!-- ruleset: tier {tier}, {stem_count} stems -->"
 
 
-def delivery_trailer(source: str, notes: tuple[str, ...], switch: bool = False) -> str:
-    """The lines that close the last part: the source, then each note."""
+def delivery_trailer(
+    source: str, notes: tuple[str, ...], switch: bool = False, budget: int | None = None
+) -> str:
+    """The lines that close the last part: the source, then each note.
 
-    lines = [f"<!-- ruleset: from {source} -->"]
-    lines += [f"<!-- note: {note} -->" for note in notes]
+    The source line always survives whole. Past `budget`, a note that
+    would not fit is clipped and closes on a plain statement that it was
+    clipped and that `check` lists the rest; a note left with no room is
+    dropped rather than clipped to nothing.
+    """
+
     if switch:
-        lines.append("<!-- note: the earlier ruleset remains in the conversation above -->")
+        notes = (*notes, "the earlier ruleset remains in the conversation above")
+
+    source_line = f"<!-- ruleset: from {source} -->"
+    if budget is None:
+        lines = [source_line] + [f"<!-- note: {note} -->" for note in notes]
+        return "\n".join(lines)
+
+    lines = [source_line]
+    remaining = budget - len(source_line)
+    prefix, wrap = "<!-- note: ", " -->"
+    for note in notes:
+        line = f"{prefix}{note}{wrap}"
+        cost = len(line) + 1
+        if cost <= remaining:
+            lines.append(line)
+            remaining -= cost
+            continue
+        room = remaining - 1 - len(prefix) - len(NOTE_CLIP_SUFFIX) - len(wrap)
+        if room <= 0:
+            continue
+        clipped = f"{prefix}{note[:room]}{NOTE_CLIP_SUFFIX}{wrap}"
+        lines.append(clipped)
+        remaining -= len(clipped) + 1
     return "\n".join(lines)
 
 
@@ -1379,7 +1413,10 @@ def _delivered(res: Resolution, event: str, scope: str, root, part: int) -> Deli
             if part != 1:
                 return None
             header = delivery_header(tier, 0, 1, 1)
-            trailer = delivery_trailer(source, (*notes, ruleset.reason), switch=switch)
+            budget = PART_CAP - len(header) - 2
+            trailer = delivery_trailer(
+                source, (*notes, ruleset.reason), switch=switch, budget=budget
+            )
             return Delivered(event, f"{header}\n\n{trailer}", tier, source, (), scope, 1, (), "")
 
     parts_list = pack_parts(ruleset.sections)
@@ -1393,7 +1430,8 @@ def _delivered(res: Resolution, event: str, scope: str, root, part: int) -> Deli
     digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
     header = delivery_header(tier, len(ruleset.stems), part, total)
     if part == total:
-        trailer = delivery_trailer(source, notes, switch=switch)
+        budget = PART_CAP - len(header) - 2 - len(body) - 2
+        trailer = delivery_trailer(source, notes, switch=switch, budget=budget)
         text = f"{header}\n\n{body}\n\n{trailer}"
     else:
         text = f"{header}\n\n{body}"
@@ -1554,16 +1592,43 @@ def command_deliveries(args: argparse.Namespace) -> int:
 
 
 def command_delivery_check(args: argparse.Namespace) -> int:
-    """Compare each delivery's stems against its composition, and its parts against what emitted."""
+    """Compare each delivery's stems against its composition, and its parts against what emitted.
+
+    A part's emitted record must come from the delivery's own writer, since
+    a session's and a delegate's records only happen to share a part number
+    and a total. Two deliveries by one writer on the same tier and total
+    need two emitted records per part, so each delivery consumes one from
+    its writer's pool rather than every delivery reading the same record.
+    """
 
     audit = _audit()
+    root = _root_from(args)
+    state = _state_from(args)
 
-    all_records = audit.read_records(args.session, _state_from(args))
-    deliveries = [r for r in all_records if r.get("kind") == audit.DELIVERY]
-    emitted = [r for r in all_records if r.get("kind") == audit.EMITTED]
+    deliveries = [
+        r for r in audit.read_records(args.session, state) if r.get("kind") == audit.DELIVERY
+    ]
 
     problems = []
-    root = _root_from(args)
+    composed_parts: dict[str, tuple] = {}
+    writer_pools: dict[str | None, dict[int, list[dict]]] = {}
+
+    def parts_for(tier: str) -> tuple:
+        if tier not in composed_parts:
+            ruleset = tier_ruleset(tier, root)
+            sections = ruleset.sections if isinstance(ruleset, Ruleset) else ()
+            composed_parts[tier] = pack_parts(sections)
+        return composed_parts[tier]
+
+    def pool_for(agent_id: str | None) -> dict[int, list[dict]]:
+        if agent_id not in writer_pools:
+            pool: dict[int, list[dict]] = {}
+            for record in audit.read_records_for(args.session, agent_id, state):
+                if record.get("kind") == audit.EMITTED:
+                    pool.setdefault(record.get("part"), []).append(record)
+            writer_pools[agent_id] = pool
+        return writer_pools[agent_id]
+
     for record in _effective_deliveries(deliveries):
         tier = record.get("tier")
         composed = set(compose(tier, root).stems)
@@ -1574,15 +1639,29 @@ def command_delivery_check(args: argparse.Namespace) -> int:
             problems.append(f"{tier}: {stem} delivered but not composed")
 
         total = record.get("parts") or 1
-        by_part = {e.get("part"): e for e in emitted if e.get("parts") == total}
+        pool = pool_for(record.get("agent_id"))
         for part in range(2, total + 1):
-            emitted_part = by_part.get(part)
+            queue = pool.get(part) or []
+            emitted_part = next((r for r in queue if r.get("parts") == total), None)
+            if emitted_part is not None:
+                queue.remove(emitted_part)
             if emitted_part is None:
                 problems.append(f"{tier}: part {part} of {total} was composed but never emitted")
             elif emitted_part.get("tier") != tier:
                 problems.append(
                     f"{tier}: part {part} disagrees on tier, emitted as {emitted_part.get('tier')}"
                 )
+            else:
+                parts_list = parts_for(tier)
+                if 1 <= part <= len(parts_list):
+                    expected = hashlib.sha256(
+                        part_text(parts_list[part - 1]).encode("utf-8")
+                    ).hexdigest()
+                    if emitted_part.get("digest") != expected:
+                        problems.append(
+                            f"{tier}: part {part} of {total} emitted with a digest that "
+                            "disagrees with what composes now"
+                        )
     for problem in problems:
         print(problem)
     return 1 if problems else 0
