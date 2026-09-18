@@ -209,8 +209,35 @@ class TestAFailedDeliveryIsAnnounced:
             == shape(delivered)
             == {"hookSpecificOutput": ["additionalContext", "hookEventName"]}
         )
-        assert json.loads(announced)["hookSpecificOutput"]["additionalContext"].startswith(
-            "<!-- ruleset: delivery failed, from deliver.py, 0 stems -->"
+        context = json.loads(announced)["hookSpecificOutput"]["additionalContext"]
+        assert context.splitlines()[0] == "<!-- ruleset: delivery failed, 0 stems -->"
+
+    def test_the_source_line_and_the_note_close_the_text(self, tmp_path):
+        module = load_shim()
+
+        def boom(payload, root=None, state=None, part=1):
+            raise RuntimeError("synthetic defect")
+
+        _, out, _ = run_in_process(module, self.PAYLOAD, tmp_path / "c", tmp_path / "s", boom)
+
+        lines = json.loads(out)["hookSpecificOutput"]["additionalContext"].splitlines()
+
+        assert lines[-2] == "<!-- ruleset: from deliver.py -->"
+        assert lines[-1] == "<!-- note: RuntimeError: synthetic defect -->"
+
+    def test_a_reason_of_twenty_thousand_characters_still_fits_the_cap(self, tmp_path):
+        module = load_shim()
+
+        def boom(payload, root=None, state=None, part=1):
+            raise RuntimeError("x" * 20000)
+
+        _, out, _ = run_in_process(module, self.PAYLOAD, tmp_path / "c", tmp_path / "s", boom)
+
+        text = json.loads(out)["hookSpecificOutput"]["additionalContext"]
+
+        assert len(text) <= 10000
+        assert text.splitlines()[-1].endswith(
+            "(clipped; the traceback is on the hook's stderr) -->"
         )
 
     def test_a_delivery_that_succeeds_carries_no_announcement(self, tmp_path):

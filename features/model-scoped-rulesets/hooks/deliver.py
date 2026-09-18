@@ -33,6 +33,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "lib"))
 from rulesets import resolve
 
 FAILURE_TIER = "delivery failed"
+NOTE_CLIP_SUFFIX = " (clipped; the traceback is on the hook's stderr)"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -44,40 +45,45 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def failure_output(event: str, reason: str, defect: bool) -> dict:
-    """The context a failed delivery sends where the ruleset would have gone.
-
-    The first line keeps the header's shape, with `delivery failed` where a
-    tier would be and `0 stems`, so a reader who knows the header reads this
-    one the same way. `defect` marks a failure the corpus owner cannot fix by
-    editing the corpus, and points at the traceback on stderr.
-    """
+    """The context a failed delivery sends where the ruleset would have gone."""
 
     hook = pathlib.Path(__file__).resolve()
-    lines = [
-        f"<!-- ruleset: {FAILURE_TIER}, from {hook.name}, 0 stems -->",
-        f"<!-- note: {reason} -->",
-        "",
+    header = f"<!-- ruleset: {FAILURE_TIER}, 0 stems -->"
+
+    body_lines = [
         "Ruleset delivery failed, so this session is running without its user rules. "
         "Tell the user this before doing anything else.",
         "",
     ]
     if defect:
-        lines.append(
+        body_lines.append(
             "The cause is a defect in the rulesets plugin, not in the corpus; the traceback "
             "went to the hook's stderr. Run the hook by hand to see it again:"
         )
     else:
-        lines.append(
+        body_lines.append(
             "The cause is a file the hook could not read or write. Repair it, then run the "
             "hook by hand to confirm:"
         )
-    lines += [
+    body_lines += [
         "",
         f'    echo \'{{"hook_event_name":"{event}","session_id":"probe"}}\' | python3 {hook}',
         "",
         "A new session delivers the rules once that prints a header naming a tier.",
     ]
-    return {"hookSpecificOutput": {"hookEventName": event, "additionalContext": "\n".join(lines)}}
+    body = "\n".join(body_lines)
+
+    source_line = f"<!-- ruleset: from {hook.name} -->"
+    prefix, wrap = "<!-- note: ", " -->"
+    overhead = len(header) + 2 + len(body) + 2 + len(source_line) + 1 + len(prefix) + len(wrap)
+    budget = resolve.PART_CAP - overhead
+    if len(reason) > budget:
+        room = max(budget - len(NOTE_CLIP_SUFFIX), 0)
+        reason = reason[:room] + NOTE_CLIP_SUFFIX
+    note_line = f"{prefix}{reason}{wrap}"
+
+    text = f"{header}\n\n{body}\n\n{source_line}\n{note_line}"
+    return {"hookSpecificOutput": {"hookEventName": event, "additionalContext": text}}
 
 
 def main(
