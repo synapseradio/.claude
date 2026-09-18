@@ -10,7 +10,7 @@ A reader arrives at the page with a purpose. Every token costs the reader attent
 
 ### The purpose
 
-Name the purpose you write for before the first line. Where the reader would otherwise guess that purpose, put it on the page. Write for what they came to do. Write for a guest you have never met, who arrives with nothing but the page. Assume nothing shared. Where the prose is a comment or a docstring, route what it carries under the rule on comments before wording it. Hold every group below as the invariants derived for a reader who came to act. Where the purpose on the page is another, derive the token and the point from the invariants again. Name in the message each line below you set aside, and let the purpose on the page show why.
+Name the purpose you write for before the first line. Where the reader would otherwise guess that purpose, put it on the page. Write for what they came to do. Write for a guest you have never met, who arrives with nothing but the page. Assume nothing shared. Where the prose is a comment or a docstring, decide whether a comment belongs there before wording it. Hold every group below as the invariants derived for a reader who came to act. Where the purpose on the page is another, derive the token and the point from the invariants again. Name in the message each line below you set aside, and let the purpose on the page show why.
 
 ### The page
 
