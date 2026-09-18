@@ -39,6 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=None, help="the live corpus to read")
     parser.add_argument("--state", default=None, help="the state directory to write")
+    parser.add_argument("--part", type=int, default=1, help="the part this slot answers")
     return parser
 
 
@@ -106,16 +107,22 @@ def main(
     event = payload.get("hook_event_name") or "SessionStart"
 
     try:
-        output = deliver(payload, root=args.root, state=args.state)
+        output = deliver(payload, root=args.root, state=args.state, part=args.part)
     except OSError as exc:
         # The one failure a sound plugin meets: a body it could not read, or a
-        # state path it could not write. The message names the path.
-        output = failure_output(event, f"{type(exc).__name__}: {exc}", defect=False)
+        # state path it could not write. The message names the path. Only
+        # part 1 owns the channel a delivery answers on; a later part still
+        # exits zero, leaving stdout for the part that would have landed.
+        output = None
+        if args.part == 1:
+            output = failure_output(event, f"{type(exc).__name__}: {exc}", defect=False)
     except Exception as exc:
         # A defect. The traceback is the finding; the context is what makes
         # the session say so rather than start quietly with no rules.
         traceback.print_exc(file=stderr)
-        output = failure_output(event, f"{type(exc).__name__}: {exc}", defect=True)
+        output = None
+        if args.part == 1:
+            output = failure_output(event, f"{type(exc).__name__}: {exc}", defect=True)
 
     if output:
         print(json.dumps(output), file=stdout)

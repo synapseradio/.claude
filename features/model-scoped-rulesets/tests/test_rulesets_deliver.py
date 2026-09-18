@@ -38,11 +38,13 @@ def load_shim():
     return module
 
 
-def run_in_process(module, payload, corpus, state, deliver=None):
+def run_in_process(module, payload, corpus, state, deliver=None, part=None):
     """`main` with injected streams; answers (exit code, stdout, stderr)."""
 
     stdout, stderr = io.StringIO(), io.StringIO()
     argv = ["--root", str(corpus), "--state", str(state)]
+    if part is not None:
+        argv += ["--part", str(part)]
     kwargs = {} if deliver is None else {"deliver": deliver}
     code = module.main(
         argv, stdin=io.StringIO(json.dumps(payload)), stdout=stdout, stderr=stderr, **kwargs
@@ -145,7 +147,7 @@ class TestAFailedDeliveryIsAnnounced:
     def test_a_delivery_that_raises_a_defect_announces_it_in_context_and_exits_zero(self, tmp_path):
         module = load_shim()
 
-        def boom(payload, root=None, state=None):
+        def boom(payload, root=None, state=None, part=1):
             raise RuntimeError("synthetic defect")
 
         code, out, _ = run_in_process(module, self.PAYLOAD, tmp_path / "c", tmp_path / "s", boom)
@@ -159,7 +161,7 @@ class TestAFailedDeliveryIsAnnounced:
     def test_a_defect_puts_its_traceback_on_stderr(self, tmp_path):
         module = load_shim()
 
-        def boom(payload, root=None, state=None):
+        def boom(payload, root=None, state=None, part=1):
             raise RuntimeError("synthetic defect")
 
         _, _, err = run_in_process(module, self.PAYLOAD, tmp_path / "c", tmp_path / "s", boom)
@@ -169,7 +171,7 @@ class TestAFailedDeliveryIsAnnounced:
     def test_an_unreadable_body_is_announced_without_a_traceback(self, tmp_path):
         module = load_shim()
 
-        def unreadable(payload, root=None, state=None):
+        def unreadable(payload, root=None, state=None, part=1):
             raise PermissionError(13, "Permission denied", str(root))
 
         code, out, err = run_in_process(
@@ -193,7 +195,7 @@ class TestAFailedDeliveryIsAnnounced:
             "model": "claude-haiku-4-5",
         }
 
-        def boom(payload, root=None, state=None):
+        def boom(payload, root=None, state=None, part=1):
             raise RuntimeError("synthetic defect")
 
         _, delivered, _ = run_in_process(module, payload, corpus, tmp_path / "s1")
@@ -223,6 +225,23 @@ class TestAFailedDeliveryIsAnnounced:
 
         assert FAILURE_PHRASE not in result.stdout
         assert result.stderr == ""
+
+    def test_only_part_one_announces_a_failure_on_stdout(self, tmp_path):
+        module = load_shim()
+
+        def boom(payload, root=None, state=None, part=1):
+            raise RuntimeError("synthetic defect")
+
+        code, out, err = run_in_process(
+            module, self.PAYLOAD, tmp_path / "c", tmp_path / "s", boom, part=2
+        )
+
+        assert code == 0
+        assert out == ""
+        assert "Traceback" in err and "synthetic defect" in err, (
+            "the traceback still reaches stderr on a later part; only stdout, the channel "
+            "a delivery answers on, is withheld"
+        )
 
     @pytest.mark.skipif(os.geteuid() == 0, reason="root reads a mode-000 file")
     def test_a_body_the_process_cannot_read_is_announced_through_the_real_resolver(self, tmp_path):

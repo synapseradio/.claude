@@ -7,6 +7,7 @@ Every test points the audit at a temporary state directory through
 `RULESETS_STATE_DIR`, so no test reads or writes a real session's log.
 """
 
+import concurrent.futures
 import json
 import pathlib
 import subprocess
@@ -22,6 +23,15 @@ sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 from rulesets import audit, resolve  # noqa: E402  (path must be set before this import)
 
 HOOK = PLUGIN_ROOT / "hooks" / "record-load.py"
+
+
+def _append_emitted(args: tuple[str, int, pathlib.Path]) -> bool:
+    """Append one emitted-shaped record keyed to a part; top-level so a process pool can pickle it."""
+
+    session_id, part, state = args
+    return audit.append_record(
+        {"kind": "emitted", "part": part}, session_id=session_id, state=state, part=part
+    )
 
 
 def run_hook(payload, state):
@@ -185,6 +195,80 @@ class TestFailureLeavesTheSessionAlone:
 
         assert result.returncode == 0
         assert result.stdout == ""
+
+
+class TestWriteTierIsAtomic:
+    """A concurrent reader must never observe the target mid-write.
+
+    Asserting the exact sequence of file operations, rather than racing a
+    reader against a writer, since a single-threaded test cannot make a race
+    land deterministically: `write_tier` must never open the target path for
+    writing, only ever replacing it in one step from a distinct temp file.
+    """
+
+    def test_write_tier_never_opens_the_target_path_for_writing(self, state, monkeypatch):
+        audit.write_tier("s1", "opus", state)
+        target = audit.tier_record_path("s1", state)
+
+        opened_for_write: list[pathlib.Path] = []
+        real_write_text = pathlib.Path.write_text
+
+        def spy_write_text(self, *args, **kwargs):
+            if self == target:
+                opened_for_write.append(self)
+            return real_write_text(self, *args, **kwargs)
+
+        monkeypatch.setattr(pathlib.Path, "write_text", spy_write_text)
+
+        replace_calls = []
+        real_replace = audit.os.replace
+
+        def spy_replace(src, dst):
+            replace_calls.append((pathlib.Path(src), pathlib.Path(dst)))
+            return real_replace(src, dst)
+
+        monkeypatch.setattr(audit.os, "replace", spy_replace)
+
+        assert audit.write_tier("s1", "haiku", state) is True
+
+        assert opened_for_write == [], (
+            "the target path was opened directly for writing, which truncates it before "
+            "the new content lands"
+        )
+        assert len(replace_calls) == 1
+        src, dst = replace_calls[0]
+        assert dst == target
+        assert src != target, "the write lands on a temp file first, not the target itself"
+        assert audit.read_tier("s1", state) == "haiku"
+        leftover = [p for p in target.parent.iterdir() if p != target]
+        assert leftover == [], "the temp file used for the replace does not survive the write"
+
+
+class TestPartWritesPartitionByFile:
+    """A part beyond the first writes its own file, so no two slots share one."""
+
+    def test_two_parts_write_two_files_and_read_records_returns_both(self, state):
+        audit.append_record({"kind": "delivery", "n": 1}, session_id="s1", state=state, part=1)
+        audit.append_record({"kind": "emitted", "n": 2}, session_id="s1", state=state, part=2)
+
+        directory = audit.session_dir("s1", state)
+        assert sorted(p.name for p in directory.glob("*.jsonl")) == [
+            "session.jsonl",
+            "session.part2.jsonl",
+        ]
+        assert sorted(r["n"] for r in audit.read_records("s1", state)) == [1, 2]
+
+    def test_ten_concurrent_appends_through_a_process_pool_all_land_and_read_back(self, state):
+        jobs = [("s1", part, state) for part in range(1, 11)]
+
+        with concurrent.futures.ProcessPoolExecutor(max_workers=10) as pool:
+            results = list(pool.map(_append_emitted, jobs))
+
+        assert all(results)
+        records = audit.read_records("s1", state)
+        assert sorted(r["part"] for r in records if r.get("kind") == "emitted") == list(
+            range(1, 11)
+        )
 
 
 class TestPartialLines:

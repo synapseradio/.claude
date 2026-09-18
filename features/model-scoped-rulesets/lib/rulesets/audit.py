@@ -4,18 +4,24 @@
 Records partition by writer. A delegate can carry its parent's session
 identifier and two delegates can run at once, so a session's own records
 go to `session.jsonl` under a per-session directory and each delegate's
-to `<agent_id>.jsonl` beside it. Reading one session means reading that
-directory, which leaves every other session's records unscanned.
+to `<agent_id>.jsonl` beside it. A delivery split into several parts adds
+one writer per part beyond the first, each to its own `.part<k>.jsonl`
+file beside the rest, so no two slots ever write one file. Reading one
+session means reading that directory, which leaves every other session's
+records unscanned.
 """
 
 import json
+import os
 import pathlib
+import uuid
 
 from . import resolve
 
 LOAD = "load"
 DELIVERY = "delivery"
 SPAWN = "spawn"
+EMITTED = "emitted"
 
 SESSION_FILE = "session.jsonl"
 SPAWNS_FILE = "spawns.jsonl"
@@ -40,13 +46,15 @@ def record_path(
     session_id: str,
     agent_id: str | None = None,
     state: pathlib.Path | str | None = None,
+    part: int | None = None,
 ) -> pathlib.Path:
-    """The file one writer appends to."""
+    """The file one writer appends to, one per part beyond the first."""
 
     directory = session_dir(session_id, state)
-    if agent_id:
-        return directory / f"{_safe(agent_id)}.jsonl"
-    return directory / SESSION_FILE
+    stem = _safe(agent_id) if agent_id else SESSION_FILE.removesuffix(".jsonl")
+    if part is not None and part != 1:
+        stem = f"{stem}.part{part}"
+    return directory / f"{stem}.jsonl"
 
 
 def append_record(
@@ -54,6 +62,7 @@ def append_record(
     session_id: str,
     agent_id: str | None = None,
     state: pathlib.Path | str | None = None,
+    part: int | None = None,
 ) -> bool:
     """Append one JSON line, answering whether the write landed.
 
@@ -62,7 +71,7 @@ def append_record(
     """
 
     try:
-        path = record_path(session_id, agent_id, state)
+        path = record_path(session_id, agent_id, state, part)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(record, default=str) + "\n")
@@ -123,6 +132,7 @@ def delivery_record(
     superseded: bool = False,
     prompt_id: str | None = None,
     root: pathlib.Path | str | None = None,
+    parts: int | None = None,
 ) -> dict:
     """The record one delivery produces.
 
@@ -144,9 +154,32 @@ def delivery_record(
         record["agent_id"] = agent_id
     if prompt_id:
         record["prompt_id"] = prompt_id
+    if parts is not None:
+        record["parts"] = parts
     if root is not None:
         record["root"] = str(root)
     return record
+
+
+def emitted_record(
+    session_id: str,
+    tier: str,
+    part: int,
+    parts: int,
+    stems: tuple[str, ...],
+    digest: str,
+) -> dict:
+    """The record one non-first slot produces, standing for its own part."""
+
+    return {
+        "kind": EMITTED,
+        "session_id": session_id,
+        "tier": tier,
+        "part": part,
+        "parts": parts,
+        "stems": list(stems),
+        "digest": digest,
+    }
 
 
 def tier_record_path(session_id: str, state: pathlib.Path | str | None = None) -> pathlib.Path:
@@ -156,12 +189,19 @@ def tier_record_path(session_id: str, state: pathlib.Path | str | None = None) -
 
 
 def write_tier(session_id: str, tier: str, state: pathlib.Path | str | None = None) -> bool:
-    """Record a session's tier so a later delivery with no model can read it."""
+    """Record a session's tier so a later delivery with no model can read it.
+
+    A concurrent reader running `read_tier` must never observe the target
+    truncated, so the write lands on a temp file in the same directory first
+    and reaches the target in one atomic replace.
+    """
 
     try:
         path = tier_record_path(session_id, state)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(tier + "\n", encoding="utf-8")
+        temp = path.parent / f".{path.name}.{uuid.uuid4().hex}.tmp"
+        temp.write_text(tier + "\n", encoding="utf-8")
+        os.replace(temp, path)
     except OSError:
         return False
     return True

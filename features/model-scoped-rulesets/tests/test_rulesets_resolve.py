@@ -712,6 +712,23 @@ def full_root(tmp_path):
     return write_models(tmp_path)
 
 
+@pytest.fixture
+def multi_part_root(tmp_path):
+    """A haiku tier of three stems, each too large to share a part with another."""
+
+    stems = ("stem0", "stem1", "stem2")
+    root = build_root(
+        tmp_path,
+        every_tier(WILDCARD) | {"haiku": {"include": list(stems)}},
+        {"default": ("alpha",), "haiku": stems},
+    )
+    for stem in stems:
+        (root / "haiku" / f"{stem}.md").write_text(
+            f"{resolve.naming_line(stem)}\n{'x' * 7950}\n", encoding="utf-8"
+        )
+    return write_models(root)
+
+
 class TestTierLookup:
     def test_a_profile_variable_names_the_running_model(self, full_root):
         env = {"ANTHROPIC_DEFAULT_OPUS_MODEL": "some-vendor-model"}
@@ -976,10 +993,10 @@ class TestDelegateResolution:
 class TestSwitchAndDelivery:
     def test_a_switch_to_a_different_tier_delivers_and_records(self, full_root, tmp_path):
         state = tmp_path / "state"
-        resolve._audit().write_tier("s1", "opus", state)
         payload = {
             "hook_event_name": "PostModelSwitch",
             "session_id": "s1",
+            "from_model": "claude-opus-9-9",
             "to_model": "claude-haiku-4-5",
             "prompt_id": "p1",
         }
@@ -991,10 +1008,10 @@ class TestSwitchAndDelivery:
 
     def test_a_switch_within_the_same_tier_delivers_nothing(self, full_root, tmp_path):
         state = tmp_path / "state"
-        resolve._audit().write_tier("s1", "opus", state)
         payload = {
             "hook_event_name": "PostModelSwitch",
             "session_id": "s1",
+            "from_model": "claude-opus-5",
             "to_model": "claude-opus-9-9",
             "prompt_id": "p1",
         }
@@ -1023,6 +1040,59 @@ class TestSwitchAndDelivery:
             "closes the trailer instead of opening the header"
         )
         assert "claude-haiku-4-5" in text, "the source still reaches the reader, from the trailer"
+
+
+class TestSwitchChecksThePayload:
+    """The switch check compares the payload's own `from_model` and `to_model` tiers.
+
+    A recorded tier plays no part in the answer, whatever it holds.
+    """
+
+    def _payload(self, from_model, to_model, session_id="s1"):
+        payload = {
+            "hook_event_name": "PostModelSwitch",
+            "session_id": session_id,
+            "to_model": to_model,
+            "prompt_id": "p1",
+        }
+        if from_model is not None:
+            payload["from_model"] = from_model
+        return payload
+
+    def _total(self, root, tier="haiku"):
+        return len(resolve.pack_parts(resolve.tier_ruleset(tier, root).sections))
+
+    def test_the_same_tier_from_every_slot_delivers_nothing(self, multi_part_root, tmp_path):
+        state = tmp_path / "state"
+        payload = self._payload(from_model="claude-haiku-9-9", to_model="claude-haiku-4-5")
+        total = self._total(multi_part_root)
+
+        for part in range(1, total + 1):
+            assert resolve.deliver_payload(payload, multi_part_root, state, {}, part=part) == {}
+
+    def test_crossing_tiers_delivers_from_every_slot(self, multi_part_root, tmp_path):
+        state = tmp_path / "state"
+        payload = self._payload(from_model="claude-opus-9-9", to_model="claude-haiku-4-5")
+        total = self._total(multi_part_root)
+
+        for part in range(1, total + 1):
+            assert resolve.deliver_payload(payload, multi_part_root, state, {}, part=part) != {}
+
+    def test_no_from_model_delivers(self, full_root, tmp_path):
+        state = tmp_path / "state"
+        payload = self._payload(from_model=None, to_model="claude-haiku-4-5")
+
+        assert resolve.deliver_payload(payload, full_root, state, {}) != {}
+
+    def test_a_contradictory_recorded_tier_gives_the_same_answer(self, full_root, tmp_path):
+        state = tmp_path / "state"
+        resolve._audit().write_tier("s1", "sonnet", state)
+        payload = self._payload(from_model="claude-haiku-4-5", to_model="claude-haiku-4-5")
+
+        assert resolve.deliver_payload(payload, full_root, state, {}) == {}, (
+            "the recorded tier names sonnet, but the payload names the same tier both ways, "
+            "so the switch still suppresses"
+        )
 
 
 class TestPacking:
@@ -1122,6 +1192,116 @@ class TestPartHeaders:
         )
 
 
+class TestDeliverByPart:
+    """Each slot resolves, composes, and packs on its own, and returns its part.
+
+    No slot reads what another slot did; a session id chosen to be
+    improbable in any body checks that nothing ahead of the trailer names
+    it.
+    """
+
+    SESSION_ID = "distinctive-session-id-9000"
+
+    def _payload(self, session_id=SESSION_ID):
+        return {
+            "hook_event_name": "SessionStart",
+            "session_id": session_id,
+            "model": "claude-haiku-4-5",
+        }
+
+    def _total(self, root, tier="haiku"):
+        return len(resolve.pack_parts(resolve.tier_ruleset(tier, root).sections))
+
+    def _text(self, root, state, part):
+        out = resolve.deliver_payload(self._payload(), root, state, {}, part=part)
+        return out["hookSpecificOutput"]["additionalContext"]
+
+    def _body(self, text, last):
+        _, _, rest = text.partition("\n\n")
+        return rest.rpartition("\n\n")[0] if last else rest
+
+    def test_the_parts_of_one_delivery_concatenate_to_the_tier_text(
+        self, multi_part_root, tmp_path
+    ):
+        state = tmp_path / "state"
+        ruleset = resolve.tier_ruleset("haiku", multi_part_root)
+        total = self._total(multi_part_root)
+
+        bodies = [
+            self._body(self._text(multi_part_root, state, part), part == total)
+            for part in range(1, total + 1)
+        ]
+
+        assert "\n".join(bodies) == ruleset.text
+
+    def test_a_slot_beyond_the_part_count_returns_nothing(self, full_root, tmp_path):
+        state = tmp_path / "state"
+
+        assert resolve.deliver_payload(self._payload(), full_root, state, {}, part=2) == {}
+
+    def test_only_the_last_part_carries_the_trailer(self, multi_part_root, tmp_path):
+        state = tmp_path / "state"
+        total = self._total(multi_part_root)
+
+        for part in range(1, total + 1):
+            text = self._text(multi_part_root, state, part)
+            assert ("<!-- ruleset: from " in text) == (part == total)
+
+    def test_no_part_carries_a_session_id_or_a_path_ahead_of_the_trailer(
+        self, multi_part_root, tmp_path
+    ):
+        state = tmp_path / "state"
+        total = self._total(multi_part_root)
+
+        for part in range(1, total + 1):
+            text = self._text(multi_part_root, state, part)
+            ahead = self._body(text, part == total)
+            assert self.SESSION_ID not in ahead
+            assert str(multi_part_root) not in ahead
+
+    def test_only_part_one_scaffolds_a_missing_corpus(self, tmp_path):
+        root = tmp_path / "missing"
+        state = tmp_path / "state"
+
+        resolve.deliver_payload(self._payload(), root, state, {}, part=2)
+
+        assert not root.exists()
+
+    def test_only_part_one_records_the_delivery_and_writes_the_tier(
+        self, multi_part_root, tmp_path
+    ):
+        state = tmp_path / "state"
+        total = self._total(multi_part_root)
+
+        for part in range(1, total + 1):
+            resolve.deliver_payload(self._payload(), multi_part_root, state, {}, part=part)
+
+        records = [
+            r
+            for r in resolve._audit().read_records(self.SESSION_ID, state)
+            if r["kind"] == "delivery"
+        ]
+        assert len(records) == 1
+        assert records[0]["parts"] == total
+        assert resolve._audit().read_tier(self.SESSION_ID, state) == "haiku"
+
+    def test_pre_tool_use_only_appends_the_spawn_on_part_one(self, tmp_path):
+        root = tmp_path / "corpus"
+        state = tmp_path / "state"
+        payload = {
+            "hook_event_name": "PreToolUse",
+            "session_id": "s1",
+            "prompt_id": "p1",
+            "tool_input": {"subagent_type": "scout", "model": "claude-haiku-4-5"},
+        }
+
+        assert resolve.deliver_payload(payload, root, state, {}, part=2) == {}
+        assert resolve._audit().read_spawns("s1", "p1", "scout", state) == []
+
+        assert resolve.deliver_payload(payload, root, state, {}, part=1) == {}
+        assert resolve._audit().read_spawns("s1", "p1", "scout", state) == ["claude-haiku-4-5"]
+
+
 class TestDeliveryCheckAndSupersession:
     def _switch(self, prompt_id, stems, tier="haiku"):
         return resolve._audit().delivery_record(
@@ -1204,6 +1384,67 @@ class TestDeliveryCheckAndSupersession:
         )
 
         assert code == 0
+
+
+class TestDeliveryCheckAcrossParts:
+    """The check also compares a delivery's declared parts against what emitted."""
+
+    def _deliver(self, payload, root, state, *parts):
+        for part in parts:
+            resolve.deliver_payload(payload, root, state, {}, part=part)
+
+    def _check(self, session, root, state):
+        return resolve.main(
+            ["delivery-check", "--session", session, "--root", str(root), "--state", str(state)]
+        )
+
+    def test_names_a_part_composed_and_never_emitted(self, multi_part_root, tmp_path, capsys):
+        state = tmp_path / "state"
+        payload = {
+            "hook_event_name": "SessionStart",
+            "session_id": "s1",
+            "model": "claude-haiku-4-5",
+        }
+        self._deliver(payload, multi_part_root, state, 1)  # parts 2 and 3 never run
+
+        code = self._check("s1", multi_part_root, state)
+
+        assert code != 0
+        out = capsys.readouterr().out
+        assert "part 2" in out and "never emitted" in out
+
+    def test_two_parts_that_disagree_on_tier_are_reported(self, multi_part_root, tmp_path, capsys):
+        state = tmp_path / "state"
+        payload = {
+            "hook_event_name": "SessionStart",
+            "session_id": "s1",
+            "model": "claude-haiku-4-5",
+        }
+        self._deliver(payload, multi_part_root, state, 1, 3)
+        audit = resolve._audit()
+        audit.append_record(
+            audit.emitted_record("s1", "opus", 2, 3, ("stem1",), "deadbeef"),
+            session_id="s1",
+            state=state,
+            part=2,
+        )
+
+        code = self._check("s1", multi_part_root, state)
+
+        assert code != 0
+        out = capsys.readouterr().out
+        assert "part 2" in out and "opus" in out
+
+    def test_a_single_part_delivery_still_passes(self, full_root, tmp_path):
+        state = tmp_path / "state"
+        payload = {
+            "hook_event_name": "SessionStart",
+            "session_id": "s1",
+            "model": "claude-haiku-4-5",
+        }
+        self._deliver(payload, full_root, state, 1)
+
+        assert self._check("s1", full_root, state) == 0
 
 
 class TestModelNamedTiers:

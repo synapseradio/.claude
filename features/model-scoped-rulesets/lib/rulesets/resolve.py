@@ -78,9 +78,8 @@ def _documents():
 DEFAULT_TIER = "default"
 TIERS = (DEFAULT_TIER, "fable", "opus", "sonnet", "haiku")
 
-# A whole delivery splits into at most this many parts, each at most this
-# many characters, so a tier grown past what one part carries still lands
-# within what a harness will accept.
+# So a tier grown past what one part carries still lands within what a
+# harness will accept.
 PART_SLOTS = 10
 PART_BUDGET = 9000
 
@@ -169,12 +168,7 @@ def named_body(stem: str, text: str) -> str:
 
 @dataclasses.dataclass(frozen=True)
 class Ruleset:
-    """A tier's composed text and the stems it carries.
-
-    `sections` names each body beside the stem it belongs to, in the same
-    composed order `text` joins them in, which is what a packer groups into
-    parts without reading the corpus again.
-    """
+    """A tier's composed text, its stems, and each body paired with its stem."""
 
     tier: str
     stems: tuple[str, ...]
@@ -376,16 +370,7 @@ def load_manifest(root: pathlib.Path | str | None = None) -> ManifestOk | Manife
 
 
 def load_order(root: pathlib.Path | str | None = None) -> tuple[str, ...] | None:
-    """The stem order the manifest states, or None where it states none.
-
-    The order belongs to the corpus, since it is the sequence a reader meets
-    the rules in. A corpus stating none renders its stems sorted, which is
-    the order delivery composes them in.
-
-    This reads through `load_manifest`'s cache rather than parsing the file
-    again, so a call here during a delivery that has already read the
-    manifest for its tiers costs a lookup rather than a second parse.
-    """
+    """The stem order the manifest states, or None where it states none."""
 
     manifest = load_manifest(root)
     if isinstance(manifest, ManifestError):
@@ -631,16 +616,7 @@ def _order_findings(base: pathlib.Path) -> tuple[Finding, ...]:
 
 
 def _part_findings(base: pathlib.Path, tiers: tuple[str, ...]) -> tuple[Finding, ...]:
-    """Where a tier's packing would outrun what a delivery carries.
-
-    A body already past the budget sits alone in its own part, which
-    `pack_parts` already handles, and this only says so before delivery
-    does. A tier whose sections together pack past the slot count would
-    need a part a delivery has nowhere to put, which is the harder failure:
-    packing does not refuse it, so nothing else would report it either. A
-    body shared by several tiers is reported once, by the first tier that
-    reaches it.
-    """
+    """Where a tier's packing would outrun what a delivery carries."""
 
     findings: tuple[Finding, ...] = ()
     seen: set[pathlib.Path] = set()
@@ -1319,13 +1295,7 @@ def tier_ruleset(tier: str, root: pathlib.Path | str | None = None) -> Ruleset |
 def pack_parts(
     sections: tuple[tuple[str, str], ...], budget: int = PART_BUDGET
 ) -> tuple[tuple[tuple[str, str], ...], ...]:
-    """Group whole sections into parts, none past `budget` characters.
-
-    Pure and greedy: it reads nothing beyond `sections`, in the order it is
-    handed, and a section stays whole, joining the part it best fits rather
-    than splitting across two. A section whose own body already outruns the
-    budget sits alone in its part, since no split would bring it under.
-    """
+    """Group whole sections into parts, none past `budget` characters."""
 
     parts: list[tuple[tuple[str, str], ...]] = []
     current: list[tuple[str, str]] = []
@@ -1362,13 +1332,7 @@ def part_text(part: tuple[tuple[str, str], ...]) -> str:
 
 
 def delivery_header(tier: str, stem_count: int, part: int, total: int) -> str:
-    """The opening line naming the tier, its stem count, and this part.
-
-    A function of the corpus and the tier alone: no source, no note, no
-    timestamp, session id, or path ever reaches it. A tier packing into one
-    part keeps the short form, so a reader who never sees more than one part
-    never sees it counted.
-    """
+    """The opening line naming the tier, its stem count, and this part."""
 
     if total > 1:
         return f"<!-- ruleset: tier {tier}, {stem_count} stems, part {part} of {total} -->"
@@ -1376,12 +1340,7 @@ def delivery_header(tier: str, stem_count: int, part: int, total: int) -> str:
 
 
 def delivery_trailer(source: str, notes: tuple[str, ...], switch: bool = False) -> str:
-    """The lines that close the last part: the source, then each note.
-
-    A switch adds one further note of its own, since the earlier ruleset a
-    switch replaces is not restated and the reader needs telling it is
-    still there, above this one.
-    """
+    """The lines that close the last part: the source, then each note."""
 
     lines = [f"<!-- ruleset: from {source} -->"]
     lines += [f"<!-- note: {note} -->" for note in notes]
@@ -1392,7 +1351,7 @@ def delivery_trailer(source: str, notes: tuple[str, ...], switch: bool = False) 
 
 @dataclasses.dataclass(frozen=True)
 class Delivered:
-    """A ruleset ready for a context, with the record it should log."""
+    """One part of a ruleset ready for a context, with the record it should log."""
 
     event: str
     text: str
@@ -1400,18 +1359,13 @@ class Delivered:
     source: str
     stems: tuple[str, ...]
     scope: str
+    parts: int
+    part_stems: tuple[str, ...]
+    digest: str
 
 
-def _delivered(res: Resolution, event: str, scope: str, root) -> Delivered:
-    """Compose the resolution's tier, falling open to `default` if it can't.
-
-    The whole ruleset still lands as one string: this composes the header,
-    the body, and the trailer itself rather than handing separate parts to
-    its caller, since splitting one delivery into several answers is the
-    next change, not this one. It packs as a single part, part 1 of 1, for
-    that reason: a tier that would pack past one part still delivers whole
-    here, and only the header and trailer wording moves ahead of that.
-    """
+def _delivered(res: Resolution, event: str, scope: str, root, part: int) -> Delivered | None:
+    """Compose one part of the resolution's tier, falling open to `default` if it can't."""
 
     tier, source, notes = res.tier, res.source, res.notes
     switch = scope == "switch"
@@ -1422,14 +1376,28 @@ def _delivered(res: Resolution, event: str, scope: str, root) -> Delivered:
             notes = (*notes, f"tier {tier} was unavailable ({ruleset.reason}), so default was used")
             tier, ruleset = DEFAULT_TIER, fallback
         else:
+            if part != 1:
+                return None
             header = delivery_header(tier, 0, 1, 1)
             trailer = delivery_trailer(source, (*notes, ruleset.reason), switch=switch)
-            return Delivered(event, f"{header}\n\n{trailer}", tier, source, (), scope)
+            return Delivered(event, f"{header}\n\n{trailer}", tier, source, (), scope, 1, (), "")
 
-    header = delivery_header(tier, len(ruleset.stems), 1, 1)
-    trailer = delivery_trailer(source, notes, switch=switch)
-    text = f"{header}\n\n{ruleset.text}\n\n{trailer}"
-    return Delivered(event, text, tier, source, ruleset.stems, scope)
+    parts_list = pack_parts(ruleset.sections)
+    total = len(parts_list)
+    if part < 1 or part > total:
+        return None
+
+    section = parts_list[part - 1]
+    part_stems = tuple(stem for stem, _ in section)
+    body = part_text(section)
+    digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
+    header = delivery_header(tier, len(ruleset.stems), part, total)
+    if part == total:
+        trailer = delivery_trailer(source, notes, switch=switch)
+        text = f"{header}\n\n{body}\n\n{trailer}"
+    else:
+        text = f"{header}\n\n{body}"
+    return Delivered(event, text, tier, source, ruleset.stems, scope, total, part_stems, digest)
 
 
 def deliver_payload(
@@ -1437,12 +1405,16 @@ def deliver_payload(
     root: pathlib.Path | str | None = None,
     state: pathlib.Path | str | None = None,
     env: dict | None = None,
+    part: int = 1,
 ) -> dict:
-    """Answer a hook payload with the ruleset to add, and record it.
+    """Answer one part of a hook payload's ruleset, and where it is part 1, record it.
 
     An absent corpus gets scaffolded empty, so the first hook run after an
     install leaves a legal corpus behind for its owner to fill rather than
-    an error nobody sees. The run that created it says so in a note.
+    an error nobody sees. The run that created it says so in a note. Every
+    slot resolves the tier, composes, and packs on its own; part 1 alone
+    scaffolds, records the delivery, and writes the resolved tier, so N
+    slots run without any one signalling another.
     """
 
     audit = _audit()
@@ -1453,22 +1425,25 @@ def deliver_payload(
     agent_id = payload.get("agent_id")
     prompt_id = payload.get("prompt_id")
 
-    live = rulesets_root(root)
-    prepared = ensure_corpus(live)
-    setup_notes: tuple[str, ...] = ()
-    if isinstance(prepared, NoRuleset):
-        setup_notes = (prepared.reason,)
-    elif prepared.created:
-        setup_notes = (f"scaffolded an empty corpus at {live}",)
-    root = live
-    state = state_dir() if state is None else state
-
     if event == "PreToolUse":
+        if part != 1:
+            return {}
         tool_input = payload.get("tool_input") or {}
         audit.append_spawn(
             session_id, prompt_id, tool_input.get("subagent_type"), tool_input.get("model"), state
         )
         return {}
+
+    live = rulesets_root(root)
+    setup_notes: tuple[str, ...] = ()
+    if part == 1:
+        prepared = ensure_corpus(live)
+        if isinstance(prepared, NoRuleset):
+            setup_notes = (prepared.reason,)
+        elif prepared.created:
+            setup_notes = (f"scaffolded an empty corpus at {live}",)
+    root = live
+    state = state_dir() if state is None else state
 
     if event == "SubagentStart":
         res = delegate_resolution(payload, root, state, env)
@@ -1476,34 +1451,55 @@ def deliver_payload(
     elif event == "PostModelSwitch":
         res = switch_resolution(payload, root, env)
         scope = "switch"
-        if res.tier == audit.read_tier(session_id, state):
+        from_model = payload.get("from_model")
+        from_tier = tier_lookup(from_model, root, env).tier if from_model else None
+        if from_tier is not None and from_tier == res.tier:
             return {}
     else:
         res = session_resolution(payload, root, state, env)
         scope = "session"
 
     delivered = _delivered(
-        dataclasses.replace(res, notes=(*res.notes, *setup_notes)), event, scope, root
+        dataclasses.replace(res, notes=(*res.notes, *setup_notes)), event, scope, root, part
     )
+    if delivered is None:
+        return {}
 
-    audit.append_record(
-        audit.delivery_record(
-            session_id,
-            delivered.tier,
-            delivered.source,
-            delivered.stems,
-            scope,
+    if part == 1:
+        audit.append_record(
+            audit.delivery_record(
+                session_id,
+                delivered.tier,
+                delivered.source,
+                delivered.stems,
+                scope,
+                agent_id=agent_id,
+                prompt_id=prompt_id if scope == "switch" else None,
+                root=root,
+                parts=delivered.parts,
+            ),
+            session_id=session_id or "session",
             agent_id=agent_id,
-            prompt_id=prompt_id if scope == "switch" else None,
-            root=root,
-        ),
-        session_id=session_id or "session",
-        agent_id=agent_id,
-        state=state,
-    )
+            state=state,
+        )
 
-    if scope in ("session", "switch") and session_id:
-        audit.write_tier(session_id, delivered.tier, state)
+        if scope in ("session", "switch") and session_id:
+            audit.write_tier(session_id, delivered.tier, state)
+    else:
+        audit.append_record(
+            audit.emitted_record(
+                session_id,
+                delivered.tier,
+                part,
+                delivered.parts,
+                delivered.part_stems,
+                delivered.digest,
+            ),
+            session_id=session_id or "session",
+            agent_id=agent_id,
+            state=state,
+            part=part,
+        )
 
     return {"hookSpecificOutput": {"hookEventName": event, "additionalContext": delivered.text}}
 
@@ -1558,18 +1554,17 @@ def command_deliveries(args: argparse.Namespace) -> int:
 
 
 def command_delivery_check(args: argparse.Namespace) -> int:
-    """Compare each delivery's stems against its tier's composition."""
+    """Compare each delivery's stems against its composition, and its parts against what emitted."""
 
     audit = _audit()
 
-    records = [
-        record
-        for record in audit.read_records(args.session, _state_from(args))
-        if record.get("kind") == audit.DELIVERY
-    ]
+    all_records = audit.read_records(args.session, _state_from(args))
+    deliveries = [r for r in all_records if r.get("kind") == audit.DELIVERY]
+    emitted = [r for r in all_records if r.get("kind") == audit.EMITTED]
+
     problems = []
     root = _root_from(args)
-    for record in _effective_deliveries(records):
+    for record in _effective_deliveries(deliveries):
         tier = record.get("tier")
         composed = set(compose(tier, root).stems)
         delivered = set(record.get("stems") or [])
@@ -1577,6 +1572,17 @@ def command_delivery_check(args: argparse.Namespace) -> int:
             problems.append(f"{tier}: {stem} composed but not delivered")
         for stem in sorted(delivered - composed):
             problems.append(f"{tier}: {stem} delivered but not composed")
+
+        total = record.get("parts") or 1
+        by_part = {e.get("part"): e for e in emitted if e.get("parts") == total}
+        for part in range(2, total + 1):
+            emitted_part = by_part.get(part)
+            if emitted_part is None:
+                problems.append(f"{tier}: part {part} of {total} was composed but never emitted")
+            elif emitted_part.get("tier") != tier:
+                problems.append(
+                    f"{tier}: part {part} disagrees on tier, emitted as {emitted_part.get('tier')}"
+                )
     for problem in problems:
         print(problem)
     return 1 if problems else 0
