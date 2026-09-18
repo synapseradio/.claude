@@ -33,12 +33,19 @@ For a local checkout, add the directory holding `.claude-plugin/marketplace.json
 ## 2. Let the first session scaffold the corpus
 
 Start a session. The `SessionStart` hook finds no corpus, writes an empty one at `~/.claude/rulesets`,
-and says so in the context it delivers:
+and says so in the context it delivers. This is what a session sees where nothing names its model,
+which is why the tier reads `default`:
 
 ```text
-<!-- ruleset: tier default, from ..., 0 stems -->
+<!-- ruleset: tier default, 0 stems -->
+
+<!-- ruleset: from no model identifier was available -->
+<!-- note: neither the harness nor the environment named a model, and no tier was recorded -->
 <!-- note: scaffolded an empty corpus at <home>/.claude/rulesets -->
 ```
+
+A session whose payload names its model reads the tier that model maps to, and the trailer names the
+model it came from.
 
 Zero stems is correct. The corpus is legal and holds no rules yet.
 
@@ -82,14 +89,17 @@ resolve.py check                      # prints nothing and exits 0 on a legal co
 resolve.py inspect --tier default     # each composed stem and the body it reads
 ```
 
-Start a session and read the first comment of the delivered context: it names the tier, where that
-tier came from, and how many stems it carried.
+Start a session and read the delivered context. Its first comment names the tier, how many stems
+that tier carried, and, where a tier packs into more than one part, which part this is. The comments
+closing the last part name where the tier came from and carry one note for each thing delivery has
+to report.
 
-A first line reading `<!-- ruleset: delivery failed, from deliver.py, 0 stems -->` means the hook
-ran and could not deliver. The note under it names the cause, and the text after it says whether
-the cause is a file the hook could not read or a defect in the plugin. The session has no user
-rules until a new one starts after the repair. The hook exits 0 either way, so a session is never
-blocked, and it never starts with no rules and no word of it.
+A first line reading `<!-- ruleset: delivery failed, from deliver.py, 0 stems -->` means the hook ran
+and could not deliver. That line carries its source because a failure sends no trailer to carry one.
+The note under it names the cause, and the text after that says whether the cause is a file the hook
+could not read or a defect in the plugin. The session has no user rules until a new one starts after
+the repair. The hook exits 0 either way, so the session still starts, and its first line says the
+rules are missing.
 
 ```bash
 resolve.py deliveries --session <session_id>
@@ -114,8 +124,9 @@ for it under `tiers:` in `manifest.yaml`. A lookup matches that tier ahead of th
 ## If your settings file already ran these hooks
 
 The plugin wires `SessionStart`, `SubagentStart`, `PostModelSwitch`, `PreToolUse` on `Agent`, and
-`InstructionsLoaded`. Claude Code does not deduplicate hooks across sources, so remove your own
-entries for those events, or one context receives the same ruleset twice.
+`InstructionsLoaded`. Claude Code runs every hook registered for an event, from every source that
+registers one, so remove your own entries for those events, or one context receives the same ruleset
+twice.
 
 ## Uninstalling
 
