@@ -154,14 +154,19 @@ the failure in the text it delivers.
 
 Delivery falls back to the `default` tier wherever a tier does not resolve, and where neither that
 tier nor `default` composes, `_delivered` sends a header naming 0 stems with the reason in its
-trailer. A hook that raises leaves that path: `failure_output` in `hooks/deliver.py` sends one line,
-`<!-- ruleset: delivery failed, from deliver.py, 0 stems -->`, then a note naming the cause, then
-text telling the session to report it before doing anything else. That line carries its source
-inside itself, since a failure sends no trailer to carry one. Slot 1 carries the work that must
-happen once: it scaffolds an absent corpus, writes the delivery record and the session's tier, and
-emits the failure, so ten slots meeting one broken manifest report it once. Slots 2 through P each
-write an emitted record, `{"kind": "emitted", "session_id", "tier", "part", "parts", "stems",
-"digest"}`, the digest a sha256 of the part's text, into that writer's own file beside the first.
+trailer. A hook that raises leaves that path, and `failure_output` in `hooks/deliver.py` answers in
+the shape a delivery carries: the header `<!-- ruleset: delivery failed, 0 stems -->`, then text
+telling the session to report the failure before doing anything else, naming whether the cause is a
+file the hook could not read or write or a defect in this plugin, and carrying the command that runs
+the hook by hand, then the trailer, `<!-- ruleset: from deliver.py -->` and one note holding the
+cause. A cause that outruns the cap is clipped and ends in ` (clipped; the traceback is on the
+hook's stderr)`. Only the `--part 1` slot prints it, and a later part that fails prints nothing on
+stdout, so ten slots meeting one broken manifest report it once.
+
+Slot 1 carries the rest of the work that must happen once: it scaffolds an absent corpus and writes
+the delivery record and the session's tier. Slots 2 through P each write an emitted record,
+`{"kind": "emitted", "session_id", "tier", "part", "parts", "stems", "digest"}`, the digest a sha256
+of the part's text, into that writer's own file beside the first.
 
 The cost is that a session can run with fewer rules than intended. The header is where that shows,
 and `deliveries --session ID` and `delivery-check --session ID` are where it is checked after the

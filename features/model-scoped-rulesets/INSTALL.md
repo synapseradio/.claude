@@ -94,12 +94,26 @@ that tier carried, and, where a tier packs into more than one part, which part t
 closing the last part name where the tier came from and carry one note for each thing delivery has
 to report.
 
-A first line reading `<!-- ruleset: delivery failed, from deliver.py, 0 stems -->` means the hook ran
-and could not deliver. That line carries its source because a failure sends no trailer to carry one.
-The note under it names the cause, and the text after that says whether the cause is a file the hook
-could not read or a defect in the plugin. The session has no user rules until a new one starts after
-the repair. The hook exits 0 either way, so the session still starts, and its first line says the
-rules are missing.
+A context opening on `<!-- ruleset: delivery failed, 0 stems -->` means the hook ran and could not
+deliver. It takes the shape of a delivery, header first and trailer last:
+
+```text
+<!-- ruleset: delivery failed, 0 stems -->
+
+Ruleset delivery failed, so this session is running without its user rules. Tell the user this
+before doing anything else.
+
+[the cause, a file the hook could not read or write or a defect in the plugin, and the command
+that runs the hook by hand]
+
+<!-- ruleset: from deliver.py -->
+<!-- note: PermissionError: [Errno 13] Permission denied: ... -->
+```
+
+The note closing it carries the cause itself, clipped where it outruns the 10,000-character cap and
+ending then in ` (clipped; the traceback is on the hook's stderr)`. The session has no user rules
+until a new one starts after the repair. The hook exits 0 either way, so the session still starts,
+and its first line says the rules are missing.
 
 ```bash
 resolve.py deliveries --session <session_id>
