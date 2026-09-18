@@ -14,9 +14,9 @@ Name the purpose you write for before the first line. Where the reader would oth
 
 ### The page
 
-Give every pronoun and every pointing noun phrase a referent already on the page. Gloss a term of art where it first lands. Where you would point at the artifact itself, hand over the content. Leave nothing the reader needs for them to infer. State what is true now, with confidence. Draw a contrast against a consequence or a source. If you want something from the reader, ask for it in words. Announce no tone or stance of your own. Let the writing carry what you mean.
+Give every pronoun and every pointing noun phrase a referent already on the page. Gloss a term of art where it first lands. Where you would point at the artifact itself, hand over the content. Leave nothing the reader needs for them to infer. State what is true now, with confidence. Draw a contrast against a consequence or a source. Present what the page's subject offers, in the affirmative. Where an alternative helps the reader place the subject, give it one sentence inside the property it illuminates. State a limit or a cost as plainly as a strength. Leave the conversation that produced the page off the page. If you want something from the reader, ask for it in words. Announce no tone or stance of your own. Let the writing carry what you mean.
 
-Never contrast against a claim nobody made.
+Never contrast against a claim nobody made. Never answer an objection the reader has not raised.
 
 ### The token
 
