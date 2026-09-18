@@ -4,7 +4,7 @@
 
 For every spawn through the Agent tool, the Fork tool, or any other tool that could spawn an agent, and for every spawn a spawned agent makes in turn, optimize for a delegate that returns a result the caller can check.
 
-A delegation runs in order: decide the spawn may happen, take the readings, choose the settings, compose the prompt, spawn, and receive the report.
+A delegation runs in order: decide the spawn under the rule on the spawn decision, take the readings, choose the settings, compose the prompt, spawn, and receive the report.
 
 ### The readings
 
@@ -37,7 +37,7 @@ the delegate's decisions]
 ## Task
 
 [what to do, complete without prior context, with the return format named;
-the report template is the default]
+the report under the rule on delegate reports is the default]
 
 ## Context
 
@@ -72,32 +72,5 @@ Where the model is haiku, state every step, paths, exact constraints, and the ch
 ### The spawn
 
 Set the model field on every spawn that accepts one, and the effort field wherever one exists. For a forked spawn, leave the model field unset.
-
-### The default report
-
-A delegate's report carries the four parts this template names, each under its heading, by default unless another one is better per your discretion. The same bracket convention holds.
-
-```markdown
-## Unanswered
-
-[each choice point handed up, with the question and the options you would
-have offered]
-
-## Done
-
-[what got done, each claim with its source or its mark]
-
-## Undone
-
-[what remains undone, with the answer each part needs]
-
-## Lessons
-
-[Optional. Information learned during execution, if any, that was relevant, not apparent and took effort to answer outside the scope of the instructions]
-
-## Questions
-
-[Optional. Open questions, if any, that naturally lead from here]
-```
 
 Hold every claim in a report as unverified until you find its source.

@@ -19,17 +19,31 @@ tiers:
     include: "*"
   opus:
     include: "*"
-  # sonnet and haiku run only as delegates and never spawn, so they leave out
-  # the rule on delegating to agents, and their own core-rules drops the
-  # sentence pointing at it.
+  # sonnet and haiku never spawn, so both leave out the rules on delegation
+  # and the spawn decision. haiku runs as a subagent handed reads, maps,
+  # summaries, and stated changes, without AskUserQuestion, so it leaves out
+  # the rules for other work and for that tool.
   sonnet:
     include: "*"
     exclude:
       - agent-delegation
+      - spawn-decision
   haiku:
     include: "*"
     exclude:
       - agent-delegation
+      - spawn-decision
+      - asking-questions
+      - persistent-memory
+      - worktrees
+      - writing-code
+      - writing-comments
+      - data-modeling
+      - debugging
+      - repairing
+      - claims
+      - reasoning-guidelines
+      - inquiring
   claude-opus-4-8:
     include: "*"
 
@@ -42,6 +56,15 @@ tiers:
 # change, and `check` reports an `order-mismatch` where the two disagree.
 order:
   - core-rules
+  - marked-messages
+  - sorting
+  - resolving-input
+  - verifying
+  - tracked-tasks
+  - breaks
+  - user-approval
+  - concerns
+  - reporting
   - reasoning-guidelines
   - inquiring
   - ask-user-before-assuming
@@ -63,7 +86,9 @@ order:
   - waiting-on-processes
   - git-commit
   - worktrees
+  - spawn-decision
   - agent-delegation
+  - delegate-report
   - writing-plans
   - scratchpad
   - persistent-memory
