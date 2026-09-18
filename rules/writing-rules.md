@@ -30,7 +30,7 @@ Write every sentence blameless, naming no debt to the reader or the user and ass
 
 ### The qualities
 
-Let the opener name the whole scope, so no reader can find a case the rule leaves open. Let each machine line state a test a reader can run on the artifact, or a stance the reader holds. Define a term the file coins on its first use. Name a class by its mechanism and give it one example at most. Give each instruction one home, and let another rule point to it by the rule's name, "under the rule on prose" for one, with no link between rules files. Where a neighbor continues the territory, name it in the opener.
+Let the opener name the whole scope, so no reader can find a case the rule leaves open. Let each machine line state a test a reader can run on the artifact, or a stance the reader holds. Define a term the file coins on its first use. Name a class by its mechanism and give it one example at most. Give each instruction one home. Keep every rule distinct and isolated, naming no other rule and linking no other rules file. Group the instructions of a rule into short paragraphs that each concern one thing.
 
 ### Routing
 
