@@ -11,11 +11,17 @@ Run with `python3.14 -m pytest features/model-scoped-rulesets/tests/test_wiring.
 
 import json
 import pathlib
+import re
+import sys
 
 import pytest
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 HOOKS_JSON = PLUGIN_ROOT / "hooks" / "hooks.json"
+
+sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
+
+from rulesets import resolve  # noqa: E402  (path must be set before this import)
 
 PLACEHOLDER_ROOT = "${CLAUDE_PLUGIN_ROOT}"
 CHOOSER = f'bash "{PLACEHOLDER_ROOT}/hooks/with-python.sh" '
@@ -33,6 +39,30 @@ EXPECTED_ENTRIES = {
     ("InstructionsLoaded", None),
     ("PreToolUse", "Agent"),
 }
+
+# The blocks that deliver a ruleset, each split across PART_SLOTS commands.
+DELIVERING_ENTRIES = {
+    ("SessionStart", "startup"),
+    ("SessionStart", "resume"),
+    ("SessionStart", "clear"),
+    ("SessionStart", "compact"),
+    ("SessionStart", "fork"),
+    ("SubagentStart", None),
+    ("PostModelSwitch", None),
+}
+
+
+def command_part(command: str) -> int:
+    """The `--part` value a delivering command passes.
+
+    Raises where the command carries none, so a block missing the flag on
+    one of its entries fails here rather than silently dropping a slot.
+    """
+
+    match = re.search(r"--part (\d+)$", command)
+    if not match:
+        raise ValueError(f"{command!r} carries no --part flag")
+    return int(match.group(1))
 
 
 def load(path: pathlib.Path = HOOKS_JSON) -> dict:
@@ -64,9 +94,27 @@ def script_path(command: str, root: pathlib.Path) -> pathlib.Path:
     if not rest.startswith(f'"{PLACEHOLDER_ROOT}/hooks/'):
         raise ValueError(f"{command!r} does not name a script under the plugin's hooks directory")
     quoted, _, tail = rest[1:].partition('"')
-    if tail.strip():
-        raise ValueError(f"{command!r} passes an argument beyond the script: {tail.strip()!r}")
+    tail = tail.strip()
+    if tail and not re.fullmatch(r"--part \d+", tail):
+        raise ValueError(f"{command!r} passes an argument beyond the script: {tail!r}")
     return root / quoted.replace(f"{PLACEHOLDER_ROOT}/", "")
+
+
+class TestEveryDeliveringBlockCoversEveryPartSlot:
+    def test_each_delivering_block_registers_one_entry_per_part_slot(self):
+        wiring = load()
+        for event, groups in wiring["hooks"].items():
+            for group in groups:
+                key = (event, group.get("matcher"))
+                if key not in DELIVERING_ENTRIES:
+                    continue
+                parts = [command_part(hook["command"]) for hook in group["hooks"]]
+
+                assert parts == list(range(1, resolve.PART_SLOTS + 1)), (
+                    f"{event} {group.get('matcher')} registers parts {parts}, so a slot "
+                    "missing from this block drops one part of every delivery on this "
+                    "event, and a repeat or a gap does the same"
+                )
 
 
 class TestTheWiringCoversEveryEvent:
@@ -76,6 +124,24 @@ class TestTheWiringCoversEveryEvent:
         assert found == EXPECTED_ENTRIES, (
             "an event the wiring drops is a context that receives no ruleset, and one it "
             "adds delivers a second copy of the same rules"
+        )
+
+    def test_the_wiring_carries_seventy_two_commands_in_all(self):
+        found = entries(load())
+        non_delivering = [
+            (event, matcher, hook)
+            for event, matcher, hook in found
+            if (event, matcher) not in DELIVERING_ENTRIES
+        ]
+
+        assert len(found) == 72, (
+            f"the wiring carries {len(found)} commands, not the 72 that seven delivering "
+            f"blocks at {resolve.PART_SLOTS} entries each plus PreToolUse and "
+            "InstructionsLoaded at one entry each add up to"
+        )
+        assert len(non_delivering) == 2, (
+            "PreToolUse and InstructionsLoaded are not delivering blocks, so each keeps "
+            "the single entry it always carried"
         )
 
     def test_every_command_carries_a_timeout(self):
