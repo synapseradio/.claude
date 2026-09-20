@@ -28,13 +28,18 @@
     }
   },
   "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "35",
     "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1",
-    "CLAUDE_CODE_TMUX_TRUECOLOR": "1",
     "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2",
-    "DISABLE_ERROR_REPORTING": "1"
+    "CLAUDE_CODE_TMUX_TRUECOLOR": "1",
+    "DISABLE_ERROR_REPORTING": "1",
+    "ENABLE_PROMPT_CACHING_1H": "1",
+    "FORCE_PROMPT_CACHING_5M": "0"
   },
   "includeCoAuthoredBy": false,
   "includeGitInstructions": true,
+  "disableMobileSimulatorTools": true,
+  "disableRemoteControl": true,
   "permissions": {
     "allow": [
       "Read",
@@ -490,10 +495,10 @@
     ]
   },
   "alwaysThinkingEnabled": true,
-  "autoCompactWindow": 300000,
   "showClearContextOnPlanAccept": true,
   "autoUpdatesChannel": "latest",
   "autoMemoryEnabled": true,
   "cleanupPeriodDays": 3,
+  "askUserQuestionTimeout": "never",
   "tui": "fullscreen"
 }
