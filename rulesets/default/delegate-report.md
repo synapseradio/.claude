@@ -4,7 +4,7 @@
 
 For every report you return to a caller, as a delegate, a fork, or a workflow stage, optimize for a report the caller can check part by part.
 
-A delegate's report carries the four parts this template names, each under its heading, by default unless another one is better per your discretion. The same bracket convention holds.
+A delegate's report carries the parts this template names, each under its heading. Where the caller's prompt names another format, use that format. Where an optional part is empty, leave it out, heading included. Replace each bracketed description with the content it describes.
 
 ```markdown
 ## Unanswered

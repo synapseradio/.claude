@@ -2,7 +2,7 @@
 
 ## search-tools
 
-For every lookup, whether the user asked in words like "look it up", "verify this", or "check this", a call, flag, or config key is about to be written against a package the lockfile resolves, or a tool call just failed, optimize for an answer the reader can trace to the highest source the lookup reached.
+For every lookup, one the user asked for in words like "look it up", one that comes before writing a call, flag, or config key against a package the lockfile resolves, or one that follows a failed tool call, optimize for an answer the reader can trace to the highest source the lookup reached.
 
 ### The lookup
 

@@ -2,9 +2,9 @@
 
 ## resolving-input
 
-For every input a turn receives, optimize for an input resolved by what it is.
+For every input a turn receives, optimize for a response that follows what the user instructed and surfaces every conflict with it.
 
-Resolve each input by what it is. Read every user message as instruction or steering.
+Read every user message as instruction or steering. Apply every arm below that fits the input.
 
 - When asked to do something, do it as asked.
 - When a skill instructs, run it as stated.

@@ -14,12 +14,11 @@ Inference is how much the delegate must infer beyond the prompt and its evidence
 
 Haiku takes reads, maps, lists, summaries, and stated changes verified by reading the output. Sonnet takes implementing from a design, refining a diff, critiquing an artifact, and any step no other model matches. Opus takes designs, plans, and irreversible edits. Fable runs only on the user's ask, one spawn per ask.
 
-Where the span exceeds one context, split into sequential steps first, each spawn completing its slice end to end, never one layer of every feature. Choose the agent type first, then the model, then the effort. Choose the model by the first of these arms that holds, each arm a condition and its model.
+Where the span exceeds one context, split into sequential steps first, each spawn completing its slice end to end, never one layer of every feature. Choose the agent type first, then the model, then the effort. Where the user named a model, choose that model. Where the step is a kind of work named above, choose the model that takes that kind. Otherwise, choose the model by the first of these arms that holds, each arm a condition and its model.
 
-- Where the user named a model, that model.
 - Where the prompt states every step and you verify the result by reading it, haiku.
-- Where the work more complex, but is well-scoped with relative few known unknowns, sonnet.
-- For more complex work of broader scope, or work with multiple unknowns to be solved during implementation, opus.
+- Where the scope is stated and the open questions are few and named, sonnet.
+- Where the scope is broad, or the work must settle several unknowns as it goes, opus.
 - Otherwise, sonnet.
 
 Where two choices match equally, take the cheaper, haiku below sonnet below opus. Choose the effort by the prompt. Where the prompt states every step, choose low, or medium for a task in several parts, and otherwise high, never above it. Where no effort field is exposed, state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
@@ -31,8 +30,8 @@ Write the prompt in these seven parts, each under its heading. Replace each brac
 ```markdown
 ## Perspective
 
-[What makes this agent the perfect one for the task at hand. the role, the expertise, and why this agent for this step, as it bears on
-the delegate's decisions]
+[the role and the expertise this step calls for, and why this agent for
+this step, as they bear on the delegate's decisions]
 
 ## Task
 
@@ -53,18 +52,18 @@ the report under the rule on delegate reports is the default]
 
 ## Invitations
 
-Ask, decide, or flag where uncertain, and say which you did.
-You settle every choice point you meet and report what you chose. Where
-evidence shows the stated context is wrong, stop immediately and report
-the contradiction. Where a choice point depends on the user's intent,
-direction, or what done means, return it immediately with the options
-you would have offered.
-For a step that did not work, report what broke, what it cost(s), and what it
+Settle every choice point you meet, and report what you chose and why.
+Where evidence shows the stated context is wrong, stop immediately and
+report the contradiction. Where a choice point depends on the user's
+intent, direction, or what done means, return it immediately with the
+options you would have offered.
+For a step that did not work, report what broke, what it cost, and what it
 changes next.
 
 ## Failures
 
-[mechanism and cost, with no self in the sentence]
+[each known way this step goes wrong: the mechanism and what it costs,
+with no self in the sentence]
 ```
 
 Where the model is haiku, state every step, paths, exact constraints, and the check to run and return. Where the model is opus, state the problem, its constraints, and the decisions already made. Where the model is sonnet, state the problem and the decisions, refer to the constraints, and add exact context wherever the delegate would otherwise guess.
