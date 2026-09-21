@@ -19,7 +19,7 @@ setup() {
   HOOK="${BATS_TEST_DIRNAME}/../hooks/block-secret-file-reads.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
 
-  # The helper points BASH_GUARDS_BANNED_READS at this test's own temporary
+  # The helper points WARDEN_BANNED_READS at this test's own temporary
   # directory, so the defaults are what a case sees until it writes that
   # file itself.
   #
@@ -131,48 +131,48 @@ setup() {
 }
 
 @test "a fragment in the banned-reads file is denied" {
-  printf '%s\n' 'credentials' >"${BASH_GUARDS_BANNED_READS}"
+  printf '%s\n' 'credentials' >"${WARDEN_BANNED_READS}"
   assert_denies 'cat ~/work/credentials.yaml'
 }
 
 @test "a banned fragment is matched literally, not as a regex" {
-  printf '%s\n' 'my.store' >"${BASH_GUARDS_BANNED_READS}"
+  printf '%s\n' 'my.store' >"${WARDEN_BANNED_READS}"
   assert_denies 'cat ~/my.store/token'
   assert_silent 'cat ~/myXstore/token'
 }
 
 @test "a banned fragment needs no escaping to hold" {
-  printf '%s\n' 'keys[1].pem' >"${BASH_GUARDS_BANNED_READS}"
+  printf '%s\n' 'keys[1].pem' >"${WARDEN_BANNED_READS}"
   assert_denies 'cat ~/vault/keys[1].pem'
 }
 
 @test "a banned-reads denial names the file the fragment came from" {
-  printf '%s\n' 'credentials' >"${BASH_GUARDS_BANNED_READS}"
+  printf '%s\n' 'credentials' >"${WARDEN_BANNED_READS}"
   run_bash_hook 'cat ~/work/credentials.yaml'
   [[ "$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")" == *"${BASH_GUARDS_BANNED_READS}"* ]]
+    <<<"${HOOK_OUTPUT}")" == *"${WARDEN_BANNED_READS}"* ]]
 }
 
 @test "a banned fragment still needs a read command to deny" {
-  printf '%s\n' 'credentials' >"${BASH_GUARDS_BANNED_READS}"
+  printf '%s\n' 'credentials' >"${WARDEN_BANNED_READS}"
   assert_silent 'echo "rotate the credentials next week"'
 }
 
 @test "comments and blank lines in the banned-reads file are skipped" {
   printf '%s\n' '# what I keep out of reach' '' '   ' 'credentials' \
-    >"${BASH_GUARDS_BANNED_READS}"
+    >"${WARDEN_BANNED_READS}"
   assert_denies 'cat ~/work/credentials.yaml'
   assert_silent 'cat README.md'
 }
 
 @test "a missing banned-reads file leaves every default in force" {
-  export BASH_GUARDS_BANNED_READS="${BATS_TEST_TMPDIR}/absent.conf"
+  export WARDEN_BANNED_READS="${BATS_TEST_TMPDIR}/absent.conf"
   assert_denies 'cat ~/.ssh/id_rsa'
   assert_silent 'cat README.md'
 }
 
 @test "an empty banned-reads file leaves every default in force" {
-  : >"${BASH_GUARDS_BANNED_READS}"
+  : >"${WARDEN_BANNED_READS}"
   assert_denies 'cat .env'
   assert_silent 'cat README.md'
 }
@@ -182,7 +182,7 @@ setup() {
 }
 
 @test "the Read branch denies a banned fragment" {
-  printf '%s\n' 'credentials' >"${BASH_GUARDS_BANNED_READS}"
+  printf '%s\n' 'credentials' >"${WARDEN_BANNED_READS}"
   assert_denies_read "${FAKE_HOME}/work/credentials.yaml"
 }
 

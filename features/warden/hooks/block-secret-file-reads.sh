@@ -94,14 +94,14 @@ readonly ALL_PATH_PATTERNS="${SSH_PATH}|${AWS_PATH}|${GNUPG_PATH}|${KUBE_PATH}|$
 # to ship for everyone, "credentials" among them, becomes a denial for the
 # person who chose it.
 #
-# The location comes from BASH_GUARDS_BANNED_READS, else the user Claude
-# directory: $CLAUDE_CONFIG_DIR/bash-guards/banned-reads.conf, else
-# ~/.claude/bash-guards/banned-reads.conf.
+# The location comes from WARDEN_BANNED_READS, else the user Claude
+# directory: $CLAUDE_CONFIG_DIR/warden/banned-reads.conf, else
+# ~/.claude/warden/banned-reads.conf.
 #
 # The file only adds. A line in it joins the patterns above and can never
 # remove one, so a file that is missing, empty, or truncated leaves every
 # default in force.
-readonly BANNED_READS_LEAF='bash-guards/banned-reads.conf'
+readonly BANNED_READS_LEAF='warden/banned-reads.conf'
 
 # Set by main() from the hook envelope, read by every check below.
 MODE=''
@@ -219,13 +219,13 @@ check_every_pattern() {
 #######################################
 # Report the banned-reads file's location.
 # Globals:
-#   BASH_GUARDS_BANNED_READS, CLAUDE_CONFIG_DIR, HOME, BANNED_READS_LEAF
+#   WARDEN_BANNED_READS, CLAUDE_CONFIG_DIR, HOME, BANNED_READS_LEAF
 # Outputs:
 #   The path on stdout.
 #######################################
 banned_reads_file() {
-  if [[ -n "${BASH_GUARDS_BANNED_READS:-}" ]]; then
-    printf '%s\n' "${BASH_GUARDS_BANNED_READS}"
+  if [[ -n "${WARDEN_BANNED_READS:-}" ]]; then
+    printf '%s\n' "${WARDEN_BANNED_READS}"
     return 0
   fi
   printf '%s/%s\n' "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}" \

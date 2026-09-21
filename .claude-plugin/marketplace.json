@@ -25,10 +25,10 @@
       "description": "Blocks a reply, a delegate report, or an open turn that still carries an unverified epistemic mark, and hands back the resolution each mark takes. Teaches the marks and enforces them as one unit: install it and it works, with nothing to configure and nothing to write."
     },
     {
-      "name": "bash-guards",
-      "source": "./features/bash-guards",
-      "version": "1.0.0",
-      "description": "Four PreToolUse guards on the Bash tool. Three deny outright: printing a secret-shaped environment variable, reading a secret-shaped path, and editing a file in place with a stream editor. The fourth asks before curl sends a body or a file to a host outside loopback."
+      "name": "warden",
+      "source": "./features/warden",
+      "version": "2.0.0",
+      "description": "Six PreToolUse guards. On the Bash tool, four deny outright: printing a secret-shaped environment variable, reading a secret-shaped path, editing a file in place with a stream editor, and waiting on sleep. A fifth asks before curl sends a body or a file to a host outside loopback. On the Agent tool, the sixth denies a spawn that names no model, unless it is a fork or its agent definition pins one."
     },
     {
       "name": "harness-config",

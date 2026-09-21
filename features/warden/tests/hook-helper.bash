@@ -1,4 +1,4 @@
-# Shared helpers for the bash-guards hook tests.
+# Shared helpers for the warden hook tests.
 #
 # Every guard here reads one PreToolUse envelope on stdin and answers on
 # stdout: a permission decision object when it objects, and nothing at all
@@ -19,7 +19,7 @@ HOOK_STATUS=0
 # Point the banned-reads file at this test's own temporary directory. No
 # case can then reach a file the machine already has, whatever the person
 # running the tests keeps in their own Claude directory.
-export BASH_GUARDS_BANNED_READS="${BATS_TEST_TMPDIR}/banned-reads.conf"
+export WARDEN_BANNED_READS="${BATS_TEST_TMPDIR}/banned-reads.conf"
 
 #######################################
 # Feed one envelope to the guard under test.
@@ -60,6 +60,41 @@ run_read_hook() {
   envelope="$(jq -nc --arg p "${path}" \
     '{tool_name:"Read",tool_input:{file_path:$p}}')"
   run_hook_envelope "${envelope}"
+}
+
+#######################################
+# Run the guard against the input the Agent tool proposes.
+# Globals:
+#   HOOK_OUTPUT, HOOK_STATUS, BATS_TEST_TMPDIR
+# Arguments:
+#   $1 - the tool_input object as JSON.
+#######################################
+run_agent_hook() {
+  local tool_input="$1" envelope
+  envelope="$(jq -nc --argjson i "${tool_input}" \
+    --arg cwd "${BATS_TEST_TMPDIR}/project" \
+    '{tool_name:"Agent",cwd:$cwd,tool_input:$i}')"
+  run_hook_envelope "${envelope}"
+}
+
+#######################################
+# Assert the guard denies an Agent spawn.
+# Arguments:
+#   $1 - the tool_input object as JSON.
+#######################################
+assert_denies_agent() {
+  run_agent_hook "$1"
+  assert_decision 'deny' "$1"
+}
+
+#######################################
+# Assert the guard stays silent about an Agent spawn.
+# Arguments:
+#   $1 - the tool_input object as JSON.
+#######################################
+assert_silent_agent() {
+  run_agent_hook "$1"
+  assert_no_decision "$1"
 }
 
 #######################################

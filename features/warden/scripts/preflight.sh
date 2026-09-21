@@ -99,6 +99,21 @@ check() {
 }
 
 #######################################
+# Put one proposed Agent spawn through one guard.
+# Arguments:
+#   $1 - the guard's file name.
+#   $2 - the expected decision.
+#   $3 - a label for the case.
+#   $4 - the tool_input object as JSON.
+#######################################
+check_agent() {
+  local envelope
+  envelope="$(jq -nc --argjson i "$4" '{tool_name:"Agent",tool_input:$i}')"
+  decide "$1" "${envelope}"
+  report "$1" "$2" "$3"
+}
+
+#######################################
 # Put one proposed Read target through one guard.
 # Arguments:
 #   $1 - the guard's file name.
@@ -153,6 +168,16 @@ main() {
     'curl -X POST https://example.com/collect -d @notes.md'
   check ask-remote-data-send.sh allow 'fetches a page' \
     'curl -sfL https://example.com/docs.md'
+
+  check deny-sleep.sh deny 'waits on a timer' 'sleep 5 && gh run view'
+  check deny-sleep.sh allow 'searches for a word' 'grep -rn sleepy src/'
+
+  check_agent deny-unset-model.sh deny 'spawns with no model' \
+    '{"prompt":"p","subagent_type":"general-purpose"}'
+  check_agent deny-unset-model.sh allow 'spawns with a model' \
+    '{"prompt":"p","subagent_type":"general-purpose","model":"haiku"}'
+  check_agent deny-unset-model.sh allow 'forks' \
+    '{"prompt":"p","subagent_type":"fork"}'
 
   if ((FAILURES == 0)); then
     printf '\nEvery guard decided as expected.\n'

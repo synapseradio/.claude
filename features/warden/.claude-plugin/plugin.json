@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "warden",
+  "displayName": "Warden",
+  "version": "2.0.0",
+  "author": {
+    "name": "synapseradio"
+  },
+  "description": "Six PreToolUse guards. On the Bash tool, four deny outright: printing a secret-shaped environment variable, reading a secret-shaped path, editing a file in place with a stream editor, and waiting on sleep. A fifth asks before curl sends a body or a file to a host outside loopback. On the Agent tool, the sixth denies a spawn that names no model, unless it is a fork or its agent definition pins one.",
+  "keywords": [
+    "security",
+    "hooks",
+    "pretooluse",
+    "secrets",
+    "bash",
+    "agent"
+  ]
+}

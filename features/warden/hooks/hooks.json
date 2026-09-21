@@ -27,6 +27,23 @@
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-remote-data-send.sh\"",
             "timeout": 5,
             "statusMessage": "Checking where the command would send data"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-sleep.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the command for a sleep"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-unset-model.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the spawn for a model"
           }
         ]
       },
