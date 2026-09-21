@@ -52,7 +52,7 @@ When you claim that existing code supports this design, enumerate the guarantees
 
 ## The report is the only write
 
-Write one file, at `scratchpad/$branch/design-$slug__$DD-MM-YY-HHmm.md` under the root, with the branch segment dropped where `git branch --show-current` names none and the slug a few hyphenated words naming the problem. Create the scratchpad directory on first write. Make every other tool call a read, and leave the source tree exactly as found.
+Write one file, at `$HOME/.scratchpad/$repo/$branch/design-$slug__$hh-$mm$AMPM_$DD-$MM-$YYYY.md`, `design-token-refresh__02-45PM_20-09-2026.md` for one, with the branch segment dropped where `git branch --show-current` names none. Read `$repo` as the basename of the directory that holds the path `git rev-parse --path-format=absolute --git-common-dir` prints. Make the slug a few hyphenated words naming the problem. Create the scratchpad directory on first write. Make every other tool call a read, and leave the source tree exactly as found.
 
 ## The run
 

@@ -332,7 +332,8 @@ Back the variant up, then write the sealed bytes and move them into place.
 
 ```bash
 BR=$(git -C "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" branch --show-current)
-DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/scratchpad/$BR/update-claude-settings"
+REPO=$(basename "$(dirname "$(git -C "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" rev-parse --path-format=absolute --git-common-dir)")")
+DIR="$HOME/.scratchpad/$REPO/$BR/update-claude-settings"
 mkdir -p "$DIR"
 cp VARIANT "$DIR/$(basename VARIANT).pre-$(date -u +%Y%m%d-%H%M%S).json"
 ```

@@ -639,7 +639,7 @@ Write a working note at the moment you discover something important or new, so i
 
 ### The location
 
-The directory is `scratchpad/$branch/` where `git branch --show-current` names a branch, and `scratchpad/` otherwise, at the root of the repository in play. The file is `$dir/$slug__$DD-MM-YY-HHmm.md`, timestamped at the first write.
+The directory is `$HOME/.scratchpad/$repo/$branch/` where `git branch --show-current` names a branch, and `$HOME/.scratchpad/$repo/` otherwise. Read `$repo` as the basename of the directory that holds the path `git rev-parse --path-format=absolute --git-common-dir` prints. The file is `$dir/$slug__$hh-$mm$AMPM_$DD-$MM-$YYYY.md`, `condense-rules__02-45PM_20-09-2026.md` for one, timestamped at the first write.
 
 Where plan mode holds, keep working notes in the plan file until writing opens up. Where a read-only mode holds, skip setup. Otherwise, create the directory on first write and change nothing else.
 
@@ -654,7 +654,7 @@ Where plan mode holds, keep working notes in the plan file until writing opens u
 - A fact worth keeping across sessions goes to a persistent store.
 - Where it is unclear whether the output is a deliverable, ask.
 
-Never let a secret or credential land in scratchpad/. Never write into scratchpad/ to avoid deciding where a real artifact lives.
+Never let a secret or credential land in `$HOME/.scratchpad/`. Never write into `$HOME/.scratchpad/` to avoid deciding where a real artifact lives.
 
 <!-- rule: persistent-memory -->
 

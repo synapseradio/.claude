@@ -110,7 +110,7 @@ question
 
 The prediction goes on the record before the code, so a refuting observation returns as a design fork carrying the option you would pick rather than as a quiet redesign inside the implementation.
 
-Asked to implement `scratchpad/design-token-refresh.md` in `/srv/api`:
+Asked to implement `$HOME/.scratchpad/api/design-token-refresh__02-45PM_20-09-2026.md` in `/srv/api`:
 
 ```text
 headline: red on arrival: `bun test` reports 3 failures in
