@@ -33,8 +33,6 @@ Where no type or name can carry an invariant, write the test that checks it. Whe
 
 A Why comment is rationale that names each platform or library behavior its referent rests on or is limited by and links the documentation page that backs it.
 
-A framework's or library's page is the one for the version the local manifest and lockfile resolve, package.json for one.
-
 A Consult comment asks whoever changes an area to reach a named team first, on the pattern of "please reach out to our team before making changes in this area".
 
 An Anchor comment is the domain fact the code answers to, citing its protocol, spec, or regulation.
@@ -53,7 +51,7 @@ Draft the declaration's comment, the one a caller reads, before writing the body
 
 Write for an engineer competent in the language and the field. Count the language and the common surface of a framework as known to that reader, and cut what restates it. Keep a comment that explains a subtle or less common framework or library feature, a React portal for one.
 
-Word the comment to the present state of the code, with no date, no version, no word that marks a moment, "currently" for one, and no account of a path the code left behind. Where a banner would mark a moment, ask first.
+Word the comment to the present state of the code, with no date, no version, and no word that marks a moment, "currently" for one. Where a banner would mark a moment, ask first.
 
 Set a blank line before a comment block. Where a sentence was reworded to dodge an apostrophe, a quote, or an escape, write the correct sentence first, then the quotes that carry it.
 
@@ -61,9 +59,9 @@ Give every external referent an http or https link. Give a document in the same 
 
 Where a Why comment would rest on a behavior with no page to link, write no Why comment. Where a test can show that behavior and none does, write one. Where no test can show it, route it as a hazard.
 
-Before linking a framework or library page, read the resolved version from the local manifest or lockfile, and link the page for that version. Where the linked page documents another version than the lockfile resolves, replace the link with the resolved version's page.
+Before linking a framework or library page, read the resolved version from the local manifest, package.json for one, or the lockfile, and link the page for that version. Where the linked page documents another version than the lockfile resolves, replace the link with the resolved version's page.
 
-Let every sentence in a comment state the one point its referent cannot carry, or link that point's source. Cut every other sentence, moving what it carried to a test, a document, or a link. Cut a comment sentence that still reads dense after one rewrite, moving what it carried to a test, a document, or a link. In doubt, leave it out.
+Let every sentence in a comment state the one point its referent cannot carry, or link that point's source. Cut every other sentence, and every sentence that still reads dense after one rewrite, moving what it carried to a test, a document, or a link. In doubt, leave it out.
 
 Where the point will not fit the words a caller needs in order to act, stop writing and fix what forced it: rename until the name carries it, split the function until each part explains itself, or move the explanation to a document and leave the link. Treat a comment that outruns the code it sits on as a document filed in the wrong place: move it and leave the link.
 

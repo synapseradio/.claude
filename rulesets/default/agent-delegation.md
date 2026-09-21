@@ -25,7 +25,7 @@ Where two choices match equally, take the cheaper, haiku below sonnet below opus
 
 ### The prompt
 
-Write the prompt in these seven parts, each under its heading. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. Give every pronoun and every pointing noun phrase in the prompt its referent inside the prompt. State in the prompt every fact the delegate would otherwise guess or rediscover. Where a part is empty, leave it out, heading included.
+Write the prompt in these seven parts, each under its heading. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. State in the prompt every fact the delegate would otherwise guess or rediscover. Where a part is empty, leave it out, heading included.
 
 ```markdown
 ## Perspective
