@@ -70,6 +70,6 @@ Where the model is haiku, state every step, paths, exact constraints, and the ch
 
 ### The spawn
 
-Set the model field on every spawn that accepts one, and the effort field wherever one exists. For a forked spawn, leave the model field unset.
+Set the effort field wherever one exists.
 
 Hold every claim in a report as unverified until you find its source.

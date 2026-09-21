@@ -22,8 +22,9 @@ tiers:
   # sonnet and haiku never spawn, so both leave out the rules on delegation
   # and the spawn decision. haiku runs as a subagent handed reads, maps,
   # summaries, and stated changes, without AskUserQuestion, so it leaves out
-  # the rules for other work and for that tool. haiku reads its own body for
-  # the rule on prose, `haiku/writing-prose.md`.
+  # the rules for other work and for that tool, and the handoff a main session
+  # writes. haiku reads its own body for the rule on prose,
+  # `haiku/writing-prose.md`.
   sonnet:
     include: "*"
     exclude:
@@ -45,6 +46,7 @@ tiers:
       - claims
       - reasoning-guidelines
       - inquiring
+      - handoff
   claude-opus-4-8:
     include: "*"
 
@@ -92,4 +94,5 @@ order:
   - delegate-report
   - writing-plans
   - scratchpad
+  - handoff
   - persistent-memory

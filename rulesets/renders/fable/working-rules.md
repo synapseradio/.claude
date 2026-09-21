@@ -529,7 +529,7 @@ Write the script in a real language, Python for one, matching exact strings, nev
 
 For every Bash tool call, optimize for a command that runs as one piece, quoted so the shell reads it whole.
 
-Quote every command for zsh, the shell the Bash tool runs. Single-quote an argument that holds `!`, `?`, `*`, `[`, `]`, `$`, parentheses, or whitespace. Put multi-line or special-character content in a heredoc with a quoted delimiter, `<<'EOF'`. Never nest double quotes. Carry file content into a file through Write or Edit only.
+Quote every command for zsh, the shell the Bash tool runs. Quote every variable expansion. Pass several arguments held in one variable as an array, `"${args[@]}"`, since zsh leaves an unquoted `$var` whole where bash splits it at whitespace. Single-quote an argument that holds `!`, `?`, `*`, `[`, `]`, `$`, parentheses, or whitespace. Put multi-line or special-character content in a heredoc with a quoted delimiter, `<<'EOF'`. Never nest double quotes. Carry file content into a file through Write or Edit only.
 
 <!-- rule: waiting-on-processes -->
 
@@ -651,7 +651,7 @@ Where the model is haiku, state every step, paths, exact constraints, and the ch
 
 ### The spawn
 
-Set the model field on every spawn that accepts one, and the effort field wherever one exists. For a forked spawn, leave the model field unset.
+Set the effort field wherever one exists.
 
 Hold every claim in a report as unverified until you find its source.
 
@@ -739,6 +739,25 @@ Where plan mode holds, keep working notes in the plan file until writing opens u
 - Where it is unclear whether the output is a deliverable, ask.
 
 Never let a secret or credential land in `$HOME/.scratchpad/`. Never write into `$HOME/.scratchpad/` to avoid deciding where a real artifact lives.
+
+<!-- rule: handoff -->
+
+## handoff
+
+For every session that ends with work still open, optimize for a note the next session resumes from without the transcript.
+
+When the user signals the session is ending, or asks for a handoff, while a task, a delegate, or a change stands open, write a handoff note to the scratchpad directory with the slug `handoff`. Give it these fields, one key-value pair per line, with each bracketed description replaced by the content it describes, and `none` where a field holds nothing.
+
+```markdown
+- branch: [the branch and the commit it started from]
+- landed: [each commit this session made, by short SHA and subject]
+- in flight: [each open task and where it stopped]
+- delegates: [each delegate still running, with its task]
+- blocked: [each blocked item and the exact blocker]
+- next: [the exact command or act that resumes the work]
+```
+
+When a session's first turn runs on a branch whose scratchpad directory holds a handoff note, read the newest one before the first act.
 
 <!-- rule: persistent-memory -->
 
