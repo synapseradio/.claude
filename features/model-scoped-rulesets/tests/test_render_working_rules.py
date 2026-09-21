@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for the renderer at `lib/rulesets/render.py`.
 
-Run with `python3.14 -m pytest features/model-scoped-rulesets/tests/test_render_working_rules.py`.
+Run with `.venv/bin/python -m pytest features/model-scoped-rulesets/tests/test_render_working_rules.py`.
 
 Every test builds its own tree under a tmp_path and passes a RenderTargets
 naming it, so no test reads or writes this checkout's own configuration.

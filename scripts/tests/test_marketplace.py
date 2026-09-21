@@ -6,7 +6,7 @@ resolves to a directory holding a manifest. A feature directory with no entry
 installs for nobody, and an entry naming a directory that is not there fails
 at install with the marketplace file looking correct.
 
-Run with `python3.14 -m pytest scripts/tests/test_marketplace.py`.
+Run with `.venv/bin/python -m pytest scripts/tests/test_marketplace.py`.
 """
 
 import json

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for the shared library at `scripts/agent-configs/projection.py`.
 
-Run with `python3.14 -m pytest scripts/tests/test_projection.py`.
+Run with `.venv/bin/python -m pytest scripts/tests/test_projection.py`.
 
 Every test builds its own tree under a tmp_path, so no test writes outside
 that directory or reads this checkout's own configuration.

@@ -6,7 +6,7 @@ context. That is the state this corpus replaces, so the bodies have to leave
 that directory or each one arrives twice. A move that edited a body, or that
 could not be undone, would make the change one nobody would risk.
 
-Run with `python3.14 -m pytest features/model-scoped-rulesets/tests/test_migrate_rules.py`.
+Run with `.venv/bin/python -m pytest features/model-scoped-rulesets/tests/test_migrate_rules.py`.
 """
 
 import json

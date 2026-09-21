@@ -7,7 +7,7 @@ plugin, and it does not deduplicate across those sources. An entry left in
 one session receives its rules in duplicate, and the second copy is invisible
 in the settings file a reader is looking at.
 
-Run with `python3.14 -m pytest scripts/tests/test_settings_clean.py`.
+Run with `.venv/bin/python -m pytest scripts/tests/test_settings_clean.py`.
 """
 
 import json

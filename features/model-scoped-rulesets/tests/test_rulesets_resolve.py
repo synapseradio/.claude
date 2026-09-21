@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for the ruleset resolver under `lib/rulesets/resolve.py`.
 
-Run with `python3.14 -m pytest features/model-scoped-rulesets/tests/test_rulesets_resolve.py`.
+Run with `.venv/bin/python -m pytest features/model-scoped-rulesets/tests/test_rulesets_resolve.py`.
 
 Every test builds a corpus under a temporary root and points the resolver at
 it, so no test reads or writes a live corpus and no test names a rule, a

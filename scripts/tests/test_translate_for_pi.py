@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for `scripts/agent-configs/translate-for-pi.py`.
 
-Run with `python3.14 -m pytest scripts/tests/test_translate_for_pi.py`.
+Run with `.venv/bin/python -m pytest scripts/tests/test_translate_for_pi.py`.
 
 Every test builds its own tree under a tmp_path and passes a Targets naming
 it, so no test reads or writes this checkout's own configuration or pi's or

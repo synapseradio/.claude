@@ -1,6 +1,6 @@
 """Tests for search-after-repeated-failure.py, run from this directory:
 
-    python3 -m pytest test_search_after_repeated_failure.py -v
+    .venv/bin/python -m pytest scripts/hooks/test_search_after_repeated_failure.py -v
 
 Each test drives the script through stdin the way the hook does, with
 CLAUDE_REPEAT_FAILURE_DIR pointing at a temporary directory so no test

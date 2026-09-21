@@ -5,7 +5,7 @@ The plugin installs on its own, into a cache directory where no `scripts/`
 tree sits beside it. An import reaching outward would resolve in the author's
 checkout and fail nowhere else until a second person installed it.
 
-Run with `python3.14 -m pytest features/model-scoped-rulesets/tests/test_boundary.py`.
+Run with `.venv/bin/python -m pytest features/model-scoped-rulesets/tests/test_boundary.py`.
 """
 
 import ast

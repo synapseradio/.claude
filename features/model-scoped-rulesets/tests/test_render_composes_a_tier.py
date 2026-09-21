@@ -14,7 +14,7 @@ The gap was invisible to every existing check. `resolve.py check` and
 would produce, which a render carrying nothing satisfies perfectly.
 
 Run with
-`python3.14 -m pytest features/model-scoped-rulesets/tests/test_render_composes_a_tier.py`.
+`.venv/bin/python -m pytest features/model-scoped-rulesets/tests/test_render_composes_a_tier.py`.
 """
 
 import pathlib

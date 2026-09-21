@@ -6,7 +6,7 @@ by which a session receives its user rules. A command naming a file that is
 not there delivers nothing, and the harness reports no error the author would
 see. That is the state these tests fail on.
 
-Run with `python3.14 -m pytest features/model-scoped-rulesets/tests/test_wiring.py`.
+Run with `.venv/bin/python -m pytest features/model-scoped-rulesets/tests/test_wiring.py`.
 """
 
 import json

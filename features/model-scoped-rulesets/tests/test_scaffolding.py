@@ -6,7 +6,7 @@ one nobody has written yet. That corpus has to pass `check`, and delivery
 against it has to say plainly that it carried nothing rather than hand a
 session a context that reads like a ruleset.
 
-Run with `python3.14 -m pytest features/model-scoped-rulesets/tests/test_scaffolding.py`.
+Run with `.venv/bin/python -m pytest features/model-scoped-rulesets/tests/test_scaffolding.py`.
 """
 
 import pathlib

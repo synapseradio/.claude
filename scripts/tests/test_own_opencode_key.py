@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for `scripts/agent-configs/own-opencode-key.py`.
 
-Run with `python3.14 -m pytest scripts/tests/test_own_opencode_key.py`.
+Run with `.venv/bin/python -m pytest scripts/tests/test_own_opencode_key.py`.
 
 Every test builds its own tree under a tmp_path and passes a Targets naming
 it, so no test reads or writes the real `~/.config/opencode/opencode.json`.

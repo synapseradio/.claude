@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for the load audit under `hooks/record-load.py`.
 
-Run with `python3.14 -m pytest features/model-scoped-rulesets/tests/test_rulesets_audit.py`.
+Run with `.venv/bin/python -m pytest features/model-scoped-rulesets/tests/test_rulesets_audit.py`.
 
 Every test points the audit at a temporary state directory through
 `RULESETS_STATE_DIR`, so no test reads or writes a real session's log.
