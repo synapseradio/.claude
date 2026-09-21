@@ -35,7 +35,6 @@ Give every weight-carrying assertion a resolvable source or a mark, or cut it wh
 - When a goal premise travels to the user, ask through AskUserQuestion, with no mark.
 - When a claim rests on a reading alone, with no run, fetch, or source confirming it, mark it [?].
 - When a hedge stands in for a source, "I believe" for one, put the mark in its place and cut the hedge, unless the user allowed the hedge outright.
-- When a measurement, a run, or a source could settle a claim, mark it [?] until the citation replaces it.
 - When an unverified observation belongs in a composed prompt, keep it, marked [?].
 - When you write a delegate report, put a citation beside every weight-carrying claim, a path with its line or a URL, or a mark where no source was reached.
 - When you write a citation, name only a file you or the delegate citing it opened, at the line that backs the claim.
@@ -44,8 +43,7 @@ Give every weight-carrying assertion a resolvable source or a mark, or cut it wh
 - When a delegate's report carries a weight-carrying claim with neither a citation nor a mark, resume that delegate and ask it for the source rather than verifying the claim yourself.
 - When a delegate's report returns work rather than findings, ask citations only for the facts it states.
 - When a delegate cannot be resumed, verify its uncited claim before relaying where it carries weight, or mark it [.?].
-- When a premise waits on an answer only the user can give, in live conversation, ask through AskUserQuestion.
-- When a premise waits on an answer only a person can give anywhere else, mark it [!?].
+- When a premise waits on an answer only a person can give, outside live conversation with the user, mark it [!?].
 - When a premise waits on an answer your caller can give, mark it [^?].
 
 ### Resolving a mark
