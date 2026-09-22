@@ -1191,8 +1191,8 @@ def _frontmatter(path: pathlib.Path) -> dict:
     return front if isinstance(front, dict) else {}
 
 
-def _named_model(paths: list[pathlib.Path], name: str) -> str | None:
-    """The model of the definition among `paths` registered as `name`.
+def _named_definition(paths: list[pathlib.Path], name: str) -> dict | None:
+    """The frontmatter of the definition among `paths` registered as `name`.
 
     A definition registers under its `name` field, or under its filename
     where it names none.
@@ -1201,9 +1201,28 @@ def _named_model(paths: list[pathlib.Path], name: str) -> str | None:
     for path in sorted(paths):
         front = _frontmatter(path)
         if (front.get("name") or path.stem) == name:
-            model = front.get("model")
-            return str(model) if model else None
+            return front
     return None
+
+
+def _model_of(front: dict) -> str | None:
+    model = front.get("model")
+    return str(model) if model else None
+
+
+def project_agent_dirs(cwd: pathlib.Path | str) -> list[pathlib.Path]:
+    """Each project `.claude/agents/` from `cwd` up to the repository root, closest first.
+
+    Outside a repository only `cwd` itself is a project directory.
+    """
+
+    start = pathlib.Path(cwd).resolve()
+    dirs = []
+    for directory in (start, *start.parents):
+        dirs.append(directory / ".claude" / "agents")
+        if (directory / ".git").exists():
+            return dirs
+    return dirs[:1]
 
 
 def plugin_install_paths(plugin: str) -> list[pathlib.Path]:
@@ -1226,12 +1245,18 @@ def plugin_install_paths(plugin: str) -> list[pathlib.Path]:
     return paths
 
 
-def definition_pin(agent_type: str | None, definitions: dict | None = None) -> str | None:
+def definition_pin(
+    agent_type: str | None,
+    definitions: dict | None = None,
+    cwd: pathlib.Path | str | None = None,
+) -> str | None:
     """The model an agent definition pins, keyed by the agent type.
 
     A plugin-scoped type, `plugin:name` or `plugin:subfolder:name`, reads
-    that plugin's `agents/` directory. Any other type reads the user's
-    definitions first, then the built-in table.
+    that plugin's `agents/` directory. Any other type takes the first
+    definition found in the project directories above `cwd`, then the
+    user's, then the built-in table, so a definition naming no model hides
+    a pin below it.
     """
 
     if not agent_type:
@@ -1242,12 +1267,16 @@ def definition_pin(agent_type: str | None, definitions: dict | None = None) -> s
         plugin, *subfolders, name = agent_type.split(":")
         for install in plugin_install_paths(plugin):
             directory = install.joinpath("agents", *subfolders)
-            model = _named_model(list(directory.glob("*.md")), name)
-            if model:
-                return model
+            front = _named_definition(list(directory.glob("*.md")), name)
+            if front is not None:
+                return _model_of(front)
         return None
-    model = _named_model(list(agents_dir().rglob("*.md")), agent_type)
-    return model or BUILT_IN_PINS.get(agent_type)
+    directories = [*(project_agent_dirs(cwd) if cwd else []), agents_dir()]
+    for directory in directories:
+        front = _named_definition(list(directory.rglob("*.md")), agent_type)
+        if front is not None:
+            return _model_of(front)
+    return BUILT_IN_PINS.get(agent_type)
 
 
 def delegate_resolution(
@@ -1322,7 +1351,9 @@ def delegate_resolution(
     else:
         notes += ("the per-spawn model was unreadable at this delegate's start",)
 
-    pin = definition_pin(agent_type, definitions)
+    pin = definition_pin(agent_type, definitions, payload.get("cwd"))
+    if pin == "inherit":
+        return parent(f"the parent tier, since the {agent_type} definition pins inherit", notes)
     if pin:
         resolved = from_identifier(pin, f"the {agent_type} definition's model pin ({pin})", notes)
         if resolved:
@@ -1548,7 +1579,7 @@ def deliver_payload(
             return {}
         tool_input = payload.get("tool_input") or {}
         agent_type = tool_input.get("subagent_type")
-        pin = definition_pin(agent_type)
+        pin = definition_pin(agent_type, cwd=payload.get("cwd"))
         if not tool_input.get("model") and agent_type != "fork" and pin in (None, "inherit"):
             return {
                 "hookSpecificOutput": {

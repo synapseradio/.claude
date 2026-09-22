@@ -36,11 +36,14 @@ levers and the fork rule included. `SubagentStart` fires again when a delegate r
 teammate takes a new message, each time under a new `prompt_id` that matches no spawn record, so
 without the launch record a compacted delegate would receive its parent's rules.
 
-`definition_pin` reads a pin from three places. A plugin-scoped type such as `kit:reviewer` reads
-the `agents/` directory under each install path `plugins/installed_plugins.json` records for that
-plugin. Any other type reads the configuration directory's `agents/`, then `BUILT_IN_PINS`, which
-holds the two built-ins whose documented model is fixed. A definition registers under its `name`
-field, or under its filename where it names none.
+`definition_pin` reads a pin in the order Claude Code ranks definitions. A plugin-scoped type such as
+`kit:reviewer` reads the `agents/` directory under each install path `plugins/installed_plugins.json`
+records for that plugin. Any other type takes the first definition it finds, searching each project
+`.claude/agents/` from the payload's `cwd` up to the repository root, then the configuration
+directory's `agents/`, then `BUILT_IN_PINS`, which holds the two built-ins whose documented model is
+fixed. A definition registers under its `name` field, or under its filename where it names none, and
+one naming no model hides a pin further down. A pin of `inherit` resolves to the parent's tier ahead
+of `CLAUDE_CODE_SUBAGENT_MODEL`, since Claude Code runs such a delegate on the main model.
 
 The same `PreToolUse` hook denies a spawn that names no model when its agent type is not `fork` and
 its pin is absent or `inherit`, telling the caller to retry with `model` set. So every delegate but

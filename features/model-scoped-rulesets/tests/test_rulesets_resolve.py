@@ -931,6 +931,22 @@ class TestDelegateResolution:
 
         assert result.tier == "haiku"
 
+    # https://code.claude.com/docs/en/sub-agents.md#choose-a-model: a definition's `inherit`
+    # selects the main conversation's model ahead of CLAUDE_CODE_SUBAGENT_MODEL.
+    def test_an_inherit_pin_takes_the_parent_tier_ahead_of_the_default_variable(
+        self, full_root, tmp_path
+    ):
+        state = tmp_path / "state"
+        resolve._audit().write_tier("s1", "opus", state)
+        env = {"CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-5"}
+
+        result = resolve.delegate_resolution(
+            self._payload(agent_type="helper"), full_root, state, env, definitions={"helper": "inherit"}
+        )
+
+        assert result.tier == "opus"
+        assert "inherit" in result.source
+
     def test_only_the_default_variable_names_a_model(self, full_root, tmp_path):
         state = tmp_path / "state"
         env = {"CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-5"}
@@ -1458,6 +1474,48 @@ class TestDefinitionPin:
 
         assert resolve.definition_pin("claude-code-guide") == "opus"
 
+    def _repo(self, tmp_path):
+        repo = tmp_path / "repo"
+        (repo / ".git").mkdir(parents=True)
+        (repo / "sub").mkdir()
+        return repo
+
+    # https://code.claude.com/docs/en/sub-agents.md#choose-the-subagent-scope ranks project
+    # definitions above user ones and walks up from the working directory to the repository
+    # root, the closest definition winning.
+    def test_a_project_definition_overrides_a_user_one(self, monkeypatch, tmp_path):
+        config = self._config(monkeypatch, tmp_path)
+        repo = self._repo(tmp_path)
+        self._write(config / "agents" / "helper.md", "name: helper\nmodel: haiku")
+        self._write(repo / ".claude" / "agents" / "helper.md", "name: helper\nmodel: sonnet")
+
+        assert resolve.definition_pin("helper", cwd=repo / "sub") == "sonnet"
+
+    def test_the_project_definition_closest_to_the_working_directory_wins(
+        self, monkeypatch, tmp_path
+    ):
+        self._config(monkeypatch, tmp_path)
+        repo = self._repo(tmp_path)
+        self._write(repo / ".claude" / "agents" / "helper.md", "name: helper\nmodel: sonnet")
+        self._write(repo / "sub" / ".claude" / "agents" / "h.md", "name: helper\nmodel: opus")
+
+        assert resolve.definition_pin("helper", cwd=repo / "sub") == "opus"
+
+    def test_a_project_definition_naming_no_model_hides_a_user_pin(self, monkeypatch, tmp_path):
+        config = self._config(monkeypatch, tmp_path)
+        repo = self._repo(tmp_path)
+        self._write(config / "agents" / "helper.md", "name: helper\nmodel: haiku")
+        self._write(repo / ".claude" / "agents" / "helper.md", "name: helper")
+
+        assert resolve.definition_pin("helper", cwd=repo) is None
+
+    def test_a_definition_above_the_repository_root_is_not_read(self, monkeypatch, tmp_path):
+        self._config(monkeypatch, tmp_path)
+        repo = self._repo(tmp_path)
+        self._write(tmp_path / ".claude" / "agents" / "helper.md", "name: helper\nmodel: opus")
+
+        assert resolve.definition_pin("helper", cwd=repo / "sub") is None
+
 
 class TestSpawnNeedsAModel:
     def _payload(self, **tool_input):
@@ -1516,6 +1574,20 @@ class TestSpawnNeedsAModel:
         )
 
         assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+    def test_allows_a_type_its_project_definition_pins(self, monkeypatch, tmp_path):
+        monkeypatch.setenv(resolve.CONFIG_ENV, str(tmp_path / "config"))
+        repo = tmp_path / "repo"
+        (repo / ".git").mkdir(parents=True)
+        (repo / ".claude" / "agents").mkdir(parents=True)
+        (repo / ".claude" / "agents" / "helper.md").write_text(
+            "---\nname: helper\nmodel: sonnet\n---\nbody\n", encoding="utf-8"
+        )
+        payload = {**self._payload(subagent_type="helper"), "cwd": str(repo)}
+
+        output = resolve.deliver_payload(payload, tmp_path / "corpus", tmp_path / "state", {})
+
+        assert output == {}
 
     def test_allows_a_built_in_type_the_docs_pin(self, monkeypatch, tmp_path):
         monkeypatch.setenv(resolve.CONFIG_ENV, str(tmp_path / "config"))
