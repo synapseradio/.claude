@@ -31,7 +31,7 @@ from typing import TextIO
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "lib"))
 
-from rulesets import resolve
+from rulesets import ordering, resolve
 
 FAILURE_TIER = "delivery failed"
 NOTE_CLIP_SUFFIX = " (clipped; the traceback is on the hook's stderr)"
@@ -103,8 +103,9 @@ def main(
 
     # With no readable payload there is no event to address an answer to, so
     # the only channel left is stderr. The harness always sends an object.
+    raw = stdin.read()
     try:
-        payload = json.loads(stdin.read() or "{}")
+        payload = json.loads(raw or "{}")
     except json.JSONDecodeError as exc:
         print(f"deliver.py: stdin was not JSON, so nothing was delivered: {exc}", file=stderr)
         return 0
@@ -112,6 +113,18 @@ def main(
         print("deliver.py: stdin was not a JSON object, so nothing was delivered", file=stderr)
         return 0
     event = payload.get("hook_event_name") or "SessionStart"
+
+    # Ordering is best effort: a slot that cannot record or read the order
+    # directory still delivers its part, and only its place in the sequence
+    # is lost.
+    slots = None
+    if event != "PreToolUse":
+        try:
+            slots = ordering.slot_dir(args.state or resolve.state_dir(), raw)
+            ordering.register(slots, args.part)
+        except OSError as exc:
+            print(f"deliver.py: part {args.part} delivers unordered: {exc}", file=stderr)
+            slots = None
 
     try:
         output = deliver(payload, root=args.root, state=args.state, part=args.part)
@@ -132,6 +145,8 @@ def main(
             output = failure_output(event, f"{type(exc).__name__}: {exc}", defect=True)
 
     if output:
+        if slots is not None and not ordering.wait_for_predecessor(slots, args.part):
+            print(f"deliver.py: part {args.part - 1} outlived the wait", file=stderr)
         print(json.dumps(output), file=stdout)
     return 0
 

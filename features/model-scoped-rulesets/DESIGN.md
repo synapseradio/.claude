@@ -114,24 +114,40 @@ path, so two deliveries of one tier differ in no byte. The source and the notes 
 
 A tier packing into one part carries `<!-- ruleset: tier T, N stems -->` and the same trailer.
 
-That run's readings on order and placement hold as properties. Parts reach context in the order
-their hooks finish, which differed in each of the three runs and does not follow registration order.
-Each header names its own place, which is how the sequence reads whatever the arrival order. Hook
-context sits ahead of the user's prompt. An agent's own prompt sits in the system prompt, and
-delivered rules ride in the message stream.
+That run's readings on placement hold as properties. Hook context sits ahead of the user's prompt.
+An agent's own prompt sits in the system prompt, and delivered rules ride in the message stream.
 
-The cost is that arrival order carries no meaning. A reader who wants the parts in sequence reads
-the headers.
+## Parts exit in sequence
+
+Parts reach context in the order their hooks exit, and part k exits only after part k-1 has exited,
+so a tier arrives as part 1 through part P on every delivery. Two deliveries of one tier then
+share one byte sequence, which a cached prompt prefix needs.
+
+Headless runs set ten `SessionStart` hooks to exit in reverse of their registration order, 150 ms
+apart, and context received them 10 through 1 in 2 runs of 2. At 15 ms apart, 2 runs of 3 swapped
+neighbours. The harness spawns each hook's interpreter as its own child, with no shell between.
+
+`lib/rulesets/ordering.py` imposes the sequence. The slots of one event share a directory named by
+a hash of the stdin they all read. Each slot takes an exclusive `flock` on `k.lock` for its whole
+life and then touches `k.ready`. Before printing, part k waits for `k-1.ready`, then blocks on a
+shared lock of `k-1.lock`, which the kernel grants once part k-1's process has exited. The same
+ten hooks, still timed to exit in reverse or all at once, arrived 1 through 10 in every run.
+
+The cost has three edges. Part k polls every 5 ms for `k-1.ready` until part k-1 has taken its
+lock, the one moment a lock cannot cover. Part P exits after every other part, adding the spread
+of the slots' exit times to the event. A wait past `ORDER_DEADLINE`, 3 s, prints the part
+anyway, since a part out of place costs a cache prefix and a missing part costs the rules; each
+header still names its own place. Part 1 removes invocation directories older than an hour.
 
 ## Every slot computes alone
 
 Each of the ten part slots resolves the tier, composes it, packs it, and emits its own part or
-nothing, without reading any other slot's output.
+nothing, without reading any other slot's output. The slots coordinate only when each exits.
 
 Every slot receives the same payload: that run compared the stdin of all ten hooks by sha256 and
 found them byte-identical in every run. Given one payload and one corpus, every slot computes the
 same composition and the same packing, and each keeps only the part matching its own `--part` index.
-No slot signals another. Packing reads the sections and the budget alone, never a header or a note,
+No slot reads another's content. Packing reads the sections and the budget alone, never a header or a note,
 so a note one slot adds to its trailer cannot shift another slot's boundaries. A model
 switch decides the same way: each slot compares `from_model` with `to_model` in the payload it holds
 and delivers where the two map to different tiers, or where `from_model` is absent or unmapped.
