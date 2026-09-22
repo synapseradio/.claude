@@ -1166,30 +1166,88 @@ def agents_dir() -> pathlib.Path:
     return config_root() / "agents"
 
 
+# Built-in agents carry no definition file, so their models come from the table at
+# https://code.claude.com/docs/en/sub-agents.md#built-in-subagents. The built-ins that
+# inherit the main conversation's model pin nothing.
+BUILT_IN_PINS = {"claude-code-guide": "haiku", "statusline-setup": "sonnet"}
+
+
+def _frontmatter(path: pathlib.Path) -> dict:
+    """An agent definition's frontmatter, or an empty dict where none parses."""
+
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    if not text.startswith("---"):
+        return {}
+    closing = text.find("\n---", 3)
+    if closing == -1:
+        return {}
+    try:
+        front = yaml.safe_load(text[3:closing])
+    except yaml.YAMLError:
+        return {}
+    return front if isinstance(front, dict) else {}
+
+
+def _named_model(paths: list[pathlib.Path], name: str) -> str | None:
+    """The model of the definition among `paths` registered as `name`.
+
+    A definition registers under its `name` field, or under its filename
+    where it names none.
+    """
+
+    for path in sorted(paths):
+        front = _frontmatter(path)
+        if (front.get("name") or path.stem) == name:
+            model = front.get("model")
+            return str(model) if model else None
+    return None
+
+
+def plugin_install_paths(plugin: str) -> list[pathlib.Path]:
+    """Every install path `installed_plugins.json` records for one plugin name."""
+
+    index = config_root() / "plugins" / "installed_plugins.json"
+    try:
+        installed = json.loads(index.read_text(encoding="utf-8")).get("plugins", {})
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return []
+    paths = []
+    for key, entries in installed.items():
+        if key.split("@", 1)[0] != plugin or not isinstance(entries, list):
+            continue
+        paths += [
+            pathlib.Path(entry["installPath"])
+            for entry in entries
+            if isinstance(entry, dict) and entry.get("installPath")
+        ]
+    return paths
+
+
 def definition_pin(agent_type: str | None, definitions: dict | None = None) -> str | None:
-    """The model an agent definition pins, keyed by the agent type."""
+    """The model an agent definition pins, keyed by the agent type.
+
+    A plugin-scoped type, `plugin:name` or `plugin:subfolder:name`, reads
+    that plugin's `agents/` directory. Any other type reads the user's
+    definitions first, then the built-in table.
+    """
 
     if not agent_type:
         return None
     if definitions is not None:
         return definitions.get(agent_type)
-    path = agents_dir() / f"{agent_type}.md"
-    if not path.is_file():
+    if ":" in agent_type:
+        plugin, *subfolders, name = agent_type.split(":")
+        for install in plugin_install_paths(plugin):
+            directory = install.joinpath("agents", *subfolders)
+            model = _named_model(list(directory.glob("*.md")), name)
+            if model:
+                return model
         return None
-    text = path.read_text(encoding="utf-8")
-    if not text.startswith("---"):
-        return None
-    closing = text.find("\n---", 3)
-    if closing == -1:
-        return None
-    try:
-        front = yaml.safe_load(text[3:closing])
-    except yaml.YAMLError:
-        return None
-    if isinstance(front, dict):
-        model = front.get("model")
-        return str(model) if model else None
-    return None
+    model = _named_model(list(agents_dir().rglob("*.md")), agent_type)
+    return model or BUILT_IN_PINS.get(agent_type)
 
 
 def delegate_resolution(
@@ -1490,15 +1548,16 @@ def deliver_payload(
             return {}
         tool_input = payload.get("tool_input") or {}
         agent_type = tool_input.get("subagent_type")
-        if not tool_input.get("model") and agent_type != "fork" and not definition_pin(agent_type):
+        pin = definition_pin(agent_type)
+        if not tool_input.get("model") and agent_type != "fork" and pin in (None, "inherit"):
             return {
                 "hookSpecificOutput": {
                     "hookEventName": "PreToolUse",
                     "permissionDecision": "deny",
                     "permissionDecisionReason": (
                         f"Name a model for this spawn: {agent_type or 'this agent type'} pins "
-                        "none in its definition, so without one the delegate runs on a model "
-                        "the caller never chose. Retry the call with `model` set."
+                        "no model in its definition, so every spawn of it names one. Retry "
+                        "the call with `model` set."
                     ),
                 }
             }

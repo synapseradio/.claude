@@ -3,9 +3,9 @@
 
 Wired to `SessionStart`, `SubagentStart`, and `PostModelSwitch` to deliver,
 and to `PreToolUse` on `Agent` to record the per-spawn model a later
-`SubagentStart` reads, denying a spawn that names no model where neither
-a fork nor a definition pin supplies one. Nothing in the corpus auto-loads, so a failure here
-leaves the session with no user rules. The resolver answers the `default`
+`SubagentStart` reads, denying a spawn that names no model unless it is a
+fork or its definition pins a model other than `inherit`. Nothing in the
+corpus auto-loads, so a failure here leaves the session with no user rules. The resolver answers the `default`
 tier's bodies wherever a tier, a manifest, or a body is unavailable, and it
 answers a header naming the cause where even those are missing. What
 escapes it is either a body the process could not read or a defect in this

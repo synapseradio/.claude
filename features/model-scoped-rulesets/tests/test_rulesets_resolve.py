@@ -8,6 +8,7 @@ it, so no test reads or writes a live corpus and no test names a rule, a
 tier, or a model this plugin does not define itself.
 """
 
+import json
 import pathlib
 import subprocess
 import sys
@@ -1389,6 +1390,75 @@ class TestDeliverByPart:
         assert resolve._audit().read_spawns("s1", "p1", "scout", state) == ["claude-haiku-4-5"]
 
 
+class TestDefinitionPin:
+    def _config(self, monkeypatch, tmp_path):
+        config = tmp_path / "config"
+        config.mkdir()
+        monkeypatch.setenv(resolve.CONFIG_ENV, str(config))
+        return config
+
+    def _write(self, path, front):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"---\n{front}\n---\nbody\n", encoding="utf-8")
+
+    def _install(self, config, tmp_path, key):
+        install = tmp_path / "install" / key
+        (config / "plugins").mkdir(parents=True, exist_ok=True)
+        (config / "plugins" / "installed_plugins.json").write_text(
+            json.dumps({"version": 2, "plugins": {key: [{"installPath": str(install)}]}}),
+            encoding="utf-8",
+        )
+        return install
+
+    def test_matches_a_user_definition_by_its_name_field(self, monkeypatch, tmp_path):
+        config = self._config(monkeypatch, tmp_path)
+        self._write(config / "agents" / "other.md", "name: scout\nmodel: haiku")
+
+        assert resolve.definition_pin("scout") == "haiku"
+
+    def test_reads_a_plugin_definition_by_its_scoped_name(self, monkeypatch, tmp_path):
+        config = self._config(monkeypatch, tmp_path)
+        install = self._install(config, tmp_path, "kit@market")
+        self._write(install / "agents" / "rev.md", "name: reviewer\nmodel: sonnet")
+
+        assert resolve.definition_pin("kit:reviewer") == "sonnet"
+
+    def test_reads_a_plugin_definition_in_a_subfolder(self, monkeypatch, tmp_path):
+        config = self._config(monkeypatch, tmp_path)
+        install = self._install(config, tmp_path, "kit@market")
+        self._write(install / "agents" / "review" / "sec.md", "name: security\nmodel: haiku")
+
+        assert resolve.definition_pin("kit:review:security") == "haiku"
+        assert resolve.definition_pin("kit:security") is None
+
+    def test_a_plugin_definition_with_no_name_goes_by_its_filename(self, monkeypatch, tmp_path):
+        config = self._config(monkeypatch, tmp_path)
+        install = self._install(config, tmp_path, "kit@market")
+        self._write(install / "agents" / "rev.md", "model: opus")
+
+        assert resolve.definition_pin("kit:rev") == "opus"
+
+    def test_a_plugin_not_installed_pins_nothing(self, monkeypatch, tmp_path):
+        self._config(monkeypatch, tmp_path)
+
+        assert resolve.definition_pin("kit:reviewer") is None
+
+    # https://code.claude.com/docs/en/sub-agents.md lists these two built-ins' models
+    # and says a user subagent of the same name overrides the built-in.
+    def test_reads_the_documented_built_in_models(self, monkeypatch, tmp_path):
+        self._config(monkeypatch, tmp_path)
+
+        assert resolve.definition_pin("claude-code-guide") == "haiku"
+        assert resolve.definition_pin("statusline-setup") == "sonnet"
+        assert resolve.definition_pin("general-purpose") is None
+
+    def test_a_user_definition_overrides_a_built_in(self, monkeypatch, tmp_path):
+        config = self._config(monkeypatch, tmp_path)
+        self._write(config / "agents" / "guide.md", "name: claude-code-guide\nmodel: opus")
+
+        assert resolve.definition_pin("claude-code-guide") == "opus"
+
+
 class TestSpawnNeedsAModel:
     def _payload(self, **tool_input):
         return {
@@ -1434,6 +1504,27 @@ class TestSpawnNeedsAModel:
 
         output = resolve.deliver_payload(
             self._payload(subagent_type="scout"), tmp_path / "corpus", tmp_path / "state", {}
+        )
+
+        assert output == {}
+
+    def test_denies_a_spawn_naming_no_model_whose_type_inherits(self, monkeypatch, tmp_path):
+        self._pin(monkeypatch, tmp_path, "helper", "inherit")
+
+        output = resolve.deliver_payload(
+            self._payload(subagent_type="helper"), tmp_path / "corpus", tmp_path / "state", {}
+        )
+
+        assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+    def test_allows_a_built_in_type_the_docs_pin(self, monkeypatch, tmp_path):
+        monkeypatch.setenv(resolve.CONFIG_ENV, str(tmp_path / "config"))
+
+        output = resolve.deliver_payload(
+            self._payload(subagent_type="claude-code-guide"),
+            tmp_path / "corpus",
+            tmp_path / "state",
+            {},
         )
 
         assert output == {}
