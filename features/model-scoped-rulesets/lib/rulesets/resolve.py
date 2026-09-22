@@ -1225,6 +1225,12 @@ def delegate_resolution(
             return Resolution(look.tier, source, notes + look.notes)
         return None
 
+    agent_id = payload.get("agent_id")
+    if session_id and agent_id:
+        launched = audit.launch_tier(session_id, agent_id, state)
+        if launched:
+            return Resolution(launched, "the tier this delegate's launch delivered")
+
     if agent_type == "fork":
         return parent("the parent session's tier, since a fork runs the main model")
 

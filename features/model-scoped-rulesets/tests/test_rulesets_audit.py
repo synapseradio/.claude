@@ -304,6 +304,25 @@ class TestReadRecordsForOneWriter:
         assert audit.read_records_for("s1", "absent", state) == []
 
 
+class TestLaunchTier:
+    def _deliver(self, tier, state):
+        audit.append_record(
+            audit.delivery_record("s1", tier, "a source", (), "delegate", agent_id="a1"),
+            session_id="s1",
+            agent_id="a1",
+            state=state,
+        )
+
+    def test_answers_the_first_delivery_of_the_delegate(self, state):
+        self._deliver("sonnet", state)
+        self._deliver("default", state)
+
+        assert audit.launch_tier("s1", "a1", state) == "sonnet"
+
+    def test_answers_none_for_a_delegate_with_no_records(self, state):
+        assert audit.launch_tier("s1", "a1", state) is None
+
+
 class TestPartialLines:
     def test_skips_a_truncated_final_line_and_yields_the_rest(self, state):
         audit.append_record({"n": 1}, session_id="abc", state=state)

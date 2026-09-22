@@ -31,6 +31,11 @@ pins `haiku` picks up whatever the `haiku` tier composes, and rewriting that tie
 haiku delegate without touching one definition. A fork takes the parent's tier outright, since a
 fork runs the main model.
 
+A delegate whose launch delivery is recorded keeps that tier ahead of every source above, the force
+levers and the fork rule included. `SubagentStart` fires again when a delegate resumes or a
+teammate takes a new message, each time under a new `prompt_id` that matches no spawn record, so
+without the launch record a compacted delegate would receive its parent's rules.
+
 The cost is that a delegate whose spawn recorded no model and whose definition pins none takes its
 parent's tier, which is the tier of a model it is not running on.
 

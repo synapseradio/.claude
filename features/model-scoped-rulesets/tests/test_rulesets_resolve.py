@@ -880,6 +880,36 @@ class TestDelegateResolution:
 
         assert resolve.delegate_resolution(self._payload(), full_root, state, {}).tier == "haiku"
 
+    def test_a_later_run_keeps_the_tier_its_launch_delivered(self, full_root, tmp_path):
+        state = tmp_path / "state"
+        audit = resolve._audit()
+        audit.write_tier("s1", "opus", state)
+        audit.append_spawn("s1", "p1", "general-purpose", "haiku", state)
+        audit.append_record(
+            audit.delivery_record(
+                "s1", "haiku", "the per-spawn model haiku", (), "delegate", agent_id="a1"
+            ),
+            session_id="s1",
+            agent_id="a1",
+            state=state,
+        )
+
+        result = resolve.delegate_resolution(
+            self._payload(prompt_id="p2"), full_root, state, {}, definitions={}
+        )
+
+        assert result.tier == "haiku"
+
+    def test_a_launch_resolves_as_before_when_no_delivery_is_recorded(self, full_root, tmp_path):
+        state = tmp_path / "state"
+        resolve._audit().write_tier("s1", "opus", state)
+        resolve._audit().append_spawn("s1", "p1", "general-purpose", "haiku", state)
+
+        result = resolve.delegate_resolution(self._payload(), full_root, state, {}, definitions={})
+
+        assert result.tier == "haiku"
+        assert result.source == "the per-spawn model haiku"
+
     def test_only_the_definition_pins_a_model(self, full_root, tmp_path):
         state = tmp_path / "state"
         payload = self._payload(agent_type="scout")

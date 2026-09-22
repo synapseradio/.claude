@@ -141,6 +141,17 @@ def read_records_for(
     return records
 
 
+def launch_tier(
+    session_id: str, agent_id: str, state: pathlib.Path | str | None = None
+) -> str | None:
+    """The tier a delegate's first delivery named, or None before its launch delivers."""
+
+    for record in read_records_for(session_id, agent_id, state):
+        if record.get("kind") == DELIVERY and record.get("scope") == "delegate":
+            return record.get("tier")
+    return None
+
+
 def load_record(payload: dict) -> dict:
     """The record one `InstructionsLoaded` payload produces."""
 
