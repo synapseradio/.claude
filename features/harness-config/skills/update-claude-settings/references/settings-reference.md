@@ -204,20 +204,34 @@ The user asks to set `DEBUG=true`.
 
 ## The full settings schema
 
-`settings-schema.json` in this directory holds the published JSON schema for
-Claude Code settings, and `schema-cache.md` records the version it was
-fetched against and how to refresh it. Consult the schema to confirm a key
-name, its type, and its allowed values before writing a key you have not
-written before.
+The published JSON schema for Claude Code settings lives at
+`https://json.schemastore.org/claude-code-settings.json`. Fetch it fresh
+each time, and consult it to confirm a key name, its type, and its allowed
+values before writing a key you have not written before.
 
-Read one property out of it rather than the whole file:
+Read one property out of it rather than the whole schema:
 
 ```bash
-jq '.properties.KEYNAME' ${CLAUDE_PLUGIN_ROOT}/skills/update-claude-settings/references/settings-schema.json
+curl -sfL https://json.schemastore.org/claude-code-settings.json | jq '.properties.KEYNAME'
 ```
 
 List every property name it defines:
 
 ```bash
-jq -r '.properties | keys[]' ${CLAUDE_PLUGIN_ROOT}/skills/update-claude-settings/references/settings-schema.json
+curl -sfL https://json.schemastore.org/claude-code-settings.json | jq -r '.properties | keys[]'
 ```
+
+Fetch with curl, which returns byte-exact JSON. The tavily and linkup tools
+return markdown, which jq cannot parse, and `settings.base.json` denies the
+`WebFetch` and `WebSearch` tools.
+
+Take the schema for key names, types, and allowed values. Where a schema
+description disagrees with the documentation at `code.claude.com/docs`,
+follow the documentation. The schema is published at schemastore.org, and
+the documentation is the maintainer's own. One such disagreement stands
+today: the schema describes a sandbox filesystem path beginning with `/` as
+relative to the settings file, while
+https://code.claude.com/docs/en/sandboxing gives `/` as an absolute path
+from the filesystem root, so `/tmp` means `/tmp`. The relative reading
+belongs to Read and Edit permission rules, which use their own path syntax,
+documented at https://code.claude.com/docs/en/permissions.

@@ -311,7 +311,5 @@ the only state that writes a variant is `Apply`, and `Apply` writes only what
 |------|--------------|
 | [`references/alignment-machine.md`](references/alignment-machine.md) | Running a sweep. Read it in full first, since it holds every state, precondition, rule, and predicate the sweep runs on |
 | [`references/predicates.jq`](references/predicates.jq) | Running any check, or implementing the merge by hand and needing the exact `norm` definition |
-| [`references/settings-reference.md`](references/settings-reference.md) | Writing any key: permissions, env, model, attribution, MCP, plugins, sandbox, and the rest |
+| [`references/settings-reference.md`](references/settings-reference.md) | Writing any key: permissions, env, model, attribution, MCP, plugins, sandbox, and the rest. Its last section fetches the published schema to confirm a key |
 | [`references/hooks-reference.md`](references/hooks-reference.md) | Writing, verifying, or debugging a hook |
-| [`references/schema-cache.md`](references/schema-cache.md) | Confirming a key against the published schema, or refreshing the cached copy |
-| `references/settings-schema.json` | Looking one property up with jq, never reading whole |

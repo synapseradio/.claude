@@ -134,16 +134,14 @@ cmd_ignore() {
   return 0
 }
 
-# Files the scan skips, each with the reason a reviewer weighs. Four of them
-# name the shapes the scan looks for, because they are the detectors, and one
-# is somebody else's bytes kept verbatim. The list is printed on every run,
-# so nothing goes unscanned quietly.
+# Files the scan skips, each with the reason a reviewer weighs. Each names
+# the shapes the scan looks for, because they are the detectors. The list is
+# printed on every run, so nothing goes unscanned quietly.
 readonly EXCLUDED_FILES=(
   "profile-gates.jq:defines the credential shapes the gates reject"
   "predicates.jq:defines the same shapes for the alignment sweep"
   "harness-guard.sh:defines the shapes on this very list"
   "alignment-machine.md:documents the shapes as the sweep's secret guard"
-  "settings-schema.json:vendored upstream bytes, checksummed, whose own examples name paths"
 )
 
 #######################################
