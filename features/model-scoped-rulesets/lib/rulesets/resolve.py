@@ -1489,6 +1489,19 @@ def deliver_payload(
         if part != 1:
             return {}
         tool_input = payload.get("tool_input") or {}
+        agent_type = tool_input.get("subagent_type")
+        if not tool_input.get("model") and agent_type != "fork" and not definition_pin(agent_type):
+            return {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": (
+                        f"Name a model for this spawn: {agent_type or 'this agent type'} pins "
+                        "none in its definition, so without one the delegate runs on a model "
+                        "the caller never chose. Retry the call with `model` set."
+                    ),
+                }
+            }
         audit.append_spawn(
             session_id, prompt_id, tool_input.get("subagent_type"), tool_input.get("model"), state
         )

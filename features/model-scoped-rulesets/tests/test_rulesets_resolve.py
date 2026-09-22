@@ -1389,6 +1389,77 @@ class TestDeliverByPart:
         assert resolve._audit().read_spawns("s1", "p1", "scout", state) == ["claude-haiku-4-5"]
 
 
+class TestSpawnNeedsAModel:
+    def _payload(self, **tool_input):
+        return {
+            "hook_event_name": "PreToolUse",
+            "session_id": "s1",
+            "prompt_id": "p1",
+            "tool_input": tool_input,
+        }
+
+    def _pin(self, monkeypatch, tmp_path, agent_type, model):
+        config = tmp_path / "config"
+        (config / "agents").mkdir(parents=True)
+        (config / "agents" / f"{agent_type}.md").write_text(
+            f"---\nname: {agent_type}\nmodel: {model}\n---\nbody\n", encoding="utf-8"
+        )
+        monkeypatch.setenv(resolve.CONFIG_ENV, str(config))
+
+    def test_denies_a_spawn_naming_no_model_whose_type_pins_none(self, monkeypatch, tmp_path):
+        monkeypatch.setenv(resolve.CONFIG_ENV, str(tmp_path / "config"))
+        state = tmp_path / "state"
+
+        output = resolve.deliver_payload(
+            self._payload(subagent_type="general-purpose"), tmp_path / "corpus", state, {}
+        )
+
+        decision = output["hookSpecificOutput"]
+        assert decision["hookEventName"] == "PreToolUse"
+        assert decision["permissionDecision"] == "deny"
+        assert "model" in decision["permissionDecisionReason"]
+        assert resolve._audit().read_records("s1", state) == []
+
+    def test_denies_a_spawn_naming_no_model_and_no_type(self, monkeypatch, tmp_path):
+        monkeypatch.setenv(resolve.CONFIG_ENV, str(tmp_path / "config"))
+
+        output = resolve.deliver_payload(
+            self._payload(), tmp_path / "corpus", tmp_path / "state", {}
+        )
+
+        assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+    def test_allows_a_spawn_naming_no_model_whose_type_pins_one(self, monkeypatch, tmp_path):
+        self._pin(monkeypatch, tmp_path, "scout", "haiku")
+
+        output = resolve.deliver_payload(
+            self._payload(subagent_type="scout"), tmp_path / "corpus", tmp_path / "state", {}
+        )
+
+        assert output == {}
+
+    def test_allows_a_fork_naming_no_model(self, monkeypatch, tmp_path):
+        monkeypatch.setenv(resolve.CONFIG_ENV, str(tmp_path / "config"))
+
+        output = resolve.deliver_payload(
+            self._payload(subagent_type="fork"), tmp_path / "corpus", tmp_path / "state", {}
+        )
+
+        assert output == {}
+
+    def test_allows_a_spawn_naming_a_model(self, monkeypatch, tmp_path):
+        monkeypatch.setenv(resolve.CONFIG_ENV, str(tmp_path / "config"))
+
+        output = resolve.deliver_payload(
+            self._payload(subagent_type="general-purpose", model="sonnet"),
+            tmp_path / "corpus",
+            tmp_path / "state",
+            {},
+        )
+
+        assert output == {}
+
+
 class TestPartCap:
     """The last part's header, body, and trailer together stay within the cap.
 

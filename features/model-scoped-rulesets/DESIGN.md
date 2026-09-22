@@ -36,8 +36,11 @@ levers and the fork rule included. `SubagentStart` fires again when a delegate r
 teammate takes a new message, each time under a new `prompt_id` that matches no spawn record, so
 without the launch record a compacted delegate would receive its parent's rules.
 
-The cost is that a delegate whose spawn recorded no model and whose definition pins none takes its
-parent's tier, which is the tier of a model it is not running on.
+The same `PreToolUse` hook denies a spawn that names no model when its agent type is not `fork` and
+its definition pins none, telling the caller to retry with `model` set. Without that, such a
+delegate would take its parent's tier, which is the tier of a model it is not running on. The cost
+is that `definition_pin` reads only the definitions in the configuration directory's `agents/`, so
+a built-in type such as `Explore` or a plugin-scoped type must name its model on every call.
 
 ## The whole ruleset arrives inline, in parts
 
