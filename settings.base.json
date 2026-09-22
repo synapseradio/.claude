@@ -211,7 +211,8 @@
       "Bash(shellcheck *)",
       "Bash(wt list)",
       "Bash(wt list *)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Edit(~/.scratchpad/**)"
     ],
     "deny": [
       "EnterWorktree",
@@ -472,7 +473,8 @@
         "~/go",
         "~/.gem",
         "~/.local",
-        "~/.visualizations"
+        "~/.visualizations",
+        "~/.scratchpad"
       ],
       "denyRead": [
         "~/.kube",
