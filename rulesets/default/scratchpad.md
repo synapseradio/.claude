@@ -14,7 +14,7 @@ Where plan mode holds, keep working notes in the plan file until writing opens u
 
 ### Where each file goes
 
-- A temporary or working file inside a git repository goes to that file, whatever path the harness names as scratchpad or temp directory.
+- A temporary or working file inside a git repository goes to the file the location section names, whatever path the harness names as scratchpad or temp directory.
 - A temporary or working file outside a git repository goes to the harness path exactly.
 - A skill or workflow default such as `/tmp/<skill>-<slug>.md` goes to that file with that slug. Say once where it went.
 - Documentation the project ships goes to its docs tree.
