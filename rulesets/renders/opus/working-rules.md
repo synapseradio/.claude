@@ -455,7 +455,7 @@ For every lookup, one the user asked for in words like "look it up", one that co
 
 ### The lookup
 
-Where the question is a library, framework, SDK, or CLI's documentation, go to context7 first. Read documentation at the version the lockfile resolves. Where the question calls for deep research, use the linkup MCP tools. Otherwise, search the live web through the tvly CLI.
+Where the question is a library, framework, SDK, or CLI's documentation, go to context7 first. Read documentation at the version the lockfile resolves. Where the tvly CLI, the command line for the Tavily service, is unavailable, use the linkup MCP tools. Otherwise, use the tvly CLI for search, extraction, crawling, and research.
 
 Omit years from queries unless the user supplies one. When a tool call failed, read the error before choosing what to do next. Never retry from the recollection that produced the failed call.
 
