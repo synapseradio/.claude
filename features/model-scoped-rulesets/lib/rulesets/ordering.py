@@ -11,17 +11,17 @@ https://man7.org/linux/man-pages/man2/flock.2.html
 
 import fcntl
 import hashlib
+import os
 import pathlib
 import shutil
 import threading
 import time
-from typing import IO
 
 ORDER_DEADLINE = 3.0
 STARTUP_POLL = 0.005
 STALE_AFTER = 3600
 
-_held: list[IO] = []
+_held: list[int] = []
 
 
 def slot_dir(state: pathlib.Path | str, raw_payload: str) -> pathlib.Path:
@@ -37,9 +37,9 @@ def register(slots: pathlib.Path, part: int) -> None:
     if part == 1:
         _prune(slots.parent, keep=slots)
     slots.mkdir(parents=True, exist_ok=True)
-    handle = open(slots / f"{part}.lock", "a")
-    fcntl.flock(handle, fcntl.LOCK_EX)
-    _held.append(handle)
+    fd = os.open(slots / f"{part}.lock", os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
+    fcntl.flock(fd, fcntl.LOCK_EX)
+    _held.append(fd)
     (slots / f"{part}.ready").touch()
 
 
