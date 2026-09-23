@@ -645,7 +645,7 @@ Write a working note at the moment you discover something important or new, so i
 
 ### The location
 
-The directory is `$HOME/.scratchpad/$repo/$branch/` where `git branch --show-current` names a branch, and `$HOME/.scratchpad/$repo/` otherwise. Read `$repo` as the basename of the directory that holds the path `git rev-parse --path-format=absolute --git-common-dir` prints. The file is `$dir/$slug__$hh-$mm$AMPM_$DD-$MM-$YYYY.md`, `condense-rules__02-45PM_20-09-2026.md` for one, timestamped at the first write.
+The directory is `$HOME/.scratchpad/$repo/$branch/` where `git branch --show-current` names a branch, and `$HOME/.scratchpad/$repo/` otherwise. Read `$repo` as the basename of the directory that holds the path `git rev-parse --path-format=absolute --git-common-dir` prints. The file is `$dir/$slug__$hh-$mm$AMPM_$DD-$MM-$YYYY.md`, `condense-rules__02-45PM_20-09-2026.md` for one, timestamped at the first write. Get the path by running `$HOME/.claude/scripts/scratchpad-path.py $slug` from inside the repository, which reads the timestamp from the clock and creates the directory.
 
 Where plan mode holds, keep working notes in the plan file until writing opens up. Where a read-only mode holds, skip setup. Otherwise, create the directory on first write and change nothing else.
 
