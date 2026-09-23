@@ -67,7 +67,7 @@ def prune(directory, now):
 def read_state(path):
     try:
         state = json.loads(path.read_text())
-    except OSError, ValueError:
+    except (OSError, ValueError):
         return {"count": 0, "failures": []}
     if not isinstance(state, dict):
         return {"count": 0, "failures": []}
