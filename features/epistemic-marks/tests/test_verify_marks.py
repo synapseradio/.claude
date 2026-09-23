@@ -579,6 +579,26 @@ class VerifyMarksStopHook(unittest.TestCase):
         self.assertIn("The count is 12 [?].", message)
         self.assertIn("The migration ran on every shard [.?].", message)
 
+    def test_a_second_pass_ignores_a_marked_line_the_rewritten_reply_dropped(self):
+        # After a block, the transcript still holds the draft the block asked
+        # to rewrite. The second pass judges the rewrite, so a line only the
+        # superseded draft carries has already been resolved.
+        transcript = self.transcript(
+            user_text("do the thing"),
+            assistant_text("The endpoint has no other callers [?]."),
+            assistant_tool_use(),
+            tool_result(),
+            assistant_text("The endpoint has no other callers (src/api.py:12)."),
+        )
+        result = self.decision(
+            {
+                "stop_hook_active": True,
+                "transcript_path": transcript,
+                "last_assistant_message": "The endpoint has no other callers (src/api.py:12).",
+            }
+        )
+        self.assertIsNone(result, "a line the rewrite resolved must not survive the second pass")
+
     def test_a_main_thread_second_pass_keeps_its_plain_notice(self):
         result = self.decision(
             {"stop_hook_active": True, "last_assistant_message": "The count is 12 [?]."}

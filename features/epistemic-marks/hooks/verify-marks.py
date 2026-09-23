@@ -48,7 +48,10 @@ def run_stop(payload, delegate):
     # transcript_path names the session-level file every concurrent subagent
     # and the orchestrator write to.
     transcript = payload.get("agent_transcript_path") or payload.get("transcript_path", "")
-    if transcript and Path(transcript).exists():
+    # A second pass judges the reply rewritten after the block. The earlier
+    # messages of the turn hold the superseded draft, whose lines the rewrite
+    # already answered, so only the rewrite is read.
+    if transcript and Path(transcript).exists() and not payload.get("stop_hook_active"):
         blocks = last_turn_text(transcript) + blocks
     lines_by_mark, mentions = marked_lines(blocks)
     carried = (
