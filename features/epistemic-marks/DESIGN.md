@@ -188,6 +188,19 @@ by the agent id inside a subagent, and the batch pass writes line fingerprints
 to the same file, so a line the batch pass reported mid-turn would silently
 suppress the relay notice.
 
+The surviving list a second pass still sends travels the same channel, so it
+too continues the subagent, which stops again with `stop_hook_active` set.
+Each agent is handed a given notice once: `verify-marks.py` records a
+fingerprint of every notice it sent, in a file of its own beside the batch
+record, and a pass whose notice matches one already sent returns nothing.
+A notice that changed still goes out. Silence matters here beyond cost, since
+each restart writes a new last message, and the last message is the report
+the caller receives.
+
+A second pass also reads only the reply rewritten after the block. The rest
+of the turn still holds the draft the block asked to rewrite, and a line only
+that draft carries is one the rewrite already answered.
+
 ## Independence from every other plugin
 
 `epistemic-marks` installs and works alone. It assumes no sibling plugin is

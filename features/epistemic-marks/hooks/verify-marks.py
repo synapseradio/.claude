@@ -39,6 +39,27 @@ from epistemic_marks.messages import build_context, build_notice, build_reason
 from epistemic_marks.scan import batch_transcript, last_turn_text, marked_lines
 
 
+def already_sent(payload, notice):
+    """Whether this agent was already handed this notice, recording it where not.
+
+    additionalContext continues the subagent, which stops again with
+    stop_hook_active still set, so an unchanged notice sent every pass
+    restarts it up to the harness's cap. The record sits apart from the
+    batch pass's line fingerprints, which DESIGN.md explains would suppress
+    a notice the batch pass had already reported mid-turn.
+    """
+    directory = state_dir()
+    if not prepare(directory):
+        return False
+    path = state_path(directory, f"{state_key(payload)}-stop-notices")
+    sent = read_reported(path)
+    fp = fingerprint(notice)
+    if fp in sent:
+        return True
+    write_reported(path, [*sent, fp])
+    return False
+
+
 def run_stop(payload, delegate):
     # The harness flushes the turn's assistant entries after Stop hooks run,
     # so last_assistant_message carries the final reply and the transcript
@@ -75,6 +96,8 @@ def run_stop(payload, delegate):
         mentions,
         carried if not payload.get("stop_hook_active") else None,
     )
+    if notice and delegate and payload.get("stop_hook_active") and already_sent(payload, notice):
+        sys.exit(0)
     if notice and delegate:
         json.dump(
             {

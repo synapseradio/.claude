@@ -599,6 +599,46 @@ class VerifyMarksStopHook(unittest.TestCase):
         )
         self.assertIsNone(result, "a line the rewrite resolved must not survive the second pass")
 
+    def test_a_delegate_second_pass_stays_silent_when_it_already_sent_the_same_list(self):
+        # additionalContext continues the subagent, which stops again with
+        # stop_hook_active still set. Re-sending an unchanged list restarts it
+        # up to the harness's cap of eight, and each restart can replace the
+        # report the caller receives.
+        payload = {
+            "stop_hook_active": True,
+            "agent_id": "agent-one",
+            "last_assistant_message": "The count is 12 [?].",
+        }
+        self.delegate_notice(self.delegate_decision(payload))
+        self.assertIsNone(
+            self.delegate_decision(payload),
+            "an unchanged surviving list goes to a delegate once",
+        )
+
+    def test_a_delegate_second_pass_sends_a_surviving_list_that_changed(self):
+        first = {
+            "stop_hook_active": True,
+            "agent_id": "agent-one",
+            "last_assistant_message": "The count is 12 [?].",
+        }
+        self.delegate_notice(self.delegate_decision(first))
+        notice = self.delegate_notice(
+            self.delegate_decision({**first, "last_assistant_message": "The total is 40 [?]."})
+        )
+        self.assertIn(
+            "The total is 40 [?].", notice, "a list not yet sent still reaches the delegate"
+        )
+
+    def test_a_delegate_second_pass_sends_the_same_list_to_another_agent(self):
+        payload = {
+            "stop_hook_active": True,
+            "agent_id": "agent-one",
+            "last_assistant_message": "The count is 12 [?].",
+        }
+        self.delegate_notice(self.delegate_decision(payload))
+        notice = self.delegate_notice(self.delegate_decision({**payload, "agent_id": "agent-two"}))
+        self.assertIn("The count is 12 [?].", notice, "one agent's record silences no other agent")
+
     def test_a_main_thread_second_pass_keeps_its_plain_notice(self):
         result = self.decision(
             {"stop_hook_active": True, "last_assistant_message": "The count is 12 [?]."}
