@@ -48,15 +48,15 @@ class RepeatedFailureHook(unittest.TestCase):
         payload.update(extra)
         return self.run_hook(payload)
 
-    def success(self, session_id="s1"):
-        return self.run_hook(
-            {
-                "session_id": session_id,
-                "hook_event_name": "PostToolUse",
-                "tool_name": "Bash",
-                "tool_input": {"command": "ls"},
-            }
-        )
+    def success(self, session_id="s1", **extra):
+        payload = {
+            "session_id": session_id,
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": "ls"},
+        }
+        payload.update(extra)
+        return self.run_hook(payload)
 
     def context(self, result):
         self.assertIsNotNone(result)
@@ -139,16 +139,9 @@ class RepeatedFailureHook(unittest.TestCase):
 
     def test_two_sessions_keep_separate_counts(self):
         self.failure()
-        other = self.run_hook(
-            {
-                "session_id": "s2",
-                "hook_event_name": "PostToolUseFailure",
-                "tool_name": "Bash",
-                "tool_input": {"command": "cargo build"},
-                "error": "Exit code 101",
-            }
+        context = self.context(
+            self.failure(session_id="s2", command="cargo build", error="Exit code 101")
         )
-        context = other["hookSpecificOutput"]["additionalContext"]
         self.assertNotIn("in a row", context, "another session starts its own streak")
 
     def test_two_agents_in_one_session_keep_separate_counts(self):
@@ -162,15 +155,7 @@ class RepeatedFailureHook(unittest.TestCase):
 
     def test_one_agents_success_leaves_another_agents_streak_standing(self):
         self.failure()
-        self.run_hook(
-            {
-                "session_id": "s1",
-                "agent_id": "agent-two",
-                "hook_event_name": "PostToolUse",
-                "tool_name": "Bash",
-                "tool_input": {"command": "ls"},
-            }
-        )
+        self.success(agent_id="agent-two")
         context = self.context(self.failure())
         self.assertIn(
             "2 tool calls have failed in a row",
@@ -179,26 +164,15 @@ class RepeatedFailureHook(unittest.TestCase):
         )
 
     def test_a_failing_edit_names_the_file_it_targeted(self):
-        self.run_hook(
-            {
-                "session_id": "s1",
-                "hook_event_name": "PostToolUseFailure",
-                "tool_name": "Edit",
-                "tool_input": {"file_path": "/repo/src/main.ts"},
-                "error": "String to replace not found",
-            }
-        )
-        context = self.context(
-            self.run_hook(
-                {
-                    "session_id": "s1",
-                    "hook_event_name": "PostToolUseFailure",
-                    "tool_name": "Edit",
-                    "tool_input": {"file_path": "/repo/src/main.ts"},
-                    "error": "String to replace not found",
-                }
-            )
-        )
+        payload = {
+            "session_id": "s1",
+            "hook_event_name": "PostToolUseFailure",
+            "tool_name": "Edit",
+            "tool_input": {"file_path": "/repo/src/main.ts"},
+            "error": "String to replace not found",
+        }
+        self.run_hook(payload)
+        context = self.context(self.run_hook(payload))
         self.assertIn("/repo/src/main.ts", context)
 
 
