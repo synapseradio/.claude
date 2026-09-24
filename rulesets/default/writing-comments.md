@@ -2,7 +2,7 @@
 
 ## writing-comments
 
-For every comment in source code, whether you write it or an edit of yours lands beside it, optimize for a comment written only after the code itself, a name, a type, a test, and a document have each failed to carry what needs saying.
+For every comment in source code, whether you write it or an edit lands beside it, optimize for a comment written only after the code itself, a name, a type, a test, and a document have each failed to carry what needs saying.
 
 ### Where each piece of knowledge goes
 

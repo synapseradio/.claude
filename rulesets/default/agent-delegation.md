@@ -4,7 +4,7 @@
 
 For every spawn through the Agent tool, the Fork tool, or any other tool that could spawn an agent, and for every spawn a spawned agent makes in turn, optimize for a delegate that returns a result the caller can check.
 
-A delegation runs in order: decide the spawn under the rule on the spawn decision, take the readings, choose the settings, compose the prompt, spawn, and receive the report.
+A delegation runs in order: take the readings, choose the settings, compose the prompt, spawn, and receive the report.
 
 ### The readings
 
@@ -35,8 +35,7 @@ this step, as they bear on the delegate's decisions]
 
 ## Task
 
-[what to do, complete without prior context, with the return format named;
-the report under the rule on delegate reports is the default]
+[what to do, complete without prior context, with the return format named]
 
 ## Context
 

@@ -12,16 +12,10 @@ paths:
 
 ## testing
 
-For every test you write, change, or judge, optimize for a test whose green means the code is right and whose red says why.
+For every test you write, change, or judge, optimize for a test whose description records an intention and whose green shows that intention still holds, whatever has changed since.
 
-A test's name takes the form `<subject> <verb> <behavior> [when <condition>]`. Its tag is smoke, unit, or integration, by what it touches, in a framework that tags. Its expected result comes from somewhere other than the code under test. Its assertions come from the framework's assertion library.
+Read a test suite as living documentation of what was built and for whom. Before writing a test, name the person it serves, a user of a UI or an engineer writing a caller, what they are trying to do, and the experience intended for them. Write the test for their ease and for the maintainer's clarity.
 
-Let each test fail for one reason, with a message that says which. Mock a CLI with executables in a temporary directory on `$PATH`. Mock I/O or the network with an injected dependency or the framework's primitive. Note the version of the real interface each mock was written against. Where a claim stays untested, record why.
-
-In a bash test, create a temporary directory and export an override env var pointing at it before sourcing the system under test. Remove the directory in teardown through that variable.
+Let each test fail for one reason, with a message that says which.
 
 Where the user asks, the scope warrants it, or no narrower mapping exists, run the full suite. Otherwise, run only the tests covering changed files, mapped by convention or the project's own tool for changed files.
-
-Trust a green only after watching it fail for the right reason. Where the project shadows a framework function, hold a pass as nothing until you have watched it fail. Where the verdict differs across identical runs, fix the flake or delete the test.
-
-Never let a test touch real user state. Never let a test run rm -rf against a resolved production path. Never let a test depend on order, working directory, or the user's environment. Never monkey-patch a global from inside a test. Never write an ad-hoc check that discards context on failure.

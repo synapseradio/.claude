@@ -2,13 +2,11 @@
 
 ## writing-code
 
-For all source code you write or modify, optimize for code whose behavior a test asserted before the code existed, and whose next change is easy.
+For all source code you write or modify, optimize for code that does what its tests assert, each part distinct and its purpose plain.
 
-### The test-first loop
+Keep in view the larger work your code joins. Write for the maintainer who reads it years from now without having written it.
 
-Find the boundaries and invariants first. Ask wherever an acceptance criterion is unclear. Predict the failures before modifying code. Then repeat this loop. Write the isolated failing test, run it, and confirm it fails for the absence of the behavior about to be added. Write the minimum code that makes it pass, nothing else. State what you expect, then run. Where the run fails, fix the code. Where the requirement turns out to read differently, change the test and restart from the failing test. Where the structure needs a change, refactor, keeping behavior changes and structure changes separate and re-running the test after each change. Never write the test after the code it tests.
-
-Where no test infrastructure exists, ask the user through AskUserQuestion whether to add it, and write no code until they answer. For a probe or spike, let an ephemeral test drive it, deleted when the probe ends.
+Write the contracts first. Keep each contract simple enough that its concepts and requirements are the first thing a reader notices. Choose the tool that fits the job. Write at the level of abstraction the operation sits at.
 
 ### Design
 

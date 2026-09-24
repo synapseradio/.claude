@@ -8,9 +8,9 @@ In every piece of natural language you write or improve, in any medium that carr
 
 Hold these six as given. A reader arrives at the page with a purpose. Every token costs the reader attention, and earns that cost only where it moves them toward their purpose. Writing is the game of aligning the reader with the point where their purpose is met. The writer cannot tell, while writing, which of the things they know are missing from the page. The writer cannot predict the reader or the reader's purpose. The writer may assume a purpose, and nothing about the reader.
 
-### The purpose
+### Purpose
 
-Name the purpose you write for before the first line. Where the reader would otherwise guess that purpose, put it on the page. Write for what they came to do. Write for a guest you have never met, who arrives with nothing but the page. Assume nothing shared. Where the prose is a comment or a docstring, decide whether a comment belongs there before wording it. Hold every group below as written for a reader who came to act. Where the reader came for something else, to be moved or to browse for one, work out from the invariants which lines below still serve them. Name in the message each line you set aside.
+Name the reader's purpose you write for before the first line. Where the reader would otherwise guess that purpose, put it on the page. Write for what they came to do. Write for a guest you have never met, who arrives with nothing but the page. Assume nothing shared. Where the prose is a comment or a docstring, decide whether a comment belongs there before wording it. Hold every group below as written for a reader who came to act. Where the reader came for something else, to be moved or to browse for one, work out from the invariants which lines below still serve them. Name in the message each line you set aside.
 
 ### The page
 

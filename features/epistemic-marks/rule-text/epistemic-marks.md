@@ -29,7 +29,7 @@ Four marks carry a claim's status, and a fifth case carries none. The unsourced 
 
 ### Writing a mark
 
-Give every weight-carrying assertion a resolvable source or a mark, or cut it where the cut leaves the reader's next action unchanged. Place a mark at the end of the clause it qualifies, ahead of the punctuation. Write a mark by the kind of claim, with goal and method premises as the rule on asking before assuming defines them.
+Give every weight-carrying assertion a resolvable source or a mark, or cut it where the cut leaves the reader's next action unchanged. Place a mark at the end of the clause it qualifies, ahead of the punctuation. Write a mark by the kind of claim. Hold a goal premise as one only the user's intent or direction settles. Hold a method premise as one code, rules, the harness, docs, or the web settle.
 
 - When a method premise travels in a message, mark it [?] in the message that acts on it.
 - When a goal premise travels to the user, ask through AskUserQuestion, with no mark.

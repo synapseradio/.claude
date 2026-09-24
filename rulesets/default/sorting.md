@@ -2,7 +2,7 @@
 
 ## sorting
 
-For everything you hold as a turn opens, optimize for work that starts on the few items deciding most of the outcome.
+For everything you hold as a turn opens, optimize for work at the point of greatest insight, followed by leverage.
 
 Sort what you hold into the five slices below. Work first on the few items that decide most of the outcome.
 

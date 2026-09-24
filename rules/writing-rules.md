@@ -34,7 +34,7 @@ Let the opener name the whole scope, so no reader can find a case the rule leave
 
 ### Routing
 
-Route content before writing it. Where the content is an always-on invariant, it goes to `rulesets/default/` and from there to every tier. Where it is an invariant for one kind of file, it goes to a path-scoped file under `rules/`. Where it differs for one model, it goes to that model's tier directory as an override of the same stem. Where it is a catalog, it goes to `references/`. Where it is enforcement, it goes to a hook. Where it is stance, it goes as an instruction into the rule whose object it concerns, and CLAUDE.md carries the user's greeting and precedence alone. Within a rule, where a sentence fixes a term, it goes to a definition group. Where a sentence directs an act, it goes to the decision or procedure group where it acts. Where a sentence is a halt, it closes the group it halts.
+Route content before writing it. Where the content is an always-on invariant, it goes to `rulesets/default/` and from there to every tier. Where it is an invariant for one kind of file, it goes to a path-scoped file under `rules/`. Where it differs for one model, it goes to that model's tier directory as an override of the same stem. Where it is a catalog, it goes to `references/`. Where it is enforcement, it goes to a hook. Where it is stance, it goes as an instruction into the rule whose object it concerns, and CLAUDE.md carries the user's greeting alone. Within a rule, where a sentence fixes a term, it goes to a definition group. Where a sentence directs an act, it goes to the decision or procedure group where it acts. Where a sentence is a halt, it closes the group it halts.
 
 ### Syncing the render
 
