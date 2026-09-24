@@ -221,7 +221,11 @@
       "Bash(yarn dlx:*)",
       "Bash(uv run:*)",
       "Bash(uvx:*)",
-      "Edit(~/.scratchpad/**)"
+      "Edit(~/.scratchpad/**)",
+      "Edit(~/projects/.worktrees/**)"
+    ],
+    "additionalDirectories": [
+      "~/projects/.worktrees"
     ],
     "deny": [
       "EnterWorktree",
@@ -475,7 +479,8 @@
         "~/.gem",
         "~/.local",
         "~/.visualizations",
-        "~/.scratchpad"
+        "~/.scratchpad",
+        "~/projects/.worktrees"
       ],
       "denyRead": [
         "~/.kube",
