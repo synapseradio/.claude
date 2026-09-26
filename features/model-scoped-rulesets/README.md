@@ -16,10 +16,10 @@ composed for the model it runs on.
 - A **marker** is the comment line a body opens on, `<!-- rule: writing-prose -->` for one, naming
   the stem that body carries.
 - A **tier** is one directory of bodies, mapped to the model a context runs on.
-- A **family tier** is one of the five the manifest requires: `default`, `fable`, `opus`, `sonnet`,
-  and `haiku`. The last four name the model lines `models.yaml` maps identifiers to, so every
+- A **family tier** is one the manifest requires: `default`, `fable`, `opus`, `sonnet`,
+  and `haiku`. Each but `default` names a model line `models.yaml` maps identifiers to, so every
   identifier beginning `claude-haiku` reads the `haiku` tier. A tier named for one identifier,
-  `claude-opus-4-8` for one, sits beside those five.
+  `claude-opus-4-8` for one, sits beside the family tiers.
 - An **override** is a body a tier holds under a stem `default/` also holds, which that tier reads
   in place of `default/`'s.
 - An **exclusion** is a stem a tier's manifest entry leaves out, so no body for it reaches that tier.
@@ -66,25 +66,25 @@ arrives complete, and the parts together carry the tier's whole text.
 
 Parts reach a context in the order their hooks finish, which is the order the harness returns them
 in rather than the order they are registered in. Each header carries its own place, `part k of P`,
-so the text says where a part sits and how many more to expect. The live corpus packs into 8 parts
-for `default` and 4 for `haiku`, and the hook commands past part P emit nothing.
+so the text says where a part sits and how many more to expect. The hook commands past part P emit
+nothing.
 
-Headless sessions against this plugin received every part of their tier: 8 for `fable`, 7 for
-`sonnet`, and 4 for `haiku`, each part between 760 and 8,864 characters, and none saved to a file.
-The arrival order ran as the hooks finished, part 8 first in one run and part 3 first in another. A
-haiku delegate and a sonnet delegate spawned from one fable session each received every part of its
-own tier, 4 and 7, and `delivery-check` printed nothing for each session.
+Headless sessions against this plugin received every part of their tier on `fable`, `sonnet`, and
+`haiku`, with none saved to a file. The arrival order ran as the hooks finished, so the first part
+to arrive differed from run to run. A haiku delegate and a sonnet delegate spawned from one fable
+session each received every part of its own tier, and `delivery-check` printed nothing for each
+session.
 
 ## Who this is for
 
 - You run a cheap model on narrow work and want it reading the rules for that work alone. A spawn
-  on the `haiku` tier reads 24,761 characters, where one on `default` reads 57,245.
+  on the `haiku` tier reads only the stems its manifest entry keeps.
 - You want a delegate's rules to name only tools the delegate has. `sonnet` and `haiku` exclude
   `agent-delegation` and `spawn-decision`, and `haiku` also excludes `asking-questions`,
   `persistent-memory`, `worktrees`, `writing-code`, `comments`, `data-modeling`,
-  `debugging`, `repairing`, `claims`, `reasoning-guidelines`, and `inquiring`.
+  `debugging`, `repairing`, `claims`, `reasoning-guidelines`, `inquiring`, and `handoff`.
 - You want one model's vendor guidance in that model's own words. `rulesets/opus/spawn-decision.md`
-  holds seven sentences that reach `opus` alone.
+  holds sentences that reach `opus` alone.
 - You want to see a changed rule arrive. `deliveries --session ID` prints one line per delivery that
   reached a context, and `delivery-check --session ID` compares each against its tier's composition.
 - You want a variant of one rule for one model without a second copy of everything else. A tier
@@ -97,29 +97,19 @@ own tier, 4 and 7, and `delivery-check` printed nothing for each session.
 ## Where it pays most
 
 The difference between tiers pays where several models run at once, where delegates run on cheaper
-models, and where the corpus runs past a few kilobytes. With one model, no delegates, and a few
-kilobytes of rules, `~/.claude/rules/` hands every context the same text, which is the same result
+models, and where the corpus runs long. With one model, no delegates, and a short set of rules,
+`~/.claude/rules/` hands every context the same text, which is the same result
 with no corpus to keep.
 
-## What the numbers measure
+## Measuring a tier
 
-Every number here counts characters or parts, measured on the live corpus with `resolve.py
-inspect` and `pack_parts` in `lib/rulesets/resolve.py`.
+`resolve.py inspect --tier TIER` lists what a tier composes, and `pack_parts` in
+`lib/rulesets/resolve.py` splits that text into the parts a context receives. How a model works
+under one tier against another is a comparison you run: give one task to one model under each tier,
+and read the transcripts side by side. `deliveries --session ID` names which rules each of those
+runs received.
 
-| Tier | Characters | Parts at a 9,000-character budget |
-| --- | --- | --- |
-| `default` | 57,245 | 8 |
-| `fable` | 57,245 | 8 |
-| `opus` | 57,121 | 8 |
-| `sonnet` | 52,121 | 7 |
-| `haiku` | 24,761 | 4 |
-
-Those characters are what each context receives: a haiku delegate reads 24,761 of them where the
-same spawn on `default` would read 57,245. How a model works under one tier against another is a
-comparison you run: give one task to one model twice, once under each tier, and read the two
-transcripts. `deliveries --session ID` names which rules each of those runs received.
-
-## A five-minute walk
+## A walk through
 
 ### 1. Create the corpus
 
@@ -127,7 +117,7 @@ transcripts. `deliveries --session ID` names which rules each of those runs rece
 resolve.py init
 ```
 
-That writes `~/.claude/rulesets`: five tier directories, a manifest composing each, and
+That writes `~/.claude/rulesets`: a directory for each family tier, a manifest composing each, and
 `models.yaml`, holding the identifier prefixes each family tier answers to. The hooks pass no
 `--root`, so a command you run with none reads the corpus they read.
 
@@ -196,7 +186,7 @@ followed like any other directory, so a corpus kept in your own dotfiles is deli
 keep it.
 
 A root that is not there yet gets scaffolded by the first delivering hook to run, on `SessionStart`,
-`SubagentStart`, or `PostModelSwitch`: five empty tier directories, a manifest composing each, and
+`SubagentStart`, or `PostModelSwitch`: an empty directory for each family tier, a manifest composing each, and
 `models.yaml`. The `PreToolUse` hook records the spawn and returns before that, so it leaves the
 corpus alone. A scaffolded corpus is legal, composes no stems, and the note closing the delivered
 text says it was created.
@@ -207,11 +197,11 @@ is a tier of its own once the manifest names it.
 
 ## How a model reaches its tier
 
-A session's model reaches its tier through three sources, and the first match wins.
+A session's model reaches its tier through these sources, and the first match wins.
 
 1. A tier whose name equals the running model identifier.
-2. The four `ANTHROPIC_DEFAULT_*_MODEL` profile variables, in the order `opus`, `sonnet`, `haiku`,
-   `fable`. Two variables naming one identifier resolve to the first in that order, and the
+2. The `ANTHROPIC_DEFAULT_*_MODEL` profile variables, in the order `opus`, `sonnet`, `haiku`,
+   `fable`. Variables naming one identifier resolve to the first in that order, and the
    delivered text names the collision.
 3. The prefixes in `models.yaml`, where the longest match wins.
 
@@ -224,17 +214,17 @@ pin onward and the delivered text carries a note naming the ambiguity.
 
 ## The hooks
 
-| Event | Matcher | What runs | Commands |
-| --- | --- | --- | --- |
-| `SessionStart` | `startup`, `resume`, `clear`, `compact`, `fork` | deliver the session's tier | 10 per matcher, 50 in all |
-| `SubagentStart` | — | deliver the delegate's tier | 10 |
-| `PostModelSwitch` | — | deliver the tier switched to, where it differs from the one in play | 10 |
-| `PreToolUse` | `Agent` | record the model the caller named for this spawn | 1 |
-| `InstructionsLoaded` | — | record what the harness loaded | 1 |
+| Event | Matcher | What runs |
+| --- | --- | --- |
+| `SessionStart` | `startup`, `resume`, `clear`, `compact`, `fork` | deliver the session's tier |
+| `SubagentStart` | — | deliver the delegate's tier |
+| `PostModelSwitch` | — | deliver the tier switched to, where it differs from the one in play |
+| `PreToolUse` | `Agent` | record the model the caller named for this spawn |
+| `InstructionsLoaded` | — | record what the harness loaded |
 
-Each delivering event registers `deliver.py --part 1` through `--part 10`, one command per part
-slot, 72 commands in all. Every slot reads the same payload and emits its own part or nothing, so
-`haiku`, which packs into 4 parts, leaves six slots silent.
+Each delivering event registers one `deliver.py --part k` command per part slot. Every slot reads
+the same payload and emits its own part or nothing, so a tier that packs into fewer parts than there
+are slots leaves the rest silent.
 
 Every command runs through `hooks/with-python.sh`, which runs the first interpreter that has PyYAML
 and Python 3.12 or above: `RULESETS_PYTHON`, then `python3.14`, `python3.13`, `python3.12`,
@@ -278,8 +268,8 @@ corpus.
 stem with no body, a missing tier key, a tier mixing the wildcard `include: "*"` with an explicit
 list of stems, an exclusion naming a stem no directory holds, an order disagreeing with `default/`, a
 directory that is neither a tier nor reserved, a body naming another stem, a citation of a reference
-the corpus does not carry, a body longer than one part's budget, and a tier needing more than ten
-parts.
+the corpus does not carry, a body longer than one part's budget, and a tier needing more parts than
+the hooks register slots for.
 
 `load-check` exempts by stem and not by load reason. A file named `CLAUDE.md` at any scope is exempt,
 and so is any file whose stem no tier composes, which is how a rule scoped to named paths by its
