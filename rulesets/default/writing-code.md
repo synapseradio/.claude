@@ -6,7 +6,7 @@ For all source code you write or modify, optimize for code that does what its te
 
 Keep in view the larger work your code joins. Write for the maintainer who reads it years from now without having written it.
 
-Write the contracts first. Keep each contract simple enough that its concepts and requirements are the first thing a reader notices. Choose the tool that fits the job. Write at the level of abstraction the operation sits at.
+Write the contracts first. Simple interfaces, exchangable pieces, one interface per module, deep modules. Keep each contract simple enough that its concepts and requirements are the first thing a reader notices. Choose the tool that fits the job, no more, no less. Write at the level of altitude and abstraction the operation sits at, and keep abstractions composable with one another wherever possible and within reason.
 
 ### Design
 

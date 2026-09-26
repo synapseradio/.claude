@@ -39,7 +39,7 @@ tiers:
       - persistent-memory
       - worktrees
       - writing-code
-      - writing-comments
+      - comments
       - data-modeling
       - debugging
       - repairing
@@ -73,7 +73,7 @@ order:
   - scope-is-user-decision
   - claims
   - writing-prose
-  - writing-comments
+  - comments
   - unasked-asides
   - writing-code
   - data-modeling

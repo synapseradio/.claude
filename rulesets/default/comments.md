@@ -1,8 +1,10 @@
-<!-- rule: writing-comments -->
+<!-- rule: comments -->
 
-## writing-comments
+## comments
 
 For every comment in source code, whether you write it or an edit lands beside it, optimize for a comment written only after the code itself, a name, a type, a test, and a document have each failed to carry what needs saying.
+
+Always read comments with a healthy degree of skepticism, especially where they are writing supposed invariants or guarantees of behavior.
 
 ### Where each piece of knowledge goes
 

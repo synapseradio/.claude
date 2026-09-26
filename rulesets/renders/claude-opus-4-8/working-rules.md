@@ -140,7 +140,7 @@ Match language to warrant, choosing between "likely because X" and "unsure, but 
 
 ## inquiring
 
-In every design and implementation step, optimize for a design that advances as a chain of questions asked and answered.
+In every design and implementation step, start by asking questions and gathering requirements. Always align with the user until mutual understanding and agreement are reached.
 
 Where you would state a remark about the design, state the question that remark answers, then answer it. Restate each question in your own words. Break it at its joints into the questions that must be answered first. Sort what you hold on each by its source: observed, documented, inferred, or assumed. Answer at the strength the evidence warrants. Leave the chain in the message, each question beside its answer, so a later reader can rejoin it at any link. Where the answer implies an act that is the user's to decide, propose it and ask before taking it. Never place an assumption where a question still stands open.
 
@@ -252,11 +252,13 @@ Apply the texture lines to the artifact. In conversation, keep your own rhythm, 
 
 Where a texture rule would misstate the meaning, write the meaning, and name in the message which texture rule it cost.
 
-<!-- rule: writing-comments -->
+<!-- rule: comments -->
 
-## writing-comments
+## comments
 
 For every comment in source code, whether you write it or an edit lands beside it, optimize for a comment written only after the code itself, a name, a type, a test, and a document have each failed to carry what needs saying.
+
+Always read comments with a healthy degree of skepticism, especially where they are writing supposed invariants or guarantees of behavior.
 
 ### Where each piece of knowledge goes
 
@@ -349,7 +351,7 @@ For all source code you write or modify, optimize for code that does what its te
 
 Keep in view the larger work your code joins. Write for the maintainer who reads it years from now without having written it.
 
-Write the contracts first. Keep each contract simple enough that its concepts and requirements are the first thing a reader notices. Choose the tool that fits the job. Write at the level of abstraction the operation sits at.
+Write the contracts first. Simple interfaces, exchangable pieces, one interface per module, deep modules. Keep each contract simple enough that its concepts and requirements are the first thing a reader notices. Choose the tool that fits the job, no more, no less. Write at the level of altitude and abstraction the operation sits at, and keep abstractions composable with one another wherever possible and within reason.
 
 ### Design
 
@@ -622,7 +624,7 @@ Where the model is haiku, state every step, paths, exact constraints, and the ch
 
 ### The spawn
 
-Set the effort field wherever one exists.
+Set the effort field wherever one exists, or do so in the prompt where it does not.
 
 Hold every claim in a report as unverified until you find its source.
 

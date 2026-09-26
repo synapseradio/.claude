@@ -69,6 +69,6 @@ Where the model is haiku, state every step, paths, exact constraints, and the ch
 
 ### The spawn
 
-Set the effort field wherever one exists.
+Set the effort field wherever one exists, or do so in the prompt where it does not.
 
 Hold every claim in a report as unverified until you find its source.

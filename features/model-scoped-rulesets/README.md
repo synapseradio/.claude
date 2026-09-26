@@ -82,7 +82,7 @@ own tier, 4 and 7, and `delivery-check` printed nothing for each session.
   and 57,245 characters.
 - You want a delegate's rules to name only tools the delegate has. `sonnet` and `haiku` exclude
   `agent-delegation` and `spawn-decision`, and `haiku` also excludes `asking-questions`,
-  `persistent-memory`, `worktrees`, `writing-code`, `writing-comments`, `data-modeling`,
+  `persistent-memory`, `worktrees`, `writing-code`, `comments`, `data-modeling`,
   `debugging`, `repairing`, `claims`, `reasoning-guidelines`, and `inquiring`.
 - You want one model's vendor guidance in that model's own words. `rulesets/opus/spawn-decision.md`
   holds seven sentences that reach `opus` alone.
