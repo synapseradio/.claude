@@ -53,11 +53,11 @@ that tier packs into, and each part opens on a header naming its place, `part k 
 
 | The context | The event that delivers | The model | The tier it reads |
 | --- | --- | --- | --- |
-| a main session | `SessionStart` | opus | `opus`, 37 stems |
-| a delegate it spawns | `SubagentStart` | haiku | `haiku`, 24 stems |
+| a main session | `SessionStart` | opus | `opus` |
+| a delegate it spawns | `SubagentStart` | haiku | `haiku` |
 | a fork of that session | `SubagentStart` | the main model | the parent's tier |
-| a second terminal | `SessionStart` | sonnet | `sonnet`, 35 stems |
-| that terminal after `/model opus` | `PostModelSwitch` | opus | `opus`, 37 stems |
+| a second terminal | `SessionStart` | sonnet | `sonnet` |
+| that terminal after `/model opus` | `PostModelSwitch` | opus | `opus` |
 
 ## What a context holds once the parts arrive
 
@@ -77,9 +77,8 @@ own tier, 4 and 7, and `delivery-check` printed nothing for each session.
 
 ## Who this is for
 
-- You run a cheap model on narrow work and want it reading the rules for that work alone. The
-  `haiku` tier composes 24 stems and 24,761 characters a spawn, where `default` composes 37 stems
-  and 57,245 characters.
+- You run a cheap model on narrow work and want it reading the rules for that work alone. A spawn
+  on the `haiku` tier reads 24,761 characters, where one on `default` reads 57,245.
 - You want a delegate's rules to name only tools the delegate has. `sonnet` and `haiku` exclude
   `agent-delegation` and `spawn-decision`, and `haiku` also excludes `asking-questions`,
   `persistent-memory`, `worktrees`, `writing-code`, `comments`, `data-modeling`,
@@ -104,16 +103,16 @@ with no corpus to keep.
 
 ## What the numbers measure
 
-Every number here counts stems, characters, or parts, measured on the live corpus with `resolve.py
+Every number here counts characters or parts, measured on the live corpus with `resolve.py
 inspect` and `pack_parts` in `lib/rulesets/resolve.py`.
 
-| Tier | Stems | Characters | Parts at a 9,000-character budget |
-| --- | --- | --- | --- |
-| `default` | 37 | 57,245 | 8 |
-| `fable` | 37 | 57,245 | 8 |
-| `opus` | 37 | 57,121 | 8 |
-| `sonnet` | 35 | 52,121 | 7 |
-| `haiku` | 24 | 24,761 | 4 |
+| Tier | Characters | Parts at a 9,000-character budget |
+| --- | --- | --- |
+| `default` | 57,245 | 8 |
+| `fable` | 57,245 | 8 |
+| `opus` | 57,121 | 8 |
+| `sonnet` | 52,121 | 7 |
+| `haiku` | 24,761 | 4 |
 
 Those characters are what each context receives: a haiku delegate reads 24,761 of them where the
 same spawn on `default` would read 57,245. How a model works under one tier against another is a
