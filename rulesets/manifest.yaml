@@ -84,6 +84,7 @@ order:
   - structural-search
   - never-use-sed
   - shell-quoting
+  - bash-commands
   - waiting-on-processes
   - git-commit
   - worktrees

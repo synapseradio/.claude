@@ -10,4 +10,4 @@ Where the work is read-only inspection in a pipeline touching no file on disk, a
 
 ### A mechanical bulk change
 
-Write the script in a real language, Python for one, matching exact strings, never loose patterns. Checkpoint first, with a git commit or a git stash. Where no checkpoint was made, do not run. Then run, report what changed, read the diff, and run again to confirm it reports no change.
+Write the script in a real language, Python for one, matching exact strings, never loose patterns. Checkpoint first, with a git commit. Where no checkpoint was made, do not run. Then run, report what changed, read the diff, and run again to confirm it reports no change.

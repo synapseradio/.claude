@@ -250,7 +250,7 @@ Where the work is read-only inspection in a pipeline touching no file on disk, a
 
 ### A mechanical bulk change
 
-Write the script in a real language, Python for one, matching exact strings, never loose patterns. Checkpoint first, with a git commit or a git stash. Where no checkpoint was made, do not run. Then run, report what changed, read the diff, and run again to confirm it reports no change.
+Write the script in a real language, Python for one, matching exact strings, never loose patterns. Checkpoint first, with a git commit. Where no checkpoint was made, do not run. Then run, report what changed, read the diff, and run again to confirm it reports no change.
 
 <!-- rule: shell-quoting -->
 
@@ -260,6 +260,38 @@ For every Bash tool call, optimize for a command that runs as one piece, quoted 
 
 Quote every command for zsh, the shell the Bash tool runs. Quote every variable expansion. Pass several arguments held in one variable as an array, `"${args[@]}"`, since zsh leaves an unquoted `$var` whole where bash splits it at whitespace. Single-quote an argument that holds `!`, `?`, `*`, `[`, `]`, `$`, parentheses, or whitespace. Put multi-line or special-character content in a heredoc with a quoted delimiter, `<<'EOF'`. Never nest double quotes. Carry file content into a file through Write or Edit only.
 
+<!-- rule: bash-commands -->
+
+## bash-commands
+
+For every Bash tool call, optimize for a command the session's allow rules match part by part, running only the programs its text names.
+
+### The shape
+
+Hold every part of a compound command as matched against the allow rules on its own, split at `&&`, `||`, `;`, `|`, `&`, and newlines. Give each call the fewest parts its step needs. Where two steps share no shell state, run them as separate calls. Write every redirect target and every `tee` target as an absolute path. Run git in another directory with `git -C <path> <subcommand>`.
+
+Never start a redirect target with `~`. Never join `cd` to a git command in one call.
+
+### Programs
+
+Run a repository's tools through the scripts its package.json defines. Where a tool has no script, call it at `node_modules/.bin/<tool>`. Where a step needs a script of its own, write it to a file in the scratchpad through Write, then run that file. Run a shell with `-c` only to test how that shell behaves.
+
+A fetch-and-run command is one that resolves a package from a registry and executes code from it in the same step, `bunx` for one. Run a fetch-and-run command only on the user's approval. Before the call, state in the message the package, the version the command pins, what it executes, and which installed tool falls short of the step. Pin the package version in the command.
+
+Never run a fetch-and-run command with an unpinned version. Never pass inline code to an interpreter, `python3 -c` for one. Never run `eval`.
+
+### Processes
+
+Start a long-running process with `run_in_background` set on the Bash call. Stop a process with `kill` and the PID it started under.
+
+Never background a process with `nohup`, a trailing `&`, or `disown`. Never stop processes by pattern, with `pkill` or `killall`.
+
+### Git state
+
+Move a branch ref with `git reset --soft <sha>`. Restore a path to a commit's state with `git checkout <sha> -- <path>`. Set work aside with a temporary commit.
+
+Never run `git reset --hard`. Never run a bare `git stash` or `git stash pop`.
+
 <!-- rule: waiting-on-processes -->
 
 ## waiting-on-processes
@@ -268,7 +300,7 @@ For every wait, on a command that may run long, a server coming up, a file appea
 
 Start a command that may take time with `run_in_background` set on the Bash call. Then do the work that does not depend on its result and end your turn. Rely on the harness to resume you when the command exits. Where the wait is on something outside the session, a CI run or a deploy for one, run the command that blocks on it, `gh run watch` for one, in the background the same way, or hand the check to the user in the form `! <command>`. Where the tool offers no background option, run the command in the foreground and let the tool's own timeout bound it.
 
-Never call `sleep`: alone, chained with `&&`, or inside a loop. Never poll. Count a check run again to see whether the state changed as polling.
+Never call `sleep`: alone, chained with `&&`, or inside a loop. Never wait with a command that does not exit by itself, `tail -f` for one. Read a log once with a command that exits. Never poll. Count a check run again to see whether the state changed as polling.
 
 <!-- rule: git-commit -->
 
