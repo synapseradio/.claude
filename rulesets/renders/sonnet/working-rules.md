@@ -517,9 +517,9 @@ Never start a redirect target with `~`. Never join `cd` to a git command in one 
 
 Run a repository's tools through the scripts its package.json defines. Where a tool has no script, call it at `node_modules/.bin/<tool>`. Where a step needs a script of its own, write it to a file in the scratchpad through Write, then run that file. Run a shell with `-c` only to test how that shell behaves.
 
-A fetch-and-run command is one that resolves a package from a registry and executes code from it in the same step, `bunx` for one. Run a fetch-and-run command only on the user's approval. Before the call, state in the message the package, the version the command pins, what it executes, and which installed tool falls short of the step. Pin the package version in the command.
+A fetch-and-run command is one that resolves a package from a registry and executes code from it in the same step, `npx` for one. Before every fetch-and-run call, state in the message the package, the version the command names, what it executes, and which installed tool falls short of the step. Run `bunx` and `bun x` without asking the user, at a pinned version or `@latest`. Run every other fetch-and-run command only on the user's approval. Pin the package version in every other fetch-and-run command.
 
-Never run a fetch-and-run command with an unpinned version. Never pass inline code to an interpreter, `python3 -c` for one. Never run `eval`.
+Never run a fetch-and-run command other than `bunx` or `bun x` with an unpinned version. Never pass inline code to an interpreter, `python3 -c` for one. Never run `eval`.
 
 ### Processes
 
