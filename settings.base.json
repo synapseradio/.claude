@@ -58,7 +58,14 @@
       "mcp__linkup__linkup-fetch",
       "mcp__linkup__linkup-research",
       "mcp__linkup__linkup-get-research",
+      "mcp__linkup__*",
       "mcp__amboss-ds",
+      "mcp__plugin_context7_context7__query-docs",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_amboss-knowledge_notion__notion-fetch",
+      "mcp__plugin_amboss-knowledge_notion__notion-ai-search",
+      "mcp__plugin_atlassian_atlassian__getJiraIssue",
+      "mcp__plugin_atlassian_atlassian__searchJiraIssuesUsingJql",
       "Bash(tvly:*)",
       "Bash(git status:*)",
       "Bash(git commit -m:*)",
@@ -443,9 +450,7 @@
       "Bash(zsh -c:*)",
       "Bash(eval:*)",
       "Bash(knip --fix*)",
-      "Bash(knip * --fix*)",
-      "Bash(bun run knip --fix*)",
-      "Bash(bun run knip * --fix*)"
+      "Bash(knip * --fix*)"
     ],
     "defaultMode": "acceptEdits"
   },
