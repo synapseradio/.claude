@@ -173,6 +173,7 @@ rulesets/
   renders/<tier>/working-rules.md
                        a generated read of one tier, written by `render`
   references/          a catalog a body cites, carried with the corpus
+  experimental/        bodies no tier composes, which one agent definition adds by stem
 ```
 
 The plugin carries the resolver, the hooks, and the packer that splits a tier into parts. The corpus
@@ -211,6 +212,31 @@ model its caller named for that spawn, then the pin, the model an agent definiti
 the main model, so it takes the parent's tier outright. Where two spawns of one agent type in one
 prompt name different models, the per-spawn model is ambiguous, so that delegate resolves from the
 pin onward and the delivered text carries a note naming the ambiguity.
+
+## Adjusting one agent's tier
+
+An agent definition adjusts the tier its delegate receives, on any model and with no `model` pin,
+through a `metadata.rulesets` block in its frontmatter. The definition is located by agent type, the
+way the pin is.
+
+```yaml
+metadata:
+  rulesets:
+    exclude: [writing-prose]
+    add: [trial-rule]
+```
+
+`exclude` removes each stem from the tier's composition. `add` appends each stem after it, reading
+the body at `experimental/<stem>.md` in the corpus, and a stem the tier already composes keeps the
+body the tier reads. The delivery record carries the requested `exclude` and `add`, so
+`delivery-check` compares the delivery against the adjusted composition.
+
+Delivery never fails on a definition. A missing definition, block, or key delivers the tier's
+composition, and the delivery record's `rulesets.notes` says which was missing. A key outside
+`exclude` and `add`, a value that is not a list of stems, and a stem with no body are named in the
+note closing the delivered text, and the rest of the block still applies. `check` warns on each
+unknown key and stem across the definitions under `<config>/agents`, or under `--agents DIR`, and a
+warning leaves the exit code alone.
 
 ## The hooks
 
@@ -255,7 +281,7 @@ corpus.
 | Command | What it does |
 | --- | --- |
 | `init` | Write a legal and empty corpus. Refuses a root that already holds a manifest. |
-| `check` | Report every illegal state across every tier the manifest names. Exits nonzero on any. |
+| `check` | Report every illegal state across every tier the manifest names. Exits nonzero on any. Warns on unknown keys and stems in agent definitions' `metadata.rulesets`, without changing the exit code. |
 | `inspect --tier TIER` | Print each composed stem with its body path. |
 | `migrate-rules` | Move each body of a rules directory that loads into every context into `default/`, and leave the ones whose `paths:` frontmatter scopes them to named files where the harness reads them. `--dry-run` prints the moves and makes none, and `--undo` reverses the last run. |
 | `render` | Write one render per tier. `--check` reports drift, `--model NAME` scopes a run to one tier, and `--reverse` splits `default/`'s render back into `CLAUDE.md` and the bodies under `default/`. |

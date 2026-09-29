@@ -89,10 +89,12 @@ PART_BUDGET = 9000
 PART_CAP = 10000
 NOTE_CLIP_SUFFIX = " (clipped; check lists the rest)"
 
-# A directory beside the tiers that carries no rule bodies. A manifest key
+# A directory beside the tiers that carries no tier's bodies. A manifest key
 # naming one is an illegal state, and so is a directory in neither this set
-# nor the manifest.
-RESERVED_DIRS = frozenset({"references", "renders"})
+# nor the manifest. `experimental` holds bodies no tier composes, which an
+# agent definition's `metadata.rulesets.add` names one stem at a time.
+EXPERIMENTAL_DIR = "experimental"
+RESERVED_DIRS = frozenset({"references", "renders", EXPERIMENTAL_DIR})
 
 # What `models.yaml` holds on a fresh corpus: the prefix each family's
 # identifiers share, which a lookup matches when no tier is named for the
@@ -174,12 +176,16 @@ def named_body(stem: str, text: str) -> str:
 
 @dataclasses.dataclass(frozen=True)
 class Ruleset:
-    """A tier's composed text, its stems, and each body paired with its stem."""
+    """A tier's composed text, its stems, and each body paired with its stem.
+
+    `notes` names each adjustment stem the composition could not honor.
+    """
 
     tier: str
     stems: tuple[str, ...]
     text: str
     sections: tuple[tuple[str, str], ...]
+    notes: tuple[str, ...] = ()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -318,6 +324,26 @@ class Explicit:
 
 
 @dataclasses.dataclass(frozen=True)
+class Adjustment:
+    """What an agent definition's `metadata.rulesets` asks of a tier composition.
+
+    `exclude` and `add` are the stems requested. `unhonored` names each
+    thing the block stated that could not be read, and `absent` names each
+    part of the block the definition left unstated. Both are prose for the
+    delivery record, and `unhonored` also reaches the delivered text.
+    """
+
+    exclude: tuple[str, ...] = ()
+    add: tuple[str, ...] = ()
+    unhonored: tuple[str, ...] = ()
+    absent: tuple[str, ...] = ()
+
+
+# The findings an adjustment raises. None of them stops a delivery.
+ADJUSTMENT_KINDS = frozenset({"unknown-exclusion", "unknown-addition"})
+
+
+@dataclasses.dataclass(frozen=True)
 class Composition:
     """One tier's stems, the body path of each, and what was illegal."""
 
@@ -444,11 +470,64 @@ def _tier_form(
     )
 
 
-def compose(tier: str, root: pathlib.Path | str | None = None) -> Composition:
+def _is_stem(stem: object) -> bool:
+    """Whether `stem` names a file directly inside a directory."""
+
+    return (
+        isinstance(stem, str)
+        and stem not in ("", ".", "..")
+        and pathlib.PurePath(stem).name == stem
+    )
+
+
+def _adjusted(
+    base: pathlib.Path,
+    tier: str,
+    stems: tuple[str, ...],
+    body_paths: dict[str, pathlib.Path],
+    adjust: Adjustment,
+) -> tuple[tuple[str, ...], dict[str, pathlib.Path], tuple[Finding, ...]]:
+    """One tier's stems less `adjust.exclude`, then with `adjust.add` appended.
+
+    An excluded stem the composition does not hold, and an added stem with no
+    body under `experimental/`, are findings and change nothing. An added stem
+    the composition already holds keeps the body the tier reads.
+    """
+
+    findings: tuple[Finding, ...] = ()
+    kept = list(stems)
+    paths = dict(body_paths)
+    for stem in adjust.exclude:
+        if stem not in kept:
+            findings += (
+                Finding(
+                    "unknown-exclusion", f"the {tier} composition holds no stem {stem} to exclude"
+                ),
+            )
+            continue
+        kept.remove(stem)
+        paths.pop(stem, None)
+    for stem in adjust.add:
+        body = base / EXPERIMENTAL_DIR / f"{stem}.md"
+        if not _is_stem(stem) or not body.is_file():
+            findings += (
+                Finding("unknown-addition", f"no body for {stem} at {base / EXPERIMENTAL_DIR}"),
+            )
+            continue
+        if stem not in kept:
+            kept.append(stem)
+            paths[stem] = body
+    return tuple(kept), paths, findings
+
+
+def compose(
+    tier: str, root: pathlib.Path | str | None = None, adjust: Adjustment | None = None
+) -> Composition:
     """Map a tier to its stems and each stem to the body it reads.
 
     Every read happens per call, so composing one tier leaves what
-    composing another yields untouched.
+    composing another yields untouched. An `adjust` from an agent definition
+    is applied last, to the composition the manifest states.
     """
 
     base = _base(root)
@@ -495,6 +574,10 @@ def compose(tier: str, root: pathlib.Path | str | None = None) -> Composition:
             body_paths[stem] = fallback
         else:
             findings += (Finding("no-body", f"stem {stem} has no body at {own} nor at {fallback}"),)
+
+    if adjust is not None:
+        stems, body_paths, adjustment_findings = _adjusted(base, tier, stems, body_paths, adjust)
+        findings += adjustment_findings
 
     return Composition(tier, stems, body_paths, findings)
 
@@ -966,12 +1049,76 @@ def command_inspect(args: argparse.Namespace) -> int:
     return 1 if composed.findings else 0
 
 
-def command_check(args: argparse.Namespace) -> int:
-    """Report every illegal state across all five tiers."""
+def definition_warnings(
+    root: pathlib.Path | str | None, agents: pathlib.Path
+) -> tuple[Finding, ...]:
+    """What each agent definition's `metadata.rulesets` block states that delivery cannot honor.
 
-    findings = report(_root_from(args))
+    Delivery reads such a block forgivingly, so these are warnings and the
+    corpus stays legal. A stem to exclude is known where any tier holds a
+    body for it, and a stem to add where `experimental/` does.
+    """
+
+    base = _base(root)
+    known = {stem for name in all_tiers(base) for stem in tier_stems(base, name)}
+    findings: tuple[Finding, ...] = ()
+    for path in sorted(agents.rglob("*.md")) if agents.is_dir() else ():
+        front = _frontmatter(path)
+        metadata = front.get("metadata")
+        block = metadata.get("rulesets") if isinstance(metadata, dict) else None
+        if block is None:
+            continue
+        adjustment = rulesets_adjustment(front)
+        if not isinstance(block, dict):
+            findings += (
+                Finding("bad-block", f"the definition at {path}: {adjustment.unhonored[0]}"),
+            )
+            continue
+        findings += tuple(
+            Finding(
+                "unknown-key",
+                f"the definition at {path} states the key {key}, which is not one of {', '.join(RULESETS_KEYS)}",
+            )
+            for key in block
+            if key not in RULESETS_KEYS
+        )
+        findings += tuple(
+            Finding(
+                "bad-block",
+                f"the definition at {path}: metadata.rulesets.{key} is not a list of stems",
+            )
+            for key in RULESETS_KEYS
+            if block.get(key) is not None and not _is_stem_list(block[key])
+        )
+        findings += tuple(
+            Finding(
+                "unknown-stem", f"the definition at {path} excludes {stem}, which no tier holds"
+            )
+            for stem in adjustment.exclude
+            if stem not in known
+        )
+        findings += tuple(
+            Finding(
+                "unknown-stem",
+                f"the definition at {path} adds {stem}, and no body sits at "
+                f"{base / EXPERIMENTAL_DIR / f'{stem}.md'}",
+            )
+            for stem in adjustment.add
+            if not _is_stem(stem) or not (base / EXPERIMENTAL_DIR / f"{stem}.md").is_file()
+        )
+    return findings
+
+
+def command_check(args: argparse.Namespace) -> int:
+    """Report every illegal state across all five tiers, then warn on agent definitions."""
+
+    root = _root_from(args)
+    findings = report(root)
     for finding in findings:
         print(f"{finding.kind}: {finding.message}")
+    agents = pathlib.Path(args.agents) if args.agents else agents_dir()
+    for warning in definition_warnings(root, agents):
+        print(f"warning: {warning.kind}: {warning.message}")
     return 1 if findings else 0
 
 
@@ -1011,11 +1158,12 @@ class TierLookup:
 
 @dataclasses.dataclass(frozen=True)
 class Resolution:
-    """A concrete tier to deliver, its source, and lines to state."""
+    """A concrete tier to deliver, its source, lines to state, and the adjustment to apply."""
 
     tier: str
     source: str
     notes: tuple[str, ...] = ()
+    adjustment: Adjustment = Adjustment()
 
 
 def _flag(env: dict, name: str) -> bool:
@@ -1231,7 +1379,7 @@ def plugin_install_paths(plugin: str) -> list[pathlib.Path]:
     index = config_root() / "plugins" / "installed_plugins.json"
     try:
         installed = json.loads(index.read_text(encoding="utf-8")).get("plugins", {})
-    except (OSError, json.JSONDecodeError, AttributeError):
+    except OSError, json.JSONDecodeError, AttributeError:
         return []
     paths = []
     for key, entries in installed.items():
@@ -1245,6 +1393,31 @@ def plugin_install_paths(plugin: str) -> list[pathlib.Path]:
     return paths
 
 
+def definition_front(agent_type: str, cwd: pathlib.Path | str | None = None) -> dict | None:
+    """The frontmatter of the definition an agent type names, or None where none is found.
+
+    A plugin-scoped type, `plugin:name` or `plugin:subfolder:name`, reads
+    that plugin's `agents/` directory. Any other type takes the first
+    definition found in the project directories above `cwd`, then the
+    user's.
+    """
+
+    if ":" in agent_type:
+        plugin, *subfolders, name = agent_type.split(":")
+        for install in plugin_install_paths(plugin):
+            directory = install.joinpath("agents", *subfolders)
+            front = _named_definition(list(directory.glob("*.md")), name)
+            if front is not None:
+                return front
+        return None
+    directories = [*(project_agent_dirs(cwd) if cwd else []), agents_dir()]
+    for directory in directories:
+        front = _named_definition(list(directory.rglob("*.md")), agent_type)
+        if front is not None:
+            return front
+    return None
+
+
 def definition_pin(
     agent_type: str | None,
     definitions: dict | None = None,
@@ -1252,31 +1425,85 @@ def definition_pin(
 ) -> str | None:
     """The model an agent definition pins, keyed by the agent type.
 
-    A plugin-scoped type, `plugin:name` or `plugin:subfolder:name`, reads
-    that plugin's `agents/` directory. Any other type takes the first
-    definition found in the project directories above `cwd`, then the
-    user's, then the built-in table, so a definition naming no model hides
-    a pin below it.
+    The definition is the one `definition_front` finds, then the built-in
+    table, so a definition naming no model hides a pin below it.
     """
 
     if not agent_type:
         return None
     if definitions is not None:
         return definitions.get(agent_type)
+    front = definition_front(agent_type, cwd)
+    if front is not None:
+        return _model_of(front)
     if ":" in agent_type:
-        plugin, *subfolders, name = agent_type.split(":")
-        for install in plugin_install_paths(plugin):
-            directory = install.joinpath("agents", *subfolders)
-            front = _named_definition(list(directory.glob("*.md")), name)
-            if front is not None:
-                return _model_of(front)
         return None
-    directories = [*(project_agent_dirs(cwd) if cwd else []), agents_dir()]
-    for directory in directories:
-        front = _named_definition(list(directory.rglob("*.md")), agent_type)
-        if front is not None:
-            return _model_of(front)
     return BUILT_IN_PINS.get(agent_type)
+
+
+RULESETS_KEYS = ("exclude", "add")
+
+
+def _is_stem_list(value: object) -> bool:
+    return isinstance(value, list) and all(isinstance(stem, str) for stem in value)
+
+
+def _stem_list(block: dict, key: str) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    """The stems `block` states under `key`, what could not be read, and what is unstated."""
+
+    if block.get(key) is None:
+        return (), (), (f"the metadata.rulesets block names no {key}",)
+    value = block[key]
+    if not _is_stem_list(value):
+        return (), (f"metadata.rulesets.{key} is not a list of stems",), ()
+    return tuple(value), (), ()
+
+
+def rulesets_adjustment(front: dict) -> Adjustment:
+    """What a definition's `metadata.rulesets` block asks, read forgivingly.
+
+    A block that is missing, or is not a mapping, asks nothing. A key the
+    reader does not know is named and skipped, and each known key is read on
+    its own so one unreadable value leaves the other applying.
+    """
+
+    metadata = front.get("metadata")
+    block = metadata.get("rulesets") if isinstance(metadata, dict) else None
+    if block is None:
+        return Adjustment(absent=("the definition carries no metadata.rulesets block",))
+    if not isinstance(block, dict):
+        return Adjustment(unhonored=("metadata.rulesets is not a mapping",))
+
+    unhonored = tuple(
+        f"metadata.rulesets has unknown key {key}" for key in block if key not in RULESETS_KEYS
+    )
+    exclude, bad_exclude, no_exclude = _stem_list(block, "exclude")
+    add, bad_add, no_add = _stem_list(block, "add")
+    return Adjustment(
+        exclude=exclude,
+        add=add,
+        unhonored=unhonored + bad_exclude + bad_add,
+        absent=no_exclude + no_add,
+    )
+
+
+def definition_adjustment(
+    agent_type: str | None, cwd: pathlib.Path | str | None = None
+) -> Adjustment:
+    """The adjustment the definition an agent type names asks for.
+
+    A type with no definition asks nothing, and the record says so. A fork
+    continues its parent's context and has no definition to read.
+    """
+
+    if not agent_type:
+        return Adjustment(absent=("the spawn named no agent type",))
+    if agent_type == "fork":
+        return Adjustment()
+    front = definition_front(agent_type, cwd)
+    if front is None:
+        return Adjustment(absent=(f"no definition was found for agent type {agent_type}",))
+    return rulesets_adjustment(front)
 
 
 def delegate_resolution(
@@ -1285,6 +1512,27 @@ def delegate_resolution(
     state: pathlib.Path | str | None = None,
     env: dict | None = None,
     definitions: dict | None = None,
+) -> Resolution:
+    """The tier a delegate runs at, and the adjustment its definition asks of that tier.
+
+    The adjustment rides on every path to a tier, so it applies on any model
+    and whether or not the definition pins one. Injected `definitions` stand
+    in for the definition files, so they leave nothing to read.
+    """
+
+    resolution = _delegate_tier(payload, root, state, env, definitions)
+    if definitions is not None:
+        return resolution
+    adjustment = definition_adjustment(payload.get("agent_type"), payload.get("cwd"))
+    return dataclasses.replace(resolution, adjustment=adjustment)
+
+
+def _delegate_tier(
+    payload: dict,
+    root: pathlib.Path | str | None,
+    state: pathlib.Path | str | None,
+    env: dict | None,
+    definitions: dict | None,
 ) -> Resolution:
     """The tier a delegate runs at: force levers, then the four ranked sources."""
 
@@ -1385,10 +1633,12 @@ def switch_resolution(
 # --- Delivery ----------------------------------------------------------------
 
 
-def tier_ruleset(tier: str, root: pathlib.Path | str | None = None) -> Ruleset | NoRuleset:
+def tier_ruleset(
+    tier: str, root: pathlib.Path | str | None = None, adjust: Adjustment | None = None
+) -> Ruleset | NoRuleset:
     """One tier's composed bodies, or the reason none resolved."""
 
-    composed = compose(tier, root)
+    composed = compose(tier, root, adjust)
     fatal = [f for f in composed.findings if f.kind in ("manifest", "missing-tier", "no-body")]
     if not composed.stems or fatal:
         reason = "; ".join(f.message for f in composed.findings) or f"tier {tier} composed no stems"
@@ -1406,6 +1656,7 @@ def tier_ruleset(tier: str, root: pathlib.Path | str | None = None) -> Ruleset |
         stems=composed.stems,
         text="\n".join(body for _, body in sections),
         sections=tuple(sections),
+        notes=tuple(f.message for f in composed.findings if f.kind in ADJUSTMENT_KINDS),
     )
 
 
@@ -1507,6 +1758,8 @@ class Delivered:
     parts: int
     part_stems: tuple[str, ...]
     digest: str
+    adjustment: Adjustment = Adjustment()
+    rulesets_notes: tuple[str, ...] = ()
 
 
 def _delivered(res: Resolution, event: str, scope: str, root, part: int) -> Delivered | None:
@@ -1514,11 +1767,15 @@ def _delivered(res: Resolution, event: str, scope: str, root, part: int) -> Deli
 
     tier, source, notes = res.tier, res.source, res.notes
     switch = scope == "switch"
-    ruleset = tier_ruleset(tier, root)
+    adjustment = res.adjustment
+    ruleset = tier_ruleset(tier, root, adjustment)
     if isinstance(ruleset, NoRuleset):
         fallback = default_ruleset(root)
         if isinstance(fallback, Ruleset):
             notes = (*notes, f"tier {tier} was unavailable ({ruleset.reason}), so default was used")
+            if adjustment.exclude or adjustment.add:
+                notes += ("the definition's metadata.rulesets block was not applied",)
+                adjustment = Adjustment(unhonored=adjustment.unhonored, absent=adjustment.absent)
             tier, ruleset = DEFAULT_TIER, fallback
         else:
             if part != 1:
@@ -1535,6 +1792,10 @@ def _delivered(res: Resolution, event: str, scope: str, root, part: int) -> Deli
     if part < 1 or part > total:
         return None
 
+    stated = (*adjustment.unhonored, *ruleset.notes)
+    notes = (*notes, *stated)
+    rulesets_notes = (*adjustment.absent, *stated)
+
     section = parts_list[part - 1]
     part_stems = tuple(stem for stem, _ in section)
     body = part_text(section)
@@ -1546,7 +1807,32 @@ def _delivered(res: Resolution, event: str, scope: str, root, part: int) -> Deli
         text = f"{header}\n\n{body}\n\n{trailer}"
     else:
         text = f"{header}\n\n{body}"
-    return Delivered(event, text, tier, source, ruleset.stems, scope, total, part_stems, digest)
+    return Delivered(
+        event,
+        text,
+        tier,
+        source,
+        ruleset.stems,
+        scope,
+        total,
+        part_stems,
+        digest,
+        adjustment,
+        rulesets_notes,
+    )
+
+
+def _rulesets_record(delivered: Delivered) -> dict:
+    """What a delivery's record keeps of the definition's block, empty where it asked nothing."""
+
+    adjustment = delivered.adjustment
+    if not (adjustment.exclude or adjustment.add or delivered.rulesets_notes):
+        return {}
+    return {
+        "exclude": list(adjustment.exclude),
+        "add": list(adjustment.add),
+        "notes": list(delivered.rulesets_notes),
+    }
 
 
 def deliver_payload(
@@ -1640,6 +1926,7 @@ def deliver_payload(
                 prompt_id=prompt_id if scope == "switch" else None,
                 root=root,
                 parts=delivered.parts,
+                rulesets=_rulesets_record(delivered),
             ),
             session_id=session_id or "session",
             agent_id=agent_id,
@@ -1735,15 +2022,15 @@ def command_delivery_check(args: argparse.Namespace) -> int:
     ]
 
     problems = []
-    composed_parts: dict[str, tuple] = {}
+    composed_parts: dict[tuple[str, Adjustment], tuple] = {}
     writer_pools: dict[str | None, dict[int, list[dict]]] = {}
 
-    def parts_for(tier: str) -> tuple:
-        if tier not in composed_parts:
-            ruleset = tier_ruleset(tier, root)
+    def parts_for(tier: str, adjust: Adjustment) -> tuple:
+        if (tier, adjust) not in composed_parts:
+            ruleset = tier_ruleset(tier, root, adjust)
             sections = ruleset.sections if isinstance(ruleset, Ruleset) else ()
-            composed_parts[tier] = pack_parts(sections)
-        return composed_parts[tier]
+            composed_parts[tier, adjust] = pack_parts(sections)
+        return composed_parts[tier, adjust]
 
     def pool_for(agent_id: str | None) -> dict[int, list[dict]]:
         if agent_id not in writer_pools:
@@ -1756,7 +2043,11 @@ def command_delivery_check(args: argparse.Namespace) -> int:
 
     for record in _effective_deliveries(deliveries):
         tier = record.get("tier")
-        composed = set(compose(tier, root).stems)
+        asked = record.get("rulesets") or {}
+        adjust = Adjustment(
+            exclude=tuple(asked.get("exclude") or ()), add=tuple(asked.get("add") or ())
+        )
+        composed = set(compose(tier, root, adjust).stems)
         delivered = set(record.get("stems") or [])
         for stem in sorted(composed - delivered):
             problems.append(f"{tier}: {stem} composed but not delivered")
@@ -1777,7 +2068,7 @@ def command_delivery_check(args: argparse.Namespace) -> int:
                     f"{tier}: part {part} disagrees on tier, emitted as {emitted_part.get('tier')}"
                 )
             else:
-                parts_list = parts_for(tier)
+                parts_list = parts_for(tier, adjust)
                 if 1 <= part <= len(parts_list):
                     expected = hashlib.sha256(
                         part_text(parts_list[part - 1]).encode("utf-8")
@@ -1860,6 +2151,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     check = subcommands.add_parser("check", help="report every illegal state")
     check.add_argument("--root", default=None, help=ROOT_HELP)
+    check.add_argument(
+        "--agents",
+        default=None,
+        help="the agent definitions to warn on, <config>/agents by default",
+    )
     check.set_defaults(handler=command_check)
 
     deliver = subcommands.add_parser("deliver", help="answer a hook payload on stdin")

@@ -178,12 +178,15 @@ def delivery_record(
     prompt_id: str | None = None,
     root: pathlib.Path | str | None = None,
     parts: int | None = None,
+    rulesets: dict | None = None,
 ) -> dict:
     """The record one delivery produces.
 
     `root` names the corpus the delivery read. A flag, a variable, and the
     configuration directory each name one, so a record naming none leaves a
-    reader unable to tell which bodies reached the context.
+    reader unable to tell which bodies reached the context. `rulesets` is
+    what the delegate's definition asked of the tier, as `exclude`, `add`,
+    and `notes`, which a later comparison composes the same way.
     """
 
     record = {
@@ -203,6 +206,8 @@ def delivery_record(
         record["parts"] = parts
     if root is not None:
         record["root"] = str(root)
+    if rulesets:
+        record["rulesets"] = rulesets
     return record
 
 
