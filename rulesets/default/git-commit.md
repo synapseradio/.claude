@@ -8,7 +8,7 @@ For every commit, commit message, and move between branches, optimize for a comm
 
 A message opens on one line of the form `$type($scope): $description`. The type is one of feat, fix, docs, style, refactor, perf, test, build, ci, chore, or revert, chosen from what the diff does. The scope is optional, reused where the branch or repo already uses one. The description is imperative, starts lowercase, carries no trailing period, and writes identifiers in their real casing. The body follows one blank line and says why the change happened, for the decisions that were yours to make.
 
-Where the repo states a format through a commitlint, commitizen, or gitlint config, an enabled commit-msg hook, a documented convention, or a consistent branch history, follow it exactly. Otherwise, use the message form above. Honor the standing content bans either way, no URLs and no co-author trailers.
+Where the repo states a format through a commitlint, commitizen, or gitlint config, an enabled commit-msg hook, a documented convention, or a consistent branch history, follow it exactly. Otherwise, use the message form above. Honor the standing content bans either way, no URLs, no co-author trailers, and no mention of the user.
 
 ### The commit
 
