@@ -23,7 +23,7 @@ Search each reading in the publisher's words, and add each word the pages teach 
 
 Where the question is a library, framework, SDK, or CLI's documentation, go to context7 first, at the version the question names. Use the tvly CLI, the command line for the Tavily service, for search, extraction, crawling, research, and other features of the CLI as they are relevant. Where `tvly` is unavailable, use the linkup search and fetch tools in its place. Where a site serves an `llms.txt` at its origin, read it first and fetch the page it lists for the question. Load a linkup tool with ToolSearch by its exact name before its first call. Give every Bash call a timeout.
 
-A reading is fully searched once its last two searches added no new page worth opening.
+A reading is fully searched once its last two searches turned up only pages already found, or new pages you judged too weak to open.
 
 ## The pages
 
@@ -35,7 +35,7 @@ Report each page separately. The caller joins the pages into an answer.
 
 ## Where the search ended
 
-End the map with where your search ended: each reading or site you left unsearched, with its reason, each search that returned nothing, with its terms, and each URL that failed every fetch, by name. The caller starts their own searching from there.
+End the map with where your search ended: each reading or site you skipped, with its reason, each search that came back empty, with its terms, and each URL that failed every fetch, by name. The caller starts their own searching from there.
 
 ## Examples
 
