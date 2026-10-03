@@ -674,6 +674,21 @@ Set the effort field wherever one exists, or do so in the prompt where it does n
 
 Hold every claim in a report as unverified until you find its source.
 
+### Shared focus
+
+A shared focus is any file, artifact, decision, term, or convention that two or more agents in one orchestration read, write, or state, at any point in it, a spec two delegates both edit for one. A roster is the list of the orchestration's running agents, each with its address and the slice it owns.
+
+Where two or more agents run at once and a shared focus exists or could arise, apply each step below.
+
+- Give each agent the roster, in its prompt or by message once it runs.
+- Give each agent the conventions every agent applies, worded identically.
+- Direct each agent to message, through SendMessage, every agent whose files state a wording or decision it is about to settle, and to agree on it with that agent first.
+- Where one agent's edits wait on another agent finishing, direct the finishing agent to message the waiting agent directly with what it changed and decided.
+- When an agent joins the orchestration, send every running agent the roster with its entry added.
+- Keep every final report addressed to the caller.
+
+Never let two agents edit the same file at once.
+
 <!-- rule: delegate-report -->
 
 ## delegate-report
