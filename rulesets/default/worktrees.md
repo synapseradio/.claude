@@ -8,6 +8,6 @@ Create with `wt --yes switch --create $branch --base $base`, naming as `$base` t
 
 Address files in a worktree by the absolute path wt prints. Where a delegate is to work in its own worktree, create that worktree with wt first, then name its absolute path in the delegate's prompt.
 
-Before merging, run `git fetch`, then `git rev-list --left-right --count "$target...$target@{upstream}"`. Where both counts are nonzero, `$target` and its upstream have diverged: stop and report the two counts. Otherwise, merge. `wt merge` rebases the branch onto `$target`, fast-forwards `$target`, then removes the worktree and deletes its branch.
+Before merging, run `git fetch`, then `git rev-list --left-right --count "$target...$target@{upstream}"`. Where both counts are above zero, `$target` and its upstream have diverged: stop and report the two counts. Otherwise, merge. `wt merge` rebases the branch onto `$target`, fast-forwards `$target`, then removes the worktree and deletes its branch.
 
-Never manage a worktree through the EnterWorktree or ExitWorktree tools. Never make a worktree through the Agent tool's isolation argument.
+Keep the EnterWorktree and ExitWorktree tools out of managing a worktree. Keep the Agent tool's isolation argument out of making a worktree.
