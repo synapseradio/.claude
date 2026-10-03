@@ -1,6 +1,6 @@
-<!-- rule: never-use-sed -->
+<!-- rule: exact-edits -->
 
-## never-use-sed
+## exact-edits
 
 In every context and every turn, optimize for an edit that matches exactly and fails on a wrong match.
 

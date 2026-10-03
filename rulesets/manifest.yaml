@@ -83,7 +83,7 @@ order:
   - search-tools
   - reading-docs
   - structural-search
-  - never-use-sed
+  - exact-edits
   - shell-quoting
   - bash-commands
   - waiting-on-processes

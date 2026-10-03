@@ -112,6 +112,6 @@ The guards see a command only when Claude Code is about to run it. They do not w
 
 ## The rule behind the in-place edit refusal
 
-The refusal of a search-and-replace that saves in place is a house decision, written down in this repository as a rule named `never-use-sed`, which is delivered separately from this plugin. This plugin holds no copy of that rule and does not need it: each guard states its whole reason in the message you receive.
+The refusal of a search-and-replace that saves in place is a house decision, written down in this repository as a rule named `exact-edits`, which is delivered separately from this plugin. This plugin holds no copy of that rule and does not need it: each guard states its whole reason in the message you receive.
 
 What you lose by installing the guard without the rule is the warning. Nothing tells you the decision was made, so the first you hear of it is a command that will not run. If you install the guard, install the rule alongside it.
