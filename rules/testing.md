@@ -18,4 +18,4 @@ Read a test suite as living documentation of what was built and for whom. Before
 
 Let each test fail for one reason, with a message that says which.
 
-Where the user asks, the scope warrants it, or no narrower mapping exists, run the full suite. Otherwise, run only the tests covering changed files, mapped by convention or the project's own tool for changed files.
+Where the user asks, the scope warrants it, or the full suite is the narrowest mapping available, run the full suite. Otherwise, run only the tests covering changed files, mapped by convention or the project's own tool for changed files.
