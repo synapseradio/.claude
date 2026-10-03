@@ -8,20 +8,20 @@ A delegation runs in order: take the readings, choose the settings, compose the 
 
 ### The readings
 
-Inference is how much the delegate must infer beyond the prompt and its evidence. Span is whether the work fits one context. Reversibility is what undoing a wrong result costs. Verifiability is which check outside the delegate detects a wrong answer: a test, a linter, a diff you read, your own verification of the report. Surviving critiques are which critique findings remain unrepaired.
+Inference is how much the delegate must infer beyond the prompt and its evidence. Span is whether the work fits one context. Reversibility is what undoing a wrong result costs. Verifiability is which check outside the delegate detects a wrong answer: a test, a linter, a diff you read, your own verification of the report. Surviving critiques are which critique findings still await repair.
 
 ### The settings
 
-Haiku takes reads, maps, lists, summaries, and stated changes verified by reading the output. Sonnet takes implementing from a design, refining a diff, critiquing an artifact, and any step no other model matches. Opus takes designs, plans, and irreversible edits. Fable runs only on the user's ask, one spawn per ask.
+Haiku takes reads, maps, lists, summaries, and stated changes verified by reading the output. Sonnet takes implementing from a design, refining a diff, critiquing an artifact, and every step outside the kinds the other models take. Opus takes designs, plans, and irreversible edits. Fable runs only on the user's ask, one spawn per ask.
 
-Where the span exceeds one context, split into sequential steps first, each spawn completing its slice end to end, never one layer of every feature. Choose the agent type first, then the model, then the effort. Where the user named a model, choose that model. Where the step is a kind of work named above, choose the model that takes that kind. Otherwise, choose the model by the first of these arms that holds, each arm a condition and its model.
+Where the span exceeds one context, split into sequential steps first, each spawn completing its slice end to end, in place of one layer of every feature. Choose the agent type first, then the model, then the effort. Where the user named a model, choose that model. Where the step is a kind of work named above, choose the model that takes that kind. Otherwise, choose the model by the first of these arms that holds, each arm a condition and its model.
 
 - Where the prompt states every step and you verify the result by reading it, haiku.
 - Where the scope is stated and the open questions are few and named, sonnet.
 - Where the scope is broad, or the work must settle several unknowns as it goes, opus.
 - Otherwise, sonnet.
 
-Where two choices match equally, take the cheaper, haiku below sonnet below opus. Choose the effort by the prompt. Where the prompt states every step, choose low, or medium for a task in several parts, and otherwise high, never above it. Where no effort field is exposed, state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
+Where two choices match equally, take the cheaper, haiku below sonnet below opus. Choose the effort by the prompt. Where the prompt states every step, choose low, or medium for a task in several parts, and otherwise high, with high as the ceiling in every case. Where the effort field is absent, state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
 
 ### The prompt
 
@@ -35,7 +35,7 @@ this step, as they bear on the delegate's decisions]
 
 ## Task
 
-[what to do, complete without prior context, with the return format named]
+[what to do, complete for a reader holding only this prompt, with the return format named]
 
 ## Context
 
@@ -43,7 +43,7 @@ this step, as they bear on the delegate's decisions]
 
 ## Tooling
 
-[the environment, the tools and skills the delegate must use, and those it may. Optional section, for highlighting necessary tools to use, not for limiting allowed tools.]
+[the environment, the tools and skills the delegate must use, and those it may. Optional section, for highlighting necessary tools to use, with the allowed tools left as they stand.]
 
 ## Constraints
 
@@ -56,22 +56,22 @@ Where evidence shows the stated context is wrong, stop immediately and
 report the contradiction. Where a choice point depends on the user's
 intent, direction, or what done means, return it immediately with the
 options you would have offered.
-For a step that did not work, report what broke, what it cost, and what it
+For a step that failed, report what broke, what it cost, and what it
 changes next.
 
 ## Failures
 
 [each known way this step goes wrong: the mechanism and what it costs,
-with no self in the sentence]
+with the self kept out of the sentence]
 ```
 
 Where the model is haiku, state every step, paths, exact constraints, and the check to run and return. Where the model is opus, state the problem, its constraints, and the decisions already made. Where the model is sonnet, state the problem and the decisions, refer to the constraints, and add exact context wherever the delegate would otherwise guess.
 
 ### The spawn
 
-Set the effort field wherever one exists, or do so in the prompt where it does not.
+Set the effort field wherever one exists, or do so in the prompt where it is absent.
 
-Hold every claim in a report as unverified until you find its source.
+Hold every claim in a report as pending verification until you find its source.
 
 ### Shared focus
 
@@ -86,4 +86,4 @@ Where two or more agents run at once and a shared focus exists or could arise, a
 - When an agent joins the orchestration, send every running agent the roster with its entry added.
 - Keep every final report addressed to the caller.
 
-Never let two agents edit the same file at once.
+Let agents edit each file one at a time.
