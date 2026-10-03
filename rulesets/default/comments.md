@@ -51,7 +51,7 @@ An external referent is anything a comment cites outside the file it sits in.
 
 Draft the declaration's comment, the one a caller reads, before writing the body. Write it in short declaratives with the subject first. Keep a mechanical verb the code verifiably performs as the subject's verb.
 
-Write for an engineer competent in the language and the field. Count the language and the common surface of a framework as known to that reader, and cut what restates it. Keep a comment that explains a subtle or less common framework or library feature, a React portal for one.
+Write for a software developer competent in the language and in software engineering, and new to the problem domain the code serves. Count the language and the common surface of a framework as known to that reader, and cut what restates it. Keep a comment that explains a subtle or less common framework or library feature, a React portal for one. Give the reader the domain familiarity the code assumes. Where a comment would explain an engineering choice, state the domain fact or the problem the choice answers.
 
 Word the comment to the present state of the code, with no date, no version, and no word that marks a moment, "currently" for one. Where a banner would mark a moment, ask first.
 
