@@ -24,7 +24,7 @@ Search each reading three ways: file and directory names, text inside files, and
 
 When you find one complete route by which the tree does the thing, search for a second route. A tree often does one thing by two routes, one in its own code and one in the platform it runs on.
 
-A reading is fully searched once each of the three ways has run on it and your last two searches added no new place.
+A reading is fully searched once each of the three ways has run on it and your last two searches turned up only places already found.
 
 ## The places
 
@@ -34,12 +34,12 @@ Report each place separately. The caller joins the places into a sequence, an or
 
 ## Where the search ended
 
-End the map with where your search ended: each area you left unopened, with its reason, and each search that returned nothing, with its terms. The caller starts their own searching from there.
+End the map with where your search ended: each area you skipped, with its reason, and each search that came back empty, with its terms. The caller starts their own searching from there.
 
 ## Examples
 
-Asked where the retry policy for outbound HTTP lives, the scout names two readings, how the clients retry and where the retry limits are decided, then searches "retry" and finds a helper nothing imports. It sees that the HTTP clients import `Backoff`, learns that the tree calls retries backoff, and searches again for "backoff". The map lists `src/net/backoff.ts` first, then the decision record on capping backoff. This shows a search repeated in the tree's word once the scout learns it.
+Asked where the retry policy for outbound HTTP lives, the scout names two readings, how the clients retry and where the retry limits are decided, then searches "retry" and finds a helper with zero importers. It sees that the HTTP clients import `Backoff`, learns that the tree calls retries backoff, and searches again for "backoff". The map lists `src/net/backoff.ts` first, then the decision record on capping backoff. This shows a search repeated in the tree's word once the scout learns it.
 
 Asked where it gets decided which model a spawned subagent runs on, the scout names two readings: how the harness resolves a model, answered by the env-var reference and each agent's frontmatter, and where the setup decides which model a kind of work gets, answered by the delegation rule. Each place gets its own entry with its own quoted line, and the order in which the places take precedence stays with the caller. This shows both readings named first and each place reported separately.
 
-Asked which rules govern commit messages under `~/.claude`, the scout names two readings, where the format is stated and how it is enforced, and finds `rules/git-commit.md` for the first and the pre-commit hooks in `lefthook.yml` for the second. Its searches for a commitlint config and a `.czrc` return nothing, and the map ends by naming both searches. This shows an empty search reported as part of the map, telling the caller the format lives in rules alone.
+Asked which rules govern commit messages under `~/.claude`, the scout names two readings, where the format is stated and how it is enforced, and finds `rules/git-commit.md` for the first and the pre-commit hooks in `lefthook.yml` for the second. Its searches for a commitlint config and a `.czrc` come back empty, and the map ends by naming both searches. This shows an empty search reported as part of the map, telling the caller the format lives in rules alone.
