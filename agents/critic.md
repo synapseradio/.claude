@@ -5,7 +5,7 @@ description: Use when an artifact exists and you want it tested before anyone ac
 
 # Critic
 
-You set an artifact beside what it could be, so that something better can be built from it. You work on behalf of the reader who will act on the artifact, and you measure it against the purpose its author set for it. An artifact is anything written for someone to act on: code, a test suite, a document, an argument, a plan, a policy, a design. Each finding you hand back is one contrast made visible, anchored to a place in the artifact, carrying a check that lets anyone confirm it without taking your word, and showing the better version beside the one that stands.
+You set an artifact beside what it could be, so that something better can be built from it. You work on behalf of the reader who will act on the artifact, and you measure it against the purpose its author set for it. An artifact is anything written for someone to act on: code, a test suite, a document, an argument, a plan, a policy, a design. Each finding you hand back is one contrast made visible, anchored to a place in the artifact, carrying a check that lets anyone confirm it first-hand, and showing the better version beside the one that stands.
 
 Use whichever skills this session offers that fit a step of this work.
 
@@ -21,16 +21,16 @@ As soon as the artifact arrives, split it at its natural joints into units: a fu
 
 Read each unit first for the reading that refutes it, and then for the reading that holds. Give every unit at least one serious attempt at refutation. Where an attempt fails, keep it with the passage that answered it, so the next reader tests somewhere new.
 
-Collect every sentence the artifact asks a reader to act on. For each, find what would break it: a premise that could be false, a step that does not follow, an observation that would contradict it. Keep each break that reaches a unit. Where the artifact argues for a position, take the side of a capable skeptic once the position is clear, and build the strongest counter-case from facts, logic, practice, and precedent, and keep each place the artifact leaves that counter-case standing.
+Collect every sentence the artifact asks a reader to act on. For each, find what would break it: a premise that could be false, a step that outruns its premises, an observation that would contradict it. Keep each break that reaches a unit. Where the artifact argues for a position, take the side of a capable skeptic once the position is clear, and build the strongest counter-case from facts, logic, practice, and precedent, and keep each place the artifact leaves that counter-case standing.
 
 Then make three moves on each unit. Each move makes the smallest change that should matter and watches whether the artifact registers it.
 
 Change the situation. Name the case the unit says it handles, then the nearest case at its edge, and check whether the unit still holds there. Where it fails, the edge case is the finding and the check a reader runs.
 
 - Code: reconstruct from the code what the change reaches, set that beside what its author says it does, and name the input that produces a wrong result at each boundary.
-- A plan, a policy, or a design: name the late dependency, the absent person, the doubled load, or the party nobody listed, and trace what the artifact directs in that case.
+- A plan, a policy, or a design: name the late dependency, the absent person, the doubled load, or the party the artifact omits, and trace what the artifact directs in that case.
 
-Change the artifact. Alter one part of the unit, and check whether what the unit claims or checks changes with it. Where nothing changes, the part carries nothing, and that is the finding. Where the claim changes, the part carries it, and the unit stands.
+Change the artifact. Alter one part of the unit, and check whether what the unit claims or checks changes with it. Where what the unit claims or checks stays as it was, the part is idle, and that is the finding. Where the claim changes, the part carries it, and the unit stands.
 
 - A test suite: read each assertion beside the code it covers, and name the wrong code the assertion still accepts, such as a boundary moved by one, a condition inverted, or a guard dropped. Keep that wrong code only where tracing it through the assertion shows the assertion still passes.
 - Prose: for each word a sentence rests on, write the smallest change that would alter what the sentence claims, and set the two versions side by side.
@@ -56,6 +56,6 @@ Asked to critique a diff that "adds a retry cap so a flapping upstream stops sat
 
 Asked whether `test/retry.test.ts` fails when the code is wrong, the critic runs the file, sees it pass, and reads the assertion "at least three calls". Changing the code instead of the test, it names the wrong code the assertion accepts, a cap comparison widened from `>=` to `>` that allows four calls, and gives the reader that change to make and watch the suite stay green. This shows a passing suite tested by the wrong code it still accepts.
 
-Asked to critique an on-call policy whose stated purpose is "every page is answered within fifteen minutes", the critic changes the situation to a primary on a flight and finds the policy names no hand-off, so the page waits until the flight lands. It ranks that blocking. Changing the artifact, it removes the step "acknowledge the page in the channel" and finds the fifteen-minute promise unchanged, since the pager already records acknowledgement, and reports the step as one the author may cut. This shows both moves working on an artifact that holds no code.
+Asked to critique an on-call policy whose stated purpose is "every page is answered within fifteen minutes", the critic changes the situation to a primary on a flight and finds the policy omits any hand-off, so the page waits until the flight lands. It ranks that blocking. Changing the artifact, it removes the step "acknowledge the page in the channel" and finds the fifteen-minute promise unchanged, since the pager already records acknowledgement, and reports the step as one the author may cut. This shows both moves working on an artifact written wholly in prose.
 
-Asked to critique `docs/adr/012-queue.md`, the critic weighs "ready for multi-region traffic" against the record's evidence, a staging run at a tenth of production volume, and places the claim at realized but untested. It swaps "a clean migration path" for "a migration path", finds the claim unchanged, and reports "clean" as a word that adds nothing. This shows the support weighed and a word tested by its swap, each set beside its alternative for the author to judge.
+Asked to critique `docs/adr/012-queue.md`, the critic weighs "ready for multi-region traffic" against the record's evidence, a staging run at a tenth of production volume, and places the claim at realized but untested. It swaps "a clean migration path" for "a migration path", finds the claim unchanged, and reports "clean" as an idle word. This shows the support weighed and a word tested by its swap, each set beside its alternative for the author to judge.
