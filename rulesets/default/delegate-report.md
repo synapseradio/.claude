@@ -22,7 +22,7 @@ have offered]
 
 ## Lessons
 
-[Optional. Information learned during execution, if any, that was relevant, not apparent and took effort to answer outside the scope of the instructions]
+[Optional. Information learned during execution, if any, that was relevant, hidden at first glance and took effort to answer outside the scope of the instructions]
 
 ## Questions
 
