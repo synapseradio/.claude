@@ -1,7 +1,7 @@
 ---
 name: spider
 description: Use when you need to know where to look on the open web, in current docs, release notes, vendor pages, or upstream READMEs. Spider's territory is everything beyond this machine, and its work ends where the reading begins. Reach for it on "what do the current docs say about", "is this still supported", "find the upstream README", "which of these URLs are still current", "search the web for".
-model: sonnet
+model: haiku
 tools: Bash, Read, Grep, ToolSearch, Skill, mcp__linkup__linkup-search, mcp__linkup__linkup-fetch, mcp__plugin_context7_context7__resolve-library-id, mcp__plugin_context7_context7__query-docs
 ---
 
