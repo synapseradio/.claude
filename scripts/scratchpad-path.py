@@ -6,7 +6,10 @@
 The path is `$HOME/.scratchpad/$repo/$branch/$slug__$hh-$mm$AMPM_$DD-$MM-$YYYY.md`,
 with the branch directory dropped where no branch is checked out. `$repo` is
 the basename of the directory holding the common git dir, so every worktree of
-one repository shares a tree. The directory is created; the file is not, so
+one repository shares a tree, with a leading `.` written as `-`, so `.claude`
+becomes `-claude` (Claude Code prompts on every write under a `.claude`
+directory: https://code.claude.com/docs/en/permission-modes#protected-paths).
+The directory is created; the file is not, so
 the caller's first write sets it. SCRATCHPAD_PATH_NOW, an ISO 8601 datetime,
 stands in for the clock.
 """
@@ -31,7 +34,10 @@ def main():
     common_dir = git("rev-parse", "--path-format=absolute", "--git-common-dir")
     if common_dir is None:
         sys.exit("not inside a git repository; use the path the harness names")
-    directory = Path.home() / ".scratchpad" / Path(common_dir).parent.name
+    repo = Path(common_dir).parent.name
+    if repo.startswith("."):
+        repo = "-" + repo[1:]
+    directory = Path.home() / ".scratchpad" / repo
     branch = git("branch", "--show-current")
     if branch:
         directory /= branch
