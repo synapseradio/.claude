@@ -691,6 +691,7 @@ Span exceeds one context ? first split the work into sequential spawns, each fin
 
 model
   | the user named one = that model
+  | the agent type is Explore = haiku
   | a read, map, list, summary, or stated change verified by reading its output = haiku
   | implementing from a design, refining a diff, or critiquing = sonnet
   | a design, a plan, or an irreversible edit = opus
