@@ -16,8 +16,6 @@ import os
 import pathlib
 import uuid
 
-from . import resolve
-
 LOAD = "load"
 DELIVERY = "delivery"
 SPAWN = "spawn"
@@ -33,7 +31,11 @@ def _safe(key: str) -> str:
 
 
 def _state(state: pathlib.Path | str | None) -> pathlib.Path:
-    return pathlib.Path(state) if state is not None else resolve.state_dir()
+    if state is not None:
+        return pathlib.Path(state)
+    from . import resolve
+
+    return resolve.state_dir()
 
 
 def session_dir(session_id: str, state: pathlib.Path | str | None = None) -> pathlib.Path:
