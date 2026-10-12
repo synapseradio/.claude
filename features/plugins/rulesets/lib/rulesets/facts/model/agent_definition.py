@@ -5,6 +5,8 @@ import pathlib
 
 import yaml
 
+from rulesets.documents import split_frontmatter
+
 Frontmatter = dict[str, object]
 
 
@@ -40,13 +42,12 @@ def _frontmatter(path: pathlib.Path) -> Frontmatter:
         text = path.read_text(encoding="utf-8")
     except OSError:
         return {}
-    if not text.startswith("---"):
+    split = split_frontmatter(text)
+    if split is None:
         return {}
-    closing = text.find("\n---", 3)
-    if closing == -1:
-        return {}
+    block, _ = split
     try:
-        front = yaml.safe_load(text[3:closing])
+        front = yaml.safe_load(block)
     except yaml.YAMLError:
         return {}
     return front if isinstance(front, dict) else {}
