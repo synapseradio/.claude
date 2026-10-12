@@ -12,13 +12,8 @@ from rulesets.facts.model.agent import (
     listed_pin,
 )
 from rulesets.facts.model.claim import claim_model
-from rulesets.facts.model.fact import FromForceLever, ModelResolution, ModelSource
-from rulesets.facts.model.levers import (
-    COORDINATOR_FORCE,
-    SUBAGENT_FORCE,
-    active_lever,
-    subagent_default,
-)
+from rulesets.facts.model.fact import ForceLever, FromForceLever, ModelResolution, ModelSource
+from rulesets.facts.model.levers import active_lever, subagent_default
 from rulesets.facts.model.record import read_model_record
 from rulesets.facts.model.spawn import spawn_model
 from rulesets.notices import Notice, provider_notices
@@ -59,9 +54,9 @@ def resolve_delegate_model(
 
     agent = agent_model(agent_type, cwd, config_dir) if agent_type else None
     lever = active_lever(env)
-    if lever == COORDINATOR_FORCE:
+    if lever == ForceLever.COORDINATOR:
         return settle(parent, FromForceLever(lever))
-    if lever == SUBAGENT_FORCE:
+    if lever == ForceLever.SUBAGENT:
         return _under_subagent_force(agent, parent, env, settle)
 
     spawn = spawn_model(session_id, _text(payload.get("prompt_id")), agent_type, state_dir)
@@ -91,7 +86,7 @@ def _under_subagent_force(
 ) -> ModelResolution:
     """The default variable, then Explore's listed model, then the parent's identifier."""
 
-    source = FromForceLever(SUBAGENT_FORCE)
+    source = FromForceLever(ForceLever.SUBAGENT)
     default = subagent_default(env)
     if default:
         return settle(default, source)

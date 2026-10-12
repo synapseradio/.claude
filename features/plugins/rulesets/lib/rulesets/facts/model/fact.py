@@ -1,14 +1,19 @@
 """The model fact a resolution reaches: claimed, unclaimed, or missing, with its source."""
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Literal
 
 from rulesets.notices import Notice
 
 type SessionVariable = Literal["ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_MODEL"]
-type ForceLever = Literal[
-    "CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "CLAUDE_CODE_COORDINATOR_FORCE_WORKER_INHERIT_MODEL"
-]
+
+
+class ForceLever(StrEnum):
+    """An environment variable that forces a delegate's model, valued with its own name."""
+
+    SUBAGENT = "CLAUDE_CODE_SUBAGENT_MODEL_FORCE"
+    COORDINATOR = "CLAUDE_CODE_COORDINATOR_FORCE_WORKER_INHERIT_MODEL"
 
 
 @dataclass(frozen=True)

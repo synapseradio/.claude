@@ -2,13 +2,14 @@
 
 import pathlib
 from collections.abc import Iterable, Mapping
+from typing import get_args
 
 from rulesets.facts.model.claim import claim_model
 from rulesets.facts.model.fact import FromVariable, ModelFact, ModelResolution, SessionVariable
 from rulesets.facts.model.record import read_model_record
 from rulesets.notices import provider_notices
 
-SESSION_VARIABLES: tuple[SessionVariable, ...] = ("ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_MODEL")
+SESSION_VARIABLES: tuple[SessionVariable, ...] = get_args(SessionVariable.__value__)
 
 
 def resolve_session_model(

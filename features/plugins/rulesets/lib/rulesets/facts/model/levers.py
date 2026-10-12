@@ -9,8 +9,6 @@ from collections.abc import Mapping
 from rulesets.facts.environment import flag_is_set
 from rulesets.facts.model.fact import ForceLever
 
-SUBAGENT_FORCE: ForceLever = "CLAUDE_CODE_SUBAGENT_MODEL_FORCE"
-COORDINATOR_FORCE: ForceLever = "CLAUDE_CODE_COORDINATOR_FORCE_WORKER_INHERIT_MODEL"
 SUBAGENT_MODEL_VARIABLE = "CLAUDE_CODE_SUBAGENT_MODEL"
 
 _INHERIT = "inherit"
@@ -35,7 +33,7 @@ def active_lever(env: Mapping[str, str]) -> ForceLever | None:
     also fixes the delegate to the parent's model, so it decides where both are set.
     """
 
-    for lever in (COORDINATOR_FORCE, SUBAGENT_FORCE):
+    for lever in (ForceLever.COORDINATOR, ForceLever.SUBAGENT):
         if flag_is_set(env, lever):
             return lever
     return None
