@@ -384,22 +384,17 @@ class TestSkillsRunningInSubagents:
 
         assert fact == model_fact.Claimed("opus", OPUS, "parent-record")
 
-    @pytest.mark.skip(
-        reason=(
-            "A subagent's start payload carries agent_id and agent_type only "
-            "(https://code.claude.com/docs/en/hooks.md#subagentstart), so a skill running in a "
-            "subagent with an inherit model looks like any other delegate and takes "
-            "CLAUDE_CODE_SUBAGENT_MODEL under the force variable. The scenario needs a signal "
-            "the engine can read; the change awaits the caller's decision on which."
-        )
-    )
-    def test_under_the_force_variable_a_skill_with_an_inherit_model_takes_the_parent(self, scene):
+    def test_under_the_force_variable_a_skill_with_an_inherit_model_resolves_by_its_agent_type(
+        self, scene
+    ):
+        # A subagent's start payload carries `agent_id` and `agent_type` only, so the skill's
+        # inherit model is out of the engine's sight:
+        # https://code.claude.com/docs/en/hooks.md#subagentstart
         scene.parent_runs(OPUS)
-        scene.user_agent("skill-runner.md", "name: skill-runner\nmodel: inherit")
 
-        fact = scene.fact("skill-runner", env={SUBAGENT_FORCE: "1", DEFAULT_VARIABLE: HAIKU})
+        fact = scene.fact("general-purpose", env={SUBAGENT_FORCE: "1", DEFAULT_VARIABLE: HAIKU})
 
-        assert fact == model_fact.Claimed("opus", OPUS, "parent-record")
+        assert fact == model_fact.Claimed("haiku", HAIKU, forced(SUBAGENT_FORCE))
 
 
 class TestAHostManagedProviderDrawsAProviderVariableNotice:
