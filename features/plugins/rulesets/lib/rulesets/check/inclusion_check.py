@@ -19,14 +19,14 @@ def inclusion_warnings(
 
     included = {
         entry.rule
-        for references in manifest.reference_lists()
-        for entry in expander.expand(references).applying
+        for references in manifest.written_lists()
+        for entry in expander.expand(references).without_conflicts
     }
     return tuple(
         CheckWarning(
             "never-included",
             RuleSubject(rule.name),
-            rule.files()[0].path,
+            rule.path,
             None,
             f"no add in any list includes rule `{rule.name}`",
         )

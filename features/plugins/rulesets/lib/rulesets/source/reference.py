@@ -10,7 +10,7 @@ from __future__ import annotations
 import dataclasses
 
 RESERVED_RULESETS = ("defaults", "all", "rules", "none")
-NOT_A_FORM = "is no reference form: write a rule, rule@variant, rules:rule, or ruleset:*"
+_NOT_A_FORM = "not a reference form; write a rule, rule@variant, rules:rule, or ruleset:*"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -55,12 +55,12 @@ def parse_reference(text: str, line: int) -> Reference:
     if body.endswith(":*"):
         ruleset = body.removesuffix(":*")
         valid = ruleset and ":" not in ruleset
-        target = SpreadTarget(ruleset) if valid else MalformedTarget(NOT_A_FORM)
+        target = SpreadTarget(ruleset) if valid else MalformedTarget(_NOT_A_FORM)
     else:
         name = body.removeprefix("rules:")
         rule, at, variant = name.partition("@")
         if not rule or ":" in name or (at and not variant):
-            target = MalformedTarget(NOT_A_FORM)
+            target = MalformedTarget(_NOT_A_FORM)
         else:
             target = RuleTarget(rule, variant or None)
     return Reference(text=text, line=line, remove=remove, target=target)

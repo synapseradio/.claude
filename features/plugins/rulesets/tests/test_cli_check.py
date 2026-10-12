@@ -163,6 +163,20 @@ class TestAManifestThatDoesNotParse:
         assert line.startswith(f"{root / 'manifest.yaml'}:2: error [manifest-unparsable]")
 
 
+class TestARuleFileThatIsNotUtf8:
+    def test_the_file_is_printed_as_an_error_and_the_exit_is_non_zero(self, tmp_path):
+        root = build(tmp_path, stems=["other"])
+        (root / "rules" / "voice.md").write_bytes(b"Speak \xff plainly.\n")
+
+        result = check(root)
+
+        assert (result.returncode, result.stderr) == (1, "")
+        (line,) = lines_of(result)
+        assert line.startswith(
+            f"{root / 'rules' / 'voice.md'}: error [unreadable-file] rule `voice`"
+        )
+
+
 class TestTheOutwardVocabulary:
     def test_a_variant_with_no_default_form_names_the_rule_and_the_variant(self, tmp_path):
         root = build(tmp_path, stems=["tone@dry"])

@@ -19,7 +19,7 @@ from rulesets.check.findings import (
 )
 
 
-def describe_subject(subject: Subject) -> str:
+def _describe_subject(subject: Subject) -> str:
     """The subject in outward words. Items count from 1 in the order they are written."""
 
     match subject:
@@ -48,7 +48,7 @@ def finding_line(finding: CheckError | CheckWarning) -> str:
 
     severity = "error" if isinstance(finding, CheckError) else "warning"
     location = f"{finding.file}:{finding.line}" if finding.line is not None else str(finding.file)
-    subject = describe_subject(finding.subject)
+    subject = _describe_subject(finding.subject)
     return f"{location}: {severity} [{finding.kind}] {subject}: {finding.message}"
 
 

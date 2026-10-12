@@ -9,16 +9,16 @@ from __future__ import annotations
 
 import dataclasses
 import re
-from typing import Literal
+from typing import Literal, assert_never, get_args
 
-from rulesets.facts import Facts
+from rulesets.facts import Facts, Kind
 
 type Fact = Literal["model", "agent", "kind", "flag"]
 
-FACTS = ("model", "agent", "kind", "flag")
-KINDS = ("session", "delegate", "fork")
-KEYWORDS = ("and", "or", "not")
-TOKEN = re.compile(r"[()]|[^\s()]+")
+FACTS: tuple[str, ...] = get_args(Fact.__value__)
+_KINDS: tuple[str, ...] = get_args(Kind.__value__)
+_KEYWORDS = ("and", "or", "not")
+_TOKEN = re.compile(r"[()]|[^\s()]+")
 
 
 class ConditionError(Exception):
@@ -116,16 +116,16 @@ class _Reader:
             self._take()
             return inner
         if token not in FACTS:
-            if token in KEYWORDS or token == ")":
+            if token in _KEYWORDS or token == ")":
                 raise ConditionError(f"expected a test, found `{token}`")
             raise ConditionError(f"`{token}` tests no fact; a condition tests {', '.join(FACTS)}")
         self._take()
         value = self._peek()
-        if value is None or value in KEYWORDS or value in ("(", ")"):
+        if value is None or value in _KEYWORDS or value in ("(", ")"):
             found = "the end of the condition" if value is None else f"`{value}`"
             raise ConditionError(f"`{token}` needs a name, found {found}")
         self._take()
-        if token == "kind" and value not in KINDS:
+        if token == "kind" and value not in _KINDS:
             raise ConditionError(
                 f"`kind {value}` is no kind; kind tests session, delegate, or fork"
             )
@@ -135,7 +135,7 @@ class _Reader:
 def parse_condition(text: str) -> Condition:
     """Parse the text of a condition. Raises ConditionError where it is no condition of facts."""
 
-    return _Reader(TOKEN.findall(text)).condition()
+    return _Reader(_TOKEN.findall(text)).condition()
 
 
 def evaluate(condition: Condition, facts: Facts) -> bool:
@@ -148,7 +148,7 @@ def evaluate(condition: Condition, facts: Facts) -> bool:
             return facts.agent == name
         case FactTest("kind", name):
             return facts.kind == name
-        case FactTest(_, name):
+        case FactTest("flag", name):
             return name in facts.flags
         case Not(operand):
             return not evaluate(operand, facts)
@@ -156,6 +156,8 @@ def evaluate(condition: Condition, facts: Facts) -> bool:
             return evaluate(left, facts) and evaluate(right, facts)
         case Or(left, right):
             return evaluate(left, facts) or evaluate(right, facts)
+        case _:
+            assert_never(condition)
 
 
 def fact_tests(condition: Condition) -> tuple[FactTest, ...]:
@@ -168,3 +170,5 @@ def fact_tests(condition: Condition) -> tuple[FactTest, ...]:
             return fact_tests(operand)
         case And(left, right) | Or(left, right):
             return fact_tests(left) + fact_tests(right)
+        case _:
+            assert_never(condition)

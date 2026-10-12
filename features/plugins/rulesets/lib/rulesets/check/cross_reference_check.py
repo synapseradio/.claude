@@ -7,11 +7,11 @@ import re
 from rulesets.check.findings import CheckWarning, RulePairSubject
 from rulesets.source.pool import Pool, Rule
 
-NAME_CHARACTERS = "A-Za-z0-9_-"
+_NAME_CHARACTERS = "A-Za-z0-9_-"
 
 
 def _whole_word(name: str) -> re.Pattern[str]:
-    return re.compile(rf"(?<![{NAME_CHARACTERS}]){re.escape(name)}(?![{NAME_CHARACTERS}])")
+    return re.compile(rf"(?<![{_NAME_CHARACTERS}]){re.escape(name)}(?![{_NAME_CHARACTERS}])")
 
 
 def cross_reference_warnings(pool: Pool) -> tuple[CheckWarning, ...]:
@@ -33,8 +33,7 @@ def cross_reference_warnings(pool: Pool) -> tuple[CheckWarning, ...]:
 
 def _first_mention(rule: Rule, other: str, pattern: re.Pattern[str]) -> CheckWarning | None:
     for file in rule.files():
-        start = len(file.text.split("\n", 1)[0]) + 1 if file.marker else 0
-        if found := pattern.search(file.text, start):
+        if found := pattern.search(file.text, file.body_start):
             return CheckWarning(
                 "cross-reference",
                 RulePairSubject(rule.name, other),

@@ -18,8 +18,14 @@ PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
-from rulesets.check.findings import ItemSubject, KeySubject, RulesetSubject  # noqa: E402
 from rulesets.source import manifest  # noqa: E402  (path must be set before this import)
+from rulesets.source.manifest import (  # noqa: E402
+    MalformedItem,
+    ReservedRulesetDeclared,
+    UnknownKey,
+    WrongKeyShape,
+    WrongRulesetShape,
+)
 
 SITUATION_ONE = """\
 models: [opus, sonnet, haiku, fable, opus-4-8]
@@ -85,10 +91,15 @@ class TestTheFourKeys:
         ]
         assert [lines(item.references) for item in items] == [[7], [8], [9], [10]]
 
-    def test_each_key_comes_back_with_its_line(self):
-        text = "# the models\nmodels: [opus]\n\ndefaults: []\nrulesets: {}\nwhen: []\n"
+    def test_a_key_of_the_wrong_shape_is_named_with_the_line_of_the_key(self):
+        text = "# the models\nmodels: opus\n\ndefaults: x\nrulesets: []\nwhen: {}\n"
 
-        assert parse(text).key_lines == {"models": 2, "defaults": 4, "rulesets": 5, "when": 6}
+        assert parse(text).problems == (
+            WrongKeyShape("models", 2),
+            WrongKeyShape("defaults", 4),
+            WrongKeyShape("rulesets", 5),
+            WrongKeyShape("when", 6),
+        )
 
     def test_a_valid_manifest_holds_no_problem(self):
         assert parse(SITUATION_ONE).problems == ()
@@ -199,7 +210,7 @@ class TestAParseFailureIsNotAShapeError:
     def test_a_wrong_shape_parses_into_a_manifest_and_names_its_problem(self):
         parsed = parse("defaults:\n  all: true\n")
 
-        assert [(problem.kind, problem.line) for problem in parsed.problems] == [("key-shape", 1)]
+        assert parsed.problems == (WrongKeyShape("defaults", 1),)
 
 
 class TestAWrongShapeLeavesTheRestOfTheManifestStanding:
@@ -207,35 +218,33 @@ class TestAWrongShapeLeavesTheRestOfTheManifestStanding:
         parsed = parse("defaults: [voice]\nproject: amboss\n")
 
         assert texts(parsed.defaults.references) == ["voice"]
-        assert [(problem.kind, problem.subject, problem.line) for problem in parsed.problems] == [
-            ("unknown-key", KeySubject("project"), 2)
-        ]
+        assert parsed.problems == (UnknownKey("project", 2),)
 
     def test_models_that_is_not_a_list_of_names_holds_nothing(self):
         for text in ("models: opus\n", "models: [opus, 5]\n", "models: {opus: 1}\n"):
             parsed = parse(text)
 
             assert parsed.models == ()
-            assert [problem.subject for problem in parsed.problems] == [KeySubject("models")]
+            assert parsed.problems == (WrongKeyShape("models", 1),)
 
     def test_defaults_that_is_not_a_list_holds_nothing(self):
         parsed = parse("defaults: all:*\nmodels: [opus]\n")
 
         assert parsed.defaults is None
         assert parsed.models == ("opus",)
-        assert [problem.subject for problem in parsed.problems] == [KeySubject("defaults")]
+        assert parsed.problems == (WrongKeyShape("defaults", 1),)
 
     def test_rulesets_that_is_not_a_mapping_holds_nothing(self):
         parsed = parse("rulesets: [code]\n")
 
         assert dict(parsed.rulesets) == {}
-        assert [problem.subject for problem in parsed.problems] == [KeySubject("rulesets")]
+        assert parsed.problems == (WrongKeyShape("rulesets", 1),)
 
     def test_when_that_is_not_a_list_holds_nothing(self):
         parsed = parse("when:\n  flag strict: [voice]\n")
 
         assert parsed.items == ()
-        assert [problem.subject for problem in parsed.problems] == [KeySubject("when")]
+        assert parsed.problems == (WrongKeyShape("when", 1),)
 
     def test_a_ruleset_whose_value_is_not_a_list_is_declared_and_holds_nothing(self):
         parsed = parse("rulesets:\n  code: {a: b}\n  tone: [voice]\n")
@@ -243,24 +252,25 @@ class TestAWrongShapeLeavesTheRestOfTheManifestStanding:
         assert parsed.rulesets["code"].references == ()
         assert parsed.rulesets["code"].line == 2
         assert texts(parsed.rulesets["tone"].references) == ["voice"]
-        assert [(problem.kind, problem.subject, problem.line) for problem in parsed.problems] == [
-            ("ruleset-shape", RulesetSubject("code"), 2)
-        ]
+        assert parsed.problems == (WrongRulesetShape("code", 2),)
 
     def test_a_reserved_ruleset_declaration_is_skipped_and_named(self):
         parsed = parse("rulesets:\n  all: [voice]\n  none: []\n  tone: [voice]\n")
 
         assert list(parsed.rulesets) == ["tone"]
-        assert [(problem.kind, problem.subject, problem.line) for problem in parsed.problems] == [
-            ("reserved-ruleset", RulesetSubject("all"), 2),
-            ("reserved-ruleset", RulesetSubject("none"), 3),
-        ]
+        assert parsed.problems == (
+            ReservedRulesetDeclared("all", 2),
+            ReservedRulesetDeclared("none", 3),
+        )
 
     def test_a_ruleset_named_defaults_or_rules_is_reserved_too(self):
         parsed = parse("rulesets:\n  defaults: [voice]\n  rules: [voice]\n")
 
         assert dict(parsed.rulesets) == {}
-        assert [problem.kind for problem in parsed.problems] == ["reserved-ruleset"] * 2
+        assert parsed.problems == (
+            ReservedRulesetDeclared("defaults", 2),
+            ReservedRulesetDeclared("rules", 3),
+        )
 
     def test_a_when_item_that_is_no_one_key_mapping_to_a_list_is_skipped_and_named(self):
         text = (
@@ -277,18 +287,12 @@ class TestAWrongShapeLeavesTheRestOfTheManifestStanding:
             (0, "flag a"),
             (4, "flag e"),
         ]
-        assert [(problem.kind, problem.subject, problem.line) for problem in parsed.problems] == [
-            ("item-shape", ItemSubject(1), 3),
-            ("item-shape", ItemSubject(2), 4),
-            ("item-shape", ItemSubject(3), 5),
-        ]
+        assert parsed.problems == (MalformedItem(1, 3), MalformedItem(2, 4), MalformedItem(3, 5))
 
-    def test_every_problem_names_the_manifest_file(self):
+    def test_the_manifest_keeps_the_path_it_was_read_from(self):
         parsed = manifest.parse_manifest("project: x\n", pathlib.Path("/pool/manifest.yaml"))
 
-        assert [problem.file for problem in parsed.problems] == [
-            pathlib.Path("/pool/manifest.yaml")
-        ]
+        assert parsed.path == pathlib.Path("/pool/manifest.yaml")
 
     def test_one_model_name_declared_twice_is_no_problem(self):
         parsed = parse("models: [sonnet, sonnet]\n")

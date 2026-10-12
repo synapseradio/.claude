@@ -93,6 +93,7 @@ type ErrorKind = Literal[
     "malformed-reference",
     "rule-condition",
     "variant-without-default",
+    "unreadable-file",
 ]
 
 type WarningKind = Literal[

@@ -10,8 +10,11 @@ case builds its rulesets directory under `tmp_path`.
 Run with `python3.14 -m pytest features/rulesets/tests/test_check_errors.py`.
 """
 
+import os
 import pathlib
 import sys
+
+import pytest
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -27,6 +30,7 @@ from rulesets.check.findings import (  # noqa: E402
     RulesetSubject,
     RuleSubject,
 )
+from rulesets.check.report_format import finding_line  # noqa: E402
 from rulesets.check.run import check  # noqa: E402  (path must be set before this import)
 
 
@@ -272,6 +276,33 @@ class TestAReferenceNamingWhatNothingDeclares:
 
         assert "ghost" in check(root).errors[0].message
 
+    def test_the_printed_line_names_the_reference_once_before_the_cause(self, tmp_path):
+        root = build(tmp_path, "defaults: [ghost]\n")
+
+        (error,) = check(root).errors
+
+        assert finding_line(error) == (
+            f"{root / 'manifest.yaml'}:1: error [undeclared-reference] "
+            "reference `ghost`: the pool holds no rule `ghost`"
+        )
+
+    def test_each_cause_is_worded_without_repeating_the_reference(self, tmp_path):
+        root = build(
+            tmp_path,
+            "defaults: [-rules:ghost, voice@loud, phantom:*, 'foo:bar']\n",
+            stems=["voice"],
+        )
+
+        assert [(e.kind, e.message) for e in check(root).errors] == [
+            ("undeclared-reference", "the pool holds no rule `ghost`"),
+            ("undeclared-reference", "rule `voice` has no variant `loud`"),
+            ("undeclared-reference", "no ruleset `phantom` is declared"),
+            (
+                "malformed-reference",
+                "not a reference form; write a rule, rule@variant, rules:rule, or ruleset:*",
+            ),
+        ]
+
     def test_an_undeclared_variant_is_an_error(self, tmp_path):
         root = build(tmp_path, "defaults: [voice@loud]\n", stems=["voice", "voice@terse"])
 
@@ -377,10 +408,38 @@ class TestARuleWhoseFrontmatterCarriesACondition:
         assert error.subject == RuleSubject("voice")
         assert error.file == root / "rules" / "voice@terse.md"
 
+    @pytest.mark.parametrize(
+        "key",
+        ["paths", "when", "model", "models", "agent", "agents", "kind", "kinds", "flag", "flags"],
+    )
+    def test_each_key_a_condition_can_test_is_a_condition(self, tmp_path, key):
+        root = build(tmp_path, bodies={"voice": f"---\n{key}: x\n---\ntext\n"})
+
+        assert errors_of(root) == [("rule-condition", RuleSubject("voice"), 2)]
+
+    def test_the_first_condition_key_in_file_order_is_the_one_named(self, tmp_path):
+        root = build(tmp_path, bodies={"voice": "---\ndescription: x\nflags: a\nmodel: b\n---\n"})
+
+        (error,) = check(root).errors
+        assert (error.line, "`flags`" in error.message) == (3, True)
+
     def test_frontmatter_without_a_condition_is_no_error(self, tmp_path):
         root = build(tmp_path, bodies={"voice": "---\ndescription: tone\n---\ntext\n"})
 
         assert errors_of(root) == []
+
+    def test_frontmatter_that_does_not_parse_is_no_error_and_no_warning(self, tmp_path):
+        root = build(tmp_path, bodies={"voice": "---\npaths: [unclosed\n---\ntext\n"})
+
+        report = check(root)
+
+        assert (report.errors, report.warnings) == ((), ())
+
+    def test_a_fence_closed_with_no_trailing_newline_still_carries_a_condition(self, tmp_path):
+        root = build(tmp_path)
+        (root / "rules" / "voice.md").write_bytes(b"---\r\nmodel: haiku\r\n---")
+
+        assert errors_of(root) == [("rule-condition", RuleSubject("voice"), 2)]
 
 
 class TestAVariantBesideNoDefaultForm:
@@ -397,11 +456,83 @@ class TestAVariantBesideNoDefaultForm:
         assert errors_of(root) == []
 
 
+class TestARuleFileThatCannotBeRead:
+    def test_a_file_that_is_not_utf8_is_an_error_whose_subject_is_the_rule(self, tmp_path):
+        root = build(tmp_path, stems=["other"])
+        (root / "rules" / "voice.md").write_bytes(b"Speak \xff\xfe plainly.\n")
+
+        (error,) = check(root).errors
+
+        assert (error.kind, error.subject, error.line) == (
+            "unreadable-file",
+            RuleSubject("voice"),
+            None,
+        )
+        assert error.file == root / "rules" / "voice.md"
+        assert "UTF-8" in error.message
+
+    def test_the_unreadable_file_draws_no_other_finding(self, tmp_path):
+        root = build(tmp_path)
+        (root / "rules" / "voice.md").write_bytes(b"\xff\xfe")
+
+        report = check(root)
+
+        assert [error.kind for error in report.errors] == ["unreadable-file"]
+        assert report.warnings == ()
+
+    def test_every_unreadable_file_of_a_rule_is_reported(self, tmp_path):
+        root = build(tmp_path)
+        (root / "rules" / "voice.md").write_bytes(b"\xff")
+        (root / "rules" / "voice@terse.md").write_bytes(b"\xfe")
+
+        assert [(kind, subject) for kind, subject, _ in errors_of(root)] == [
+            ("unreadable-file", RuleSubject("voice")),
+            ("unreadable-file", RuleSubject("voice")),
+        ]
+
+    def test_the_other_errors_of_the_run_still_arrive(self, tmp_path):
+        root = build(tmp_path, "project: x\n")
+        (root / "rules" / "voice.md").write_bytes(b"\xff")
+
+        assert [kind for kind, _, _ in errors_of(root)] == ["unknown-key", "unreadable-file"]
+
+
 class TestATopLevelKeyOtherThanTheFour:
     def test_the_key_is_the_subject(self, tmp_path):
         root = build(tmp_path, "defaults: [voice]\nproject: amboss\n", stems=["voice"])
 
         assert errors_of(root) == [("unknown-key", KeySubject("project"), 2)]
+
+
+class TestEveryManifestShapeErrorIsWordedForTheFileToOpen:
+    def test_each_kind_names_the_manifest_file_and_says_what_is_wrong(self, tmp_path):
+        text = (
+            "project: x\n"
+            "models: opus\n"
+            "rulesets:\n"
+            "  code: {a: b}\n"
+            "  all: []\n"
+            "when:\n"
+            "  - just a string\n"
+        )
+        root = build(tmp_path, text)
+
+        errors = check(root).errors
+
+        assert {error.file for error in errors} == {root / "manifest.yaml"}
+        assert [(error.kind, error.message) for error in errors] == [
+            (
+                "unknown-key",
+                "`project` is not a manifest key; the keys are models, defaults, rulesets, and when",
+            ),
+            ("key-shape", "`models` must be a list of model names"),
+            ("ruleset-shape", "ruleset `code` must be a list of references"),
+            ("reserved-ruleset", "`all` is a reserved ruleset and cannot be declared"),
+            (
+                "item-shape",
+                "an item must be a one-key mapping from a condition to a list of references",
+            ),
+        ]
 
 
 class TestATopLevelValueOfTheWrongShape:
@@ -435,6 +566,44 @@ class TestAManifestThatDoesNotParse:
             2,
         )
         assert error.file == root / "manifest.yaml"
+
+    def test_a_manifest_that_is_not_utf8_is_unparsable_and_names_the_cause_and_line(self, tmp_path):
+        root = build(tmp_path)
+        (root / "manifest.yaml").write_bytes(b"defaults: [all:*]\nmodels: [\xff]\n")
+
+        (error,) = check(root).errors
+
+        assert (error.kind, error.subject, error.line) == (
+            "manifest-unparsable",
+            ManifestSubject(),
+            2,
+        )
+        assert error.file == root / "manifest.yaml"
+        assert "UTF-8" in error.message
+
+    def test_a_manifest_decode_error_far_into_the_file_names_its_line(self, tmp_path):
+        root = build(tmp_path)
+        filler = b"# padding\n" * 2000
+        (root / "manifest.yaml").write_bytes(filler + b"models: [\xff]\n")
+
+        (error,) = check(root).errors
+
+        assert (error.kind, error.line) == ("manifest-unparsable", 2001)
+
+    @pytest.mark.skipif(os.geteuid() == 0, reason="root reads a file whatever its mode")
+    def test_a_manifest_the_system_cannot_open_is_unparsable_with_no_line(self, tmp_path):
+        root = build(tmp_path)
+        (root / "manifest.yaml").write_text("defaults: [all:*]\n", encoding="utf-8")
+        (root / "manifest.yaml").chmod(0)
+
+        (error,) = check(root).errors
+
+        assert (error.kind, error.subject, error.line) == (
+            "manifest-unparsable",
+            ManifestSubject(),
+            None,
+        )
+        assert error.message
 
     def test_the_quoted_name_is_no_error(self, tmp_path):
         root = build(tmp_path, 'models: [opus, "opus-4-8[1m]"]\n')

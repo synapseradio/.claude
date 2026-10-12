@@ -1,33 +1,28 @@
-"""Parse `manifest.yaml` into its four keys, keeping the file line of everything check points at."""
+"""Read `manifest.yaml` into its four keys, keeping the file line of everything check points at.
+
+A key of the wrong shape holds nothing and comes back as a shape problem. This module
+records each problem as data and words none of them.
+"""
 
 from __future__ import annotations
 
 import dataclasses
 import pathlib
 from collections.abc import Iterator, Mapping
+from typing import Literal, get_args
 
 import yaml
 
-from rulesets.check.findings import (
-    CheckError,
-    ErrorKind,
-    ItemSubject,
-    KeySubject,
-    RulesetSubject,
-    Subject,
-)
 from rulesets.source.reference import RESERVED_RULESETS, Reference, parse_reference
+from rulesets.source.text_file import UnreadableFile, read_text_file
 
-MANIFEST_FILE = "manifest.yaml"
-MISSING_MANIFEST = "defaults: [all:*]\n"
+_MANIFEST_FILE = "manifest.yaml"
+_MISSING_MANIFEST = "defaults: [all:*]\n"
+_STR_TAG = "tag:yaml.org,2002:str"
 
-KEY_SHAPES = {
-    "models": "must be a list of model names",
-    "defaults": "must be a list of references",
-    "rulesets": "must be a mapping of ruleset names to lists of references",
-    "when": "must be a list of items",
-}
-STR_TAG = "tag:yaml.org,2002:str"
+type ManifestKey = Literal["models", "defaults", "rulesets", "when"]
+
+MANIFEST_KEYS: tuple[str, ...] = get_args(ManifestKey.__value__)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -47,11 +42,57 @@ class WhenItem:
     references: tuple[Reference, ...]
 
 
-class ManifestParseError(Exception):
-    """The manifest is not YAML, or not a mapping of keys."""
+@dataclasses.dataclass(frozen=True)
+class UnknownKey:
+    """A top-level key other than the four."""
 
-    def __init__(self, path: pathlib.Path, line: int, reason: str):
-        super().__init__(f"{path}:{line}: {reason}")
+    name: str
+    line: int
+
+
+@dataclasses.dataclass(frozen=True)
+class WrongKeyShape:
+    """A top-level key whose value is not the shape the key holds."""
+
+    key: ManifestKey
+    line: int
+
+
+@dataclasses.dataclass(frozen=True)
+class WrongRulesetShape:
+    """A ruleset whose value is not a list of references."""
+
+    ruleset: str
+    line: int
+
+
+@dataclasses.dataclass(frozen=True)
+class ReservedRulesetDeclared:
+    """A reserved ruleset name declared under `rulesets`."""
+
+    ruleset: str
+    line: int
+
+
+@dataclasses.dataclass(frozen=True)
+class MalformedItem:
+    """A `when` item that is no one-key mapping from a condition to a list."""
+
+    index: int
+    line: int
+
+
+type ShapeProblem = (
+    UnknownKey | WrongKeyShape | WrongRulesetShape | ReservedRulesetDeclared | MalformedItem
+)
+
+
+class ManifestParseError(Exception):
+    """The manifest cannot be read as text, is not YAML, or is not a mapping of keys."""
+
+    def __init__(self, path: pathlib.Path, line: int | None, reason: str):
+        where = f"{path}:{line}" if line is not None else str(path)
+        super().__init__(f"{where}: {reason}")
         self.path = path
         self.line = line
         self.reason = reason
@@ -61,7 +102,7 @@ class ManifestParseError(Exception):
 class Manifest:
     """The four keys of a manifest. A key that is missing or the wrong shape holds nothing.
 
-    `problems` holds the errors found while reading the shape. `defaults` is None where
+    `problems` holds the shape problems found while reading. `defaults` is None where
     the key holds nothing.
     """
 
@@ -70,10 +111,9 @@ class Manifest:
     defaults: Ruleset | None
     rulesets: Mapping[str, Ruleset]
     items: tuple[WhenItem, ...]
-    key_lines: Mapping[str, int]
-    problems: tuple[CheckError, ...]
+    problems: tuple[ShapeProblem, ...]
 
-    def lists(self) -> dict[str, tuple[Reference, ...]]:
+    def spreadable(self) -> dict[str, tuple[Reference, ...]]:
         """Each list a spread can name, by name: the declared rulesets and `defaults`."""
 
         named = {name: ruleset.references for name, ruleset in self.rulesets.items()}
@@ -81,7 +121,7 @@ class Manifest:
             named["defaults"] = self.defaults.references
         return named
 
-    def reference_lists(self) -> Iterator[tuple[Reference, ...]]:
+    def written_lists(self) -> Iterator[tuple[Reference, ...]]:
         """Every list the manifest writes, in file order: defaults, each ruleset, each item."""
 
         if self.defaults is not None:
@@ -108,19 +148,83 @@ def _references(node: yaml.Node, text: str) -> tuple[Reference, ...] | None:
     return tuple(parse_reference(_written(element, text), _line(element)) for element in node.value)
 
 
-def _model_names(node: yaml.Node) -> tuple[str, ...] | None:
-    if not isinstance(node, yaml.SequenceNode):
-        return None
-    if not all(isinstance(n, yaml.ScalarNode) and n.tag == STR_TAG for n in node.value):
-        return None
-    return tuple(n.value for n in node.value)
-
-
 def _is_item(node: yaml.Node) -> bool:
     if not isinstance(node, yaml.MappingNode) or len(node.value) != 1:
         return False
     condition, references = node.value[0]
     return isinstance(condition, yaml.ScalarNode) and isinstance(references, yaml.SequenceNode)
+
+
+def _read_models(value: yaml.Node, line: int) -> tuple[tuple[str, ...], tuple[ShapeProblem, ...]]:
+    legal = isinstance(value, yaml.SequenceNode) and all(
+        isinstance(name, yaml.ScalarNode) and name.tag == _STR_TAG for name in value.value
+    )
+    if not legal:
+        return (), (WrongKeyShape("models", line),)
+    return tuple(name.value for name in value.value), ()
+
+
+def _read_defaults(
+    value: yaml.Node, text: str, line: int
+) -> tuple[Ruleset | None, tuple[ShapeProblem, ...]]:
+    references = _references(value, text)
+    if references is None:
+        return None, (WrongKeyShape("defaults", line),)
+    return Ruleset("defaults", line, references), ()
+
+
+def _read_rulesets(
+    value: yaml.Node, text: str, line: int
+) -> tuple[dict[str, Ruleset], tuple[ShapeProblem, ...]]:
+    if not isinstance(value, yaml.MappingNode):
+        return {}, (WrongKeyShape("rulesets", line),)
+    rulesets: dict[str, Ruleset] = {}
+    problems: list[ShapeProblem] = []
+    for name_node, list_node in value.value:
+        name = _written(name_node, text)
+        declared = _line(name_node)
+        if name in RESERVED_RULESETS:
+            problems.append(ReservedRulesetDeclared(name, declared))
+            continue
+        references = _references(list_node, text)
+        if references is None:
+            problems.append(WrongRulesetShape(name, declared))
+        rulesets[name] = Ruleset(name, declared, references or ())
+    return rulesets, tuple(problems)
+
+
+def _read_when(
+    value: yaml.Node, text: str, line: int
+) -> tuple[tuple[WhenItem, ...], tuple[ShapeProblem, ...]]:
+    if not isinstance(value, yaml.SequenceNode):
+        return (), (WrongKeyShape("when", line),)
+    items: list[WhenItem] = []
+    problems: list[ShapeProblem] = []
+    for index, element in enumerate(value.value):
+        if not _is_item(element):
+            problems.append(MalformedItem(index, _line(element)))
+            continue
+        condition, references_node = element.value[0]
+        references = _references(references_node, text)
+        items.append(WhenItem(index, _line(condition), condition.value, references or ()))
+    return tuple(items), tuple(problems)
+
+
+def _top_level(text: str, path: pathlib.Path) -> list[tuple[yaml.Node, yaml.Node]]:
+    try:
+        document = yaml.compose(text)
+    except yaml.YAMLError as error:
+        mark = getattr(error, "problem_mark", None)
+        reason = getattr(error, "problem", None) or str(error)
+        raise ManifestParseError(path, mark.line + 1 if mark else 1, reason) from error
+    if document is None:
+        return []
+    if not isinstance(document, yaml.MappingNode):
+        found = "a list" if isinstance(document, yaml.SequenceNode) else "a single value"
+        raise ManifestParseError(
+            path, _line(document), f"the manifest is {found}, and it must be a mapping of keys"
+        )
+    return document.value
 
 
 def parse_manifest(text: str, path: pathlib.Path) -> Manifest:
@@ -130,107 +234,35 @@ def parse_manifest(text: str, path: pathlib.Path) -> Manifest:
     is not a parse failure: it holds nothing, and `problems` names it.
     """
 
-    try:
-        document = yaml.compose(text)
-    except yaml.YAMLError as error:
-        mark = getattr(error, "problem_mark", None)
-        reason = getattr(error, "problem", None) or str(error)
-        raise ManifestParseError(path, mark.line + 1 if mark else 1, reason) from error
-
     models: tuple[str, ...] = ()
     defaults: Ruleset | None = None
     rulesets: dict[str, Ruleset] = {}
-    items: list[WhenItem] = []
-    key_lines: dict[str, int] = {}
-    problems: list[CheckError] = []
+    items: tuple[WhenItem, ...] = ()
+    problems: list[ShapeProblem] = []
 
-    def problem(kind: ErrorKind, subject: Subject, line: int, message: str) -> None:
-        problems.append(CheckError(kind, subject, path, line, message))
-
-    if document is not None and not isinstance(document, yaml.MappingNode):
-        found = "a list" if isinstance(document, yaml.SequenceNode) else "a single value"
-        raise ManifestParseError(
-            path, _line(document), f"the manifest is {found}, and it must be a mapping of keys"
-        )
-
-    for key_node, value in document.value if document is not None else ():
+    for key_node, value in _top_level(text, path):
         name = _written(key_node, text)
         line = _line(key_node)
-        if name not in KEY_SHAPES:
-            problem(
-                "unknown-key",
-                KeySubject(name),
-                line,
-                f"`{name}` is not a manifest key; the keys are models, defaults, rulesets, and when",
-            )
-            continue
-        key_lines[name] = line
-        wrong_shape = (
-            "key-shape",
-            KeySubject(name),
-            line,
-            f"`{name}` {KEY_SHAPES[name]}",
-        )
-        if name == "models":
-            names = _model_names(value)
-            if names is None:
-                problem(*wrong_shape)
-            models = names or ()
-        elif name == "defaults":
-            references = _references(value, text)
-            if references is None:
-                problem(*wrong_shape)
-            defaults = None if references is None else Ruleset("defaults", line, references)
-        elif name == "rulesets":
-            if not isinstance(value, yaml.MappingNode):
-                problem(*wrong_shape)
-                continue
-            rulesets = {}
-            for ruleset_key, ruleset_value in value.value:
-                ruleset = _written(ruleset_key, text)
-                ruleset_line = _line(ruleset_key)
-                if ruleset in RESERVED_RULESETS:
-                    problem(
-                        "reserved-ruleset",
-                        RulesetSubject(ruleset),
-                        ruleset_line,
-                        f"`{ruleset}` is a reserved ruleset and cannot be declared",
-                    )
-                    continue
-                references = _references(ruleset_value, text)
-                if references is None:
-                    problem(
-                        "ruleset-shape",
-                        RulesetSubject(ruleset),
-                        ruleset_line,
-                        f"ruleset `{ruleset}` must be a list of references",
-                    )
-                rulesets[ruleset] = Ruleset(ruleset, ruleset_line, references or ())
-        else:
-            if not isinstance(value, yaml.SequenceNode):
-                problem(*wrong_shape)
-                continue
-            items = []
-            for index, element in enumerate(value.value):
-                if not _is_item(element):
-                    problem(
-                        "item-shape",
-                        ItemSubject(index),
-                        _line(element),
-                        "an item must be a one-key mapping from a condition to a list of references",
-                    )
-                    continue
-                condition, references_node = element.value[0]
-                references = _references(references_node, text)
-                items.append(WhenItem(index, _line(condition), condition.value, references or ()))
+        found: tuple[ShapeProblem, ...]
+        match name:
+            case "models":
+                models, found = _read_models(value, line)
+            case "defaults":
+                defaults, found = _read_defaults(value, text, line)
+            case "rulesets":
+                rulesets, found = _read_rulesets(value, text, line)
+            case "when":
+                items, found = _read_when(value, text, line)
+            case _:
+                found = (UnknownKey(name, line),)
+        problems.extend(found)
 
     return Manifest(
         path=path,
         models=models,
         defaults=defaults,
         rulesets=rulesets,
-        items=tuple(items),
-        key_lines=key_lines,
+        items=items,
         problems=tuple(problems),
     )
 
@@ -238,10 +270,13 @@ def parse_manifest(text: str, path: pathlib.Path) -> Manifest:
 def read_manifest(root: pathlib.Path) -> Manifest:
     """Read `manifest.yaml` of one rulesets directory.
 
-    A missing file reads as `defaults: [all:*]`. A file that does not parse raises
-    ManifestParseError.
+    A missing file reads as `defaults: [all:*]`. A file that cannot be read or does not
+    parse raises ManifestParseError.
     """
 
-    path = root / MANIFEST_FILE
-    text = path.read_text(encoding="utf-8") if path.is_file() else MISSING_MANIFEST
+    path = root / _MANIFEST_FILE
+    try:
+        text = read_text_file(path) if path.is_file() else _MISSING_MANIFEST
+    except UnreadableFile as failure:
+        raise ManifestParseError(path, failure.line, failure.cause) from failure
     return parse_manifest(text, path)

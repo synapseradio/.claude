@@ -5,9 +5,9 @@ from __future__ import annotations
 import pathlib
 
 from rulesets.check.cross_reference_check import cross_reference_warnings
-from rulesets.check.findings import CheckError, CheckWarning, ManifestSubject, Report
+from rulesets.check.findings import CheckError, CheckWarning, Report
 from rulesets.check.inclusion_check import inclusion_warnings
-from rulesets.check.manifest_check import manifest_errors
+from rulesets.check.manifest_check import manifest_errors, unparsable_error
 from rulesets.check.pool_check import pool_errors, pool_warnings
 from rulesets.source.expansion import Expander
 from rulesets.source.manifest import ManifestParseError, read_manifest
@@ -27,13 +27,9 @@ def check(root: pathlib.Path) -> Report:
     try:
         manifest = read_manifest(root)
     except ManifestParseError as failure:
-        errors.append(
-            CheckError(
-                "manifest-unparsable", ManifestSubject(), failure.path, failure.line, failure.reason
-            )
-        )
+        errors.append(unparsable_error(failure))
     else:
-        expander = Expander(manifest.lists(), pool.variants_by_rule())
+        expander = Expander(manifest.spreadable(), pool.variants_by_rule())
         errors.extend(manifest_errors(manifest, expander))
         warnings.extend(inclusion_warnings(manifest, pool, expander))
     errors.extend(pool_errors(pool))

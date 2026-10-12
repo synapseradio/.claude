@@ -1,10 +1,19 @@
-"""What the rule files of a pool carry: errors in their names and frontmatter, and layout warnings."""
+"""What the rule files of a pool carry: errors in their reading and frontmatter, and layout warnings."""
 
 from __future__ import annotations
 
 from rulesets.check.findings import CheckError, CheckWarning, DirectorySubject, RuleSubject
-from rulesets.resolve import PART_BUDGET, REFERENCE_CITATION
-from rulesets.source.pool import Pool, PoolFile
+from rulesets.resolve import PART_BUDGET
+from rulesets.source.condition import FACTS
+from rulesets.source.pool import REFERENCES_DIRECTORY, Citation, Pool, PoolFile
+
+# A frontmatter key scopes a rule file when it is the harness's path scope, the manifest's
+# `when` key, or a fact a condition tests, singular or plural.
+_CONDITION_KEYS = frozenset({"paths", "when", *FACTS, *(f"{fact}s" for fact in FACTS)})
+
+_CONFIGURATION_DIRECTORY = "~/.claude/"
+_CORPUS_REFERENCES = f"{_CONFIGURATION_DIRECTORY}rulesets/{REFERENCES_DIRECTORY}/"
+_BARE_REFERENCES = f"{_CONFIGURATION_DIRECTORY}{REFERENCES_DIRECTORY}/"
 
 
 def pool_errors(pool: Pool) -> tuple[CheckError, ...]:
@@ -20,20 +29,23 @@ def pool_errors(pool: Pool) -> tuple[CheckError, ...]:
                 CheckError(
                     "variant-without-default",
                     subject,
-                    rule.files()[0].path,
+                    rule.path,
                     None,
                     f"rule `{rule.name}` has {noun} {variants} and no default form",
                 )
             )
         for file in rule.files():
-            if file.condition is not None:
+            if file.problem is not None:
+                errors.append(CheckError("unreadable-file", subject, file.path, None, file.problem))
+            condition = next((k for k in file.frontmatter_keys if k.key in _CONDITION_KEYS), None)
+            if condition is not None:
                 errors.append(
                     CheckError(
                         "rule-condition",
                         subject,
                         file.path,
-                        file.condition.line,
-                        f"`{file.condition.key}` in the frontmatter of rule `{rule.name}` "
+                        condition.line,
+                        f"`{condition.key}` in the frontmatter of rule `{rule.name}` "
                         "is a condition; a rule file holds text and no condition",
                     )
                 )
@@ -86,28 +98,40 @@ def _body_warnings(pool: Pool, file: PoolFile) -> list[CheckWarning]:
                 f"{PART_BUDGET}-character part budget",
             )
         )
-    for citation in REFERENCE_CITATION.finditer(file.text):
-        name = citation["name"]
-        line = file.line_of(citation.start())
-        if citation["within"] == "references":
-            warnings.append(
-                CheckWarning(
-                    "external-reference",
-                    subject,
-                    file.path,
-                    line,
-                    f"`{file.path.name}` cites `~/.claude/references/{name}`, "
-                    "which the corpus does not carry",
-                )
-            )
-        elif not (pool.root / "references" / name).is_file():
-            warnings.append(
-                CheckWarning(
-                    "dangling-reference",
-                    subject,
-                    file.path,
-                    line,
-                    f"`{file.path.name}` cites `{name}`, and `references/{name}` is not there",
-                )
-            )
+    for citation in file.citations:
+        if (warning := _citation_warning(pool, file, citation)) is not None:
+            warnings.append(warning)
     return warnings
+
+
+def _citation_warning(pool: Pool, file: PoolFile, citation: Citation) -> CheckWarning | None:
+    subject = RuleSubject(file.rule)
+    path = citation.text
+    if path.startswith(_CORPUS_REFERENCES):
+        name = path.removeprefix(_CORPUS_REFERENCES)
+        if not name or pool.has_reference(name):
+            return None
+        return CheckWarning(
+            "dangling-reference",
+            subject,
+            file.path,
+            citation.line,
+            f"`{file.path.name}` cites `{name}`, and `{REFERENCES_DIRECTORY}/{name}` is not there",
+        )
+    if path.startswith(_BARE_REFERENCES):
+        return CheckWarning(
+            "external-reference",
+            subject,
+            file.path,
+            citation.line,
+            f"`{file.path.name}` cites `{path}`, which the corpus does not carry",
+        )
+    if path.startswith(_CONFIGURATION_DIRECTORY):
+        return None
+    return CheckWarning(
+        "external-reference",
+        subject,
+        file.path,
+        citation.line,
+        f"`{file.path.name}` cites `{path}`, a path outside the configuration directory",
+    )

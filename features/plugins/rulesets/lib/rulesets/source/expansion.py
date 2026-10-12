@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 from collections.abc import Collection, Mapping, Sequence
+from typing import Literal, assert_never
 
 from rulesets.source.reference import (
     RESERVED_RULESETS,
@@ -38,10 +39,15 @@ class Removal:
     source: Reference
 
 
+type ProblemReason = Literal["malformed", "unknown-rule", "unknown-variant", "unknown-ruleset"]
+
+
 @dataclasses.dataclass(frozen=True)
 class ReferenceProblem:
+    """A reference the list could not resolve, and why."""
+
     reference: Reference
-    message: str
+    reason: ProblemReason
 
 
 @dataclasses.dataclass(frozen=True)
@@ -67,7 +73,7 @@ class Expansion:
     conflicts: tuple[Conflict, ...]
 
     @property
-    def applying(self) -> tuple[Entry, ...]:
+    def without_conflicts(self) -> tuple[Entry, ...]:
         """The entries without those that set a variant of a conflicted rule."""
 
         conflicted = {entry for conflict in self.conflicts for entry in conflict.entries}
@@ -139,23 +145,25 @@ class Expander:
         if name not in self._lists or name in self._cycles:
             return ()
         if name not in self._spreads:
-            applying = self.expand(self._lists[name]).applying
-            self._spreads[name] = tuple(dict.fromkeys((e.rule, e.variant) for e in applying))
+            kept = self.expand(self._lists[name]).without_conflicts
+            self._spreads[name] = tuple(dict.fromkeys((e.rule, e.variant) for e in kept))
         return self._spreads[name]
 
-    def _problem(self, target: Target) -> str | None:
+    def _problem(self, target: Target) -> ProblemReason | None:
         match target:
-            case MalformedTarget(reason):
-                return reason
+            case MalformedTarget():
+                return "malformed"
             case SpreadTarget(ruleset):
                 known = ruleset in RESERVED_RULESETS or ruleset in self._lists
-                return None if known else f"no ruleset `{ruleset}` is declared"
+                return None if known else "unknown-ruleset"
             case RuleTarget(rule, variant):
                 if rule not in self._rules:
-                    return f"the pool holds no rule `{rule}`"
+                    return "unknown-rule"
                 if variant is not None and variant not in self._rules[rule]:
-                    return f"rule `{rule}` has no variant `{variant}`"
-        return None
+                    return "unknown-variant"
+                return None
+            case _:
+                assert_never(target)
 
     def expand(self, references: Sequence[Reference]) -> Expansion:
         """Expand one list, applying every remove after every add."""

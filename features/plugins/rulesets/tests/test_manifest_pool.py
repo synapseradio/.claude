@@ -17,7 +17,9 @@ PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
 from rulesets.source.pool import (  # noqa: E402  (path must be set before this import)
-    FrontmatterCondition,
+    Citation,
+    Frontmatter,
+    FrontmatterKey,
     Marker,
     read_pool,
 )
@@ -216,37 +218,202 @@ class TestFirstLineMarkers:
         assert read_pool(root).rules["voice"].default.marker is None
 
 
-class TestARuleIsUnconditionalText:
-    def test_frontmatter_scoping_a_rule_to_paths_is_read_with_its_line(self, tmp_path):
+class TestFrontmatterKeysAreReadWithTheirLines:
+    def test_every_top_level_key_comes_back_with_the_file_line_it_sits_on(self, tmp_path):
         text = "---\ndescription: tone\npaths: ['src/**']\n---\nSpeak.\n"
         root = build(tmp_path, {"rules/voice.md": text})
 
-        condition = read_pool(root).rules["voice"].default.condition
+        voice = read_pool(root).rules["voice"].default
 
-        assert condition == FrontmatterCondition(key="paths", line=3)
+        assert voice.frontmatter_keys == (
+            FrontmatterKey(key="description", line=2),
+            FrontmatterKey(key="paths", line=3),
+        )
 
-    def test_frontmatter_scoping_a_rule_to_a_model_is_read_with_its_line(self, tmp_path):
-        root = build(tmp_path, {"rules/voice.md": "---\nmodel: haiku\n---\nSpeak.\n"})
+    def test_a_key_nested_under_another_is_no_top_level_key(self, tmp_path):
+        root = build(tmp_path, {"rules/voice.md": "---\nmeta:\n  model: haiku\n---\nSpeak.\n"})
 
-        condition = read_pool(root).rules["voice"].default.condition
+        voice = read_pool(root).rules["voice"].default
 
-        assert condition == FrontmatterCondition(key="model", line=2)
+        assert voice.frontmatter_keys == (FrontmatterKey(key="meta", line=2),)
 
-    def test_frontmatter_that_scopes_nothing_carries_no_condition(self, tmp_path):
-        root = build(tmp_path, {"rules/voice.md": "---\ndescription: tone\n---\nSpeak.\n"})
+    def test_a_file_with_no_frontmatter_has_no_keys_and_no_frontmatter_value(self, tmp_path):
+        root = build(tmp_path, {"rules/voice.md": "Speak.\n"})
 
-        assert read_pool(root).rules["voice"].default.condition is None
+        voice = read_pool(root).rules["voice"].default
+
+        assert voice.frontmatter is None
+        assert voice.frontmatter_keys == ()
 
     def test_prose_describing_when_a_rule_applies_is_text_like_any_other(self, tmp_path):
         text = "On haiku models, keep answers short.\nOnly under paths: src/** apply this.\n"
         root = build(tmp_path, {"rules/voice.md": text})
 
-        voice = read_pool(root).rules["voice"]
+        voice = read_pool(root).rules["voice"].default
 
-        assert voice.default.condition is None
-        assert voice.default.text == text
+        assert voice.frontmatter is None
+        assert voice.text == text
 
-    def test_frontmatter_that_does_not_parse_carries_no_condition(self, tmp_path):
+    def test_frontmatter_that_parses_says_so(self, tmp_path):
+        root = build(tmp_path, {"rules/voice.md": "---\nmodel: haiku\n---\nSpeak.\n"})
+
+        voice = read_pool(root).rules["voice"].default
+
+        assert voice.frontmatter == Frontmatter(keys=(FrontmatterKey("model", 2),), parsed=True)
+
+    def test_frontmatter_that_does_not_parse_says_so_and_holds_no_key(self, tmp_path):
         root = build(tmp_path, {"rules/voice.md": "---\npaths: [unclosed\n---\nSpeak.\n"})
 
-        assert read_pool(root).rules["voice"].default.condition is None
+        voice = read_pool(root).rules["voice"].default
+
+        assert voice.frontmatter == Frontmatter(keys=(), parsed=False)
+        assert voice.frontmatter_keys == ()
+
+    def test_frontmatter_that_is_no_mapping_parses_and_holds_no_key(self, tmp_path):
+        root = build(tmp_path, {"rules/voice.md": "---\n- paths\n- model\n---\nSpeak.\n"})
+
+        assert read_pool(root).rules["voice"].default.frontmatter == Frontmatter(
+            keys=(), parsed=True
+        )
+
+    def test_a_fence_written_with_windows_line_endings_or_trailing_spaces_still_opens_a_block(
+        self, tmp_path
+    ):
+        root = build(tmp_path, {})
+        (root / "rules").mkdir()
+        (root / "rules" / "crlf.md").write_bytes(b"---\r\npaths: x\r\n---\r\nSpeak.\r\n")
+        (root / "rules" / "spaced.md").write_bytes(b"---  \npaths: x\n---  \nSpeak.\n")
+        (root / "rules" / "bare.md").write_bytes(b"---\npaths: x\n---")
+
+        pool = read_pool(root)
+
+        for name in ("crlf", "spaced", "bare"):
+            assert pool.rules[name].default.frontmatter_keys == (FrontmatterKey("paths", 2),), name
+
+
+class TestAFileIsReadAsItsBytesSay:
+    def test_a_windows_line_ending_survives_in_the_text(self, tmp_path):
+        root = build(tmp_path, {})
+        (root / "rules").mkdir()
+        (root / "rules" / "voice.md").write_bytes(b"Speak.\r\nPlainly.\r\n")
+
+        voice = read_pool(root).rules["voice"].default
+
+        assert voice.text == "Speak.\r\nPlainly.\r\n"
+        assert voice.problem is None
+
+
+class TestAFileThatCannotBeRead:
+    def test_a_file_that_is_not_utf8_reads_as_a_problem_and_no_text(self, tmp_path):
+        root = build(tmp_path, {"rules/other.md": "Fine.\n"})
+        (root / "rules" / "voice.md").write_bytes(b"Speak \xff\xfe plainly.\n")
+
+        pool = read_pool(root)
+
+        voice = pool.rules["voice"].default
+        assert voice.problem is not None
+        assert "UTF-8" in voice.problem
+        assert (voice.text, voice.marker, voice.frontmatter, voice.citations) == (
+            "",
+            None,
+            None,
+            (),
+        )
+        assert pool.rules["other"].default.problem is None
+
+    def test_a_file_the_system_cannot_open_reads_as_a_problem(self, tmp_path):
+        root = build(tmp_path, {})
+        (root / "rules").mkdir()
+        (root / "rules" / "voice.md").symlink_to(tmp_path / "nowhere.md")
+
+        voice = read_pool(root).rules["voice"].default
+
+        assert voice.problem is not None
+        assert voice.text == ""
+
+
+class TestWhereTheBodyBegins:
+    def test_a_body_with_a_marker_begins_on_the_line_after_it(self, tmp_path):
+        text = "<!-- rule: voice -->\nSpeak.\n"
+        root = build(tmp_path, {"rules/voice.md": text})
+
+        voice = read_pool(root).rules["voice"].default
+
+        assert text[voice.body_start :] == "Speak.\n"
+
+    def test_a_body_with_no_marker_begins_at_its_first_character(self, tmp_path):
+        root = build(tmp_path, {"rules/voice.md": "Speak.\n"})
+
+        assert read_pool(root).rules["voice"].default.body_start == 0
+
+    def test_a_file_holding_only_a_marker_begins_at_its_end(self, tmp_path):
+        text = "<!-- rule: voice -->"
+        root = build(tmp_path, {"rules/voice.md": text})
+
+        assert read_pool(root).rules["voice"].default.body_start == len(text)
+
+
+class TestCitedPaths:
+    def cited(self, tmp_path, text):
+        root = build(tmp_path, {"rules/voice.md": text})
+        return read_pool(root).rules["voice"].default.citations
+
+    def test_a_backticked_path_comes_back_as_written_with_its_line(self, tmp_path):
+        text = "Intro.\nOpen `~/.claude/rulesets/references/table.md` in full.\n"
+
+        assert self.cited(tmp_path, text) == (
+            Citation(text="~/.claude/rulesets/references/table.md", line=2),
+        )
+
+    def test_a_home_path_and_an_absolute_path_are_citations(self, tmp_path):
+        text = "See `~/notes/x.md`.\nAnd `/etc/hosts`.\n"
+
+        assert self.cited(tmp_path, text) == (
+            Citation(text="~/notes/x.md", line=1),
+            Citation(text="/etc/hosts", line=2),
+        )
+
+    def test_a_url_is_no_path(self, tmp_path):
+        text = "See `https://example.com/docs/page` and `//cdn.example.com/x/y`.\n"
+
+        assert self.cited(tmp_path, text) == ()
+
+    def test_inline_code_that_only_resembles_a_path_is_no_citation(self, tmp_path):
+        text = (
+            "Type `/` or `/clear` or `/loop 5m /foo`, run `cd ~/x`, "
+            "name `src/api/users` and `a/b`, or `~/`.\n"
+        )
+
+        assert self.cited(tmp_path, text) == ()
+
+    def test_a_path_outside_backticks_is_no_citation(self, tmp_path):
+        assert self.cited(tmp_path, "Read ~/notes/x.md and /etc/hosts.\n") == ()
+
+
+class TestAReferencesFileIsThereOrNot:
+    def test_a_file_in_references_is_there(self, tmp_path):
+        root = build(tmp_path, {"rules/voice.md": "x", "references/table.md": "a table"})
+
+        assert read_pool(root).has_reference("table.md") is True
+
+    def test_a_file_missing_from_references_is_not(self, tmp_path):
+        root = build(tmp_path, {"rules/voice.md": "x"})
+
+        assert read_pool(root).has_reference("table.md") is False
+
+    def test_a_directory_in_references_is_no_file(self, tmp_path):
+        root = build(tmp_path, {"rules/voice.md": "x", "references/table.md": None})
+
+        assert read_pool(root).has_reference("table.md") is False
+
+
+class TestARulesPath:
+    def test_a_rule_with_a_default_form_has_the_path_of_that_form(self, tmp_path):
+        root = build(tmp_path, {"rules/voice.md": "x", "rules/voice@terse.md": "y"})
+
+        assert read_pool(root).rules["voice"].path == root / "rules" / "voice.md"
+
+    def test_a_rule_with_only_variants_has_the_path_of_the_first(self, tmp_path):
+        root = build(tmp_path, {"rules/tone@warm.md": "x", "rules/tone@dry.md": "y"})
+
+        assert read_pool(root).rules["tone"].path == root / "rules" / "tone@dry.md"

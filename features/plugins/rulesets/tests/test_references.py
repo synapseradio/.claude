@@ -41,7 +41,7 @@ def world(tmp_path, manifest_text, *stems):
         (root / "rules" / f"{stem}.md").write_text(f"text of {stem}\n", encoding="utf-8")
     parsed = parse_manifest(manifest_text, PATH)
     pool = read_pool(root)
-    return parsed, Expander(parsed.lists(), pool.variants_by_rule())
+    return parsed, Expander(parsed.spreadable(), pool.variants_by_rule())
 
 
 def pairs(entries):
@@ -231,7 +231,7 @@ class TestARulesetGroupsRulesByReference:
 
         assert pairs(own.entries) == [("sorting", None)]
         assert [(p.reference.text, p.reference.line) for p in own.problems] == [("voise", 2)]
-        assert "voise" in own.problems[0].message
+        assert own.problems[0].reason == "unknown-rule"
         assert pairs(spread.entries) == [("sorting", None)]
         assert spread.problems == ()
 
@@ -242,7 +242,7 @@ class TestARulesetGroupsRulesByReference:
 
         assert pairs(expansion.entries) == [("voice", None)]
         assert [p.reference.text for p in expansion.problems] == ["nope:*"]
-        assert "nope" in expansion.problems[0].message
+        assert expansion.problems[0].reason == "unknown-ruleset"
 
     def test_a_variant_nobody_declares_is_skipped_and_named(self, tmp_path):
         parsed, expander = world(tmp_path, "defaults: [voice@brisk, sorting]\n", "voice", "sorting")
@@ -251,8 +251,7 @@ class TestARulesetGroupsRulesByReference:
 
         assert pairs(expansion.entries) == [("sorting", None)]
         assert [p.reference.text for p in expansion.problems] == ["voice@brisk"]
-        assert "brisk" in expansion.problems[0].message
-        assert "voice" in expansion.problems[0].message
+        assert expansion.problems[0].reason == "unknown-variant"
 
     def test_a_reference_that_is_no_form_is_skipped_and_named(self, tmp_path):
         parsed, expander = world(tmp_path, "defaults: ['foo:bar', voice]\n", "voice")
@@ -261,6 +260,7 @@ class TestARulesetGroupsRulesByReference:
 
         assert pairs(expansion.entries) == [("voice", None)]
         assert [p.reference.text for p in expansion.problems] == ["foo:bar"]
+        assert expansion.problems[0].reason == "malformed"
 
     def test_a_rule_with_only_variants_is_still_a_declared_rule(self, tmp_path):
         parsed, expander = world(tmp_path, "defaults: [tone@dry, tone]\n", "tone@dry")
@@ -500,7 +500,7 @@ class TestAListNamingTwoVariantsOfOneRule:
         (conflict,) = expansion.conflicts
         assert conflict.rule == "voice"
         assert [entry.source.text for entry in conflict.entries] == ["voice@terse", "voice@warm"]
-        assert pairs(expansion.applying) == [("report-format", None)]
+        assert pairs(expansion.without_conflicts) == [("report-format", None)]
 
     def test_two_sets_that_agree_are_no_conflict(self, tmp_path):
         text = "rulesets:\n  tone: [voice@terse]\nwhen:\n  - flag a: [tone:*, voice@terse]\n"
@@ -539,7 +539,7 @@ class TestAListNamingTwoVariantsOfOneRule:
             ("voice", "terse", spread),
             ("voice", "warm", direct),
         ]
-        assert pairs(expansion.applying) == [("sorting", None)]
+        assert pairs(expansion.without_conflicts) == [("sorting", None)]
 
     def test_statements_in_different_lists_are_no_conflict(self, tmp_path):
         text = "when:\n  - flag a: [voice@terse]\n  - flag b: [voice@warm]\n"

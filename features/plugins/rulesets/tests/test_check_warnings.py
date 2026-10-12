@@ -416,6 +416,63 @@ class TestABodyCitingAFileTheCorpusCannotHandOver:
         assert warning.line == 2
         assert warnings_of(root, "dangling-reference") == []
 
+    def test_a_home_path_outside_the_configuration_directory_is_external(self, tmp_path):
+        root = build(tmp_path, bodies={"voice": "Text.\nSee `~/notes/x.md` first.\n"})
+
+        (warning,) = warnings_of(root, "external-reference")
+        assert warning.subject == RuleSubject("voice")
+        assert warning.file == root / "rules" / "voice.md"
+        assert warning.line == 2
+        assert "~/notes/x.md" in warning.message
+        assert warnings_of(root, "dangling-reference") == []
+
+    def test_an_absolute_path_is_external(self, tmp_path):
+        root = build(tmp_path, bodies={"voice": "Read `/etc/hosts` before editing.\n"})
+
+        (warning,) = warnings_of(root, "external-reference")
+        assert warning.line == 1
+        assert "/etc/hosts" in warning.message
+
+    def test_a_corpus_reference_that_exists_draws_nothing(self, tmp_path):
+        root = build(
+            tmp_path,
+            bodies={"voice": "Open `~/.claude/rulesets/references/a.md` in full.\n"},
+        )
+        (root / "references").mkdir()
+        (root / "references" / "a.md").write_text("a\n", encoding="utf-8")
+
+        report = check(root)
+
+        assert report.warnings == ()
+        assert report.errors == ()
+
+    def test_a_path_inside_the_configuration_directory_but_outside_the_corpus_draws_nothing(
+        self, tmp_path
+    ):
+        root = build(tmp_path, bodies={"voice": "See `~/.claude/rules/testing.md`.\n"})
+
+        assert warnings_of(root, "external-reference") == []
+        assert warnings_of(root, "dangling-reference") == []
+
+    def test_a_url_is_no_path(self, tmp_path):
+        root = build(
+            tmp_path,
+            bodies={"voice": "See `https://example.com/docs/page` and `//cdn.example.com/a/b`.\n"},
+        )
+
+        assert warnings_of(root, "external-reference") == []
+
+    def test_inline_code_that_only_resembles_a_path_draws_nothing(self, tmp_path):
+        root = build(
+            tmp_path,
+            bodies={
+                "voice": "Type `/` or `/clear`, name `src/api/users`, run `cd ~/x`, or `~/`.\n"
+            },
+        )
+
+        assert warnings_of(root, "external-reference") == []
+        assert warnings_of(root, "dangling-reference") == []
+
     def test_a_citation_in_a_variant_names_the_variant_file(self, tmp_path):
         root = build(
             tmp_path,

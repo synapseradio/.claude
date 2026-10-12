@@ -14,10 +14,10 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from rulesets.check.report_format import report_lines
 from rulesets.check.run import check
 
-USAGE_ERROR = 2
+_USAGE_ERROR = 2
 
 
-def build_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cli.py", description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", required=True)
     checking = commands.add_parser(
@@ -29,10 +29,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    arguments = build_parser().parse_args(argv)
+    arguments = _build_parser().parse_args(argv)
     if not arguments.root.is_dir():
         print(f"cli.py: no rulesets directory at {arguments.root}", file=sys.stderr)
-        return USAGE_ERROR
+        return _USAGE_ERROR
     report = check(arguments.root)
     for line in report_lines(report):
         print(line)

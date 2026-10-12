@@ -1,4 +1,9 @@
-"""Read the pool: the rule files of one rulesets directory, by rule and by variant."""
+"""Read the pool: the rule files of one rulesets directory, by rule and by variant.
+
+The reader extracts what each file says (its text, first-line marker, frontmatter keys,
+cited paths, and where its body begins) and judges none of it. A file that cannot be read
+carries the cause in `problem`.
+"""
 
 from __future__ import annotations
 
@@ -9,27 +14,15 @@ from collections.abc import Mapping
 
 import yaml
 
-POOL_DIRECTORY = "rules"
+from rulesets.documents import split_frontmatter
+from rulesets.source.text_file import UnreadableFile, read_text_file
+
+_POOL_DIRECTORY = "rules"
 REFERENCES_DIRECTORY = "references"
 
-# A frontmatter key scopes a rule file when it is the harness's path scope, the manifest's
-# `when` key, or a fact kind a condition tests, singular or plural.
-CONDITION_KEYS = frozenset(
-    {
-        "paths",
-        "when",
-        "model",
-        "models",
-        "agent",
-        "agents",
-        "kind",
-        "kinds",
-        "flag",
-        "flags",
-    }
-)
+_MARKER = re.compile(r"<!-- rule: (?P<rule>[^\s@]+)(?: variant: (?P<variant>\S+))? -->")
 
-MARKER = re.compile(r"<!-- rule: (?P<rule>[^\s@]+)(?: variant: (?P<variant>\S+))? -->")
+_REFERENCE_CITATION = re.compile(r"`(?P<path>~/[^`\s]+|/[^`\s/]+/[^`\s]+)`")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -41,26 +34,58 @@ class Marker:
 
 
 @dataclasses.dataclass(frozen=True)
-class FrontmatterCondition:
-    """A frontmatter key that scopes a rule file, with the file line it sits on."""
+class FrontmatterKey:
+    """A top-level frontmatter key with the file line it sits on."""
 
     key: str
     line: int
 
 
 @dataclasses.dataclass(frozen=True)
+class Frontmatter:
+    """The frontmatter block of a file. `keys` is empty where the block is not YAML."""
+
+    keys: tuple[FrontmatterKey, ...]
+    parsed: bool
+
+
+@dataclasses.dataclass(frozen=True)
+class Citation:
+    """A path a body cites in backticks, as written, with the file line it sits on.
+
+    A path opens on `~/`, or on `/` and a second segment, and holds no whitespace. A bare
+    `/`, a slash command such as `/clear`, a relative path, and a URL are no citation.
+    """
+
+    text: str
+    line: int
+
+
+@dataclasses.dataclass(frozen=True)
 class PoolFile:
+    """One rule file as read. `problem` names why the file could not be read.
+
+    A file with a problem holds no text, marker, frontmatter, or citation.
+    """
+
     path: pathlib.Path
     rule: str
     variant: str | None
     text: str
     marker: Marker | None
-    condition: FrontmatterCondition | None
+    frontmatter: Frontmatter | None
+    citations: tuple[Citation, ...]
+    body_start: int
+    problem: str | None
+
+    @property
+    def frontmatter_keys(self) -> tuple[FrontmatterKey, ...]:
+        return self.frontmatter.keys if self.frontmatter else ()
 
     def line_of(self, index: int) -> int:
         """The 1-based file line of the character at `index` in the text."""
 
-        return self.text.count("\n", 0, index) + 1
+        return _line_of(self.text, index)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -76,6 +101,12 @@ class Rule:
 
         return ((self.default,) if self.default else ()) + tuple(self.variants.values())
 
+    @property
+    def path(self) -> pathlib.Path:
+        """The path of the first file: the default form, else the first variant."""
+
+        return self.files()[0].path
+
 
 @dataclasses.dataclass(frozen=True)
 class Pool:
@@ -88,42 +119,66 @@ class Pool:
     def variants_by_rule(self) -> dict[str, tuple[str, ...]]:
         return {name: tuple(rule.variants) for name, rule in self.rules.items()}
 
+    def has_reference(self, name: str) -> bool:
+        """Whether `references/` holds a file at `name`."""
 
-def parse_marker(line: str) -> Marker | None:
-    found = MARKER.fullmatch(line.rstrip())
+        return (self.root / REFERENCES_DIRECTORY / name).is_file()
+
+
+def _line_of(text: str, index: int) -> int:
+    return text.count("\n", 0, index) + 1
+
+
+def _parse_marker(line: str) -> Marker | None:
+    found = _MARKER.fullmatch(line.rstrip())
     if found is None:
         return None
     return Marker(rule=found["rule"], variant=found["variant"])
 
 
-def _frontmatter_condition(text: str) -> FrontmatterCondition | None:
-    lines = text.split("\n")
-    if lines[0].rstrip() != "---":
+def _frontmatter(text: str) -> Frontmatter | None:
+    split = split_frontmatter(text)
+    if split is None:
         return None
-    closing = next((n for n, line in enumerate(lines[1:], 1) if line.rstrip() == "---"), None)
-    if closing is None:
-        return None
+    block, first_line = split
     try:
-        block = yaml.compose("\n".join(lines[1:closing]))
+        node = yaml.compose(block)
     except yaml.YAMLError:
-        return None
-    if not isinstance(block, yaml.MappingNode):
-        return None
-    for key, _ in block.value:
-        if isinstance(key, yaml.ScalarNode) and key.value in CONDITION_KEYS:
-            return FrontmatterCondition(key=key.value, line=key.start_mark.line + 2)
-    return None
+        return Frontmatter(keys=(), parsed=False)
+    if not isinstance(node, yaml.MappingNode):
+        return Frontmatter(keys=(), parsed=True)
+    keys = tuple(
+        FrontmatterKey(key=key.value, line=key.start_mark.line + first_line)
+        for key, _ in node.value
+        if isinstance(key, yaml.ScalarNode)
+    )
+    return Frontmatter(keys=keys, parsed=True)
+
+
+def _citations(text: str) -> tuple[Citation, ...]:
+    return tuple(
+        Citation(text=found["path"], line=_line_of(text, found.start()))
+        for found in _REFERENCE_CITATION.finditer(text)
+    )
 
 
 def _read_file(path: pathlib.Path, rule: str, variant: str | None) -> PoolFile:
-    text = path.read_text(encoding="utf-8")
+    try:
+        text = read_text_file(path)
+    except UnreadableFile as failure:
+        return PoolFile(path, rule, variant, "", None, None, (), 0, failure.cause)
+    first_line, newline, _ = text.partition("\n")
+    marker = _parse_marker(first_line)
     return PoolFile(
         path=path,
         rule=rule,
         variant=variant,
         text=text,
-        marker=parse_marker(text.split("\n", 1)[0]),
-        condition=_frontmatter_condition(text),
+        marker=marker,
+        frontmatter=_frontmatter(text),
+        citations=_citations(text),
+        body_start=len(first_line) + len(newline) if marker else 0,
+        problem=None,
     )
 
 
@@ -134,11 +189,11 @@ def read_pool(root: pathlib.Path) -> Pool:
     The `references/` folder beside the pool is reserved and read as nothing.
     """
 
-    pool_directory = root / POOL_DIRECTORY
+    pool_directory = root / _POOL_DIRECTORY
     stray = [
         entry
         for entry in (sorted(root.iterdir()) if root.is_dir() else ())
-        if entry.is_dir() and entry.name not in (POOL_DIRECTORY, REFERENCES_DIRECTORY)
+        if entry.is_dir() and entry.name not in (_POOL_DIRECTORY, REFERENCES_DIRECTORY)
     ]
     defaults: dict[str, PoolFile] = {}
     variants: dict[str, dict[str, PoolFile]] = {}
