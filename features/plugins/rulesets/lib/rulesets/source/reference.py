@@ -55,9 +55,9 @@ class Reference:
 
 
 def parse_reference(text: str, line: int) -> Reference:
-    """Parse one reference as written: `voice`, `rules:voice`, `voice@terse`, or `code:*`.
+    """Parse one reference as written: `voice`, `rules:voice`, `voice@terse`, `code:*`, or `*`.
 
-    Any form may open with `-` to
+    `*` alone spreads every rule of the pool, as `all:*` does. Any form may open with `-` to
     remove what it adds. Text that is no form parses to a MalformedTarget, so a caller
     reports it instead of catching an exception.
     """
@@ -65,7 +65,9 @@ def parse_reference(text: str, line: int) -> Reference:
     remove = text.startswith("-")
     body = text.removeprefix("-")
     target: Target
-    if body.endswith(":*"):
+    if body == "*":
+        target = SpreadTarget("all")
+    elif body.endswith(":*"):
         ruleset = body.removesuffix(":*")
         valid = ruleset and ":" not in ruleset
         target = SpreadTarget(ruleset) if valid else MalformedTarget(_NOT_A_FORM)

@@ -64,6 +64,7 @@ class TestReferenceForms:
             ("code:*", SpreadTarget("code")),
             ("all:*", SpreadTarget("all")),
             ("rules:*", SpreadTarget("rules")),
+            ("*", SpreadTarget("all")),
         ],
     )
     def test_each_form_names_what_it_means(self, text, target):
@@ -82,6 +83,7 @@ class TestReferenceForms:
             ("-code:*", SpreadTarget("code")),
             ("-all:*", SpreadTarget("all")),
             ("-rules:*", SpreadTarget("rules")),
+            ("-*", SpreadTarget("all")),
         ],
     )
     def test_each_form_takes_a_remove_sign(self, text, target):
@@ -155,6 +157,32 @@ class TestReservedRulesetsCarryFixedMeanings:
             ("voice", None),
             ("writing-code", None),
         ]
+
+    def test_a_bare_star_spreads_the_pool_as_all_does(self, tmp_path):
+        parsed, expander = world(tmp_path, "defaults: ['*']\n", "voice", "voice@terse", "sorting")
+
+        expansion = expander.expand(parsed.defaults.references)
+
+        assert pairs(expansion.entries) == [("sorting", None), ("voice", None)]
+        assert expansion.problems == ()
+
+    def test_a_remove_of_a_bare_star_takes_every_rule_the_list_adds(self, tmp_path):
+        parsed, expander = world(
+            tmp_path, "defaults: ['voice', 'sorting', '-*']\n", "voice", "sorting"
+        )
+
+        expansion = expander.expand(parsed.defaults.references)
+
+        assert expansion.entries == ()
+        assert removed(expansion.removals) == [("sorting", None), ("voice", None)]
+
+    def test_a_bare_star_inside_a_ruleset_is_spread_with_the_ruleset(self, tmp_path):
+        text = "rulesets:\n  everything: ['*', '-voice']\nwhen:\n  - flag a: ['everything:*']\n"
+        parsed, expander = world(tmp_path, text, "voice", "sorting")
+
+        expansion = expander.expand(parsed.items[0].references)
+
+        assert pairs(expansion.entries) == [("sorting", None)]
 
     def test_rules_spreads_the_pool_too(self, tmp_path):
         parsed, expander = world(tmp_path, "defaults: ['rules:*']\n", "voice", "sorting")

@@ -461,7 +461,7 @@ ruleset may share a name, since a bare name always means a rule.
 | `rules:voice` | rule `voice` |
 | `voice@terse` | rule `voice`, at variant `terse` |
 | `code:*` | every entry ruleset `code` holds after its own removes, spread in place |
-| `all:*`, `rules:*` | every rule in the pool, without a variant |
+| `'*'`, `all:*`, `rules:*` | every rule in the pool, without a variant |
 | `-<reference>` | removes what the reference adds |
 
 - Every form may appear in every list: a ruleset's, `defaults`, and an item's.
@@ -469,7 +469,7 @@ ruleset may share a name, since a bare name always means a rule.
   matters.
 - `-voice` removes rule `voice` from the list, with every variant entry for it. `-voice@terse`
   removes that variant only, and the list keeps rule `voice`.
-- A remove of a spread, `-code:*`, removes each rule the spread reaches.
+- A remove of a spread, `-code:*` or `-*`, removes each rule the spread reaches.
 - A remove inside a ruleset that a list spreads only subtracts from that ruleset's entries.
 - A ruleset that spreads itself, directly or through other rulesets, sits in a cycle. A spread of a
   ruleset in a cycle reaches no rule, and `check` reports each ruleset in the cycle.
