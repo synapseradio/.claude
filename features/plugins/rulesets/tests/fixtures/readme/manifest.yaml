@@ -1,0 +1,10 @@
+models: [opus, sonnet, haiku, fable, opus-4-8]
+defaults: [all:*, -security-pass, -review-method]
+rulesets:
+  code: [writing-code, data-modeling]
+  reviewer: [review-method, output-format]
+when:
+  - model haiku: [-code:*]
+  - agent critic and not model haiku: [reviewer:*]
+  - agent critic and flag strict: [security-pass]
+  - flag voice-terse: [voice@terse]
