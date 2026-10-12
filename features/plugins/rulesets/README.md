@@ -352,6 +352,223 @@ set: `session.jsonl` with every `session.part<k>.jsonl` beside it, or `<agent_id
 part files. That is how a check tells a session's parts from a delegate's when the two share a
 session identifier, a part number, and a total.
 
+## The rulesets directory
+
+A rulesets directory holds one pool of rule files and one manifest that says which rules each
+context receives. `lib/rulesets/cli.py check` reads both and reports every illegal state in them.
+The tier corpus described above is read by `resolve.py`, and this directory form is read by
+`cli.py`. The words in this part carry the meanings below wherever they appear, including
+`manifest`, which here is the file of the four keys.
+
+### Words
+
+- A **rule** is one named text. Its **default form** is its text under no variant.
+- A **variant** is a named alternative text of one rule.
+- A **ruleset** is a named list of references.
+- A **reference** names a rule, a rule at a variant, or a ruleset's spread, with an optional `-`
+  that removes.
+- A **list** is a sequence of references: `defaults`, each ruleset, and the value of each item.
+- An **item** is one entry of `when`: a condition and one list of references.
+- A **flag** is a name a launch or a toggle sets and a condition tests.
+- A **model** is a declared Claude model name.
+- The **pool** is the folder holding every rule file.
+
+### Layout
+
+```text
+rulesets/
+  manifest.yaml
+  rules/                    the pool
+    core-rules.md
+    data-modeling.md
+    output-format.md
+    review-method.md
+    security-pass.md
+    voice.md                rule voice, default form
+    voice@terse.md          rule voice, variant terse
+    voice@warm.md           rule voice, variant warm
+    writing-code.md
+  references/               reserved: files that rule bodies cite
+    style-table.md
+```
+
+- Every rule file sits in the pool, `rules/`. A rule's name is its file's stem up to the first `@`.
+- `<rule>.md` is the rule's default form, and it may be empty.
+- `<rule>@<variant>.md` is a variant of that rule. A variant beside no `<rule>.md` is an error.
+- Every body may open on its own marker line: `<!-- rule: <name> -->` in a default form, and
+  `<!-- rule: <name> variant: <variant> -->` in a variant file. A body with no marker draws no
+  finding.
+- A rule file carries text and no condition. Frontmatter holding `paths`, `when`, `model`, `agent`,
+  `kind`, or `flag`, or the plural of one, is an error.
+- A pool file delivers nothing by being there. A rule reaches a context only through a reference to
+  it.
+- `references/` is reserved for files that rule bodies cite. Any other directory in the pool, or
+  beside it, draws a warning.
+
+### The manifest
+
+```yaml
+models: [opus, sonnet, haiku, fable, opus-4-8]
+defaults: [all:*, -security-pass, -review-method]
+rulesets:
+  code: [writing-code, data-modeling]
+  reviewer: [review-method, output-format]
+when:
+  - model haiku: [-code:*]
+  - agent critic and not model haiku: [reviewer:*]
+  - agent critic and flag strict: [security-pass]
+  - flag voice-terse: [voice@terse]
+```
+
+| key | holds |
+| --- | --- |
+| `models` | a list of Claude model names, the names a `model` test may use |
+| `defaults` | one list of references, the first list to apply in every context |
+| `rulesets` | a mapping of names to lists of references |
+| `when` | a list of items, each a one-key mapping from a condition to one list of references |
+
+- The manifest holds these four keys and no other. A key that is missing holds nothing.
+- A manifest file that is missing reads as `defaults: [all:*]`. A manifest file that holds no key
+  adds no rule.
+- A `when` item's value is a list in the same grammar as a ruleset's list.
+- The lists that apply in a context are `defaults` first, then each item whose condition holds, in
+  file order.
+- A flag needs no declaration, and an agent name needs none.
+- A model name holding `[1m]` is quoted inside a flow list, `"opus-4-8[1m]"`, or written in block
+  form. Unquoted, `[` opens a nested list and the manifest fails to parse, which `check` reports
+  with the line.
+
+### Reserved rulesets
+
+| name | holds |
+| --- | --- |
+| `defaults` | the top-level `defaults` list |
+| `all` | every rule in the pool, each without a variant |
+| `rules` | the pool, for `rules:<name>` and `rules:*` |
+| `none` | no rule |
+
+Declaring one of these under `rulesets` is an error. The reserved meaning holds. A rule and a
+ruleset may share a name, since a bare name always means a rule.
+
+### Reference forms
+
+| form | means |
+| --- | --- |
+| `voice` | rule `voice`; the short form of `rules:voice` |
+| `rules:voice` | rule `voice` |
+| `voice@terse` | rule `voice`, at variant `terse` |
+| `code:*` | every entry ruleset `code` holds after its own removes, spread in place |
+| `all:*`, `rules:*` | every rule in the pool, without a variant |
+| `-<reference>` | removes what the reference adds |
+
+- Every form may appear in every list: a ruleset's, `defaults`, and an item's.
+- Within one list, every remove applies after every add, so the order of the references never
+  matters.
+- `-voice` removes rule `voice` from the list, with every variant entry for it. `-voice@terse`
+  removes that variant only, and the list keeps rule `voice`.
+- A remove of a spread, `-code:*`, removes each rule the spread reaches.
+- A remove inside a ruleset that a list spreads only subtracts from that ruleset's entries.
+- A ruleset that spreads itself, directly or through other rulesets, sits in a cycle. A spread of a
+  ruleset in a cycle reaches no rule, and `check` reports each ruleset in the cycle.
+- One list that sets two different variants of one rule is an error. Two items may set different
+  variants, since they are different lists.
+
+### Conditions
+
+An item's key tests facts and combines the tests with `and`, `or`, `not`, and parentheses.
+
+| test | true where |
+| --- | --- |
+| `model <name>` | the context's model is the declared name |
+| `agent <name>` | the context's agent is the name |
+| `kind session`, `kind delegate`, `kind fork` | the context is of that kind |
+| `flag <name>` | the flag is in force |
+
+- `not` binds tighter than `and`, and `and` tighter than `or`. A run of one operator groups to the
+  left, and parentheses override both.
+- A test over an absent fact is false, and its negation is true. A plain main session carries no
+  agent, so `agent critic` is false there and `not agent critic` is true.
+- A flag is never absent. A flag not in force is false, so a misspelled flag leaves its item never
+  applying.
+- A key that tests anything but these facts, or that does not parse, is an error whose subject is
+  the item. So is a `model` test naming a model `models` does not declare.
+
+### Checking a rulesets directory
+
+From the plugin directory, `check` reads a rulesets directory and prints each finding on one line:
+
+```bash
+hooks/with-python.sh lib/rulesets/cli.py check --root ~/.claude/rulesets
+hooks/with-python.sh lib/rulesets/cli.py check --root tests/fixtures/readme
+```
+
+The second command checks the manifest and pool shown above. It prints nothing and exits zero.
+
+| status | means |
+| --- | --- |
+| 0 | no error stands; warnings may have printed |
+| 1 | at least one error stands |
+| 2 | the command line was wrong, or `--root` is no directory |
+
+Each line reads `file:line: severity [kind] subject: message`, with the line left out where none
+applies. Errors print before warnings, and one run prints every finding. Items count from 1 in the
+order written. A subject is the rule, ruleset, item, key, or reference the finding is about.
+
+#### Errors
+
+Every error names the subject that delivery disables.
+
+| kind | reports | subject |
+| --- | --- | --- |
+| `manifest-unparsable` | the manifest cannot be read, is not YAML, or is not a mapping of keys | the manifest |
+| `unknown-key` | a top-level key other than the four | the key |
+| `key-shape` | a top-level value of the wrong shape | the key |
+| `ruleset-shape` | a ruleset whose value is not a list | the ruleset |
+| `reserved-ruleset` | `defaults`, `all`, `rules`, or `none` declared under `rulesets` | the ruleset |
+| `item-shape` | a `when` item that is not a one-key mapping whose value is a list | the item |
+| `ruleset-cycle` | rulesets that spread each other in a cycle | each ruleset in the cycle |
+| `variant-conflict` | one list setting two different variants of one rule | the references |
+| `condition-invalid` | a key testing anything but a fact, or one that does not parse | the item |
+| `unknown-model` | a key naming a model `models` does not declare | the item |
+| `undeclared-reference` | a reference naming a rule, variant, or ruleset nothing declares | the reference |
+| `malformed-reference` | text that is no reference form | the reference |
+| `rule-condition` | a rule file whose frontmatter carries a condition | the rule |
+| `variant-without-default` | a variant beside no default form | the rule |
+| `unreadable-file` | a rule file that cannot be read or is not UTF-8 text | the rule |
+
+#### Warnings
+
+A warning never changes the exit status.
+
+| kind | reports |
+| --- | --- |
+| `never-included` | a rule that no add in any list includes, by name or through a ruleset |
+| `cross-reference` | a rule whose text names another rule as a whole word |
+| `stray-directory` | a directory inside the pool, or beside it other than `references/` |
+| `marker-for-another-rule` | a body whose first line marks another rule, or another form of its own |
+| `oversize-body` | a body longer than the 9,000-character part budget |
+| `dangling-reference` | a body citing a file under `references/` that is not there |
+| `external-reference` | a body citing, in backticks, a path under `~/.claude/references/`, or a path that opens on `/` or `~/` and lies outside `~/.claude/` |
+
+A rule counts as included where any list adds it, whether or not that list applies in any context.
+A whole word ends at any character that is no letter, digit, hyphen, or underscore, and the match
+is case sensitive. A cross-reference warning names both rules and the file and line of the first
+match, and a first-line marker is no match.
+
+#### An example
+
+Add an item to the end of the fixture's `when` list that tests a project, which is no fact:
+
+```yaml
+  - project amboss: [voice]
+```
+
+`check` prints the one error and exits 1:
+
+```text
+~/.claude/rulesets/manifest.yaml:11: error [condition-invalid] item 5: the condition `project amboss` is invalid: `project` tests no fact; a condition tests model, agent, kind, flag
+```
+
 ## Requirements
 
 Python 3.12 or above with PyYAML, and git where you want the render's refusal to see uncommitted
