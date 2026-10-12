@@ -1,4 +1,4 @@
-"""Resolve the facts a context carries, and read and write a session's flags file."""
+"""The facts a context's conditions can test."""
 
 from dataclasses import dataclass
 from typing import Literal
