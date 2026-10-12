@@ -43,6 +43,8 @@ usable() {
 #   The hook script to run, then its own arguments.
 # Outputs:
 #   One line on STDERR naming the requirement where no interpreter serves.
+# Returns:
+#   0 where no interpreter serves, so the session starts without the rules.
 #######################################
 main() {
   local candidate
@@ -53,7 +55,7 @@ main() {
   done
   err "no interpreter runs the rulesets hooks: they need ${REQUIREMENT}." \
     "Name one in RULESETS_PYTHON."
-  exit 1
+  exit 0
 }
 
 main "$@"
