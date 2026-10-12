@@ -1,4 +1,4 @@
-# model-scoped-rulesets
+# rulesets
 
 Give each model you run its own rules, and see what each one received. A main session, the delegates
 it spawns, and a second terminal often run different models at once, and each of them reads the tier

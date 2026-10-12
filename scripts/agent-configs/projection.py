@@ -6,7 +6,7 @@ job's output. The jobs import this by name, since a script run by path puts
 its own directory first on `sys.path`.
 
 Reading a markdown document, resolving the paths it cites, and writing a
-generated file all live in the model-scoped-rulesets plugin, whose mechanism
+generated file all live in the rulesets plugin, whose mechanism
 these jobs share. This module imports those inward and re-exports them under
 their own names, so a job importing `parse_document` from here still gets
 the one definition. The rule bodies themselves belong to this checkout: the
@@ -29,7 +29,7 @@ HOME = Path.home()
 # was invoked from and a hook inside a worktree syncs that worktree.
 SCRIPT_ROOT = Path(__file__).resolve().parents[2]
 
-PLUGIN_ROOT = SCRIPT_ROOT / "features" / "plugins" / "model-scoped-rulesets"
+PLUGIN_ROOT = SCRIPT_ROOT / "features" / "plugins" / "rulesets"
 
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 

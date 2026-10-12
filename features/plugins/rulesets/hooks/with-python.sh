@@ -51,7 +51,7 @@ main() {
       exec "${candidate}" "$@"
     fi
   done
-  err "no interpreter runs the model-scoped-rulesets hooks: they need ${REQUIREMENT}." \
+  err "no interpreter runs the rulesets hooks: they need ${REQUIREMENT}." \
     "Name one in RULESETS_PYTHON."
   exit 1
 }

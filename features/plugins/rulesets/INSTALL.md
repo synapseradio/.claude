@@ -1,4 +1,4 @@
-# Installing model-scoped-rulesets
+# Installing rulesets
 
 The plugin delivers a corpus of rules you own. Installing it gives you the mechanism and an empty
 corpus; the rules stay yours to write or to move in.
@@ -20,14 +20,14 @@ From the marketplace holding it:
 
 ```text
 /plugin marketplace add <owner>/<repo>
-/plugin install model-scoped-rulesets
+/plugin install rulesets
 ```
 
 For a local checkout, add the directory holding `.claude-plugin/marketplace.json` instead:
 
 ```text
 /plugin marketplace add /path/to/checkout
-/plugin install model-scoped-rulesets
+/plugin install rulesets
 ```
 
 ## 2. Let the first session scaffold the corpus
@@ -145,7 +145,7 @@ twice.
 ## Uninstalling
 
 ```text
-/plugin uninstall model-scoped-rulesets
+/plugin uninstall rulesets
 ```
 
 The corpus is yours and stays where it is. Nothing delivers it after that, so move the bodies you

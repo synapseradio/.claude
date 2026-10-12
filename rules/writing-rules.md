@@ -18,7 +18,7 @@ For every rules file, rulesets tier body, working-rules render, and CLAUDE.md yo
 - terms block: `- term: gloss` lines, each term with one sense, each gloss self-contained, its warrant left out
 - shared term: a term the core-rules body glosses, the body every tier delivers first
 - halt: a sentence bounding its paragraph's or section's acts: the act in place of the excluded one, as "Move a branch ref with `git reset --soft`."; "X only on Y."; "Keep X out of Y."; or "Treat X as no ground for Y."
-- renderer: `resolve.py render`, from the installed model-scoped-rulesets plugin, syncing the bodies under `~/.claude/rulesets/$tier/` plus CLAUDE.md with `~/.claude/rulesets/renders/$tier/working-rules.md` both ways, keyed on markers, ordered by the `order:` list in `~/.claude/rulesets/manifest.yaml`
+- renderer: `resolve.py render`, from the installed rulesets plugin, syncing the bodies under `~/.claude/rulesets/$tier/` plus CLAUDE.md with `~/.claude/rulesets/renders/$tier/working-rules.md` both ways, keyed on markers, ordered by the `order:` list in `~/.claude/rulesets/manifest.yaml`
 - render section: a marker through the next marker or the end of the file
 - preamble: a render's text between its title and first marker, the text CLAUDE.md holds
 

@@ -6,7 +6,7 @@ the large one. This directory gives each model its own set of rules instead.
 
 This README covers the corpus: the rule bodies, the manifest that composes them, and the commands
 that read both. The plugin that delivers the corpus to a session covers the rest, and its README at
-`../features/model-scoped-rulesets/README.md` is where to start if you have not met it: what the
+`../features/rulesets/README.md` is where to start if you have not met it: what the
 plugin is for, the hooks it runs on, how a delegate resolves its tier, and a five-minute walk
 through one rule reaching one model.
 
@@ -29,7 +29,7 @@ through one rule reaching one model.
   identifier, `claude-opus-4-8` for one, sits beside those five.
 - A **composition** is the set of stems one tier delivers, each resolved to the body it reads.
 - A **delivery** is one tier's text reaching one session or delegate, carried by a hook the
-  model-scoped-rulesets plugin registers.
+  rulesets plugin registers.
 - A **part** is one slice of a delivery, headed with its place in the whole, `part 3 of 8` for one.
   A tier arrives as parts, and each part carries whole bodies.
 - A **render** is one tier read as a single document, written by `resolve.py render`.
@@ -84,7 +84,7 @@ model's own directory takes effect.
 
 ## How the rules reach a session
 
-A hook from the model-scoped-rulesets plugin delivers each session its tier, and that hook is the
+A hook from the rulesets plugin delivers each session its tier, and that hook is the
 channel these bodies travel by, so a session whose hook fails runs on whatever the harness loaded by
 itself.
 
@@ -94,7 +94,7 @@ renders follow, and the renders. The plugin finds it at `--root`, then `RULESETS
 `~/.claude/rulesets`, which is this directory. Every command this README names is `resolve.py` under
 the installed plugin's `lib/rulesets/`, and each takes `--root DIR` to read a corpus other than this
 one. The plugin's own README, at
-`../features/model-scoped-rulesets/README.md`, covers the hooks, how a delegate resolves, and the
+`../features/rulesets/README.md`, covers the hooks, how a delegate resolves, and the
 interpreter it runs on.
 
 ## How a model reaches its tier
