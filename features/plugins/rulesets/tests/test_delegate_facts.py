@@ -139,6 +139,27 @@ class TestADelegatesModelFactComesFromFourSourcesInOrder:
         assert scene.fact(env={DEFAULT_VARIABLE: ""}).source == "parent-record"
 
 
+class TestTheDefinitionIsReadOnlyWhereTheSearchReachesIt:
+    def test_the_caller_naming_a_model_ends_the_search_ahead_of_the_definition(
+        self, scene, definition_reads
+    ):
+        scene.caller_names("haiku", agent_type="scout")
+        scene.user_agent("scout.md", "name: scout\nmodel: sonnet")
+
+        scene.fact("scout")
+
+        assert definition_reads == []
+
+    def test_a_caller_naming_nothing_sends_the_search_to_the_definition(
+        self, scene, definition_reads
+    ):
+        scene.user_agent("scout.md", "name: scout\nmodel: sonnet")
+
+        scene.fact("scout")
+
+        assert definition_reads == ["scout"]
+
+
 class TestTheCallersModelJoinsByPromptAndAgentType:
     def test_two_spawns_of_one_type_naming_one_model_resolve_to_it(self, scene):
         scene.caller_names("haiku")

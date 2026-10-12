@@ -108,3 +108,18 @@ def read_spy():
     """The environment class that records which names the engine reads."""
 
     return ReadSpy
+
+
+@pytest.fixture
+def definition_reads(monkeypatch):
+    """The agent types whose definitions a delegate's model fact looked up, in order."""
+
+    reads: list[str] = []
+    look_up = delegate_model.agent_model
+
+    def recording(agent_type, cwd, config_dir):
+        reads.append(agent_type)
+        return look_up(agent_type, cwd, config_dir)
+
+    monkeypatch.setattr(delegate_model, "agent_model", recording)
+    return reads

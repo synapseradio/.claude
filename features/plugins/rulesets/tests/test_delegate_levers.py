@@ -167,6 +167,14 @@ class TestTheCoordinatorLeverGivesTheDelegateTheParentsModel:
 
         assert fact == model_fact.Claimed("opus", OPUS, forced(COORDINATOR_FORCE))
 
+    def test_the_agent_definition_is_never_read(self, scene, definition_reads):
+        scene.parent_runs(OPUS)
+        scene.user_agent("scout.md", "name: scout\nmodel: sonnet")
+
+        scene.fact("scout", env={COORDINATOR_FORCE: "1"})
+
+        assert definition_reads == []
+
     def test_with_both_levers_the_coordinator_lever_is_the_source(self, scene):
         scene.parent_runs(OPUS)
 
