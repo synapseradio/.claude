@@ -322,6 +322,18 @@ class TestAnUnreadableStartPayloadYieldsThePerSpawnModel:
         assert scene.resolve().notices == ()
 
 
+class TestTheDefaultVariableNamingInheritCountsAsUnset:
+    def test_the_parents_model_stands_where_no_other_source_names_one(self, scene):
+        scene.parent_runs(OPUS)
+
+        fact = scene.fact(env={DEFAULT_VARIABLE: "inherit"})
+
+        assert fact == model_fact.Claimed("opus", OPUS, "parent-record")
+
+    def test_with_no_parent_record_the_model_is_missing(self, scene):
+        assert scene.fact(env={DEFAULT_VARIABLE: "inherit"}) == model_fact.Missing()
+
+
 class TestTheDefinitionIsLocatedByAgentType:
     def test_a_definition_registers_under_its_name_field(self, scene):
         scene.user_agent("other.md", "name: scout\nmodel: haiku")

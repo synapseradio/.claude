@@ -129,6 +129,13 @@ class TestTheSubagentForceVariableOverridesTheCallerAndTheDefinition:
 
         assert fact == model_fact.Claimed("opus", OPUS, forced(SUBAGENT_FORCE))
 
+    def test_a_default_variable_naming_inherit_yields_to_the_parent(self, scene):
+        scene.parent_runs(OPUS)
+
+        fact = scene.fact(env={SUBAGENT_FORCE: "1", DEFAULT_VARIABLE: "inherit"})
+
+        assert fact == model_fact.Claimed("opus", OPUS, forced(SUBAGENT_FORCE))
+
     def test_with_no_default_variable_and_no_parent_record_the_model_is_missing(self, scene):
         fact = scene.fact(env={SUBAGENT_FORCE: "1"})
 
@@ -354,6 +361,13 @@ class TestExploreAndPlanUnderTheSubagentForceVariable:
         fact = scene.fact("Plan", env={SUBAGENT_FORCE: "1"})
 
         assert fact == model_fact.Claimed("fable", FABLE, forced(SUBAGENT_FORCE))
+
+    def test_a_default_variable_naming_inherit_leaves_explore_its_listed_model(self, scene):
+        scene.parent_runs(FABLE)
+
+        fact = scene.fact("Explore", env={SUBAGENT_FORCE: "1", DEFAULT_VARIABLE: "inherit"})
+
+        assert fact == model_fact.Claimed("opus", "opus", "built-in-pin")
 
     def test_the_default_variable_outranks_explores_listed_model(self, scene):
         scene.parent_runs(FABLE)

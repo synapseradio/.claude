@@ -13,12 +13,15 @@ from rulesets.facts.model.agent import (
 )
 from rulesets.facts.model.claim import claim_model
 from rulesets.facts.model.fact import FromForceLever, ModelResolution, ModelSource
-from rulesets.facts.model.levers import COORDINATOR_FORCE, SUBAGENT_FORCE, active_lever
+from rulesets.facts.model.levers import (
+    COORDINATOR_FORCE,
+    SUBAGENT_FORCE,
+    active_lever,
+    subagent_default,
+)
 from rulesets.facts.model.record import read_model_record
 from rulesets.facts.model.spawn import spawn_model
 from rulesets.notices import Notice, provider_notices
-
-SUBAGENT_MODEL_VARIABLE = "CLAUDE_CODE_SUBAGENT_MODEL"
 
 type Settle = Callable[[object, ModelSource], ModelResolution]
 
@@ -74,7 +77,7 @@ def resolve_delegate_model(
         case Pin(identifier=identifier, source=source):
             return settle(identifier, source)
         case None:
-            default = env.get(SUBAGENT_MODEL_VARIABLE)
+            default = subagent_default(env)
             if default:
                 return settle(default, "subagent-default-variable")
             return settle(parent, "parent-record")
@@ -89,7 +92,7 @@ def _under_subagent_force(
     """The default variable, then Explore's listed model, then the parent's identifier."""
 
     source = FromForceLever(SUBAGENT_FORCE)
-    default = env.get(SUBAGENT_MODEL_VARIABLE)
+    default = subagent_default(env)
     if default:
         return settle(default, source)
     if isinstance(agent, ListedBuiltIn):
