@@ -9,6 +9,7 @@ from rulesets.check.findings import (
     ItemSubject,
     KeySubject,
     ManifestSubject,
+    ModelSubject,
     ReferencesSubject,
     ReferenceSubject,
     Report,
@@ -33,6 +34,8 @@ def _describe_subject(subject: Subject) -> str:
             return f"item {index + 1}"
         case KeySubject(name):
             return f"key `{name}`"
+        case ModelSubject(name):
+            return f"model `{name}`"
         case ReferenceSubject(text):
             return f"reference `{text}`"
         case ReferencesSubject(members):

@@ -14,6 +14,7 @@ from rulesets.check.findings import (
     ItemSubject,
     KeySubject,
     ManifestSubject,
+    ModelSubject,
     ReferencesSubject,
     ReferenceSubject,
     RulesetSubject,
@@ -30,10 +31,17 @@ from rulesets.source.manifest import (
     ReservedRulesetDeclared,
     ShapeProblem,
     UnknownKey,
+    UnquotedModel,
     WrongKeyShape,
     WrongRulesetShape,
 )
-from rulesets.source.reference import MalformedTarget, RuleTarget, SpreadTarget
+from rulesets.source.reference import (
+    EntryForm,
+    MalformedTarget,
+    RuleTarget,
+    SpreadTarget,
+    UnquotedTarget,
+)
 
 _KEY_SHAPES: dict[ManifestKey, str] = {
     "models": "must be a list of model names",
@@ -41,6 +49,24 @@ _KEY_SHAPES: dict[ManifestKey, str] = {
     "rulesets": "must be a mapping of ruleset names to lists of references",
     "when": "must be a list of items",
 }
+
+
+def _unquoted_message(text: str, form: EntryForm) -> str:
+    """What is wrong with an entry that is no quoted string, and how to write it."""
+
+    advice = "write every list entry as a quoted string"
+    match form:
+        case "mapping":
+            return f"`{text}` is a mapping; {advice}"
+        case "list":
+            return f"`{text}` is a list; {advice}"
+        case "plain" if not text:
+            return f"an empty entry is not a quoted string; {advice}"
+        case "plain":
+            quoted = f'"{text}"' if "'" in text else f"'{text}'"
+            return f"`{text}` is not quoted; {advice}, `{quoted}`"
+        case _:
+            assert_never(form)
 
 
 def unparsable_error(failure: ManifestParseError) -> CheckError:
@@ -100,6 +126,14 @@ def _shape_error(manifest: Manifest, problem: ShapeProblem) -> CheckError:
                 manifest.path,
                 line,
                 "an item must be a one-key mapping from a condition to a list of references",
+            )
+        case UnquotedModel(text, line, form):
+            return CheckError(
+                "unquoted-entry",
+                ModelSubject(text),
+                manifest.path,
+                line,
+                _unquoted_message(text, form),
             )
         case _:
             assert_never(problem)
@@ -170,6 +204,8 @@ def _reference_error(manifest: Manifest, problem: ReferenceProblem) -> CheckErro
     match problem.reason, reference.target:
         case "malformed", MalformedTarget(reason):
             kind, message = "malformed-reference", reason
+        case "unquoted", UnquotedTarget(form):
+            kind, message = "unquoted-entry", _unquoted_message(reference.text, form)
         case "unknown-rule", RuleTarget(rule, _):
             kind, message = "undeclared-reference", f"the pool holds no rule `{rule}`"
         case "unknown-variant", RuleTarget(rule, variant):

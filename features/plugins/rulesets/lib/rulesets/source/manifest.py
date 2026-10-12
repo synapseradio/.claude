@@ -13,12 +13,19 @@ from typing import Literal, get_args
 
 import yaml
 
-from rulesets.source.reference import RESERVED_RULESETS, Reference, parse_reference
+from rulesets.source.reference import (
+    RESERVED_RULESETS,
+    EntryForm,
+    Reference,
+    parse_reference,
+    unquoted_reference,
+)
 from rulesets.source.text_file import UnreadableFile, read_text_file
 
 _MANIFEST_FILE = "manifest.yaml"
-_MISSING_MANIFEST = "defaults: [all:*]\n"
-_STR_TAG = "tag:yaml.org,2002:str"
+_MISSING_MANIFEST = "defaults: ['all:*']\n"
+_QUOTE_STYLES = ("'", '"')
+_QUOTE_ADVICE = "write every list entry as a quoted string"
 
 type ManifestKey = Literal["models", "defaults", "rulesets", "when"]
 
@@ -82,8 +89,22 @@ class MalformedItem:
     line: int
 
 
+@dataclasses.dataclass(frozen=True)
+class UnquotedModel:
+    """An entry of `models` that is no quoted string. `text` is the entry as written."""
+
+    text: str
+    line: int
+    form: EntryForm
+
+
 type ShapeProblem = (
-    UnknownKey | WrongKeyShape | WrongRulesetShape | ReservedRulesetDeclared | MalformedItem
+    UnknownKey
+    | WrongKeyShape
+    | WrongRulesetShape
+    | ReservedRulesetDeclared
+    | MalformedItem
+    | UnquotedModel
 )
 
 
@@ -142,10 +163,32 @@ def _written(node: yaml.Node, text: str) -> str:
     return text[node.start_mark.index : node.end_mark.index]
 
 
+def _quoted_value(node: yaml.Node) -> str | None:
+    """The string of a quoted scalar, and None for every other way to write an entry."""
+
+    if isinstance(node, yaml.ScalarNode) and node.style in _QUOTE_STYLES:
+        return node.value
+    return None
+
+
+def _form(node: yaml.Node) -> EntryForm:
+    if isinstance(node, yaml.MappingNode):
+        return "mapping"
+    if isinstance(node, yaml.SequenceNode):
+        return "list"
+    return "plain"
+
+
+def _reference(node: yaml.Node, text: str) -> Reference:
+    if (value := _quoted_value(node)) is not None:
+        return parse_reference(value, _line(node))
+    return unquoted_reference(_written(node, text), _line(node), _form(node))
+
+
 def _references(node: yaml.Node, text: str) -> tuple[Reference, ...] | None:
     if not isinstance(node, yaml.SequenceNode):
         return None
-    return tuple(parse_reference(_written(element, text), _line(element)) for element in node.value)
+    return tuple(_reference(element, text) for element in node.value)
 
 
 def _is_item(node: yaml.Node) -> bool:
@@ -155,13 +198,19 @@ def _is_item(node: yaml.Node) -> bool:
     return isinstance(condition, yaml.ScalarNode) and isinstance(references, yaml.SequenceNode)
 
 
-def _read_models(value: yaml.Node, line: int) -> tuple[tuple[str, ...], tuple[ShapeProblem, ...]]:
-    legal = isinstance(value, yaml.SequenceNode) and all(
-        isinstance(name, yaml.ScalarNode) and name.tag == _STR_TAG for name in value.value
-    )
-    if not legal:
+def _read_models(
+    value: yaml.Node, text: str, line: int
+) -> tuple[tuple[str, ...], tuple[ShapeProblem, ...]]:
+    if not isinstance(value, yaml.SequenceNode):
         return (), (WrongKeyShape("models", line),)
-    return tuple(name.value for name in value.value), ()
+    models: list[str] = []
+    problems: list[ShapeProblem] = []
+    for element in value.value:
+        if (name := _quoted_value(element)) is not None:
+            models.append(name)
+        else:
+            problems.append(UnquotedModel(_written(element, text), _line(element), _form(element)))
+    return tuple(models), tuple(problems)
 
 
 def _read_defaults(
@@ -210,12 +259,22 @@ def _read_when(
     return tuple(items), tuple(problems)
 
 
+def _is_unquoted_entry_failure(error: yaml.YAMLError) -> bool:
+    """Whether an unquoted entry causes the failure: a `*` read as an alias, or a flow list broken open."""
+
+    context = getattr(error, "context", None) or ""
+    problem = getattr(error, "problem", None) or ""
+    return "alias" in context or "alias" in problem or "flow sequence" in context
+
+
 def _top_level(text: str, path: pathlib.Path) -> list[tuple[yaml.Node, yaml.Node]]:
     try:
         document = yaml.compose(text)
     except yaml.YAMLError as error:
         mark = getattr(error, "problem_mark", None)
         reason = getattr(error, "problem", None) or str(error)
+        if _is_unquoted_entry_failure(error):
+            reason = f"{reason}; {_QUOTE_ADVICE}"
         raise ManifestParseError(path, mark.line + 1 if mark else 1, reason) from error
     if document is None:
         return []
@@ -246,7 +305,7 @@ def parse_manifest(text: str, path: pathlib.Path) -> Manifest:
         found: tuple[ShapeProblem, ...]
         match name:
             case "models":
-                models, found = _read_models(value, line)
+                models, found = _read_models(value, text, line)
             case "defaults":
                 defaults, found = _read_defaults(value, text, line)
             case "rulesets":
@@ -270,7 +329,7 @@ def parse_manifest(text: str, path: pathlib.Path) -> Manifest:
 def read_manifest(root: pathlib.Path) -> Manifest:
     """Read `manifest.yaml` of one rulesets directory.
 
-    A missing file reads as `defaults: [all:*]`. A file that cannot be read or does not
+    A missing file reads as `defaults: ['all:*']`. A file that cannot be read or does not
     parse raises ManifestParseError.
     """
 

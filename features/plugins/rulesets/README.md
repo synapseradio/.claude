@@ -408,16 +408,16 @@ rulesets/
 ### The manifest
 
 ```yaml
-models: [opus, sonnet, haiku, fable, opus-4-8]
-defaults: [all:*, -security-pass, -review-method]
+models: ['opus', 'sonnet', 'haiku', 'fable', 'opus-4-8']
+defaults: ['all:*', '-security-pass', '-review-method']
 rulesets:
-  code: [writing-code, data-modeling]
-  reviewer: [review-method, output-format]
+  code: ['writing-code', 'data-modeling']
+  reviewer: ['review-method', 'output-format']
 when:
-  - model haiku: [-code:*]
-  - agent critic and not model haiku: [reviewer:*]
-  - agent critic and flag strict: [security-pass]
-  - flag voice-terse: [voice@terse]
+  - model haiku: ['-code:*']
+  - agent critic and not model haiku: ['reviewer:*']
+  - agent critic and flag strict: ['security-pass']
+  - flag voice-terse: ['voice@terse']
 ```
 
 | key | holds |
@@ -428,15 +428,18 @@ when:
 | `when` | a list of items, each a one-key mapping from a condition to one list of references |
 
 - The manifest holds these four keys and no other. A key that is missing holds nothing.
-- A manifest file that is missing reads as `defaults: [all:*]`. A manifest file that holds no key
+- A manifest file that is missing reads as `defaults: ['all:*']`. A manifest file that holds no key
   adds no rule.
 - A `when` item's value is a list in the same grammar as a ruleset's list.
 - The lists that apply in a context are `defaults` first, then each item whose condition holds, in
   file order.
 - A flag needs no declaration, and an agent name needs none.
-- A model name holding `[1m]` is quoted inside a flow list, `"opus-4-8[1m]"`, or written in block
-  form. Unquoted, `[` opens a nested list and the manifest fails to parse, which `check` reports
-  with the line.
+- Every entry of `models`, of `defaults`, of a ruleset's list, and of an item's list is a quoted
+  string, in single or double quotes. An item's condition stays unquoted. An entry written any other
+  way, such as `all:*`, a number, a mapping, a nested list, or an empty entry, is an `unquoted-entry`
+  error, and the entry is skipped. A `*` that opens an entry reads as a YAML alias, and an unquoted
+  `[` opens a nested list, so a manifest holding either fails to parse, and `check` reports the line
+  with the advice to quote every list entry.
 
 ### Reserved rulesets
 
@@ -535,6 +538,7 @@ Every error names the subject that delivery disables.
 | `rule-condition` | a rule file whose frontmatter carries a condition | the rule |
 | `variant-without-default` | a variant beside no default form | the rule |
 | `unreadable-file` | a rule file that cannot be read or is not UTF-8 text | the rule |
+| `unquoted-entry` | a list entry that is no quoted string | the reference, or the `models` entry |
 
 #### Warnings
 
@@ -560,7 +564,7 @@ match, and a first-line marker is no match.
 Add an item to the end of the fixture's `when` list that tests a project, which is no fact:
 
 ```yaml
-  - project amboss: [voice]
+  - project amboss: ['voice']
 ```
 
 `check` prints the one error and exits 1:

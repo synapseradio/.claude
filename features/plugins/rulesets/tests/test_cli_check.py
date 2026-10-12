@@ -64,12 +64,12 @@ class TestSeveralProblemsAtOnce:
     def test_every_error_of_the_run_is_printed_and_the_exit_is_non_zero(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [ghost]\n"
+            "defaults: ['ghost']\n"
             "rulesets:\n"
-            "  a: [b:*]\n"
-            "  b: [a:*]\n"
+            "  a: ['b:*']\n"
+            "  b: ['a:*']\n"
             "when:\n"
-            "  - project amboss: [voice]\n",
+            "  - project amboss: ['voice']\n",
             stems=["voice"],
         )
 
@@ -85,7 +85,7 @@ class TestSeveralProblemsAtOnce:
         ]
 
     def test_each_finding_sits_on_one_line_with_its_file_and_line(self, tmp_path):
-        root = build(tmp_path, "defaults: [ghost]\n")
+        root = build(tmp_path, "defaults: ['ghost']\n")
 
         result = check(root)
 
@@ -105,7 +105,7 @@ class TestWarningsOnly:
     def test_both_warnings_are_printed_and_the_exit_is_zero(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [voice]\n",
+            "defaults: ['voice']\n",
             stems=["security"],
             bodies={"voice": "Run security first.\n"},
         )
@@ -137,7 +137,7 @@ class TestWarningsOnly:
 
 class TestACleanRulesetsDirectory:
     def test_nothing_is_printed_and_the_exit_is_zero(self, tmp_path):
-        root = build(tmp_path, "defaults: [all:*]\n", stems=["voice", "voice@terse"])
+        root = build(tmp_path, "defaults: ['all:*']\n", stems=["voice", "voice@terse"])
 
         result = check(root)
 
@@ -190,13 +190,13 @@ class TestTheOutwardVocabulary:
     def test_no_message_names_a_tier_a_stem_or_an_internal_type(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [ghost, voice@terse, voice@warm]\n"
+            "defaults: ['ghost', 'voice@terse', 'voice@warm']\n"
             "rulesets:\n"
-            "  a: [a:*]\n"
+            "  a: ['a:*']\n"
             "  all: []\n"
             "when:\n"
-            "  - project x: [voice]\n"
-            "  - model nova: [voice]\n"
+            "  - project x: ['voice']\n"
+            "  - model nova: ['voice']\n"
             "  - bad\n"
             "project: y\n",
             stems=["tone@dry", "voice", "voice@terse", "voice@warm"],
@@ -213,7 +213,7 @@ class TestTheOutwardVocabulary:
     def test_an_item_is_called_an_item_and_names_its_file_and_line(self, tmp_path):
         root = build(
             tmp_path,
-            "when:\n  - flag a: [voice]\n  - env CI: [voice]\n",
+            "when:\n  - flag a: ['voice']\n  - env CI: ['voice']\n",
             stems=["voice"],
         )
 
@@ -239,7 +239,7 @@ class TestTheOutwardVocabulary:
     def test_a_variant_conflict_names_both_references(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [voice@terse, voice@warm]\n",
+            "defaults: ['voice@terse', 'voice@warm']\n",
             stems=["voice", "voice@terse", "voice@warm"],
         )
 
@@ -278,7 +278,7 @@ class TestUsage:
         assert run().returncode == 2
 
     def test_the_command_runs_from_any_working_directory(self, tmp_path):
-        root = build(tmp_path, "defaults: [ghost]\n")
+        root = build(tmp_path, "defaults: ['ghost']\n")
 
         result = subprocess.run(
             [sys.executable, str(CLI), "check", "--root", str(root)],

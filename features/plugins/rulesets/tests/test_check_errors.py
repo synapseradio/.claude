@@ -25,6 +25,7 @@ from rulesets.check.findings import (  # noqa: E402
     ItemSubject,
     KeySubject,
     ManifestSubject,
+    ModelSubject,
     ReferencesSubject,
     ReferenceSubject,
     RulesetSubject,
@@ -55,7 +56,7 @@ class TestARulesetCycle:
     def test_each_ruleset_declaration_in_the_cycle_is_an_error(self, tmp_path):
         root = build(
             tmp_path,
-            "rulesets:\n  a: [b:*]\n  b: [a:*]\n  c: [voice]\n",
+            "rulesets:\n  a: ['b:*']\n  b: ['a:*']\n  c: ['voice']\n",
             stems=["voice"],
         )
 
@@ -65,7 +66,7 @@ class TestARulesetCycle:
         ]
 
     def test_a_ruleset_that_only_spreads_into_a_cycle_is_no_error(self, tmp_path):
-        root = build(tmp_path, "rulesets:\n  a: [b:*]\n  b: [a:*]\n  c: [a:*]\n")
+        root = build(tmp_path, "rulesets:\n  a: ['b:*']\n  b: ['a:*']\n  c: ['a:*']\n")
 
         assert [subject for _, subject, _ in errors_of(root)] == [
             RulesetSubject("a"),
@@ -73,12 +74,12 @@ class TestARulesetCycle:
         ]
 
     def test_a_ruleset_spreading_itself_is_a_cycle(self, tmp_path):
-        root = build(tmp_path, "rulesets:\n  a: [a:*]\n")
+        root = build(tmp_path, "rulesets:\n  a: ['a:*']\n")
 
         assert errors_of(root) == [("ruleset-cycle", RulesetSubject("a"), 2)]
 
     def test_a_cycle_through_defaults_names_defaults_and_the_ruleset(self, tmp_path):
-        root = build(tmp_path, "defaults: [a:*]\nrulesets:\n  a: [defaults:*]\n")
+        root = build(tmp_path, "defaults: ['a:*']\nrulesets:\n  a: ['defaults:*']\n")
 
         assert errors_of(root) == [
             ("ruleset-cycle", KeySubject("defaults"), 1),
@@ -86,7 +87,7 @@ class TestARulesetCycle:
         ]
 
     def test_the_message_names_every_ruleset_in_the_cycle(self, tmp_path):
-        root = build(tmp_path, "rulesets:\n  a: [b:*]\n  b: [a:*]\n")
+        root = build(tmp_path, "rulesets:\n  a: ['b:*']\n  b: ['a:*']\n")
 
         message = check(root).errors[0].message
         assert "`a`" in message
@@ -94,7 +95,7 @@ class TestARulesetCycle:
         assert "cycle" in message
 
     def test_the_error_names_the_manifest_file(self, tmp_path):
-        root = build(tmp_path, "rulesets:\n  a: [a:*]\n")
+        root = build(tmp_path, "rulesets:\n  a: ['a:*']\n")
 
         assert check(root).errors[0].file == root / "manifest.yaml"
 
@@ -103,7 +104,7 @@ class TestOneListSettingTwoVariantsOfOneRule:
     def test_the_two_references_are_the_subject(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults:\n  - voice@terse\n  - voice@warm\n",
+            "defaults:\n  - 'voice@terse'\n  - 'voice@warm'\n",
             stems=["voice", "voice@terse", "voice@warm"],
         )
 
@@ -120,7 +121,7 @@ class TestOneListSettingTwoVariantsOfOneRule:
     def test_the_conflict_sits_in_a_ruleset_as_well_as_in_defaults(self, tmp_path):
         root = build(
             tmp_path,
-            "rulesets:\n  tone: [voice@terse, voice@warm]\n",
+            "rulesets:\n  tone: ['voice@terse', 'voice@warm']\n",
             stems=["voice", "voice@terse", "voice@warm"],
         )
 
@@ -129,7 +130,7 @@ class TestOneListSettingTwoVariantsOfOneRule:
     def test_the_conflict_sits_in_an_item_list(self, tmp_path):
         root = build(
             tmp_path,
-            "when:\n  - flag a: [voice@terse, voice@warm]\n",
+            "when:\n  - flag a: ['voice@terse', 'voice@warm']\n",
             stems=["voice", "voice@terse", "voice@warm"],
         )
 
@@ -138,7 +139,7 @@ class TestOneListSettingTwoVariantsOfOneRule:
     def test_two_items_setting_different_variants_are_no_error(self, tmp_path):
         root = build(
             tmp_path,
-            "when:\n  - flag voice-terse: [voice@terse]\n  - flag voice-warm: [voice@warm]\n",
+            "when:\n  - flag voice-terse: ['voice@terse']\n  - flag voice-warm: ['voice@warm']\n",
             stems=["voice", "voice@terse", "voice@warm"],
         )
 
@@ -147,7 +148,7 @@ class TestOneListSettingTwoVariantsOfOneRule:
     def test_one_variant_named_twice_is_no_conflict(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [voice@terse, voice@terse]\n",
+            "defaults: ['voice@terse', 'voice@terse']\n",
             stems=["voice", "voice@terse"],
         )
 
@@ -156,7 +157,7 @@ class TestOneListSettingTwoVariantsOfOneRule:
     def test_a_strike_that_leaves_one_variant_is_no_conflict(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [voice@terse, voice@warm, -voice@warm]\n",
+            "defaults: ['voice@terse', 'voice@warm', '-voice@warm']\n",
             stems=["voice", "voice@terse", "voice@warm"],
         )
 
@@ -165,18 +166,18 @@ class TestOneListSettingTwoVariantsOfOneRule:
 
 class TestAConditionThatTestsMoreThanFacts:
     def test_a_test_of_a_project_is_an_error_whose_subject_is_the_item(self, tmp_path):
-        root = build(tmp_path, "when:\n  - project amboss: [voice]\n", stems=["voice"])
+        root = build(tmp_path, "when:\n  - project amboss: ['voice']\n", stems=["voice"])
 
         assert errors_of(root) == [("condition-invalid", ItemSubject(0), 2)]
 
     def test_the_message_names_what_the_condition_tests(self, tmp_path):
-        root = build(tmp_path, "when:\n  - env CI: [voice]\n", stems=["voice"])
+        root = build(tmp_path, "when:\n  - env CI: ['voice']\n", stems=["voice"])
 
         assert "env" in check(root).errors[0].message
 
     def test_text_that_does_not_parse_is_an_error_whose_subject_is_the_item(self, tmp_path):
         root = build(
-            tmp_path, "when:\n  - (agent critic and flag strict: [voice]\n", stems=["voice"]
+            tmp_path, "when:\n  - (agent critic and flag strict: ['voice']\n", stems=["voice"]
         )
 
         assert errors_of(root) == [("condition-invalid", ItemSubject(0), 2)]
@@ -184,7 +185,7 @@ class TestAConditionThatTestsMoreThanFacts:
     def test_the_item_index_counts_every_item_written(self, tmp_path):
         root = build(
             tmp_path,
-            "when:\n  - flag ok: [voice]\n  - just text\n  - project x: [voice]\n",
+            "when:\n  - flag ok: ['voice']\n  - just text\n  - project x: ['voice']\n",
             stems=["voice"],
         )
 
@@ -194,19 +195,19 @@ class TestAConditionThatTestsMoreThanFacts:
         ]
 
     def test_an_agent_nobody_declares_is_no_error(self, tmp_path):
-        root = build(tmp_path, "when:\n  - agent eval-runner: [voice]\n", stems=["voice"])
+        root = build(tmp_path, "when:\n  - agent eval-runner: ['voice']\n", stems=["voice"])
 
         assert errors_of(root) == []
 
     def test_a_flag_nobody_sets_is_no_error(self, tmp_path):
-        root = build(tmp_path, "when:\n  - flag stirct: [voice]\n", stems=["voice"])
+        root = build(tmp_path, "when:\n  - flag stirct: ['voice']\n", stems=["voice"])
 
         assert errors_of(root) == []
 
     def test_a_correct_condition_is_no_error(self, tmp_path):
         root = build(
             tmp_path,
-            "models: [haiku]\nwhen:\n  - (agent a or kind fork) and not model haiku: [voice]\n",
+            "models: ['haiku']\nwhen:\n  - (agent a or kind fork) and not model haiku: ['voice']\n",
             stems=["voice"],
         )
 
@@ -217,45 +218,49 @@ class TestAConditionNamingAModelTheManifestDoesNotDeclare:
     def test_the_item_is_the_subject(self, tmp_path):
         root = build(
             tmp_path,
-            "models: [opus]\nwhen:\n  - model hiaku: [voice]\n",
+            "models: ['opus']\nwhen:\n  - model hiaku: ['voice']\n",
             stems=["voice"],
         )
 
         assert errors_of(root) == [("unknown-model", ItemSubject(0), 3)]
 
     def test_the_message_names_the_model(self, tmp_path):
-        root = build(tmp_path, "models: [opus]\nwhen:\n  - model hiaku: [voice]\n", stems=["voice"])
+        root = build(
+            tmp_path, "models: ['opus']\nwhen:\n  - model hiaku: ['voice']\n", stems=["voice"]
+        )
 
         assert "hiaku" in check(root).errors[0].message
 
     def test_a_manifest_declaring_no_models_declares_none(self, tmp_path):
-        root = build(tmp_path, "when:\n  - model haiku: [voice]\n", stems=["voice"])
+        root = build(tmp_path, "when:\n  - model haiku: ['voice']\n", stems=["voice"])
 
         assert errors_of(root) == [("unknown-model", ItemSubject(0), 2)]
 
     def test_a_negated_model_test_is_checked_too(self, tmp_path):
         root = build(
-            tmp_path, "models: [opus]\nwhen:\n  - not model nova: [voice]\n", stems=["voice"]
+            tmp_path, "models: ['opus']\nwhen:\n  - not model nova: ['voice']\n", stems=["voice"]
         )
 
         assert errors_of(root) == [("unknown-model", ItemSubject(0), 3)]
 
     def test_each_undeclared_name_of_one_item_is_named_in_one_error(self, tmp_path):
-        root = build(tmp_path, "when:\n  - model nova or model luna: [voice]\n", stems=["voice"])
+        root = build(tmp_path, "when:\n  - model nova or model luna: ['voice']\n", stems=["voice"])
 
         (error,) = check(root).errors
         assert "nova" in error.message
         assert "luna" in error.message
 
     def test_a_declared_model_is_no_error(self, tmp_path):
-        root = build(tmp_path, "models: [opus]\nwhen:\n  - model opus: [voice]\n", stems=["voice"])
+        root = build(
+            tmp_path, "models: ['opus']\nwhen:\n  - model opus: ['voice']\n", stems=["voice"]
+        )
 
         assert errors_of(root) == []
 
 
 class TestAWhenItemThatIsNoOneKeyMappingToAList:
     def test_the_item_is_the_subject(self, tmp_path):
-        root = build(tmp_path, "when:\n  - flag a: [voice]\n  - {flag b: x}\n", stems=["voice"])
+        root = build(tmp_path, "when:\n  - flag a: ['voice']\n  - {flag b: x}\n", stems=["voice"])
 
         assert errors_of(root) == [("item-shape", ItemSubject(1), 3)]
 
@@ -267,17 +272,17 @@ class TestAWhenItemThatIsNoOneKeyMappingToAList:
 
 class TestAReferenceNamingWhatNothingDeclares:
     def test_an_undeclared_rule_is_an_error_whose_subject_is_the_reference(self, tmp_path):
-        root = build(tmp_path, "defaults:\n  - voice\n  - ghost\n", stems=["voice"])
+        root = build(tmp_path, "defaults:\n  - 'voice'\n  - 'ghost'\n", stems=["voice"])
 
         assert errors_of(root) == [("undeclared-reference", ReferenceSubject("ghost", 3), 3)]
 
     def test_the_message_names_the_rule(self, tmp_path):
-        root = build(tmp_path, "defaults: [ghost]\n")
+        root = build(tmp_path, "defaults: ['ghost']\n")
 
         assert "ghost" in check(root).errors[0].message
 
     def test_the_printed_line_names_the_reference_once_before_the_cause(self, tmp_path):
-        root = build(tmp_path, "defaults: [ghost]\n")
+        root = build(tmp_path, "defaults: ['ghost']\n")
 
         (error,) = check(root).errors
 
@@ -289,7 +294,7 @@ class TestAReferenceNamingWhatNothingDeclares:
     def test_each_cause_is_worded_without_repeating_the_reference(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [-rules:ghost, voice@loud, phantom:*, 'foo:bar']\n",
+            "defaults: ['-rules:ghost', 'voice@loud', 'phantom:*', 'foo:bar']\n",
             stems=["voice"],
         )
 
@@ -304,24 +309,24 @@ class TestAReferenceNamingWhatNothingDeclares:
         ]
 
     def test_an_undeclared_variant_is_an_error(self, tmp_path):
-        root = build(tmp_path, "defaults: [voice@loud]\n", stems=["voice", "voice@terse"])
+        root = build(tmp_path, "defaults: ['voice@loud']\n", stems=["voice", "voice@terse"])
 
         assert errors_of(root) == [("undeclared-reference", ReferenceSubject("voice@loud", 1), 1)]
 
     def test_an_undeclared_ruleset_is_an_error(self, tmp_path):
-        root = build(tmp_path, "defaults: [phantom:*]\n", stems=["voice"])
+        root = build(tmp_path, "defaults: ['phantom:*']\n", stems=["voice"])
 
         assert errors_of(root) == [("undeclared-reference", ReferenceSubject("phantom:*", 1), 1)]
 
     def test_a_remove_of_an_undeclared_rule_is_an_error(self, tmp_path):
-        root = build(tmp_path, "defaults: [all:*, -ghost]\n", stems=["voice"])
+        root = build(tmp_path, "defaults: ['all:*', '-ghost']\n", stems=["voice"])
 
         assert errors_of(root) == [("undeclared-reference", ReferenceSubject("-ghost", 1), 1)]
 
     def test_an_undeclared_reference_inside_a_ruleset_and_an_item_is_found(self, tmp_path):
         root = build(
             tmp_path,
-            "rulesets:\n  code: [ghost]\nwhen:\n  - flag a: [spook]\n",
+            "rulesets:\n  code: ['ghost']\nwhen:\n  - flag a: ['spook']\n",
             stems=["voice"],
         )
 
@@ -333,7 +338,7 @@ class TestAReferenceNamingWhatNothingDeclares:
     def test_a_reference_reached_by_two_spreads_is_reported_once(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [a:*, b:*]\nrulesets:\n  a: [ghost]\n  b: [a:*]\n",
+            "defaults: ['a:*', 'b:*']\nrulesets:\n  a: ['ghost']\n  b: ['a:*']\n",
             stems=["voice"],
         )
 
@@ -347,7 +352,7 @@ class TestAReferenceNamingWhatNothingDeclares:
     def test_a_declared_variant_and_ruleset_are_no_error(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [voice@terse, tone:*]\nrulesets:\n  tone: [voice]\n",
+            "defaults: ['voice@terse', 'tone:*']\nrulesets:\n  tone: ['voice']\n",
             stems=["voice", "voice@terse"],
         )
 
@@ -356,7 +361,7 @@ class TestAReferenceNamingWhatNothingDeclares:
 
 class TestARulesetWhoseValueIsNotAList:
     def test_the_declaration_is_the_subject(self, tmp_path):
-        root = build(tmp_path, "rulesets:\n  code: {a: b}\n  tone: [voice]\n", stems=["voice"])
+        root = build(tmp_path, "rulesets:\n  code: {a: b}\n  tone: ['voice']\n", stems=["voice"])
 
         assert errors_of(root) == [("ruleset-shape", RulesetSubject("code"), 2)]
 
@@ -380,7 +385,7 @@ class TestARuleWhoseFrontmatterCarriesACondition:
     def test_the_rule_is_the_subject_and_the_condition_line_is_the_line(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [voice]\n",
+            "defaults: ['voice']\n",
             bodies={"voice": "---\ndescription: tone\nmodel: haiku\n---\ntext\n"},
         )
 
@@ -499,7 +504,7 @@ class TestARuleFileThatCannotBeRead:
 
 class TestATopLevelKeyOtherThanTheFour:
     def test_the_key_is_the_subject(self, tmp_path):
-        root = build(tmp_path, "defaults: [voice]\nproject: amboss\n", stems=["voice"])
+        root = build(tmp_path, "defaults: ['voice']\nproject: amboss\n", stems=["voice"])
 
         assert errors_of(root) == [("unknown-key", KeySubject("project"), 2)]
 
@@ -593,7 +598,7 @@ class TestAManifestThatDoesNotParse:
     @pytest.mark.skipif(os.geteuid() == 0, reason="root reads a file whatever its mode")
     def test_a_manifest_the_system_cannot_open_is_unparsable_with_no_line(self, tmp_path):
         root = build(tmp_path)
-        (root / "manifest.yaml").write_text("defaults: [all:*]\n", encoding="utf-8")
+        (root / "manifest.yaml").write_text("defaults: ['all:*']\n", encoding="utf-8")
         (root / "manifest.yaml").chmod(0)
 
         (error,) = check(root).errors
@@ -606,7 +611,7 @@ class TestAManifestThatDoesNotParse:
         assert error.message
 
     def test_the_quoted_name_is_no_error(self, tmp_path):
-        root = build(tmp_path, 'models: [opus, "opus-4-8[1m]"]\n')
+        root = build(tmp_path, 'models: ["opus", "opus-4-8[1m]"]\n')
 
         assert errors_of(root) == []
 
@@ -619,16 +624,171 @@ class TestAManifestThatDoesNotParse:
         ]
 
 
+class TestAListEntryThatIsNotAQuotedString:
+    def test_a_plain_reference_is_an_error_whose_subject_is_the_reference(self, tmp_path):
+        root = build(tmp_path, "defaults: [all:*]\n", stems=["voice"])
+
+        assert errors_of(root) == [("unquoted-entry", ReferenceSubject("all:*", 1), 1)]
+
+    def test_the_message_says_how_to_write_the_entry(self, tmp_path):
+        root = build(tmp_path, "defaults: [all:*]\n", stems=["voice"])
+
+        (error,) = check(root).errors
+
+        assert error.message == (
+            "`all:*` is not quoted; write every list entry as a quoted string, `'all:*'`"
+        )
+        assert finding_line(error).endswith(
+            "reference `all:*`: `all:*` is not quoted; "
+            "write every list entry as a quoted string, `'all:*'`"
+        )
+
+    def test_the_reference_is_skipped_like_one_nothing_declares(self, tmp_path):
+        root = build(tmp_path, "defaults: [voice, 'sorting']\n", stems=["voice", "sorting"])
+
+        (error,) = check(root).errors
+        warnings = [(w.kind, w.subject) for w in check(root).warnings]
+
+        assert error.kind == "unquoted-entry"
+        assert ("never-included", RuleSubject("voice")) in warnings
+        assert ("never-included", RuleSubject("sorting")) not in warnings
+
+    @pytest.mark.parametrize(
+        ("entry", "subject", "message"),
+        [
+            (
+                "2024",
+                "2024",
+                "`2024` is not quoted; write every list entry as a quoted string, `'2024'`",
+            ),
+            ("~", "~", "`~` is not quoted; write every list entry as a quoted string, `'~'`"),
+            (
+                "{a: b}",
+                "{a: b}",
+                "`{a: b}` is a mapping; write every list entry as a quoted string",
+            ),
+            (
+                "[a, b]",
+                "[a, b]",
+                "`[a, b]` is a list; write every list entry as a quoted string",
+            ),
+        ],
+    )
+    def test_each_unquoted_shape_is_worded_for_what_it_is(self, tmp_path, entry, subject, message):
+        root = build(tmp_path, f"defaults: [{entry}]\n")
+
+        (error,) = check(root).errors
+
+        assert (error.kind, error.subject, error.message) == (
+            "unquoted-entry",
+            ReferenceSubject(subject, 1),
+            message,
+        )
+
+    def test_an_empty_entry_is_an_error(self, tmp_path):
+        root = build(tmp_path, "defaults:\n  - \n  - 'voice'\n", stems=["voice"])
+
+        (error,) = check(root).errors
+
+        assert (error.kind, error.line) == ("unquoted-entry", 2)
+        assert (
+            error.message
+            == "an empty entry is not a quoted string; write every list entry as a quoted string"
+        )
+
+    def test_a_mapping_typo_inside_a_flow_list_is_one_error_for_the_entry(self, tmp_path):
+        root = build(tmp_path, "defaults: ['voice', a: b]\n", stems=["voice"])
+
+        assert errors_of(root) == [("unquoted-entry", ReferenceSubject("a: b", 1), 1)]
+
+    def test_both_quote_styles_are_legal(self, tmp_path):
+        root = build(tmp_path, "defaults: ['voice', \"sorting\"]\n", stems=["voice", "sorting"])
+
+        assert errors_of(root) == []
+
+    def test_every_list_is_held_to_it(self, tmp_path):
+        manifest = "defaults: [a]\nrulesets:\n  code: [b]\nwhen:\n  - flag x: [c]\n"
+        root = build(tmp_path, manifest)
+
+        assert errors_of(root) == [
+            ("unquoted-entry", ReferenceSubject("a", 1), 1),
+            ("unquoted-entry", ReferenceSubject("b", 3), 3),
+            ("unquoted-entry", ReferenceSubject("c", 5), 5),
+        ]
+
+    def test_a_when_condition_stays_unquoted_and_may_be_quoted(self, tmp_path):
+        manifest = "when:\n  - flag a: ['voice']\n  - 'flag b': ['voice']\n"
+        root = build(tmp_path, manifest, stems=["voice"])
+
+        assert errors_of(root) == []
+
+    def test_a_model_entry_is_an_error_whose_subject_is_the_entry_and_the_name_is_undeclared(
+        self, tmp_path
+    ):
+        manifest = "models: [opus, 'sonnet']\nwhen:\n  - model opus: ['voice']\n"
+        root = build(tmp_path, manifest, stems=["voice"])
+
+        assert errors_of(root) == [
+            ("unquoted-entry", ModelSubject("opus"), 1),
+            ("unknown-model", ItemSubject(0), 3),
+        ]
+
+    def test_a_model_entry_that_is_a_number_is_the_same_error(self, tmp_path):
+        root = build(tmp_path, "models: ['opus', 5]\n")
+
+        assert errors_of(root) == [("unquoted-entry", ModelSubject("5"), 1)]
+
+    def test_a_models_value_that_is_no_list_stays_a_key_shape_error(self, tmp_path):
+        root = build(tmp_path, "models: opus\n")
+
+        assert errors_of(root) == [("key-shape", KeySubject("models"), 1)]
+
+    def test_a_model_error_is_worded_for_the_model(self, tmp_path):
+        root = build(tmp_path, "models: [opus]\n")
+
+        (error,) = check(root).errors
+
+        assert finding_line(error).endswith(
+            "model `opus`: `opus` is not quoted; write every list entry as a quoted string, `'opus'`"
+        )
+
+
+class TestAManifestThatCannotParseBecauseOfAnUnquotedEntry:
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "defaults: [*]\n",
+            "defaults: [*foo]\n",
+            "models: [opus, opus-4-8[1m]]\n",
+        ],
+    )
+    def test_the_message_advises_quoting_every_list_entry(self, tmp_path, text):
+        root = build(tmp_path, text)
+
+        (error,) = check(root).errors
+
+        assert error.kind == "manifest-unparsable"
+        assert error.message.endswith("; write every list entry as a quoted string")
+
+    def test_a_parse_failure_with_another_cause_carries_no_advice(self, tmp_path):
+        root = build(tmp_path, "defaults: 'unterminated\n")
+
+        (error,) = check(root).errors
+
+        assert error.kind == "manifest-unparsable"
+        assert "quoted string" not in error.message
+
+
 class TestOneRunReportsEveryError:
     def test_a_cycle_an_unknown_fact_and_a_missing_rule_are_all_reported(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [ghost]\n"
+            "defaults: ['ghost']\n"
             "rulesets:\n"
-            "  a: [b:*]\n"
-            "  b: [a:*]\n"
+            "  a: ['b:*']\n"
+            "  b: ['a:*']\n"
             "when:\n"
-            "  - project amboss: [voice]\n",
+            "  - project amboss: ['voice']\n",
             stems=["voice"],
         )
 
@@ -652,12 +812,12 @@ class TestACleanRulesetsDirectory:
     def test_nothing_is_reported(self, tmp_path):
         root = build(
             tmp_path,
-            "models: [haiku]\n"
-            "defaults: [all:*, -security]\n"
+            "models: ['haiku']\n"
+            "defaults: ['all:*', '-security']\n"
             "rulesets:\n"
-            "  code: [voice]\n"
+            "  code: ['voice']\n"
             "when:\n"
-            "  - model haiku: [voice@terse]\n",
+            "  - model haiku: ['voice@terse']\n",
             stems=["voice", "voice@terse", "security"],
         )
 

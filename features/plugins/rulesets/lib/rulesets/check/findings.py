@@ -42,6 +42,13 @@ class KeySubject:
 
 
 @dataclasses.dataclass(frozen=True)
+class ModelSubject:
+    """An entry of `models`, as written."""
+
+    name: str
+
+
+@dataclasses.dataclass(frozen=True)
 class ReferenceSubject:
     """A reference as written, with the file line it sits on."""
 
@@ -72,6 +79,7 @@ type Subject = (
     | RulesetSubject
     | ItemSubject
     | KeySubject
+    | ModelSubject
     | ReferenceSubject
     | ReferencesSubject
     | ManifestSubject
@@ -94,6 +102,7 @@ type ErrorKind = Literal[
     "rule-condition",
     "variant-without-default",
     "unreadable-file",
+    "unquoted-entry",
 ]
 
 type WarningKind = Literal[

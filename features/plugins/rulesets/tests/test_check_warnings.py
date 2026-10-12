@@ -44,7 +44,7 @@ def subjects_of(root, kind):
 
 class TestARuleNoAddAnywhereIncludes:
     def test_a_rule_the_defaults_remove_and_nothing_adds_is_named_with_its_file(self, tmp_path):
-        root = build(tmp_path, "defaults: [all:*, -security]\n", stems=["voice", "security"])
+        root = build(tmp_path, "defaults: ['all:*', '-security']\n", stems=["voice", "security"])
 
         (warning,) = warnings_of(root, "never-included")
         assert warning.subject == RuleSubject("security")
@@ -53,21 +53,21 @@ class TestARuleNoAddAnywhereIncludes:
     def test_a_rule_reached_only_by_an_item_that_never_applies_is_included(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [voice]\nwhen:\n  - flag never-set: [security]\n",
+            "defaults: ['voice']\nwhen:\n  - flag never-set: ['security']\n",
             stems=["voice", "security"],
         )
 
         assert warnings_of(root, "never-included") == []
 
     def test_a_rule_added_by_name_is_included(self, tmp_path):
-        root = build(tmp_path, "defaults: [voice]\n", stems=["voice"])
+        root = build(tmp_path, "defaults: ['voice']\n", stems=["voice"])
 
         assert warnings_of(root, "never-included") == []
 
     def test_a_rule_added_through_a_ruleset_is_included(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [tone:*]\nrulesets:\n  tone: [voice]\n",
+            "defaults: ['tone:*']\nrulesets:\n  tone: ['voice']\n",
             stems=["voice"],
         )
 
@@ -76,14 +76,14 @@ class TestARuleNoAddAnywhereIncludes:
     def test_a_rule_added_through_nested_rulesets_is_included(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [outer:*]\nrulesets:\n  outer: [inner:*]\n  inner: [voice]\n",
+            "defaults: ['outer:*']\nrulesets:\n  outer: ['inner:*']\n  inner: ['voice']\n",
             stems=["voice"],
         )
 
         assert warnings_of(root, "never-included") == []
 
     def test_every_rule_is_included_by_the_spread_of_all(self, tmp_path):
-        root = build(tmp_path, "defaults: [all:*]\n", stems=["a", "b", "c"])
+        root = build(tmp_path, "defaults: ['all:*']\n", stems=["a", "b", "c"])
 
         assert warnings_of(root, "never-included") == []
 
@@ -110,7 +110,7 @@ class TestARuleNoAddAnywhereIncludes:
     def test_a_remove_in_an_item_does_not_undo_an_add_elsewhere(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [voice]\nwhen:\n  - flag quiet: [-voice]\n",
+            "defaults: ['voice']\nwhen:\n  - flag quiet: ['-voice']\n",
             stems=["voice"],
         )
 
@@ -119,7 +119,7 @@ class TestARuleNoAddAnywhereIncludes:
     def test_an_add_in_a_ruleset_nothing_spreads_still_includes_its_rule(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [other]\nrulesets:\n  tone: [voice]\n",
+            "defaults: ['other']\nrulesets:\n  tone: ['voice']\n",
             stems=["voice", "other"],
         )
 
@@ -128,7 +128,7 @@ class TestARuleNoAddAnywhereIncludes:
     def test_a_rule_removed_in_the_list_that_spreads_it_is_unreached(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [all:*, -voice]\nrulesets:\n  tone: [other]\n",
+            "defaults: ['all:*', '-voice']\nrulesets:\n  tone: ['other']\n",
             stems=["voice", "other"],
         )
 
@@ -500,7 +500,7 @@ class TestWarningsOnly:
     def test_a_rule_no_add_includes_and_a_rule_naming_another_draw_two_warnings(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [voice]\n",
+            "defaults: ['voice']\n",
             stems=["security"],
             bodies={"voice": "Run security first.\n"},
         )
@@ -513,7 +513,7 @@ class TestWarningsOnly:
     def test_a_clean_rulesets_directory_reports_nothing(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: [all:*]\n",
+            "defaults: ['all:*']\n",
             stems=["voice", "voice@terse", "sorting"],
             bodies={"sorting": "<!-- rule: sorting -->\nOrder things.\n"},
         )
@@ -524,6 +524,6 @@ class TestWarningsOnly:
         assert (report.errors, report.warnings) == ((), ())
 
     def test_a_new_rule_file_reached_by_the_spread_of_all_draws_no_layout_finding(self, tmp_path):
-        root = build(tmp_path, "defaults: [all:*]\n", stems=["old", "brand-new"])
+        root = build(tmp_path, "defaults: ['all:*']\n", stems=["old", "brand-new"])
 
         assert warnings_of(root) == []

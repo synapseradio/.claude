@@ -17,7 +17,7 @@ from rulesets.source.reference import (
     Reference,
     RuleTarget,
     SpreadTarget,
-    Target,
+    UnquotedTarget,
 )
 
 
@@ -39,7 +39,9 @@ class Removal:
     source: Reference
 
 
-type ProblemReason = Literal["malformed", "unknown-rule", "unknown-variant", "unknown-ruleset"]
+type ProblemReason = Literal[
+    "malformed", "unquoted", "unknown-rule", "unknown-variant", "unknown-ruleset"
+]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -149,10 +151,8 @@ class Expander:
             self._spreads[name] = tuple(dict.fromkeys((e.rule, e.variant) for e in kept))
         return self._spreads[name]
 
-    def _problem(self, target: Target) -> ProblemReason | None:
+    def _unresolved(self, target: SpreadTarget | RuleTarget) -> ProblemReason | None:
         match target:
-            case MalformedTarget():
-                return "malformed"
             case SpreadTarget(ruleset):
                 known = ruleset in RESERVED_RULESETS or ruleset in self._lists
                 return None if known else "unknown-ruleset"
@@ -172,10 +172,19 @@ class Expander:
         removals: list[Removal] = []
         problems: list[ReferenceProblem] = []
         for reference in references:
-            if (reason := self._problem(reference.target)) is not None:
-                problems.append(ReferenceProblem(reference, reason))
-                continue
-            match reference.target:
+            target = reference.target
+            match target:
+                case MalformedTarget():
+                    problems.append(ReferenceProblem(reference, "malformed"))
+                    continue
+                case UnquotedTarget():
+                    problems.append(ReferenceProblem(reference, "unquoted"))
+                    continue
+                case SpreadTarget() | RuleTarget():
+                    if (reason := self._unresolved(target)) is not None:
+                        problems.append(ReferenceProblem(reference, reason))
+                        continue
+            match target:
                 case SpreadTarget(ruleset) if reference.remove:
                     reached = dict.fromkeys(rule for rule, _ in self._spread(ruleset))
                     removals.extend(Removal(rule, None, reference) for rule in reached)

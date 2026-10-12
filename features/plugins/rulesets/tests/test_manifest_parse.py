@@ -23,21 +23,22 @@ from rulesets.source.manifest import (  # noqa: E402
     MalformedItem,
     ReservedRulesetDeclared,
     UnknownKey,
+    UnquotedModel,
     WrongKeyShape,
     WrongRulesetShape,
 )
 
 SITUATION_ONE = """\
-models: [opus, sonnet, haiku, fable, opus-4-8]
-defaults: [all:*, -security-pass, -review-method]
+models: ['opus', 'sonnet', 'haiku', 'fable', 'opus-4-8']
+defaults: ['all:*', '-security-pass', '-review-method']
 rulesets:
-  code: [writing-code, data-modeling]
-  reviewer: [review-method, report-format]
+  code: ['writing-code', 'data-modeling']
+  reviewer: ['review-method', 'report-format']
 when:
-  - model haiku: [-code:*]
-  - agent critic and not model haiku: [reviewer:*]
-  - agent critic and flag strict: [security-pass]
-  - flag voice-terse: [voice@terse]
+  - model haiku: ['-code:*']
+  - agent critic and not model haiku: ['reviewer:*']
+  - agent critic and flag strict: ['security-pass']
+  - flag voice-terse: ['voice@terse']
 """
 
 PATH = pathlib.Path("manifest.yaml")
@@ -107,7 +108,7 @@ class TestTheFourKeys:
 
 class TestEachReferenceKeepsItsOwnLine:
     def test_references_in_a_block_list_sit_on_their_own_lines(self):
-        text = "defaults:\n  - all:*\n  - -security-pass\n  - voice@terse\n"
+        text = "defaults:\n  - 'all:*'\n  - '-security-pass'\n  - 'voice@terse'\n"
 
         assert lines(parse(text).defaults.references) == [2, 3, 4]
 
@@ -115,12 +116,12 @@ class TestEachReferenceKeepsItsOwnLine:
         text = (
             "rulesets:\n"
             "  code:\n"
-            "    - writing-code\n"
-            "    - data-modeling\n"
+            "    - 'writing-code'\n"
+            "    - 'data-modeling'\n"
             "when:\n"
             "  - flag strict:\n"
-            "      - security-pass\n"
-            "      - -voice\n"
+            "      - 'security-pass'\n"
+            "      - '-voice'\n"
         )
         parsed = parse(text)
 
@@ -129,7 +130,7 @@ class TestEachReferenceKeepsItsOwnLine:
         assert lines(parsed.items[0].references) == [7, 8]
 
     def test_a_reference_is_read_as_written_even_where_yaml_would_read_a_number(self):
-        parsed = parse("defaults: [2024, 'quoted']\n")
+        parsed = parse("defaults: ['2024', 'quoted']\n")
 
         assert texts(parsed.defaults.references) == ["2024", "quoted"]
 
@@ -145,7 +146,7 @@ class TestAMissingOrEmptyManifest:
         assert parsed.problems == ()
 
     def test_a_manifest_that_exists_is_read_from_its_file(self, tmp_path):
-        (tmp_path / "manifest.yaml").write_text("defaults: [voice]\n", encoding="utf-8")
+        (tmp_path / "manifest.yaml").write_text("defaults: ['voice']\n", encoding="utf-8")
 
         parsed = manifest.read_manifest(tmp_path)
 
@@ -164,7 +165,7 @@ class TestAMissingOrEmptyManifest:
         assert parsed.problems == ()
 
     def test_a_missing_key_holds_nothing(self):
-        parsed = parse("models: [opus]\n")
+        parsed = parse("models: ['opus']\n")
 
         assert parsed.defaults is None
         assert dict(parsed.rulesets) == {}
@@ -186,12 +187,12 @@ class TestAParseFailureIsNotAShapeError:
         assert str(failure.value).startswith("manifest.yaml:2: ")
 
     def test_the_quoted_name_parses(self):
-        parsed = parse('models: [opus, "opus-4-8[1m]"]\n')
+        parsed = parse('models: ["opus", "opus-4-8[1m]"]\n')
 
         assert parsed.models == ("opus", "opus-4-8[1m]")
 
     def test_the_block_form_parses(self):
-        parsed = parse("models:\n  - opus\n  - opus-4-8[1m]\n")
+        parsed = parse("models:\n  - 'opus'\n  - 'opus-4-8[1m]'\n")
 
         assert parsed.models == ("opus", "opus-4-8[1m]")
 
@@ -215,20 +216,30 @@ class TestAParseFailureIsNotAShapeError:
 
 class TestAWrongShapeLeavesTheRestOfTheManifestStanding:
     def test_a_top_level_key_nobody_defines_is_ignored_and_named(self):
-        parsed = parse("defaults: [voice]\nproject: amboss\n")
+        parsed = parse("defaults: ['voice']\nproject: amboss\n")
 
         assert texts(parsed.defaults.references) == ["voice"]
         assert parsed.problems == (UnknownKey("project", 2),)
 
-    def test_models_that_is_not_a_list_of_names_holds_nothing(self):
-        for text in ("models: opus\n", "models: [opus, 5]\n", "models: {opus: 1}\n"):
+    def test_an_unquoted_model_entry_is_skipped_and_named(self):
+        parsed = parse("models: [opus, 'sonnet', 5, {a: b}]\n")
+
+        assert parsed.models == ("sonnet",)
+        assert parsed.problems == (
+            UnquotedModel("opus", 1, "plain"),
+            UnquotedModel("5", 1, "plain"),
+            UnquotedModel("{a: b}", 1, "mapping"),
+        )
+
+    def test_models_that_is_not_a_list_holds_nothing(self):
+        for text in ("models: opus\n", "models: {opus: 1}\n"):
             parsed = parse(text)
 
             assert parsed.models == ()
             assert parsed.problems == (WrongKeyShape("models", 1),)
 
     def test_defaults_that_is_not_a_list_holds_nothing(self):
-        parsed = parse("defaults: all:*\nmodels: [opus]\n")
+        parsed = parse("defaults: all:*\nmodels: ['opus']\n")
 
         assert parsed.defaults is None
         assert parsed.models == ("opus",)
@@ -247,7 +258,7 @@ class TestAWrongShapeLeavesTheRestOfTheManifestStanding:
         assert parsed.problems == (WrongKeyShape("when", 1),)
 
     def test_a_ruleset_whose_value_is_not_a_list_is_declared_and_holds_nothing(self):
-        parsed = parse("rulesets:\n  code: {a: b}\n  tone: [voice]\n")
+        parsed = parse("rulesets:\n  code: {a: b}\n  tone: ['voice']\n")
 
         assert parsed.rulesets["code"].references == ()
         assert parsed.rulesets["code"].line == 2
@@ -255,7 +266,7 @@ class TestAWrongShapeLeavesTheRestOfTheManifestStanding:
         assert parsed.problems == (WrongRulesetShape("code", 2),)
 
     def test_a_reserved_ruleset_declaration_is_skipped_and_named(self):
-        parsed = parse("rulesets:\n  all: [voice]\n  none: []\n  tone: [voice]\n")
+        parsed = parse("rulesets:\n  all: ['voice']\n  none: []\n  tone: ['voice']\n")
 
         assert list(parsed.rulesets) == ["tone"]
         assert parsed.problems == (
@@ -264,7 +275,7 @@ class TestAWrongShapeLeavesTheRestOfTheManifestStanding:
         )
 
     def test_a_ruleset_named_defaults_or_rules_is_reserved_too(self):
-        parsed = parse("rulesets:\n  defaults: [voice]\n  rules: [voice]\n")
+        parsed = parse("rulesets:\n  defaults: ['voice']\n  rules: ['voice']\n")
 
         assert dict(parsed.rulesets) == {}
         assert parsed.problems == (
@@ -275,11 +286,11 @@ class TestAWrongShapeLeavesTheRestOfTheManifestStanding:
     def test_a_when_item_that_is_no_one_key_mapping_to_a_list_is_skipped_and_named(self):
         text = (
             "when:\n"
-            "  - flag a: [voice]\n"
+            "  - flag a: ['voice']\n"
             "  - just a string\n"
             "  - {flag b: [voice], flag c: [voice]}\n"
             "  - flag d: {x: y}\n"
-            "  - flag e: [voice]\n"
+            "  - flag e: ['voice']\n"
         )
         parsed = parse(text)
 
@@ -295,6 +306,6 @@ class TestAWrongShapeLeavesTheRestOfTheManifestStanding:
         assert parsed.path == pathlib.Path("/pool/manifest.yaml")
 
     def test_one_model_name_declared_twice_is_no_problem(self):
-        parsed = parse("models: [sonnet, sonnet]\n")
+        parsed = parse("models: ['sonnet', 'sonnet']\n")
 
         assert parsed.problems == ()
