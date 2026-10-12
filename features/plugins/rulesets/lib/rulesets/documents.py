@@ -41,17 +41,45 @@ class Document:
     body: str
 
 
-FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
+FENCE = "---"
+BLOCK_FIRST_LINE = 2
+
+
+def _split(text: str) -> tuple[str, str] | None:
+    """The block between the fences and the text after the closing fence, or None.
+
+    A fence is a line of three dashes and any trailing whitespace, so a closing fence may end
+    the text with no newline and a file may use Windows line endings. The block comes back
+    with `\\n` line endings.
+    """
+
+    lines = text.split("\n")
+    if lines[0].rstrip() != FENCE:
+        return None
+    closing = next((n for n, line in enumerate(lines[1:], 1) if line.rstrip() == FENCE), None)
+    if closing is None:
+        return None
+    block = "\n".join(line.removesuffix("\r") for line in lines[1:closing])
+    return block, "\n".join(lines[closing + 1 :])
+
+
+def split_frontmatter(text: str) -> tuple[str, int] | None:
+    """The frontmatter block of a markdown text and the file line it starts on, or None.
+
+    The text carries a block where its first line is a fence and a later line is the closing
+    fence. The block is the text between them, without either fence.
+    """
+
+    split = _split(text)
+    return None if split is None else (split[0], BLOCK_FIRST_LINE)
 
 
 def parse_document(text: str) -> Document:
-    match = FRONTMATTER.match(text)
-    if match is None:
+    split = _split(text)
+    if split is None:
         return Document(frontmatter=None, body=text)
-    return Document(
-        frontmatter=yaml.safe_load(match.group(1)) or {},
-        body=text[match.end() :].lstrip("\n"),
-    )
+    block, after = split
+    return Document(frontmatter=yaml.safe_load(block) or {}, body=after.lstrip("\r\n"))
 
 
 MARKDOWN_LINK = re.compile(r"(?<=\]\()([^)\s]+)(?=\))")
