@@ -34,26 +34,6 @@ SEPARATE_MECHANISM_VARIABLES = (
 )
 
 
-class ReadSpy(dict):
-    """An environment that remembers each name the engine asked it for."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.reads: set[str] = set()
-
-    def get(self, key, default=None):
-        self.reads.add(key)
-        return super().get(key, default)
-
-    def __getitem__(self, key):
-        self.reads.add(key)
-        return super().__getitem__(key)
-
-    def __contains__(self, key):
-        self.reads.add(key)
-        return super().__contains__(key)
-
-
 @pytest.fixture
 def state(tmp_path):
     return tmp_path / "state"
@@ -64,8 +44,8 @@ def session_fact(payload, env=None, *, state_dir, models=MODELS):
 
 
 class TestASessionsModelFactComesFromHarnessThenEnvironmentThenRecord:
-    def test_the_harness_model_decides_and_the_environment_is_not_read(self, state):
-        env = ReadSpy({"ANTHROPIC_MODEL": HAIKU, "ANTHROPIC_DEFAULT_MODEL": HAIKU})
+    def test_the_harness_model_decides_and_the_environment_is_not_read(self, state, read_spy):
+        env = read_spy({"ANTHROPIC_MODEL": HAIKU, "ANTHROPIC_DEFAULT_MODEL": HAIKU})
 
         fact = session_fact({"model": OPUS, "session_id": "s1"}, env, state_dir=state)
 
@@ -81,8 +61,10 @@ class TestASessionsModelFactComesFromHarnessThenEnvironmentThenRecord:
             "haiku", HAIKU, model_fact.FromVariable("ANTHROPIC_MODEL", HAIKU)
         )
 
-    def test_anthropic_default_model_is_read_only_where_anthropic_model_is_unset(self, state):
-        env = ReadSpy({"ANTHROPIC_MODEL": HAIKU, "ANTHROPIC_DEFAULT_MODEL": OPUS})
+    def test_anthropic_default_model_is_read_only_where_anthropic_model_is_unset(
+        self, state, read_spy
+    ):
+        env = read_spy({"ANTHROPIC_MODEL": HAIKU, "ANTHROPIC_DEFAULT_MODEL": OPUS})
 
         session_fact({"session_id": "s1"}, env, state_dir=state)
 
@@ -152,16 +134,18 @@ class TestASessionsModelFactComesFromHarnessThenEnvironmentThenRecord:
 
 
 class TestASessionsFirstIdentifierStands:
-    def test_an_unclaimed_harness_identifier_stands_and_the_environment_is_not_read(self, state):
-        env = ReadSpy({"ANTHROPIC_MODEL": OPUS})
+    def test_an_unclaimed_harness_identifier_stands_and_the_environment_is_not_read(
+        self, state, read_spy
+    ):
+        env = read_spy({"ANTHROPIC_MODEL": OPUS})
 
         fact = session_fact({"model": "claude-nova-1", "session_id": "s1"}, env, state_dir=state)
 
         assert fact == model_fact.Unclaimed("claude-nova-1", "harness-reported")
         assert not env.reads & {"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_MODEL"}
 
-    def test_a_non_string_harness_identifier_leaves_the_model_missing(self, state):
-        env = ReadSpy({"ANTHROPIC_MODEL": OPUS})
+    def test_a_non_string_harness_identifier_leaves_the_model_missing(self, state, read_spy):
+        env = read_spy({"ANTHROPIC_MODEL": OPUS})
 
         fact = session_fact({"model": 12345, "session_id": "s1"}, env, state_dir=state)
 
@@ -210,9 +194,9 @@ class TestASwitchTakesItsTarget:
 
         assert fact == model_fact.Claimed("opus", OPUS, "switch-target")
 
-    def test_the_target_stands_over_the_harness_model_and_the_environment(self):
+    def test_the_target_stands_over_the_harness_model_and_the_environment(self, read_spy):
         payload = {"to_model": HAIKU, "model": OPUS, "from_model": OPUS}
-        env = ReadSpy({"ANTHROPIC_MODEL": OPUS})
+        env = read_spy({"ANTHROPIC_MODEL": OPUS})
 
         fact = session_model.resolve_switch_model(payload, MODELS, env).fact
 
@@ -265,8 +249,8 @@ class TestTheEngineReadsNoVariableThatNamesASeparateMechanismsModel:
         )
 
     @pytest.mark.parametrize("payload", [{"model": OPUS}, {"session_id": "s1"}, {"model": 5}])
-    def test_no_session_resolution_asks_for_any_of_the_three(self, state, payload):
-        env = ReadSpy({name: HAIKU for name in SEPARATE_MECHANISM_VARIABLES})
+    def test_no_session_resolution_asks_for_any_of_the_three(self, state, read_spy, payload):
+        env = read_spy({name: HAIKU for name in SEPARATE_MECHANISM_VARIABLES})
 
         session_fact(payload, env, state_dir=state)
         session_model.resolve_switch_model({"to_model": OPUS}, MODELS, env)

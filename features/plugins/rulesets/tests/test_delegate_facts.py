@@ -11,7 +11,6 @@ record sit under `tmp_path`, and the environment reaches each case as a mapping.
 Run with `python3.14 -m pytest features/rulesets/tests/test_delegate_facts.py`.
 """
 
-import json
 import pathlib
 import sys
 
@@ -20,12 +19,8 @@ import pytest
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
-from rulesets import audit  # noqa: E402  (path must be set before this import)
-from rulesets.facts.model import delegate as delegate_model  # noqa: E402
 from rulesets.facts.model import fact as model_fact  # noqa: E402
-from rulesets.facts.model import record as model_record  # noqa: E402
 
-MODELS = ["opus", "sonnet", "haiku", "fable"]
 OPUS = "claude-opus-5-5"
 SONNET = "claude-sonnet-5"
 HAIKU = "claude-haiku-4-5"
@@ -35,79 +30,6 @@ SEPARATE_MECHANISM_VARIABLES = (
     "CLAUDE_CODE_BG_CLASSIFIER_MODEL",
     "CLAUDE_CONTEXT_COLLAPSE_MODEL",
 )
-
-
-class Scene:
-    """One session's world: its state, its configuration directory, and its project."""
-
-    def __init__(self, tmp_path):
-        self.state = tmp_path / "state"
-        self.config = tmp_path / "config"
-        self.project = tmp_path / "project"
-        (self.project / ".git").mkdir(parents=True)
-        (self.project / "sub").mkdir()
-
-    def parent_runs(self, identifier, session_id="s1"):
-        model_record.write_model_record(session_id, identifier, self.state)
-
-    def caller_names(self, model, *, prompt_id="p1", agent_type="general-purpose", session="s1"):
-        audit.append_spawn(session, prompt_id, agent_type, model, self.state)
-
-    def define(self, directory, filename, front):
-        path = directory / filename
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(f"---\n{front}\n---\nbody\n", encoding="utf-8")
-        return path
-
-    def user_agent(self, filename, front):
-        return self.define(self.config / "agents", filename, front)
-
-    def project_agent(self, filename, front, *, under=None):
-        return self.define((under or self.project) / ".claude" / "agents", filename, front)
-
-    def install_plugin(self, key="kit@market"):
-        install = self.config.parent / "installs" / key
-        (self.config / "plugins").mkdir(parents=True, exist_ok=True)
-        (self.config / "plugins" / "installed_plugins.json").write_text(
-            json.dumps({"version": 2, "plugins": {key: [{"installPath": str(install)}]}}),
-            encoding="utf-8",
-        )
-        return install
-
-    def resolve(self, agent_type="general-purpose", *, env=None, models=MODELS, **payload):
-        start = {"session_id": "s1", "agent_id": "a1", "prompt_id": "p1", "agent_type": agent_type}
-        start = {key: value for key, value in (start | payload).items() if value is not None}
-        return delegate_model.resolve_delegate_model(
-            start, models, env or {}, self.state, self.config
-        )
-
-    def fact(self, agent_type="general-purpose", **kwargs):
-        return self.resolve(agent_type, **kwargs).fact
-
-
-@pytest.fixture
-def scene(tmp_path):
-    return Scene(tmp_path)
-
-
-class ReadSpy(dict):
-    """An environment that remembers each name the engine asked it for."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.reads: set[str] = set()
-
-    def get(self, key, default=None):
-        self.reads.add(key)
-        return super().get(key, default)
-
-    def __getitem__(self, key):
-        self.reads.add(key)
-        return super().__getitem__(key)
-
-    def __contains__(self, key):
-        self.reads.add(key)
-        return super().__contains__(key)
 
 
 class TestADelegatesModelFactComesFromFourSourcesInOrder:
@@ -516,11 +438,11 @@ class TestAPinOfInheritAndTheHarnessBuiltInPins:
 
 
 class TestTheEngineReadsNoVariableThatNamesASeparateMechanismsModel:
-    def test_no_delegate_resolution_asks_for_any_of_the_three(self, scene):
+    def test_no_delegate_resolution_asks_for_any_of_the_three(self, scene, read_spy):
         scene.parent_runs(OPUS)
         scene.caller_names("haiku", agent_type="spawned")
         scene.user_agent("pinned.md", "name: pinned\nmodel: sonnet")
-        env = ReadSpy({name: HAIKU for name in SEPARATE_MECHANISM_VARIABLES})
+        env = read_spy({name: HAIKU for name in SEPARATE_MECHANISM_VARIABLES})
 
         for agent_type in ("spawned", "pinned", "claude-code-guide", "general-purpose"):
             scene.resolve(agent_type, env=env)

@@ -21,16 +21,9 @@ sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
 from rulesets.facts.model import fact as model_fact  # noqa: E402  (path must be set first)
 from rulesets.facts.model import session as session_model  # noqa: E402
-from test_delegate_facts import (  # noqa: E402
-    DEFAULT_VARIABLE,
-    HAIKU,
-    MODELS,
-    OPUS,
-    SONNET,
-    ReadSpy,
-    Scene,
-)
+from test_delegate_facts import DEFAULT_VARIABLE, HAIKU, OPUS, SONNET  # noqa: E402
 
+MODELS = ["opus", "sonnet", "haiku", "fable"]
 SUBAGENT_FORCE = "CLAUDE_CODE_SUBAGENT_MODEL_FORCE"
 COORDINATOR_FORCE = "CLAUDE_CODE_COORDINATOR_FORCE_WORKER_INHERIT_MODEL"
 LEVERS = (SUBAGENT_FORCE, COORDINATOR_FORCE)
@@ -44,11 +37,6 @@ PROVIDER_VARIABLES = (
     "CLAUDE_CODE_USE_ANTHROPIC_AWS",
 )
 FABLE = "claude-fable-5"
-
-
-@pytest.fixture
-def scene(tmp_path):
-    return Scene(tmp_path)
 
 
 def forced(lever):
@@ -227,9 +215,11 @@ class TestExploreAndPlanSkipTheDefaultVariable:
         assert fact == model_fact.Claimed("opus", OPUS, "parent-record")
 
     @pytest.mark.parametrize("agent_type", ["Explore", "Plan"])
-    def test_the_engine_never_reads_the_default_variable_for_them(self, scene, agent_type):
+    def test_the_engine_never_reads_the_default_variable_for_them(
+        self, scene, read_spy, agent_type
+    ):
         scene.parent_runs(OPUS)
-        env = ReadSpy({DEFAULT_VARIABLE: SONNET})
+        env = read_spy({DEFAULT_VARIABLE: SONNET})
 
         scene.resolve(agent_type, env=env)
 
