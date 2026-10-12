@@ -9,7 +9,7 @@ from rulesets.facts.environment import flag_is_set
 from rulesets.facts.model.agent_definition import definition_front
 from rulesets.facts.model.claim import opens_on
 
-INHERIT = "inherit"
+_INHERIT = "inherit"
 
 # Built-in agents carry no definition file, so their pins come from the table at
 # https://code.claude.com/docs/en/sub-agents.md#built-in-subagents. The built-ins that
@@ -29,10 +29,15 @@ PROVIDER_VARIABLES = (
 
 @dataclass(frozen=True)
 class Pin:
-    """The identifier an agent type is pinned to, which may be `inherit`, and what pinned it."""
+    """The identifier an agent type is pinned to, and what pinned it."""
 
     identifier: str
     source: Literal["definition-pin", "built-in-pin"]
+
+
+@dataclass(frozen=True)
+class Inherit:
+    """A definition whose model is `inherit`, which runs the agent on its parent's model."""
 
 
 @dataclass(frozen=True)
@@ -46,7 +51,7 @@ class ListedBuiltIn:
     agent_type: Literal["Explore", "Plan"]
 
 
-type AgentModel = Pin | ListedBuiltIn | None
+type AgentModel = Pin | Inherit | ListedBuiltIn | None
 
 
 def agent_model(agent_type: str, cwd: str | None, config_dir: pathlib.Path) -> AgentModel:
@@ -59,7 +64,9 @@ def agent_model(agent_type: str, cwd: str | None, config_dir: pathlib.Path) -> A
     front = definition_front(agent_type, cwd, config_dir)
     if front is not None:
         model = front.get("model")
-        return Pin(model, "definition-pin") if isinstance(model, str) and model else None
+        if not isinstance(model, str) or not model:
+            return None
+        return Inherit() if model == _INHERIT else Pin(model, "definition-pin")
     if ":" in agent_type:
         return None
     match agent_type:

@@ -26,11 +26,10 @@ class FromForceLever:
     lever: ForceLever
 
 
-type ModelSource = (
+type IdentifierSource = (
     Literal[
         "harness-reported",
         "session-record",
-        "no-identifier",
         "switch-target",
         "per-spawn",
         "definition-pin",
@@ -41,6 +40,7 @@ type ModelSource = (
     | FromVariable
     | FromForceLever
 )
+type ModelSource = IdentifierSource | Literal["no-identifier"]
 
 
 @dataclass(frozen=True)
@@ -49,7 +49,7 @@ class Claimed:
 
     name: str
     identifier: str
-    source: ModelSource
+    source: IdentifierSource
 
 
 @dataclass(frozen=True)
@@ -57,16 +57,19 @@ class Unclaimed:
     """A string identifier that no declared name claims."""
 
     identifier: str
-    source: ModelSource
+    source: IdentifierSource
 
 
 @dataclass(frozen=True)
 class NotAString:
-    """An identifier a source reported that is not a string, with its value and type."""
+    """An identifier a source reported that is not a string."""
 
     value: object
-    type_name: str
-    source: ModelSource
+    source: IdentifierSource
+
+    @property
+    def type_name(self) -> str:
+        return type(self.value).__name__
 
 
 @dataclass(frozen=True)

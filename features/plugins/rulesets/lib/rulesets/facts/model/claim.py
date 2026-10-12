@@ -4,9 +4,9 @@ from collections.abc import Iterable, Mapping
 
 from rulesets.facts.model.fact import (
     Claimed,
+    IdentifierSource,
     Missing,
     ModelFact,
-    ModelSource,
     NotAString,
     Unclaimed,
 )
@@ -27,7 +27,7 @@ PROFILE_VARIABLES = (
 
 def claim_model(
     identifier: object,
-    source: ModelSource,
+    source: IdentifierSource,
     models: Iterable[str],
     env: Mapping[str, str],
 ) -> ModelFact:
@@ -39,7 +39,7 @@ def claim_model(
         case str():
             pass
         case _:
-            return Missing(NotAString(identifier, type(identifier).__name__, source))
+            return Missing(NotAString(identifier, source))
 
     resolved = _resolve_alias(identifier, env)
     name = _claiming_name(resolved, frozenset(models))

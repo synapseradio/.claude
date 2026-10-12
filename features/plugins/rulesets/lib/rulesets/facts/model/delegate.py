@@ -4,8 +4,8 @@ import pathlib
 from collections.abc import Callable, Iterable, Mapping
 
 from rulesets.facts.model.agent import (
-    INHERIT,
     AgentModel,
+    Inherit,
     ListedBuiltIn,
     Pin,
     agent_model,
@@ -72,7 +72,7 @@ def resolve_delegate_model(
     match agent:
         case ListedBuiltIn():
             return _from_listed(agent, parent, env, settle, "parent-record")
-        case Pin(identifier=identifier) if identifier == INHERIT:
+        case Inherit():
             return settle(parent, "parent-record")
         case Pin(identifier=identifier, source=source):
             return settle(identifier, source)

@@ -178,9 +178,8 @@ class TestAnIdentifierThatIsNotAString:
     def test_leaves_the_model_missing_with_its_value_and_type(self, value, type_name):
         outcome = claim(value, DECLARED)
 
-        assert outcome == model_fact.Missing(
-            model_fact.NotAString(value, type_name, "harness-reported")
-        )
+        assert outcome == model_fact.Missing(model_fact.NotAString(value, "harness-reported"))
+        assert outcome.not_a_string.type_name == type_name
         assert model_fact.claimed_name(outcome) is None
 
     def test_missing_names_the_source_of_the_offending_value(self):

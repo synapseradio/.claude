@@ -165,20 +165,19 @@ class TestASessionsFirstIdentifierStands:
 
         fact = session_fact({"model": 12345, "session_id": "s1"}, env, state_dir=state)
 
-        assert fact == model_fact.Missing(model_fact.NotAString(12345, "int", "harness-reported"))
+        assert fact == model_fact.Missing(model_fact.NotAString(12345, "harness-reported"))
         assert not env.reads & {"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_MODEL"}
 
     def test_a_mapping_in_the_payload_leaves_the_model_missing_with_its_type(self, state):
         fact = session_fact({"model": {"id": OPUS}}, {"ANTHROPIC_MODEL": OPUS}, state_dir=state)
 
-        assert fact == model_fact.Missing(
-            model_fact.NotAString({"id": OPUS}, "dict", "harness-reported")
-        )
+        assert fact == model_fact.Missing(model_fact.NotAString({"id": OPUS}, "harness-reported"))
+        assert fact.not_a_string.type_name == "dict"
 
     def test_a_zero_is_a_number_and_not_an_absent_identifier(self, state):
         fact = session_fact({"model": 0}, {"ANTHROPIC_MODEL": OPUS}, state_dir=state)
 
-        assert fact == model_fact.Missing(model_fact.NotAString(0, "int", "harness-reported"))
+        assert fact == model_fact.Missing(model_fact.NotAString(0, "harness-reported"))
 
     def test_an_unclaimed_variable_stands_over_the_next_variable_and_the_record(self, state):
         model_record.write_model_record("s1", OPUS, state)
@@ -225,7 +224,7 @@ class TestASwitchTakesItsTarget:
             {"to_model": 7}, MODELS, {"ANTHROPIC_MODEL": OPUS}
         ).fact
 
-        assert fact == model_fact.Missing(model_fact.NotAString(7, "int", "switch-target"))
+        assert fact == model_fact.Missing(model_fact.NotAString(7, "switch-target"))
 
     def test_a_switch_naming_no_target_leaves_the_model_missing(self):
         assert session_model.resolve_switch_model({}, MODELS, {}).fact == model_fact.Missing()
