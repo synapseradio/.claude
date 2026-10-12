@@ -1,0 +1,5 @@
+extend = "../../../.ruff.toml"
+
+# The hooks run on the first interpreter from 3.12 up (hooks/with-python.sh),
+# and tests/test_python_floor.py fails on syntax newer than that.
+target-version = "py312"

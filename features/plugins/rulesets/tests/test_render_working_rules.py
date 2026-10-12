@@ -21,9 +21,8 @@ PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
-from rulesets.documents import ordered_rules, write_or_check  # noqa: E402
-
 from rulesets import render  # noqa: E402  (path must be set before this import)
+from rulesets.documents import ordered_rules, write_or_check  # noqa: E402
 
 
 def _write(path: pathlib.Path, text: str) -> pathlib.Path:

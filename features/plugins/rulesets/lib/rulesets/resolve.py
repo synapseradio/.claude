@@ -1379,7 +1379,7 @@ def plugin_install_paths(plugin: str) -> list[pathlib.Path]:
     index = config_root() / "plugins" / "installed_plugins.json"
     try:
         installed = json.loads(index.read_text(encoding="utf-8")).get("plugins", {})
-    except OSError, json.JSONDecodeError, AttributeError:
+    except (OSError, json.JSONDecodeError, AttributeError):
         return []
     paths = []
     for key, entries in installed.items():
