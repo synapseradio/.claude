@@ -28,7 +28,7 @@
     }
   },
   "env": {
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "25",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "35",
     "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "0",
     "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2",
@@ -38,7 +38,7 @@
     "FORCE_PROMPT_CACHING_5M": "0"
   },
   "includeCoAuthoredBy": false,
-  "includeGitInstructions": false,
+  "includeGitInstructions": true,
   "disableMobileSimulatorTools": true,
   "disableRemoteControl": true,
   "permissions": {
@@ -63,6 +63,7 @@
       "mcp__plugin_context7_context7__query-docs",
       "mcp__plugin_context7_context7__resolve-library-id",
       "mcp__plugin_amboss-knowledge_notion__notion-fetch",
+      "mcp__plugin_amboss-knowledge_notion__notion-search",
       "mcp__plugin_amboss-knowledge_notion__notion-ai-search",
       "mcp__plugin_atlassian_atlassian__getJiraIssue",
       "mcp__plugin_atlassian_atlassian__searchJiraIssuesUsingJql",
@@ -310,6 +311,7 @@
     "additionalDirectories": [
       "~/.scratchpad",
       "~/projects",
+      "~/openspec",
       "/tmp",
       "/private/tmp"
     ],
