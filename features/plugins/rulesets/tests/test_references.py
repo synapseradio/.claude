@@ -19,7 +19,14 @@ PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
-from rulesets.source.expansion import Expander  # noqa: E402  (path must be set before this import)
+from rulesets.source.expansion import (  # noqa: E402  (path must be set before this import)
+    Expander,
+    MalformedReference,
+    UnknownRule,
+    UnknownRuleset,
+    UnknownVariant,
+    UnquotedReference,
+)
 from rulesets.source.manifest import parse_manifest  # noqa: E402
 from rulesets.source.pool import read_pool  # noqa: E402
 from rulesets.source.reference import (  # noqa: E402
@@ -273,7 +280,8 @@ class TestARulesetGroupsRulesByReference:
 
         assert pairs(own.entries) == [("sorting", None)]
         assert [(p.reference.text, p.reference.line) for p in own.problems] == [("voise", 2)]
-        assert own.problems[0].reason == "unknown-rule"
+        assert isinstance(own.problems[0], UnknownRule)
+        assert own.problems[0].rule == "voise"
         assert pairs(spread.entries) == [("sorting", None)]
         assert spread.problems == ()
 
@@ -284,7 +292,8 @@ class TestARulesetGroupsRulesByReference:
 
         assert pairs(expansion.entries) == [("voice", None)]
         assert [p.reference.text for p in expansion.problems] == ["nope:*"]
-        assert expansion.problems[0].reason == "unknown-ruleset"
+        assert isinstance(expansion.problems[0], UnknownRuleset)
+        assert expansion.problems[0].ruleset == "nope"
 
     def test_a_variant_nobody_declares_is_skipped_and_named(self, tmp_path):
         parsed, expander = world(
@@ -295,7 +304,8 @@ class TestARulesetGroupsRulesByReference:
 
         assert pairs(expansion.entries) == [("sorting", None)]
         assert [p.reference.text for p in expansion.problems] == ["voice@brisk"]
-        assert expansion.problems[0].reason == "unknown-variant"
+        assert isinstance(expansion.problems[0], UnknownVariant)
+        assert (expansion.problems[0].rule, expansion.problems[0].variant) == ("voice", "brisk")
 
     def test_a_reference_that_is_no_form_is_skipped_and_named(self, tmp_path):
         parsed, expander = world(tmp_path, "defaults: ['foo:bar', 'voice']\n", "voice")
@@ -304,7 +314,22 @@ class TestARulesetGroupsRulesByReference:
 
         assert pairs(expansion.entries) == [("voice", None)]
         assert [p.reference.text for p in expansion.problems] == ["foo:bar"]
-        assert expansion.problems[0].reason == "malformed"
+        assert isinstance(expansion.problems[0], MalformedReference)
+        assert expansion.problems[0].reason
+
+    def test_an_unquoted_entry_is_skipped_and_named_with_its_form(self, tmp_path):
+        parsed, expander = world(
+            tmp_path, "defaults: [voice, {a: b}, 'sorting']\n", "voice", "sorting"
+        )
+
+        expansion = expander.expand(parsed.defaults.references)
+
+        assert pairs(expansion.entries) == [("sorting", None)]
+        assert [(p.reference.text, p.form) for p in expansion.problems] == [
+            ("voice", "plain"),
+            ("{a: b}", "mapping"),
+        ]
+        assert all(isinstance(p, UnquotedReference) for p in expansion.problems)
 
     def test_a_rule_with_only_variants_is_still_a_declared_rule(self, tmp_path):
         parsed, expander = world(tmp_path, "defaults: ['tone@dry', 'tone']\n", "tone@dry")

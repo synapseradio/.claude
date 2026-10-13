@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import dataclasses
 from collections.abc import Collection, Mapping, Sequence
-from typing import Literal, assert_never
+from typing import assert_never
 
 from rulesets.source.reference import (
     RESERVED_RULESETS,
+    EntryForm,
     MalformedTarget,
     Reference,
     RuleTarget,
@@ -39,17 +40,50 @@ class Removal:
     source: Reference
 
 
-type ProblemReason = Literal[
-    "malformed", "unquoted", "unknown-rule", "unknown-variant", "unknown-ruleset"
-]
+@dataclasses.dataclass(frozen=True)
+class MalformedReference:
+    """A reference that is no reference form. `reason` says what a form looks like."""
+
+    reference: Reference
+    reason: str
 
 
 @dataclasses.dataclass(frozen=True)
-class ReferenceProblem:
-    """A reference the list could not resolve, and why."""
+class UnquotedReference:
+    """A reference written as anything but a quoted string."""
 
     reference: Reference
-    reason: ProblemReason
+    form: EntryForm
+
+
+@dataclasses.dataclass(frozen=True)
+class UnknownRule:
+    """A reference to a rule the pool does not hold."""
+
+    reference: Reference
+    rule: str
+
+
+@dataclasses.dataclass(frozen=True)
+class UnknownVariant:
+    """A reference to a variant the rule does not have."""
+
+    reference: Reference
+    rule: str
+    variant: str
+
+
+@dataclasses.dataclass(frozen=True)
+class UnknownRuleset:
+    """A spread of a ruleset nothing declares."""
+
+    reference: Reference
+    ruleset: str
+
+
+type ReferenceProblem = (
+    MalformedReference | UnquotedReference | UnknownRule | UnknownVariant | UnknownRuleset
+)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -151,16 +185,18 @@ class Expander:
             self._spreads[name] = tuple(dict.fromkeys((e.rule, e.variant) for e in kept))
         return self._spreads[name]
 
-    def _unresolved(self, target: SpreadTarget | RuleTarget) -> ProblemReason | None:
+    def _unresolved(
+        self, reference: Reference, target: SpreadTarget | RuleTarget
+    ) -> ReferenceProblem | None:
         match target:
             case SpreadTarget(ruleset):
                 known = ruleset in RESERVED_RULESETS or ruleset in self._lists
-                return None if known else "unknown-ruleset"
+                return None if known else UnknownRuleset(reference, ruleset)
             case RuleTarget(rule, variant):
                 if rule not in self._rules:
-                    return "unknown-rule"
+                    return UnknownRule(reference, rule)
                 if variant is not None and variant not in self._rules[rule]:
-                    return "unknown-variant"
+                    return UnknownVariant(reference, rule, variant)
                 return None
             case _:
                 assert_never(target)
@@ -174,15 +210,15 @@ class Expander:
         for reference in references:
             target = reference.target
             match target:
-                case MalformedTarget():
-                    problems.append(ReferenceProblem(reference, "malformed"))
+                case MalformedTarget(reason):
+                    problems.append(MalformedReference(reference, reason))
                     continue
-                case UnquotedTarget():
-                    problems.append(ReferenceProblem(reference, "unquoted"))
+                case UnquotedTarget(form):
+                    problems.append(UnquotedReference(reference, form))
                     continue
                 case SpreadTarget() | RuleTarget():
-                    if (reason := self._unresolved(target)) is not None:
-                        problems.append(ReferenceProblem(reference, reason))
+                    if (problem := self._unresolved(reference, target)) is not None:
+                        problems.append(problem)
                         continue
             match target:
                 case SpreadTarget(ruleset) if reference.remove:

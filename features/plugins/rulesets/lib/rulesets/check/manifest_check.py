@@ -21,7 +21,16 @@ from rulesets.check.findings import (
     Subject,
 )
 from rulesets.source.condition import ConditionError, fact_tests, parse_condition
-from rulesets.source.expansion import Conflict, Expander, ReferenceProblem
+from rulesets.source.expansion import (
+    Conflict,
+    Expander,
+    MalformedReference,
+    ReferenceProblem,
+    UnknownRule,
+    UnknownRuleset,
+    UnknownVariant,
+    UnquotedReference,
+)
 from rulesets.source.manifest import (
     MANIFEST_KEYS,
     MalformedItem,
@@ -35,13 +44,7 @@ from rulesets.source.manifest import (
     WrongKeyShape,
     WrongRulesetShape,
 )
-from rulesets.source.reference import (
-    EntryForm,
-    MalformedTarget,
-    RuleTarget,
-    SpreadTarget,
-    UnquotedTarget,
-)
+from rulesets.source.reference import EntryForm
 
 _KEY_SHAPES: dict[ManifestKey, str] = {
     "models": "must be a list of model names",
@@ -201,19 +204,19 @@ def _reference_error(manifest: Manifest, problem: ReferenceProblem) -> CheckErro
     """The subject names the reference, so the message says only what is wrong with it."""
 
     reference = problem.reference
-    match problem.reason, reference.target:
-        case "malformed", MalformedTarget(reason):
+    match problem:
+        case MalformedReference(_, reason):
             kind, message = "malformed-reference", reason
-        case "unquoted", UnquotedTarget(form):
+        case UnquotedReference(_, form):
             kind, message = "unquoted-entry", _unquoted_message(reference.text, form)
-        case "unknown-rule", RuleTarget(rule, _):
+        case UnknownRule(_, rule):
             kind, message = "undeclared-reference", f"the pool holds no rule `{rule}`"
-        case "unknown-variant", RuleTarget(rule, variant):
+        case UnknownVariant(_, rule, variant):
             kind, message = "undeclared-reference", f"rule `{rule}` has no variant `{variant}`"
-        case "unknown-ruleset", SpreadTarget(ruleset):
+        case UnknownRuleset(_, ruleset):
             kind, message = "undeclared-reference", f"no ruleset `{ruleset}` is declared"
         case _:
-            raise AssertionError(f"reason {problem.reason!r} does not fit {reference.target!r}")
+            assert_never(problem)
     return CheckError(
         kind,
         ReferenceSubject(reference.text, reference.line),
