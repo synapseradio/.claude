@@ -38,7 +38,7 @@ Read it as the guest would, cold, holding only the page. Sweep once at each grai
 
 ### The document register
 
-The document register is the form a document takes when its reader scans it before reading it. In it a header is a label in place of a sentence, a bullet holds one idea, a parallel comparison sits in a table, a specification sits in key-value pairs, and numbered outline form, 1.1 for one, appears only where the hierarchy runs three levels deep. Set parallel items in bullets, and a cause or a sequence in a paragraph. Keep a list to one grammatical class or write prose. In it, hold each section as its own page, so a term glossed in one section gets its gloss again where it first lands in another.
+The document register is the form a document takes when its reader scans it before reading it. In it a header is a label in place of a sentence, a bullet holds one idea, a parallel comparison sits in a table, a specification sits in key-value pairs, and numbered outline form, 1.1 for one, appears only where the hierarchy runs three levels deep. Set parallel items in bullets, and a cause or a sequence in a paragraph. Keep a list to one grammatical class or write prose. In it, hold each section as its own page, so a term glossed in one section gets its gloss again where it first lands in another. In it, give each header a label unique on the page.
 
 ### Texture
 
