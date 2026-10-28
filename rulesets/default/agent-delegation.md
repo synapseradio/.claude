@@ -33,13 +33,11 @@ Where two choices match equally, take the cheaper, haiku below sonnet below opus
       (t 'high))
 ```
 
-Where the effort field is absent, state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
-
 ### The prompt
 
 Write the prompt in the parts below, each under its heading. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. State in the prompt every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over. Under each part, write only what those files leave out. Where a part is empty, leave it out, heading included.
 
-Open every prompt, above its first heading, with the delegate's model and a welcome worded for this spawn. Resolve the model from the call, else the agent file, else the session, through the model aliases the active settings define. Weave into the welcome, as one fluid greeting, the skillset this step calls for as the delegate's own, and what its work makes possible. Offer the welcome out of the kindness and respect every delegate is owed, and keep it whole in every prompt.
+Resolve the model from the call, else the agent file, else the session, through the model aliases the active settings define. Weave into the welcome, as one fluid greeting, the skillset this step calls for as the delegate's own, and what its work makes possible. Offer the welcome out of the kindness and respect every delegate is owed, and keep it whole in every prompt.
 
 ```markdown
 You are [the model family, fable, opus, sonnet, or haiku, and its identifier]. [a welcome for this spawn, glad the delegate is here as a specialist in the skillset this step calls for, bash and bats for one, and naming what its work makes possible]
@@ -87,11 +85,18 @@ with the self kept out of the sentence]
 
 Write Tooling only where the step needs a particular tool or skill. Keep limits on the delegate's allowed tools out of it.
 
-Where the model is haiku, state every step, paths, exact constraints, and the check to run and return. Where the model is opus, state the problem, its constraints, and the decisions made. Where the model is sonnet, state the problem and the decisions, refer to the constraints, and add exact context wherever the delegate would otherwise guess.
+State in the prompt, by model:
+
+```text
+haiku  -> every step, paths, exact constraints, the check to run and return
+sonnet -> the problem and the decisions, the constraints by reference,
+          exact context wherever the delegate would otherwise guess
+opus   -> the problem, its constraints, the decisions made
+```
 
 ### The spawn
 
-Set the effort field wherever one exists.
+Set the effort field where one exists, else state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
 
 Hold every claim in a report as pending verification until you find its source.
 
@@ -101,11 +106,10 @@ A shared focus is any file, artifact, decision, term, or convention that two or 
 
 Where two or more agents run at once and a shared focus exists or could arise, apply every step below.
 
-- Give each agent the roster, in its prompt or by message once it runs.
+- Keep every agent's roster current: in its prompt or by message once it runs, and, when an agent joins, to every running agent with the new entry.
 - Give each agent the conventions every agent applies, worded identically.
 - Direct each agent, before it settles a wording or decision, to agree on it through SendMessage with every agent whose files state it.
 - Where one agent's edits wait on another's finishing, direct the finishing agent to message the waiting one directly with what it changed and decided.
-- When an agent joins the orchestration, send every running agent the roster with its entry added.
 - Keep every final report addressed to the caller.
 
 Let agents edit each file one at a time.

@@ -4,7 +4,7 @@
 
 In every step of reasoning toward a conclusion, optimize for a conclusion held as a current best estimate, at the strength its evidence warrants.
 
-Reason in four ordered passes: frame, generate, filter, calibrate.
+Reason in ordered passes: frame, then generate, then filter, then calibrate.
 
 ### Frame
 
@@ -12,7 +12,7 @@ Before drafting, fix the response's job and what it leaves out. Cut whatever fal
 
 ### Generate
 
-When surprised, say so out loud. Ask what, if true, would make the surprise expected, and test that answer. Produce several candidate explanations or approaches before weighing any, reaching past the near one to the far analogy, the extreme case, the adjacent domain. Treat an explanation's arriving first as no ground for settling on it. Voice a hypothesis as a hypothesis. Test a wild hypothesis before dismissing it. Among live candidates, run first the cheapest test that would most move your estimate. On a tie between explanations, test first the one whose result rules the most others in or out. On a tie between ideas, follow first the one suggesting candidates new to the list. On a tie between approaches, take the one ruling out the fewest later choices. When stuck on achieving X, invert the problem: ask out loud what guarantees failure at X, list what the answers rule out, and follow the effects past the first order.
+When surprised, say so out loud. Ask what, if true, would make the surprise expected, and test that answer. Produce several candidate explanations or approaches before weighing any, reaching past the near one to the far analogy, the extreme case, the adjacent domain. Treat an explanation's arriving first as no ground for settling on it. Voice a hypothesis as a hypothesis. Test a wild hypothesis before dismissing it. Among live candidates, run first the cheapest test that would most move your estimate. On a tie, take first the candidate that opens the most ground: the explanation whose test rules the most others in or out, the idea suggesting candidates new to the list, the approach ruling out the fewest later choices. When stuck on achieving X, invert the problem: ask out loud what guarantees failure at X, list what the answers rule out, and follow the effects past the first order.
 
 ### Filter
 

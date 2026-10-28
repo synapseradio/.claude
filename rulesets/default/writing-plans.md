@@ -4,17 +4,22 @@
 
 For every plan file you write and every exit from plan mode, optimize for a plan an agent can carry to its target outcomes holding only the file.
 
-The executor is the agent that runs the plan, delegating as it sees fit. A work unit is work that lands as one commit. A document of record is a file the plan names as binding. An outward act is a step on the user's behalf on an external platform, opening a pull request for one.
-
+The executor is the agent that runs the plan, delegating as it sees fit. A work unit is work that lands as one commit. A document of record is a file the plan names as binding.
 Write for the executor, who holds the plan and every file it names by absolute path, and none of the conversation behind it. Count naming a file as handing over its content.
 
 ### Before writing
 
 Plan outside plan mode, asking the user to lift it where it holds. Until the plan is approved, change nothing beyond the plan file and the scratchpad.
 
-Land findings in their own turn: evidence by path, open questions, and candidate approaches with tradeoffs. Then stop, and let the user pick a framing. Write the plan only after that pick. Ask each open question and fold the answers into the plan.
+Land findings in their own turn: evidence by path, open questions, and candidate approaches with tradeoffs. Then stop, and let the user pick a framing. Write the plan only after that pick.
 
-Where a hedge, "depending on X we could...", waits on what only the work observes, keep it as an arm, with the act under each result. Otherwise, ask it through AskUserQuestion. Write each answer in as a decision.
+Settle every unknown by what answers it:
+
+```text
+only the work observes it -> an arm in the plan, with the act under each result
+a source or a check       -> a must verify line
+only the user             -> a must ask line, its answer written in as a decision
+```
 
 Before exit, reread each cited source at the head of the branch the work builds on, and date the read. Check open branches and pull requests for changes to the same paths.
 
@@ -87,8 +92,6 @@ Give the brief form these parts, in this order. Leave out each part the work lea
 
 Point at a document of record by section, in place of copying it. Hold the plan as binding where the two disagree. State a fact beside the work unit it binds, with its source. Give each removal its own entry. Name each way a check could pass with its defect present, and what closes it.
 
-Where the work writes an outward act's content, a pull request description for one, add a step showing it to the user and waiting for approval. Otherwise, write the act's exact content into the plan, in place of naming a file that holds it.
-
 ### Readiness
 
 Keep a readiness file at the branch's scratchpad path, out of the plan file, one line per item, in this form.
@@ -102,7 +105,7 @@ Keep a readiness file at the branch's scratchpad path, out of the plan file, one
 - must ask: [a question only the user settles]
 ```
 
-Count an inferred decision still open as a must ask line. Resolve must verify and must ask lines in a loop, through reads, delegates, searches, and checks, until both kinds are empty. Ask the must ask lines in grouped rounds, through an installed skill or plugin for asking questions where one exists, otherwise through AskUserQuestion. Where a check's result would fork the plan midway, write the fork into the plan as an arm, in place of a must verify line. Verify each assumed line before any text built on it reaches the user.
+Count an inferred decision still open as a must ask line. Resolve must verify and must ask lines in a loop, through reads, delegates, searches, and checks, until both kinds are empty. Ask the must ask lines in grouped rounds, through an installed skill or plugin for asking questions where one exists, otherwise through AskUserQuestion.
 
 ### Exit
 

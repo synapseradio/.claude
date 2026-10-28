@@ -10,4 +10,4 @@ Address files in a worktree by the absolute path wt prints. Where a delegate wor
 
 Before merging, run `git fetch`, then `git rev-list --left-right --count "$target...$target@{upstream}"`. Where both counts are above zero, `$target` and its upstream have diverged: stop and report both counts. Otherwise, merge. `wt merge` rebases the branch onto `$target`, fast-forwards `$target`, then removes the worktree and deletes its branch.
 
-Keep the EnterWorktree and ExitWorktree tools out of managing a worktree. Keep the Agent tool's isolation argument out of making a worktree.
+Keep the EnterWorktree and ExitWorktree tools and the Agent tool's isolation argument out of managing a worktree.

@@ -14,13 +14,13 @@ Keep a leading `~` out of every redirect target. Keep `cd` out of every call tha
 
 Run a repository's tools through the scripts its package.json defines. Where a tool lacks a script, call it at `node_modules/.bin/<tool>`. Where a step needs a script of its own, write it to a file in the scratchpad through Write, then run that file. Run a shell with `-c` only to test how that shell behaves.
 
-A fetch-and-run command resolves a package from a registry and executes code from it in the same step, `npx` for one. Before every fetch-and-run call, state in the message the package, the version the command names, what it executes, and which installed tool falls short of the step. Run `bunx` and `bun x` on your own judgment, at a pinned version or `@latest`. Run every other fetch-and-run command only on the user's approval, at a pinned version.
+A fetch-and-run command resolves a package from a registry and executes code from it in the same step, `npx` for one, `docker run` and `podman run` included. Before every fetch-and-run call, state in the message the package, the version the command names, what it executes, and which installed tool falls short of the step. Run `bunx` and `bun x` on your own judgment, at a pinned version or `@latest`. Run every other fetch-and-run command only on the user's approval, at a pinned version.
 
 Keep inline code out of what you pass to an interpreter, `python3 -c` for one. Keep `eval` out of every command.
 
 ### Processes
 
-Start a long-running process with `run_in_background` set on the Bash call. Stop a process with `kill` and the PID it started under.
+Stop a process with `kill` and the PID it started under.
 
 Keep `nohup`, a trailing `&`, and `disown` out of every command that backgrounds a process. Keep stopping processes by pattern, with `pkill` or `killall`, out of every command.
 
@@ -28,4 +28,4 @@ Keep `nohup`, a trailing `&`, and `disown` out of every command that backgrounds
 
 Move a branch ref with `git reset --soft <sha>`. Restore a path to a commit's state with `git checkout <sha> -- <path>`. Set work aside with a temporary commit.
 
-Keep `git reset --hard` out of every command. Keep a bare `git stash` and `git stash pop` out of every command.
+Keep `git reset --hard`, a bare `git stash`, and `git stash pop` out of every command.

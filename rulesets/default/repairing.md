@@ -6,7 +6,7 @@ For every named defect you fix in an artifact, optimize for a repair that clears
 
 ### A unit's job
 
-A unit's job is one of six. Evidence is a fact it carries. Instruction is an act it directs. Definition is a term it fixes. Contract is a promise to its caller. Behavior is what it does. Warrant is why it holds.
+A unit's job is one of these. Evidence is a fact it carries. Instruction is an act it directs. Definition is a term it fixes. Contract is a promise to its caller. Behavior is what it does. Warrant is why it holds.
 
 ### The repair
 
