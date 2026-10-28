@@ -34,6 +34,9 @@
 !skills/update-claude-settings/
 !skills/update-claude-settings/**
 
+!openspec/
+!openspec/config.yaml
+
 # Bytecode, wherever Python runs from
 scripts/**/__pycache__/
 scripts/**/*.pyc
