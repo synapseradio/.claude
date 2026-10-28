@@ -10,40 +10,38 @@ paths:
 
 ## writing-rules
 
-For every rules file, rulesets tier body, working-rules render, and CLAUDE.md you write or change, optimize for a rules file whose reader decides the same way every turn and holds every line as binding.
+For every rules file, rulesets tier body, working-rules render, and CLAUDE.md you write or change, optimize for a reader who decides the same way every turn and holds every line as binding.
 
-### The form
+- stem: the filename without .md
+- marker: `<!-- rule: stem -->` alone on its line at column 0
+- opener: one sentence, "For every X" or "In every context and every turn", X the rule's whole scope, then "optimize for" one quality in one clause
+- terms block: `- term: gloss` lines, each term with one sense, each gloss self-contained, its warrant left out
+- halt: a sentence bounding its paragraph's or section's acts: the act in place of the excluded one, as "Move a branch ref with `git reset --soft`."; "X only on Y."; "Keep X out of Y."; or "Treat X as no ground for Y."
+- notation: `cond ? act` a lone or joint arm; `cond ? act : act` a short switch; `A -> B` step A, then step B, of one instruction; `A > B > C` precedence
+- guard block: a name line, then `| cond = act` lines, first match taken, `otherwise` last
+- renderer: `resolve.py render`, from the installed model-scoped-rulesets plugin, syncing the bodies under `~/.claude/rulesets/$tier/` plus CLAUDE.md with `~/.claude/rulesets/renders/$tier/working-rules.md` both ways, keyed on markers, ordered by the `order:` list in `~/.claude/rulesets/manifest.yaml`
+- render section: a marker through the next marker or the end of the file
+- preamble: a render's text between its title and first marker, the text CLAUDE.md holds
 
-A rules file is markdown that opens on its marker, `<!-- rule: stem -->` alone on its line at column 0, where the stem is the filename without .md. One blank line follows the marker, then the title, `## stem`. A path-scoped rule keeps `paths:` frontmatter above the marker, with globs matching file paths. Below the title, the opener and then the machine make up the rest of the file.
+Order a rules file: marker, one blank line, `## stem`, opener, terms block, instructions. Keep `paths:` frontmatter above the marker on a path-scoped rule, its globs matching file paths. Write a condition clause, "When you are X" for one, as an arm. Keep the case for the rule out of every paragraph.
 
-The opener is one sentence. It names the rule's whole scope as a universal, "For every X" or "In every context and every turn", then "optimize for" and one quality in one clause. Move a condition, "When you are X" or "This rule applies when" for one, into an arm of the machine. Keep the case for the rule out of every paragraph.
+Set the instructions in short paragraphs or `###` sections, each on one concern. Map cases to acts in a guard block or the notation. Give each ternary sentence its own line. Order a procedure's sentences as its steps run. Close each paragraph and section on its halts. Head a section with a `###` label where a scanning reader looks for it or other prose cites it. Fence only a template the model emits.
 
-The machine is a sequence of groups, each a paragraph or a `###` section. A definition group fixes terms, one per sentence, each self-contained, its warrant left out. A decision group maps cases to acts: guards for first-match arms, `cond ? act : act` for a short switch, `cond ? act` for a lone or joint arm. `->` reads as "and then", and `>` as precedence. A procedure group runs its sentences in order. A halt bounds its group's acts, and a group's halts close it. Write a halt in an affirmative form: the act to take in place of the excluded one, "Move a branch ref with `git reset --soft`." for one; a gate, "X only on Y."; an omission, "Keep X out of Y."; or a ground, "Treat X as no ground for Y." Give a group an `###` heading where a scanning reader needs to find it or other prose cites it by name. Keep a template the model emits in a fenced block, as an artifact to copy rather than document structure.
-Prose would blur a line's precision ? write that line in the language that states it exactly, in a fenced block labeled with that language.
+Write each line in the fewest words that keep its direction. Give each sentence one instruction. Write every directive as the act to take, turning a negation, "never" for one, into a halt.
+The halt covers fewer cases than the negation ? name an act for each case it dropped.
+Keep a contrast with what would otherwise happen beside the act it places. Write a fact as an instruction with a stance verb: hold, treat, read, count, or rely on. Write a vague qualifier, "short" for one, as a bound testable on the artifact, in place of a static count. Drop every numeral that sizes a listed set. Keep every threshold's number. Close every out: a departure rests only on the user's licence or a fact a reader can check.
+A cut sentence described a failure mode ? write the halt or arm guarding against it.
+A cut sentence carried a stance ? write the instruction enacting it.
+Keep a fact only where an instruction cannot run without it, a config path for one.
 
-### The sentence
+Write every sentence blameless, free of any debt the reader or the user owes and any guess at what the reader holds or where they have been. Keep the writer out of the reader's view: a plain imperative to the reader stays, and the writer's attitude toward the reader goes. Let a person appear as a source or as someone the practice serves. Keep intensifiers out, "CRITICAL" for one. Hold a rule as a prompt rather than source: state the objective and the bounds, and let the reader carry the act.
 
-Write each line in the fewest words that keep its direction. Give each sentence one instruction. Write every directive as the act to take, turning the negation that would otherwise direct it, "never" or "do not" for one, into a halt form.
-The affirmative covers fewer cases than the negation it replaces ? name an act for each case the negation covered.
-A contrast with what would otherwise happen helps the reader place the act ? keep it beside the act.
-Write a fact about the rules, the reader, or the world as an instruction with a stance verb, hold, treat, read, count, or rely on. Write a vague qualifier, "short" or "where sure" for one, as a functional bound the reader can test on the artifact, in place of a static count. Close every out: a departure rests only on the user's licence or a fact a reader can check.
-A cut sentence described a failure mode ? write the halt or arm that guards against it.
-A cut sentence carried a stance ? write the instruction that enacts it.
-Keep a fact only where an instruction cannot run without it, a shell name or a config path for one.
-
-### The register
-
-Write every sentence blameless. Keep out of it any debt the reader or the user owes, and any guess at what the reader holds or where they have been. Keep the writer out of the reader's view: a plain imperative to the reader stays, and a sentence carrying the writer's attitude toward the reader goes. Let a person appear as a source or as someone the practice serves. Keep intensifiers out, "CRITICAL" for one. Write a header as a label. Leave room for trust: a rule is a prompt rather than source, so state the objective and the bounds and let the reader carry the act.
-
-### The qualities
-
-Let each machine line state a test a reader can run on the artifact, or a stance the reader holds. Define a term the file coins on its first use. State a class of cases by the mechanism that generates them, one example at most. Give each instruction one home. Keep every rule distinct and standing on its own text, with every other rule and rules file unnamed and unlinked. Group a rule's instructions into short paragraphs that each concern one thing.
+Let each line below the terms block state a test runnable on the artifact or a stance the reader holds. Gloss every term the file coins in the terms block. State a class of cases by its generating mechanism, one example at most. Give each instruction one home. Keep every rule distinct and standing on its own text, naming and linking no other rule or rules file.
 
 ### Routing
 
 Route content before writing it.
 
-```haskell
 placing content
   | an always-on invariant = `rulesets/default/`, and from there every tier
   | an invariant for one kind of file = a path-scoped file under `rules/`
@@ -52,21 +50,23 @@ placing content
   | enforcement = a hook
   | stance = an instruction in the rule whose object it concerns;
       CLAUDE.md carries the user's greeting alone
-```
+  | otherwise = ask the user where it goes
 
 ### Changing a rule
 
-Hold every line of an existing rule as written against a failure seen in practice. Change a rule on the user's instruction or on cited evidence, a measured study or a primary text reached by URL for one. Change a rule by adding or sharpening a line, keeping the meaning of every directive the change touches. Make every change to a rules file, a ruleset body, or an agent file through an opus agent. Weigh a change by the outputs the rule steers. Leave the work a rule asks of an agent out of the weighing.
+Hold every line of an existing rule as written against a failure seen in practice. Change a rule on the user's instruction or on cited evidence, a primary text by URL for one. Change a rule by adding or sharpening lines, keeping every touched directive's meaning. Write every change to a rules file, a ruleset body, or an agent file through an opus agent. Apply, through a haiku agent, text the user approved or a codemod that carries out a decision the user made. Weigh a change by the outputs the rule steers, in place of the work it asks of an agent.
 Two rules overlap ? delegate `thinkies:survey-peers` on the overlapping lines to an opus agent, one overlap group per agent, one agent at a time.
-Then rewrite those lines into rules that each carry a distinct job, every directive's meaning kept.
-Evidence points at removing a line ? put the removal to the user as its own question, with its evidence.
+Rewrite the surveyed lines into rules with distinct jobs, every directive's meaning kept.
+Evidence points at removing a line ? ask the user in its own question, with that evidence.
 
 Treat a line's apparent idleness as no ground for removing it. Remove a line only on the user's approval.
 
 ### Syncing the render
 
-The renderer is `resolve.py render`, from the installed model-scoped-rulesets plugin. It runs in both directions between the bodies under `~/.claude/rulesets/$tier/` plus CLAUDE.md and `~/.claude/rulesets/renders/$tier/working-rules.md`, keyed on the rule markers, in the order of the `order:` list in `~/.claude/rulesets/manifest.yaml`. A render section runs from its marker to the next marker or the end of the file. The preamble, between the render's title and its first marker, is what CLAUDE.md holds, so CLAUDE.md goes unmarked. Hold a body under a tier directory other than `default/` as that tier's override of the stem. Hold every other stem of a tier as composed from `default/`. Edit whichever side is in hand, then run the renderer toward the other.
-The run refuses on an uncommitted target ? restore that target with `git checkout HEAD -- <path>` and run again.
-After a reverse run, render every tier, then run `resolve.py check`. After a full-pass rewrite, read every removed line in the diff against HEAD and account for each before regenerating. Edit a rules file with one tool call per step, in place of a batch.
-Adding an always-on rule ? add its stem to that order list in the same change.
+Hold a body under a tier directory other than `default/` as that tier's override. Hold every other stem of a tier as composed from `default/`. Leave CLAUDE.md unmarked. Edit whichever side is in hand -> run the renderer toward the other.
+The run refuses on an uncommitted target ? restore it with `git checkout HEAD -- <path>` -> run again.
+A reverse run finished ? render every tier -> run `resolve.py check`.
+A full-pass rewrite finished ? account for every line the diff against HEAD removes, before regenerating.
+Edit a rules file one tool call per step.
+Adding an always-on rule ? add its stem to the `order:` list in the same change.
 Renaming a rules file or a section another file cites ? sweep the citations in the same change.

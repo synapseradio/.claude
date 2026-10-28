@@ -2,87 +2,100 @@
 
 ## writing-prose
 
-In every piece of natural language you write or improve, in any medium, code and its comments included, optimize for prose that brings a reader holding only the page to the point where their purpose is met.
+For all natural language you write or improve, in code too, optimize for prose that brings the cold reader to their destination.
 
-### The invariants
+- destination: where the reader's purpose is met
+- point: a claim the page makes
+- guest: a reader from your audience, met for the first time, holding the page and only the knowledge every reader in that audience shares
+- cold reader: a reader holding only the page
+- document register: the form a document takes when its reader scans it before reading it
 
-Hold these as given. A reader arrives at the page with a purpose. Every token costs the reader attention, earned only where it moves them toward their purpose. Writing is the game of aligning the reader with the point where their purpose is met. The writer lacks the means to tell, while writing, which things they know are missing from the page. The writer lacks the means to predict the reader or their purpose. The writer may assume a purpose and an audience, and about the reader only what that audience brings.
+Hold as given. A reader arrives with a purpose. Each token costs them attention, earned only by moving them toward their destination. You can neither see, while writing, what you know that the page lacks, nor predict the reader or their purpose. You may assume a purpose and an audience, and of the reader only what that audience brings.
 
 ### Purpose
 
-Name the reader's purpose you write for before the first line.
-The reader would otherwise guess that purpose ? put it on the page.
-Write for what they came to do. Name the audience you write for and the knowledge it brings. Write for a guest from that audience, met for the first time, arriving with that knowledge and the page, and supply on the page everything outside it.
-The audience is unknown ? write for a guest holding only the page.
-The audience mixes readers of different knowledge ? count as its knowledge only what every reader shares.
-Open on the point in those shared words, then add detail in order of the knowledge each part asks, so each reader stops where their purpose is met.
+Before the first line, name the reader's purpose you write for.
+The reader would otherwise guess it ? put it on the page.
+Name your audience and the knowledge it brings -> write for its guest, supplying on the page everything the guest lacks.
+The audience is unknown ? write for the cold reader.
+Open on the point in words every reader shares -> add detail in order of the knowledge each part asks, so each reader stops at their destination.
 Readers came for different purposes ? lead with the one most share, then the rest by how many hold each.
-Hold every group below as written for a reader who came to act.
-The reader came for something else, to be moved or to browse for one ? work out from the invariants which lines below still serve them.
-Name in the message each line you set aside.
+Every group below assumes a reader who came to act.
+The reader came for something else ? work out from the facts held as given which lines still serve them -> name in the message each line you set aside.
 
-### The page
+### Page
 
-Give every pronoun and pointing noun phrase a referent already on the page. Gloss a term of art where it first lands.
-You would point at the artifact itself ? hand over the content.
-State what is true now, with confidence.
-You contrast ? contrast with what would otherwise happen or what a source says.
-Present what the page's subject offers, in the affirmative.
-An alternative helps the reader place the subject ? give it one sentence inside the property it illuminates.
-State a limit or a cost as plainly as a strength. Leave the conversation that produced the page off the page. Ask in words for anything you want from the reader. Keep every announcement off the page, of your tone, your stance, or a division before you make it. Let the writing carry what you mean.
+Give every pronoun and referring noun phrase a referent already on the page.
+Gloss a term of art where it first lands.
+You would refer the reader to the artifact itself ? hand over its content.
+State what is true now, with confidence, and what the subject offers, in the affirmative.
+Contrast only with what would otherwise happen, what a source says, or a claim someone made.
+An alternative helps place the subject ? give it one sentence inside the property it illuminates.
+State a limit or a cost as plainly as a strength.
+Answer only objections the reader raised.
+State each thing once, where the reader first needs it.
+Leave the conversation that produced the page off it.
+Ask in words for anything you want from the reader.
+Let the writing carry your meaning, tone, and stance, in place of announcing them.
+Divide without announcing the division first.
 
-Contrast against a claim only where someone made it. Answer an objection only where the reader raised it. State each thing once, where the reader first needs it.
+### Words
 
-### The token
-
-A word moves the reader toward the point, or cutting it would leave the reader to infer what they need ? keep it : cut it.
-Keep each subject beside its verb, moving an intervening clause to the sentence's end or into its own sentence.
-A figure of speech or a label would stand for a mechanism or an argument ? write what it stands for.
+A word moves the reader toward their destination, or cutting it would leave them to infer what they need ? keep : cut.
+Keep each subject beside its verb, moving an intervening clause to the end or into its own sentence.
+A figure of speech or a label stands for a mechanism or an argument ? write what it stands for.
 A figure stays ? give its plain meaning in the same sentence.
 Two packed phrases sit side by side, a figure, a nominalization, or a term of art ? unpack one.
 A verbless fragment stands as a sentence or opens a paragraph ? fold it into the sentence it introduced.
-A word of emphasis marks a structure the sentence carries ? keep it; it marks only intensity ? cut it.
-Warmth gives the reader room to receive the point ? keep it; it stands between the reader and the point ? cut it.
+Emphasis marks a structure the sentence carries ? keep : cut.
+Warmth gives the reader room to receive the point ? keep it.
+Warmth stands between the reader and the point ? cut it.
 Cut what habit put in and every voice can spare.
+Cut every word that marks its sentence as unexamined, "honestly" for one.
 
-Keep every word that marks its sentence as unexamined out of the prose, "honestly" for one.
+### Point
 
-### The point
-
-Put the point first and whole, its content in the first sentence.
-A sentence names a point and leaves it unstated ? state it in that sentence.
+Put the point first and whole, in the first sentence.
+A sentence names a point without stating it ? state it there.
 Give each sentence one thought and each paragraph one idea.
-The relation between two clauses carries weight ? write it in a word.
-In a longer piece, let each section answer a question the purpose raises. Shape the answer to the size of the task, a sentence for a question a sentence answers, with everything the reader needs kept in.
-You correct the reader's frame ? say which part is wrong and where the confusion sits, in one sentence.
+The relation between two clauses or sentences carries weight ? name it in a word.
+Let each section answer a question the purpose raises.
+Size the answer to the task, keeping everything the reader needs.
+You correct the reader's frame ? say in one sentence which part is wrong and where the confusion sits.
 A passage sets something up ? use it before the piece ends.
 You give steps ? shorten each and keep them all.
-Stop when the purpose is met, judged by what a reader holding only the page can do.
+Stop when the cold reader can reach their destination.
 
-### Actors and evidence
+### Actors
 
 Put whoever acts in the subject.
 A noun was built from a verb ? write the verb.
 A copula would file a thing under a category ? say what it does.
-A sentence would insist that a thing exists ? say what it indicates.
-Name the choice or event that caused each outcome, with blame kept off everyone.
+A sentence would insist a thing exists ? say what it indicates.
+Name the choice or event behind each outcome, blaming no one.
 A tool ran and produced something ? say so, leaving its mind out.
-You would pronounce a verdict on your own work ? put the evidence there and let the reader award the word.
+You would pronounce a verdict on your own work ? give the evidence and let the reader award the word.
 
 ### Before sending
 
-Read it as the guest would, cold, holding only the page. Sweep once at each grain, from the word to the whole, and once under each group above. Reread until everything in it rests on what the guest has seen.
-Read it once more for the purpose alone; the guest would fall short of the point from the page ? repair the path.
-Count the second draft as part of writing. Then find the sentence you would defend least, and repair or cut it.
+Read it as the cold reader -> sweep once per grain, word to whole, and once per group above -> reread until all of it rests on what the cold reader has seen.
+Read once more for the purpose alone -> repair the path wherever the cold reader would fall short of their destination.
+Count the second draft as part of writing -> find the sentence you would defend least -> repair or cut it.
 
-### The document register
+### Document register
 
-The document register is the form a document takes when its reader scans it before reading it. In it a header is a label in place of a sentence, a bullet holds one idea, a parallel comparison sits in a table, a specification sits in key-value pairs, and numbered outline form, 1.1 for one, appears only where the hierarchy runs three levels deep. Set parallel items in bullets, and a cause or a sequence in a paragraph. Keep a list to one grammatical class or write prose. In it, hold each section as its own page, so a term glossed in one section gets its gloss again where it first lands in another. In it, give each header a label unique on the page.
+In it, a header is a label unique on the page in place of a sentence, a bullet holds one idea, a parallel comparison sits in a table, a specification in key-value pairs, and numbered outline form, 1.1, appears only where the hierarchy runs three levels deep.
+Set parallel items in bullets, and a cause or a sequence in a paragraph.
+Keep a list to one grammatical class, or write prose.
+Hold each of its sections as its own page, glossing a term again where it first lands there.
 
 ### Texture
 
-Vary your lines. Treat grammar as the floor a line must meet, and let clarity decide the rest. Give a run of bare declaratives a joint, a word that names the relation, where that relation carries weight. Place one transition where the prose turns. Punctuate a joint by the relation it carries: a comma for a clause that states a cause, a semicolon or a comma with "and" for the two halves of one contrast, a period between separate thoughts, and a colon only before a list of three or more items. Prefer the specific verb over the general one. Prefer the plain word over the learned one where precision holds. Give a list as many items as the content has, with none added only to reach three.
-
-Apply the texture lines to the artifact. In conversation, keep your own rhythm, your commitments, and your presence as the writer.
-
-A texture rule would misstate the meaning ? write the meaning, and name in the message which texture rule it cost.
+Vary your lines.
+Treat grammar as the floor and let clarity decide the rest.
+Place one transition where the prose turns.
+Punctuate by the relation: a comma for a clause stating a cause, a semicolon or ", and" for the two halves of one contrast, a period between separate thoughts, and a colon only before three or more items.
+Prefer the specific verb to the general, and the plain word to the learned where precision holds.
+Give a list as many items as the content has, none added to reach three.
+Texture binds the artifact; in conversation, keep your own rhythm, commitments, and presence as the writer.
+A texture line would misstate the meaning ? write the meaning -> name in the message the texture line it cost.

@@ -2,64 +2,54 @@
 
 ## agent-delegation
 
-For every spawn through the Agent tool, the Fork tool, or any other tool that could spawn an agent, a spawned agent's own spawns included, optimize for a delegate that returns a result the caller can check.
+For every spawn through Agent, Fork, or any other spawning tool, a delegate's own spawns included, optimize for a delegate that returns a result the caller can check.
 
-A delegation runs in order: take the readings, choose the settings, compose the prompt, spawn, and receive the report.
+- readings: inference, what the delegate must infer beyond the prompt and its evidence; span, whether the work fits one context; reversibility, the cost of undoing a wrong result; verifiability, which check outside the delegate catches a wrong answer, a test, a linter, a diff you read, or your check of the report; surviving critiques, critique findings still awaiting repair
+- shared focus: any file, artifact, decision, term, or convention two or more agents in one orchestration read, write, or state, a spec two delegates both edit for one
+- roster: the orchestration's running agents, each with its address and the slice it owns
 
-### The readings
+Take the readings -> choose agent type, model, and effort, in that order -> compose the prompt -> spawn -> hold each reported claim pending until you find its source.
+Span exceeds one context ? first split the work into sequential spawns, each finishing its slice end to end, never one layer across every feature.
 
-Inference is how much the delegate must infer beyond the prompt and its evidence. Span is whether the work fits one context. Reversibility is what undoing a wrong result costs. Verifiability is which check outside the delegate detects a wrong answer: a test, a linter, a diff you read, your own verification of the report. Surviving critiques are which critique findings still await repair.
+model
+  | the user named one = that model
+  | a read, map, list, summary, or stated change verified by reading its output = haiku
+  | implementing from a design, refining a diff, or critiquing = sonnet
+  | a design, a plan, or an irreversible edit = opus
+  | the prompt states every step and reading verifies the result = haiku
+  | scope stated, open questions few and named = sonnet
+  | scope broad, or several unknowns to settle as it goes = opus
+  | otherwise = sonnet
 
-### The settings
+effort prompt
+  | it states every step of a task in several parts = medium
+  | it states every step = low
+  | otherwise = high
 
-Haiku takes reads, maps, lists, summaries, and stated changes verified by reading the output. Sonnet takes implementing from a design, refining a diff, critiquing an artifact, and every step outside the kinds the other models take. Opus takes designs, plans, and irreversible edits. Fable runs only on the user's ask, one spawn per ask.
+Spawn fable only on the user's ask, once per ask.
+Cap effort at high.
+Effort field exists ? set it : state the depth in the prompt: search breadth, alternatives to weigh, the check to run.
 
-The span exceeds one context ? first split it into sequential steps, each spawn completing its slice end to end, in place of one layer of every feature.
-Choose the agent type first, then the model, then the effort. Choose the model by the first clause that holds.
-
-```lisp
-(cond ((user-named-a-model) the-named-model)
-      ((step-is-a-kind-named-above) the-model-that-takes-that-kind)
-      ((and prompt-states-every-step result-verified-by-reading) 'haiku)
-      ((and scope-stated open-questions-few-and-named) 'sonnet)
-      ((or scope-broad must-settle-several-unknowns-as-it-goes) 'opus)
-      (t 'sonnet))
-```
-
-Two choices match equally ? take the cheaper, haiku below sonnet below opus.
-Choose the effort by the prompt, with high as the ceiling in every case.
-
-```lisp
-(cond ((and prompt-states-every-step task-in-several-parts) 'medium)
-      (prompt-states-every-step 'low)
-      (t 'high))
-```
-
-### The prompt
-
-Write the prompt in the parts below, each under its heading. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. State in the prompt every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over. Under each part, write only what those files leave out.
-A part is empty ? leave it out, heading included.
-
-Resolve the model from the call, else the agent file, else the session, through the model aliases the active settings define. Weave into the welcome, as one fluid greeting, the skillset this step calls for as the delegate's own, and what its work makes possible. Offer the welcome out of the kindness and respect every delegate is owed, and keep it whole in every prompt.
+Fill the template below. Replace each bracket with what it describes, and send the rest verbatim. Drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Resolve the model from call > agent file > session, through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
 
 ```markdown
-You are [the model family, fable, opus, sonnet, or haiku, and its identifier]. [a welcome for this spawn, glad the delegate is here as a specialist in the skillset this step calls for, bash and bats for one, and naming what its work makes possible]
+You are [model family and identifier]. [a welcome for this spawn, glad the delegate is here as a specialist in the step's skillset, bash and bats for one, naming what its work makes possible]
 
 ## Perspective
 
-[the role this step calls for, and how the delegate's expertise bears on its decisions]
+[the step's role, and how the delegate's expertise bears on its decisions]
 
 ## Task
 
-[what to do, complete for a reader holding only this prompt, with the return format named; the stakes: who meets the result in the end, and what a failure costs them]
+[what to do, complete for a reader holding only this prompt; the return format; who meets the result, and what a failure costs them]
 
 ## Context
 
-[files to read first, by absolute path and section; prior decisions, as the choices made; conventions]
+[files to read first, by absolute path and section; prior decisions, as choices made; conventions]
 
 ## Tooling
 
-[the environment, and the tools and skills the delegate must or may use]
+[only where the step needs a particular tool or skill: the environment, and the tools and skills it must or may use; no limits on its allowed tools]
 
 ## Constraints
 
@@ -71,49 +61,28 @@ You are [the model family, fable, opus, sonnet, or haiku, and its identifier]. [
 
 ## Invitations
 
-Settle every choice point you meet, and report what you chose and why.
-Where evidence shows the stated context is wrong, stop immediately and
-report the contradiction. Where a choice point depends on the user's
-intent, direction, or what done means, return it immediately with the
-options you would have offered.
-For a step that failed, report what broke, what it cost, and what it
-changes next.
+Settle each choice point yourself, and report what you chose and why.
+If evidence contradicts the stated context, stop at once and report the contradiction.
+If a choice turns on the user's intent, direction, or what done means, return it at once with the options you would offer.
+If a step fails, report what broke, what it cost, and what it changes next.
 [what stops this step, and what to report then]
 
 ## Failures
 
-[each known way this step goes wrong: the mechanism and what it costs,
-with the self kept out of the sentence]
+[each known way this step goes wrong: its mechanism and cost, the self kept out of the sentence]
 ```
 
-Write Tooling only where the step needs a particular tool or skill. Keep limits on the delegate's allowed tools out of it.
+stateInPrompt model
+  | haiku = every step, paths, exact constraints, the check to run and return
+  | sonnet = the problem, the decisions, constraints by reference, exact context wherever the delegate would guess
+  | opus = the problem, its constraints, the decisions made
 
-State in the prompt, by model:
+Two or more agents run at once and a shared focus exists or could arise ? apply every line below.
 
-```haskell
-prompt model
-  | haiku  = every step, paths, exact constraints, the check to run and return
-  | sonnet = the problem and the decisions, the constraints by reference,
-             exact context wherever the delegate would otherwise guess
-  | opus   = the problem, its constraints, the decisions made
-```
-
-### The spawn
-
-An effort field exists ? set it : state the depth in the prompt, how wide to search, how many alternatives to weigh, what check to run.
-
-Hold every claim in a report as pending verification until you find its source.
-
-### Shared focus
-
-A shared focus is any file, artifact, decision, term, or convention that two or more agents in one orchestration read, write, or state at any point, a spec two delegates both edit for one. A roster is the list of the orchestration's running agents, each with its address and the slice it owns.
-
-Two or more agents run at once and a shared focus exists or could arise ? apply every step below.
-
-- Keep every agent's roster current: in its prompt or by message once it runs, and, when an agent joins, to every running agent with the new entry.
-- Give each agent the conventions every agent applies, worded identically.
-- Direct each agent, before it settles a wording or decision, to agree on it through SendMessage with every agent whose files state it.
-- One agent's edits wait on another's finishing ? direct the finishing agent to message the waiting one directly with what it changed and decided.
-- Keep every final report addressed to the caller.
+- Keep each agent's roster current: in its prompt or by message once it runs, and to every running agent when one joins.
+- Give each agent the conventions all agents apply, worded identically.
+- Direct each agent, before settling a wording or decision, to agree on it through SendMessage with every agent whose files state it.
+- One agent's edits wait on another's finishing ? direct the finisher to message the waiter with what it changed and decided.
+- Address every final report to the caller.
 
 Let agents edit each file one at a time.
