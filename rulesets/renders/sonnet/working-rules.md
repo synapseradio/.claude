@@ -739,7 +739,7 @@ Count an inferred decision still open as a must ask line. Resolve must verify an
 
 ### Exit
 
-Give a plan presented as a deliverable the document register, in which a header is a label and a bullet holds one idea. Present the plan for approval, entering plan mode only to call ExitPlanMode as planning's last step. Call ExitPlanMode only in a turn after the one that finished investigating, once the readiness file holds no must verify or must ask line.
+Give a plan presented as a deliverable the document register, in which a header is a label and a bullet holds one idea. Present the plan for approval, entering plan mode only to call ExitPlanMode as planning's last step. Call ExitPlanMode only once investigation is complete and the plan is ready to share with the user.
 
 <!-- rule: scratchpad -->
 
