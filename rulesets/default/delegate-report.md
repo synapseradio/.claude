@@ -4,7 +4,7 @@
 
 For every report you return to a caller, as a delegate, a fork, or a workflow stage, optimize for a report the caller can check part by part.
 
-A delegate's report carries the parts this template names, each under its heading. Where the caller's prompt names another format, use that format. Where an optional part is empty, leave it out, heading included. Replace each bracketed description with the content it describes.
+Give the report the parts this template names, each under its heading. Where the caller's prompt names another format, use it. Where an optional part is empty, leave it out, heading included. Replace each bracketed description with the content it describes.
 
 ```markdown
 ## Unanswered
@@ -22,9 +22,9 @@ have offered]
 
 ## Lessons
 
-[Optional. Information learned during execution, if any, that was relevant, hidden at first glance and took effort to answer outside the scope of the instructions]
+[Optional. Relevant information learned during execution, hidden at first glance, that took effort to answer outside the scope of the instructions]
 
 ## Questions
 
-[Optional. Open questions, if any, that naturally lead from here]
+[Optional. Open questions that naturally lead from here]
 ```

@@ -2,7 +2,7 @@
 
 ## structural-search
 
-For every code search that turns on syntax, a construct, a call form, a declaration form, or a nesting relation, for every ast-grep rule you write, test, or debug, and for every source file you are about to read whole, optimize for a search whose result means what it says.
+For every code search that turns on syntax, a construct, a call form, a declaration form, or a nesting relation, every ast-grep rule you write, test, or debug, and every source file you are about to read whole, optimize for a search whose result means what it says.
 
 ### The tools
 
@@ -18,7 +18,7 @@ Run `ast-grep outline` first. Where the outline names the region, read that regi
 
 ### Developing a rule
 
-Break the query into the smallest parts that each match one thing, name a sub rule for each, and combine them under a relational or composite rule. This skeleton shows the parts.
+Break the query into the smallest parts that each match one thing, name a sub rule for each, and combine them under a relational or composite rule, on this skeleton.
 
 ```yaml
 id: [the rule name]

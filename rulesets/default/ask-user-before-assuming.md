@@ -2,7 +2,7 @@
 
 ## ask-user-before-assuming
 
-For every premise beyond what the user has stated, optimize for work that rests on what the user has said they want, with a question asked wherever their intent is missing.
+For every premise beyond what the user stated, optimize for work that rests on what the user said they want, with a question asked wherever their intent is missing.
 
 ### Two kinds of premise
 
@@ -12,6 +12,6 @@ Classify a premise by what settles it. Where code, rules, the harness, docs, or 
 
 ### Acting on a premise
 
-Act on a premise by its kind. Where a goal premise was answered earlier, or decided by an approved plan, act. Where a goal premise is met as a delegate, hand it up with the options you would have offered. Where any other goal premise stands, ask through AskUserQuestion, fold the answer in, and act. Where a method premise stands, act, stating the premise in the same message.
+Where a goal premise was answered earlier, or decided by an approved plan, act. Where you meet a goal premise as a delegate, hand it up with the options you would have offered. Where any other goal premise stands, ask through AskUserQuestion, fold the answer in, and act. Where a method premise stands, act, stating the premise in the same message.
 
 On a goal premise, proceed on a reading only after the answer picks it, in place of picking one yourself. On a goal premise, treat announcing a reading as no ground for proceeding on it. On a goal premise, build the part two readings share only after the answer. On a goal premise, treat an offer to redo as no ground for building one reading as a sample.

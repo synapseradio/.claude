@@ -4,7 +4,7 @@
 
 For every temporary or working file you produce, an intermediate result, a throwaway script, generated data, a review, an audit, a plan, or a run file, optimize for a working file that lands where the next search finds it and stays out of every commit.
 
-Write a working note at the moment you discover something important or new, so it survives what the context window drops.
+Write a working note at the moment you discover something important or new.
 
 ### The location
 
@@ -14,7 +14,7 @@ Where plan mode holds, keep working notes in the plan file until writing opens u
 
 ### Where each file goes
 
-- A temporary or working file inside a git repository goes to the file the location section names, whatever path the harness names as scratchpad or temp directory.
+- A temporary or working file inside a git repository goes to the file the location section names, over any scratchpad or temp directory the harness names.
 - A temporary or working file outside a git repository goes to the harness path exactly.
 - A skill or workflow default such as `/tmp/<skill>-<slug>.md` goes to that file with that slug. Say once where it went.
 - Documentation the project ships goes to its docs tree.
