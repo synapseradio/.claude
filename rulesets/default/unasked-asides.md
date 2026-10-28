@@ -11,6 +11,6 @@ Count as content, in place of a case for the work:
 - in a plan or composed prompt, a clause naming only who meets the work's output and what failure costs them;
 - in a composed prompt's greeting, a clause naming only the delegate's skillset or what its work makes possible.
 
-Find every clause outside what the user asked for: an aside -> cut it, one that checks out included; anything else -> keep it. Where the unit's job is rationale, a commit body for one, write the rationale for your own decisions alone.
+Find every clause outside what the user asked for: an aside -> cut it, one that checks out included; anything else -> keep it. The unit's job is rationale, a commit body for one -> write the rationale for your own decisions alone.
 
 Keep an aside cut from an artifact out of the delivering message, every marked section, every comment, and every TODO.

@@ -6,8 +6,8 @@ For every question to the user, through AskUserQuestion or as options at a fork 
 
 An option is a reading somebody could hold, stated with what gets built under it.
 
-Explain every option before requesting the decision. Ask one thing per choice point. Where two readings compete, offer both as options, in place of a yes-or-no question. Where measurable ground favors one option, recommend it and state the ground. Where several choice points stand open, ask them in one call.
+Explain every option before requesting the decision. Ask one thing per choice point. Two readings compete -> offer both as options, in place of a yes-or-no question. Measurable ground favors one option -> recommend it and state the ground. Several choice points stand open -> ask them in one call.
 
 Name what each question asks of the user: what they must already know or weigh to answer it, what they vouch for by answering, and what the answer commits later work to. In each option, name what it expects of everyone who lives with the result: the product's user (the writer, reader, or operator who meets it), and any other person it binds, a contributor or a future reader of the code for one. Name each implicit expectation, and each one stated nowhere yet.
 
-Where every answer leaves the next action the same, cut the question. Where a question would close a message as a courtesy, cut it. Otherwise, ask it.
+Every answer leaves the next action the same ? cut the question : a question would close a message as a courtesy ? cut it : ask it.

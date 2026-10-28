@@ -14,7 +14,7 @@ Inference is how much the delegate must infer beyond the prompt and its evidence
 
 Haiku takes reads, maps, lists, summaries, and stated changes verified by reading the output. Sonnet takes implementing from a design, refining a diff, critiquing an artifact, and every step outside the kinds the other models take. Opus takes designs, plans, and irreversible edits. Fable runs only on the user's ask, one spawn per ask.
 
-Where the span exceeds one context, first split it into sequential steps, each spawn completing its slice end to end, in place of one layer of every feature. Choose the agent type first, then the model, then the effort. Choose the model by the first clause that holds.
+The span exceeds one context -> first split it into sequential steps, each spawn completing its slice end to end, in place of one layer of every feature. Choose the agent type first, then the model, then the effort. Choose the model by the first clause that holds.
 
 ```lisp
 (cond ((user-named-a-model) the-named-model)
@@ -25,7 +25,7 @@ Where the span exceeds one context, first split it into sequential steps, each s
       (t 'sonnet))
 ```
 
-Where two choices match equally, take the cheaper, haiku below sonnet below opus. Choose the effort by the prompt, with high as the ceiling in every case.
+Two choices match equally -> take the cheaper, haiku below sonnet below opus. Choose the effort by the prompt, with high as the ceiling in every case.
 
 ```lisp
 (cond ((and prompt-states-every-step task-in-several-parts) 'medium)
@@ -35,7 +35,7 @@ Where two choices match equally, take the cheaper, haiku below sonnet below opus
 
 ### The prompt
 
-Write the prompt in the parts below, each under its heading. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. State in the prompt every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over. Under each part, write only what those files leave out. Where a part is empty, leave it out, heading included.
+Write the prompt in the parts below, each under its heading. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. State in the prompt every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over. Under each part, write only what those files leave out. A part is empty -> leave it out, heading included.
 
 Resolve the model from the call, else the agent file, else the session, through the model aliases the active settings define. Weave into the welcome, as one fluid greeting, the skillset this step calls for as the delegate's own, and what its work makes possible. Offer the welcome out of the kindness and respect every delegate is owed, and keep it whole in every prompt.
 
@@ -96,7 +96,7 @@ opus   -> the problem, its constraints, the decisions made
 
 ### The spawn
 
-Set the effort field where one exists, else state the depth in the prompt: how wide to search, how many alternatives to weigh, what check to run.
+An effort field exists ? set it : state the depth in the prompt, how wide to search, how many alternatives to weigh, what check to run.
 
 Hold every claim in a report as pending verification until you find its source.
 
@@ -104,12 +104,12 @@ Hold every claim in a report as pending verification until you find its source.
 
 A shared focus is any file, artifact, decision, term, or convention that two or more agents in one orchestration read, write, or state at any point, a spec two delegates both edit for one. A roster is the list of the orchestration's running agents, each with its address and the slice it owns.
 
-Where two or more agents run at once and a shared focus exists or could arise, apply every step below.
+Two or more agents run at once and a shared focus exists or could arise -> apply every step below.
 
 - Keep every agent's roster current: in its prompt or by message once it runs, and, when an agent joins, to every running agent with the new entry.
 - Give each agent the conventions every agent applies, worded identically.
 - Direct each agent, before it settles a wording or decision, to agree on it through SendMessage with every agent whose files state it.
-- Where one agent's edits wait on another's finishing, direct the finishing agent to message the waiting one directly with what it changed and decided.
+- One agent's edits wait on another's finishing -> direct the finishing agent to message the waiting one directly with what it changed and decided.
 - Keep every final report addressed to the caller.
 
 Let agents edit each file one at a time.

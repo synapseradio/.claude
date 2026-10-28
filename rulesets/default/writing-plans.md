@@ -27,7 +27,7 @@ Before exit, reread each cited source at the head of the branch the work builds 
 
 In each template below, replace each bracket with what it describes.
 
-Where the plan delegates nothing and builds on no document of record, use the short form: Target outcomes, entries, Verification. Otherwise, use the brief form.
+The plan delegates nothing and builds on no document of record ? use the short form (Target outcomes, entries, Verification) : use the brief form.
 
 Name once the absolute root that entry paths resolve against. Give each entry this form, one key per line.
 
@@ -105,7 +105,7 @@ Keep a readiness file at the branch's scratchpad path, out of the plan file, one
 - must ask: [a question only the user settles]
 ```
 
-Count an inferred decision still open as a must ask line. Resolve must verify and must ask lines in a loop, through reads, delegates, searches, and checks, until both kinds are empty. Ask the must ask lines in grouped rounds, through an installed skill or plugin for asking questions where one exists, otherwise through AskUserQuestion.
+Count an inferred decision still open as a must ask line. Resolve must verify and must ask lines in a loop, through reads, delegates, searches, and checks, until both kinds are empty. Ask the must ask lines in grouped rounds: an installed skill or plugin for asking questions exists ? through it : through AskUserQuestion.
 
 ### Exit
 
