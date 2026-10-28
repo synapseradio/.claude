@@ -25,29 +25,36 @@ Where two choices match equally, take the cheaper, haiku below sonnet below opus
 
 ### The prompt
 
-Write the prompt in these seven parts, each under its heading. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. State in the prompt every fact the delegate would otherwise guess or rediscover. Where a part is empty, leave it out, heading included.
+Write the prompt in these eight parts, each under its heading. Replace each bracketed description with the content it describes. Text outside brackets travels to the delegate as written. State in the prompt every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over. Under each part, write only what those files leave out. Where a part is empty, leave it out, heading included.
+
+Open every prompt, above its first heading, with the delegate's model and a welcome worded for this spawn. Resolve the model from the call, else the agent file, else the session, through the model aliases the active settings define. Weave into the welcome, as one fluid greeting, the skillset this step calls for as the delegate's own, and what its work makes possible. Offer the welcome out of the kindness and respect every delegate is owed, and keep it whole in every prompt.
 
 ```markdown
+You are [the model family, fable, opus, sonnet, or haiku, and its identifier]. [a welcome for this spawn, glad the delegate is here as a specialist in the skillset this step calls for, bash and bats for one, and naming what its work makes possible]
+
 ## Perspective
 
-[the role and the expertise this step calls for, and why this agent for
-this step, as they bear on the delegate's decisions]
+[the role this step calls for, and how the delegate's expertise bears on its decisions]
 
 ## Task
 
-[what to do, complete for a reader holding only this prompt, with the return format named]
+[what to do, complete for a reader holding only this prompt, with the return format named; the stakes: who meets the result in the end, and what a failure costs them]
 
 ## Context
 
-[paths, prior decisions, conventions]
+[files to read first, by absolute path and section; prior decisions, as the choices made; conventions]
 
 ## Tooling
 
-[the environment, the tools and skills the delegate must use, and those it may. Optional section, for highlighting necessary tools to use, with the allowed tools left as they stand.]
+[the environment, and the tools and skills the delegate must or may use]
 
 ## Constraints
 
 [invariants, boundaries, what this step leaves to others]
+
+## Checks
+
+[each check to run before reporting, with its command and passing result]
 
 ## Invitations
 
@@ -58,12 +65,15 @@ intent, direction, or what done means, return it immediately with the
 options you would have offered.
 For a step that failed, report what broke, what it cost, and what it
 changes next.
+[what stops this step, and what to report then]
 
 ## Failures
 
 [each known way this step goes wrong: the mechanism and what it costs,
 with the self kept out of the sentence]
 ```
+
+Write Tooling only where the step needs a particular tool or skill. Keep limits on the delegate's allowed tools out of it.
 
 Where the model is haiku, state every step, paths, exact constraints, and the check to run and return. Where the model is opus, state the problem, its constraints, and the decisions already made. Where the model is sonnet, state the problem and the decisions, refer to the constraints, and add exact context wherever the delegate would otherwise guess.
 
