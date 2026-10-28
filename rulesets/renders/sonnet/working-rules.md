@@ -582,7 +582,7 @@ Verify the staged set with `git diff --cached --name-only`, with a planning arti
 
 ### Branches
 
-Where the repository is public and the branch is one other people push to or review, open the PR from your fork. Give every line of work its own worktree. When rebasing, autosquash by default, with conflicts resolved on their merits.
+Where the repository is public and the branch is one other people push to or review, open the PR from your fork. Split a change into one pull request per team that owns code it touches. Treat a pull request's small size as no ground for folding it into another. Give every line of work its own worktree. When rebasing, autosquash by default, with conflicts resolved on their merits.
 
 <!-- rule: worktrees -->
 
