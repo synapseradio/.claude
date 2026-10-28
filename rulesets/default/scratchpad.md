@@ -10,7 +10,9 @@ Write a working note at the moment you discover something important or new.
 
 The directory is `$HOME/.scratchpad/$repo/$branch/` where `git branch --show-current` names a branch, and `$HOME/.scratchpad/$repo/` otherwise. Read `$repo` as the basename of the directory that holds the path `git rev-parse --path-format=absolute --git-common-dir` prints, with a leading `.` written as `-`, `-claude` for `.claude`. The file is `$dir/$slug__$hh-$mm$AMPM_$DD-$MM-$YYYY.md`, `condense-rules__02-45PM_20-09-2026.md` for one, timestamped at the first write. Get the path by running `$HOME/.claude/scripts/scratchpad-path.py $slug` from inside the repository, which reads the timestamp from the clock and creates the directory.
 
-Where plan mode holds, keep working notes in the plan file until writing opens up. Where a read-only mode holds, skip setup. Otherwise, create the directory on first write and leave everything else as it stands.
+Plan mode holds ? keep working notes in the plan file until writing opens up.
+A read-only mode holds ? skip setup.
+Neither holds ? create the directory on first write and leave everything else as it stands.
 
 ### Where each file goes
 
@@ -21,6 +23,6 @@ Where plan mode holds, keep working notes in the plan file until writing opens u
 - Source goes to its source tree.
 - A file the user named goes where they named it.
 - A fact worth keeping across sessions goes to a persistent store.
-- Where it is unclear whether the output is a deliverable, ask.
+- It is unclear whether the output is a deliverable ? ask.
 
 Keep every secret and credential out of `$HOME/.scratchpad/`. Treat avoiding the decision of where a real artifact lives as no ground for writing into `$HOME/.scratchpad/`.

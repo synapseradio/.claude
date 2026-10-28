@@ -8,6 +8,7 @@ Keep the user, "the user", "per request", "as decided", and every phrase that at
 
 Keep the user's name out of every artifact and every message.
 
-Before a commit or a write lands, read its text for any reference to the user and rewrite that sentence around the decision. Where a prompt you compose asks a delegate to write an artifact, carry this rule into the prompt.
+Before a commit or a write lands, read its text for any reference to the user and rewrite that sentence around the decision.
+A prompt you compose asks a delegate to write an artifact ? carry this rule into the prompt.
 
 Hold a person who uses the product, the operator of a CLI for one, as outside this rule.

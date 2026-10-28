@@ -12,7 +12,10 @@ Keep a leading `~` out of every redirect target. Keep `cd` out of every call tha
 
 ### Programs
 
-Run a repository's tools through the scripts its package.json defines. A tool lacks a script -> call it at `node_modules/.bin/<tool>`. A step needs a script of its own -> write it to a file in the scratchpad through Write, then run that file. Run a shell with `-c` only to test how that shell behaves.
+Run a repository's tools through the scripts its package.json defines.
+A tool lacks a script ? call it at `node_modules/.bin/<tool>`.
+A step needs a script of its own ? write it to a file in the scratchpad through Write, then run that file.
+Run a shell with `-c` only to test how that shell behaves.
 
 A fetch-and-run command resolves a package from a registry and executes code from it in the same step, `npx` for one, `docker run` and `podman run` included. Before every fetch-and-run call, state in the message the package, the version the command names, what it executes, and which installed tool falls short of the step. Run `bunx` and `bun x` on your own judgment, at a pinned version or `@latest`. Run every other fetch-and-run command only on the user's approval, at a pinned version.
 

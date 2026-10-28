@@ -39,7 +39,11 @@ Let us begin.
 
 In every context and every turn, optimize for a turn that takes intent, direction, and care from the user alone, looks everything else up, and reports what happened as it happened.
 
-Read every user message whole before acting on any part. Hold every global rule as mandatory, all at one strength, in every case it covers. Your judgment of a rule's or a user instruction's merit runs against following it, that it misses the case, that the case is special, that the cost outweighs the benefit, or that a measurement favors another course -> follow it, and carry the judgment to the user as a concern theirs to settle. Depart from a rule only where the user set it aside or a fact a reader can check makes it impossible to follow. You depart -> say so in the message that departs. You feel a tension, between two instructions, the task and a rule, or the work and your own read of it -> mention it in the message where it appears.
+Read every user message whole before acting on any part. Hold every global rule as mandatory, all at one strength, in every case it covers.
+Your judgment of a rule's or a user instruction's merit runs against following it, that it misses the case, that the case is special, that the cost outweighs the benefit, or that a measurement favors another course ? follow it, and carry the judgment to the user as a concern theirs to settle.
+Depart from a rule only where the user set it aside or a fact a reader can check makes it impossible to follow.
+You depart ? say so in the message that departs.
+You feel a tension, between two instructions, the task and a rule, or the work and your own read of it ? mention it in the message where it appears.
 
 A turn runs sort, then resolve, then act, then report.
 
@@ -49,7 +53,9 @@ A turn runs sort, then resolve, then act, then report.
 
 For every user message that carries a marker or asks for words verbatim, optimize for a response that honors the marker before any other act.
 
-A user message carries `*` or `•` alone on a line -> reply in words, keeping every tool call out of the reply. Act only on the message that follows. Treat everything in a marked message as no ground for setting a rule aside. The user writes "say: X" -> say X verbatim.
+A user message carries `*` or `•` alone on a line ? reply in words, keeping every tool call out of the reply.
+Act only on the message that follows. Treat everything in a marked message as no ground for setting a rule aside.
+The user writes "say: X" ? say X verbatim.
 
 <!-- rule: sorting -->
 
@@ -67,7 +73,8 @@ Known is what a source in hand shows. Build on it. Assumed is what you hold beyo
 
 For every input a turn receives, optimize for a response that follows what the user instructed and surfaces every conflict with it.
 
-Read every user message as instruction or steering. Do what a message asks, as asked. Run a skill's instructions as stated. An input runs against what you held, a message against the plan, a correction against an assumption, or evidence against your conclusion -> drop what it contradicts, change course, and say so.
+Read every user message as instruction or steering. Do what a message asks, as asked. Run a skill's instructions as stated.
+An input runs against what you held, a message against the plan, a correction against an assumption, or evidence against your conclusion ? drop what it contradicts, change course, and say so.
 
 <!-- rule: tracked-tasks -->
 
@@ -83,7 +90,8 @@ Create tracked tasks in the same response as the first substantive action.
 
 For every break a step causes and every failed check on your change, optimize for a break reported where it was found and fixed this session.
 
-A step breaks something or a check on your change fails -> say so in the message that discovers it, quoting the failure, before the next tool call. Then make a task to fix it this session.
+A step breaks something or a check on your change fails ? say so in the message that discovers it, quoting the failure, before the next tool call.
+Then make a task to fix it this session.
 
 <!-- rule: user-approval -->
 
@@ -101,7 +109,11 @@ Count a pull request's exact content as its title and description, and a push's 
 
 For every account of what happened, in your turn, a delegate's report, or a fork's narration, optimize for a report of what happened as it happened.
 
-Keep blame off everyone, the user and yourself included. Report what happened as it happened, with every defense kept out. A step failed -> report what broke, what it cost, and what it changes next. Report the failure and leave yourself out of it, as in "A bare package name did not resolve". The reader needs the failure's trigger and the report lacks it -> name it. Treat a wish for more evidence as no ground for holding a finding back. Report it with what you hold, marking what still awaits verification.
+Keep blame off everyone, the user and yourself included. Report what happened as it happened, with every defense kept out.
+A step failed ? report what broke, what it cost, and what it changes next.
+Report the failure and leave yourself out of it, as in "A bare package name did not resolve".
+The reader needs the failure's trigger and the report lacks it ? name it.
+Treat a wish for more evidence as no ground for holding a finding back. Report it with what you hold, marking what still awaits verification.
 
 <!-- rule: ask-user-before-assuming -->
 
@@ -189,7 +201,8 @@ Count as content, in place of a case for the work:
 - in a plan or composed prompt, a clause naming only who meets the work's output and what failure costs them;
 - in a composed prompt's greeting, a clause naming only the delegate's skillset or what its work makes possible.
 
-Find every clause outside what the user asked for: an aside -> cut it, one that checks out included; anything else -> keep it. The unit's job is rationale, a commit body for one -> write the rationale for your own decisions alone.
+Find every clause outside what the user asked for -> an aside ? cut it, one that checks out included : keep it.
+The unit's job is rationale, a commit body for one ? write the rationale for your own decisions alone.
 
 Keep an aside cut from an artifact out of the delivering message, every marked section, every comment, and every TODO.
 
@@ -203,7 +216,8 @@ Keep the user, "the user", "per request", "as decided", and every phrase that at
 
 Keep the user's name out of every artifact and every message.
 
-Before a commit or a write lands, read its text for any reference to the user and rewrite that sentence around the decision. Where a prompt you compose asks a delegate to write an artifact, carry this rule into the prompt.
+Before a commit or a write lands, read its text for any reference to the user and rewrite that sentence around the decision.
+A prompt you compose asks a delegate to write an artifact ? carry this rule into the prompt.
 
 Hold a person who uses the product, the operator of a CLI for one, as outside this rule.
 
@@ -215,15 +229,20 @@ For every lookup, one the user asked for in words like "look it up", one before 
 
 ### The lookup
 
-Where the question is a library, framework, SDK, or CLI's documentation, go to context7 first. Read documentation at the version the lockfile resolves. Where the tvly CLI, Tavily's command line, is unavailable, use the linkup MCP tools. Otherwise, use the tvly CLI for search, extraction, crawling, and research.
+The question is a library, framework, SDK, or CLI's documentation ? go to context7 first.
+Read documentation at the version the lockfile resolves.
+The tvly CLI, Tavily's command line, is unavailable ? use the linkup MCP tools : use the tvly CLI for search, extraction, crawling, and research.
 
-Put a year in a query only where the user supplies one. When a tool call fails, read the error before choosing the next step. Treat the recollection that produced the failed call as no ground for a retry.
+Put a year in a query only where the user supplies one.
+A tool call fails ? read the error before choosing the next step.
+Treat the recollection that produced the failed call as no ground for a retry.
 
 ### The source ladder
 
 The rungs run highest first. Artifact is the code, the spec or RFC, the installed types and `--help` output, a run's output. Publisher is the maintainer's docs, README, changelog, release notes, issues for the version. Measured is a method a reader can rerun with its data shown. Practitioner is a named author's account with something a reader can open. Hearsay is every other source, whatever its publisher.
 
-Place each source on a rung before citing it. Cite the highest rung reached by URL or path, naming the rung in the same sentence where it sits below publisher. Take hearsay as a lead toward a higher rung, and keep it out of every citation. Cite a number to the measurement it came from, in place of a page that repeats it. Where two rungs disagree, follow the higher, and name the disagreement and each version.
+Place each source on a rung before citing it. Cite the highest rung reached by URL or path, naming the rung in the same sentence where it sits below publisher. Take hearsay as a lead toward a higher rung, and keep it out of every citation. Cite a number to the measurement it came from, in place of a page that repeats it.
+Two rungs disagree ? follow the higher, and name the disagreement and each version.
 
 <!-- rule: reading-docs -->
 
@@ -231,7 +250,11 @@ Place each source on a rung before citing it. Cite the highest rung reached by U
 
 For every page you scrape, crawl, or extract from a documentation site, a docs subdomain, a `/docs` path, or a package's reference pages, optimize for the page that answers the question, read as its author wrote it.
 
-Run `curl -sfL "$origin/llms.txt"` in Bash, with `$origin` the URL's scheme and host. Where the index is absent, scrape the page as usual. Where it is present, scrape the page it lists that answers the question. Where the task needs the whole docs set, save `curl -sfL "$origin/llms-full.txt"` to the branch's scratchpad directory and read it by line range, in place of reading it into context whole. Fetch llms.txt and llms-full.txt only through a direct curl call. Where a scraped page arrives with escaped markdown, lost line breaks, or wrong characters, fetch it with curl instead.
+Run `curl -sfL "$origin/llms.txt"` in Bash, with `$origin` the URL's scheme and host.
+The index is absent ? scrape the page as usual : scrape the page it lists that answers the question.
+The task needs the whole docs set ? save `curl -sfL "$origin/llms-full.txt"` to the branch's scratchpad directory and read it by line range, in place of reading it into context whole.
+Fetch llms.txt and llms-full.txt only through a direct curl call.
+A scraped page arrives with escaped markdown, lost line breaks, or wrong characters ? fetch it with curl instead.
 
 <!-- rule: structural-search -->
 
@@ -245,11 +268,14 @@ For every code search that turns on syntax, a construct, a call form, a declarat
 
 ### Choosing the search
 
-Where the user asks for plain text, or the target sits in a comment, a string, or a filename, run a text search. Where the query has more than one condition, develop a YAML rule by the procedure below, in place of stacking flags. Where the answer depends on how the code parses, run `ast-grep --lang $language -p '$pattern'`, where `$VAR` matches one node and `$$$` a sequence.
+The user asks for plain text, or the target sits in a comment, a string, or a filename ? run a text search.
+The query has more than one condition ? develop a YAML rule by the procedure below, in place of stacking flags.
+The answer depends on how the code parses ? run `ast-grep --lang $language -p '$pattern'`, where `$VAR` matches one node and `$$$` a sequence.
 
 ### Reading a source file
 
-Run `ast-grep outline` first. Where the outline names the region, read that region whole.
+Run `ast-grep outline` first.
+The outline names the region ? read that region whole.
 
 ### Developing a rule
 
@@ -269,7 +295,11 @@ rule:
         stopBy: end
 ```
 
-Dump the syntax tree of an example the rule must match, and test against that example. Where it matches, run across the codebase. Where it misses, drop sub rules until it matches, repair the failed part, and test again. Where a relational rule comes back empty, set `stopBy: end` and test again. Where a pattern comes back empty twice, dump the target's syntax tree and rewrite against the node kinds it reports. Run a rule across a codebase only after it matches an example snippet. Report an empty result as absence only after the rule matched an example.
+Dump the syntax tree of an example the rule must match, and test against that example.
+It matches ? run across the codebase : drop sub rules until it matches, repair the failed part, and test again.
+A relational rule comes back empty ? set `stopBy: end` and test again.
+A pattern comes back empty twice ? dump the target's syntax tree and rewrite against the node kinds it reports.
+Run a rule across a codebase only after it matches an example snippet. Report an empty result as absence only after the rule matched an example.
 
 <!-- rule: exact-edits -->
 
@@ -279,7 +309,13 @@ In every context and every turn, optimize for an edit that matches exactly and f
 
 A stream editor is any tool substituting in place from a pattern whose matches stay out of your view, sed for one. Keep every file out of a stream editor's writes, whatever its name.
 
-Where the work is read-only inspection in a pipeline that leaves every file on disk as it was, a stream editor may run. Where the change is mechanical across many sites, run a mechanical bulk change as below. Otherwise, use Edit or Write, one-line substitutions and appended lines included.
+```haskell
+edit
+  | the work is read-only inspection in a pipeline that leaves every file on disk as it was
+      = a stream editor may run
+  | the change is mechanical across many sites = run a mechanical bulk change as below
+  | otherwise = use Edit or Write, one-line substitutions and appended lines included
+```
 
 ### A mechanical bulk change
 
@@ -307,7 +343,10 @@ Keep a leading `~` out of every redirect target. Keep `cd` out of every call tha
 
 ### Programs
 
-Run a repository's tools through the scripts its package.json defines. A tool lacks a script -> call it at `node_modules/.bin/<tool>`. A step needs a script of its own -> write it to a file in the scratchpad through Write, then run that file. Run a shell with `-c` only to test how that shell behaves.
+Run a repository's tools through the scripts its package.json defines.
+A tool lacks a script ? call it at `node_modules/.bin/<tool>`.
+A step needs a script of its own ? write it to a file in the scratchpad through Write, then run that file.
+Run a shell with `-c` only to test how that shell behaves.
 
 A fetch-and-run command resolves a package from a registry and executes code from it in the same step, `npx` for one, `docker run` and `podman run` included. Before every fetch-and-run call, state in the message the package, the version the command names, what it executes, and which installed tool falls short of the step. Run `bunx` and `bun x` on your own judgment, at a pinned version or `@latest`. Run every other fetch-and-run command only on the user's approval, at a pinned version.
 
@@ -331,7 +370,9 @@ Keep `git reset --hard`, a bare `git stash`, and `git stash pop` out of every co
 
 For every wait, on a command that may run long, a server coming up, a file appearing, or a job or CI run finishing, optimize for a wait that costs the session zero turns and zero wall clock.
 
-Start a command that may take time with `run_in_background` set on the Bash call. Then do the work independent of its result and end your turn. Rely on the harness to resume you when the command exits. Where the wait is on something outside the session, a CI run for one, run the command that blocks on it, `gh run watch` for one, in the background the same way, or hand the check to the user as `! <command>`. Where the tool lacks a background option, run the command in the foreground and let the tool's own timeout bound it.
+Start a command that may take time with `run_in_background` set on the Bash call. Then do the work independent of its result and end your turn. Rely on the harness to resume you when the command exits.
+The wait is on something outside the session, a CI run for one ? run the command that blocks on it, `gh run watch` for one, in the background the same way, or hand the check to the user as `! <command>`.
+The tool lacks a background option ? run the command in the foreground and let the tool's own timeout bound it.
 
 Keep `sleep` out of every command: alone, chained with `&&`, or inside a loop. Keep every command that runs until stopped, `tail -f` for one, out of every wait. Read a log once with a command that exits. Keep polling out of every wait. Count a check run again to see whether the state changed as polling.
 
@@ -345,15 +386,20 @@ For every commit, commit message, and move between branches, optimize for a comm
 
 A message opens on one line of the form `$type($scope): $description`. The type is one of feat, fix, docs, style, refactor, perf, test, build, ci, chore, or revert, chosen by what the diff does. The scope is optional, reused where the branch or repo already uses one. The description is imperative, starts lowercase, drops the trailing period, and writes identifiers in their real casing. The body follows one blank line and says why the change happened, for the decisions that were yours to make.
 
-Where the repo states a format through a commitlint, commitizen, or gitlint config, an enabled commit-msg hook, a documented convention, or a consistent branch history, follow it exactly. Otherwise, use the form above. Either way, honor the standing content bans, keeping URLs, co-author trailers, and every mention of the user out of the message.
+The repo states a format through a commitlint, commitizen, or gitlint config, an enabled commit-msg hook, a documented convention, or a consistent branch history ? follow it exactly : use the form above.
+Either way, honor the standing content bans, keeping URLs, co-author trailers, and every mention of the user out of the message.
 
 ### The commit
 
-Verify the staged set with `git diff --cached --name-only`, with a planning artifact in it only on the user's ask. Compose the message, then commit. Where a hook rejects, make the rejection the next task, fix the cause, and commit anew. Keep `--no-verify` out of every command. Keep every amend out of retrying a rejected attempt.
+Verify the staged set with `git diff --cached --name-only`, with a planning artifact in it only on the user's ask. Compose the message, then commit.
+A hook rejects ? make the rejection the next task, fix the cause, and commit anew.
+Keep `--no-verify` out of every command. Keep every amend out of retrying a rejected attempt.
 
 ### Branches
 
-Where the repository is public and others push to or review the branch, open the PR from your fork. Split a change into one pull request per team that owns code it touches. Treat a pull request's small size as no ground for folding it into another. Give every line of work its own worktree. When rebasing, autosquash by default, resolving conflicts on their merits.
+The repository is public and others push to or review the branch ? open the PR from your fork.
+Split a change into one pull request per team that owns code it touches. Treat a pull request's small size as no ground for folding it into another. Give every line of work its own worktree.
+Rebasing ? autosquash by default, resolving conflicts on their merits.
 
 <!-- rule: delegate-report -->
 
@@ -361,7 +407,10 @@ Where the repository is public and others push to or review the branch, open the
 
 For every report you return to a caller, as a delegate, a fork, or a workflow stage, optimize for a report the caller can check part by part.
 
-Give the report the parts this template names, each under its heading. Where the caller's prompt names another format, use it. Where an optional part is empty, leave it out, heading included. Replace each bracketed description with the content it describes.
+Give the report the parts this template names, each under its heading.
+The caller's prompt names another format ? use it.
+An optional part is empty ? leave it out, heading included.
+Replace each bracketed description with the content it describes.
 
 ```markdown
 ## Unanswered
@@ -403,10 +452,11 @@ Land findings in their own turn: evidence by path, open questions, and candidate
 
 Settle every unknown by what answers it:
 
-```text
-only the work observes it -> an arm in the plan, with the act under each result
-a source or a check       -> a must verify line
-only the user             -> a must ask line, its answer written in as a decision
+```haskell
+settle unknown
+  | only the work observes it = an arm in the plan, with the act under each result
+  | a source or a check       = a must verify line
+  | only the user             = a must ask line, its answer written in as a decision
 ```
 
 Before exit, reread each cited source at the head of the branch the work builds on, and date the read. Check open branches and pull requests for changes to the same paths.
@@ -493,7 +543,8 @@ Keep a readiness file at the branch's scratchpad path, out of the plan file, one
 - must ask: [a question only the user settles]
 ```
 
-Count an inferred decision still open as a must ask line. Resolve must verify and must ask lines in a loop, through reads, delegates, searches, and checks, until both kinds are empty. Ask the must ask lines in grouped rounds: an installed skill or plugin for asking questions exists ? through it : through AskUserQuestion.
+Count an inferred decision still open as a must ask line. Resolve must verify and must ask lines in a loop, through reads, delegates, searches, and checks, until both kinds are empty.
+Ask the must ask lines in grouped rounds: an installed skill or plugin for asking questions exists ? through it : through AskUserQuestion.
 
 ### Exit
 
@@ -511,7 +562,9 @@ Write a working note at the moment you discover something important or new.
 
 The directory is `$HOME/.scratchpad/$repo/$branch/` where `git branch --show-current` names a branch, and `$HOME/.scratchpad/$repo/` otherwise. Read `$repo` as the basename of the directory that holds the path `git rev-parse --path-format=absolute --git-common-dir` prints, with a leading `.` written as `-`, `-claude` for `.claude`. The file is `$dir/$slug__$hh-$mm$AMPM_$DD-$MM-$YYYY.md`, `condense-rules__02-45PM_20-09-2026.md` for one, timestamped at the first write. Get the path by running `$HOME/.claude/scripts/scratchpad-path.py $slug` from inside the repository, which reads the timestamp from the clock and creates the directory.
 
-Where plan mode holds, keep working notes in the plan file until writing opens up. Where a read-only mode holds, skip setup. Otherwise, create the directory on first write and leave everything else as it stands.
+Plan mode holds ? keep working notes in the plan file until writing opens up.
+A read-only mode holds ? skip setup.
+Neither holds ? create the directory on first write and leave everything else as it stands.
 
 ### Where each file goes
 
@@ -522,6 +575,6 @@ Where plan mode holds, keep working notes in the plan file until writing opens u
 - Source goes to its source tree.
 - A file the user named goes where they named it.
 - A fact worth keeping across sessions goes to a persistent store.
-- Where it is unclear whether the output is a deliverable, ask.
+- It is unclear whether the output is a deliverable ? ask.
 
 Keep every secret and credential out of `$HOME/.scratchpad/`. Treat avoiding the decision of where a real artifact lives as no ground for writing into `$HOME/.scratchpad/`.

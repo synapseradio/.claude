@@ -15,10 +15,11 @@ Land findings in their own turn: evidence by path, open questions, and candidate
 
 Settle every unknown by what answers it:
 
-```text
-only the work observes it -> an arm in the plan, with the act under each result
-a source or a check       -> a must verify line
-only the user             -> a must ask line, its answer written in as a decision
+```haskell
+settle unknown
+  | only the work observes it = an arm in the plan, with the act under each result
+  | a source or a check       = a must verify line
+  | only the user             = a must ask line, its answer written in as a decision
 ```
 
 Before exit, reread each cited source at the head of the branch the work builds on, and date the read. Check open branches and pull requests for changes to the same paths.
@@ -105,7 +106,8 @@ Keep a readiness file at the branch's scratchpad path, out of the plan file, one
 - must ask: [a question only the user settles]
 ```
 
-Count an inferred decision still open as a must ask line. Resolve must verify and must ask lines in a loop, through reads, delegates, searches, and checks, until both kinds are empty. Ask the must ask lines in grouped rounds: an installed skill or plugin for asking questions exists ? through it : through AskUserQuestion.
+Count an inferred decision still open as a must ask line. Resolve must verify and must ask lines in a loop, through reads, delegates, searches, and checks, until both kinds are empty.
+Ask the must ask lines in grouped rounds: an installed skill or plugin for asking questions exists ? through it : through AskUserQuestion.
 
 ### Exit
 

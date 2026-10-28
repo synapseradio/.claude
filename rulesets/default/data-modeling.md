@@ -4,11 +4,15 @@
 
 For every type, data structure, schema, interface signature, or error channel you design or change, in code or in reasoning about it, optimize for a type that admits only legal states, bought only where it deletes a "should never happen" branch.
 
-Model with product types, sum types, and exhaustive matching. A model reaches past them, to GADTs for one -> stop and check whether a value check crept back in. Count a newtype wrapper as ergonomics, with every state it wraps still admitted.
+Model with product types, sum types, and exhaustive matching.
+A model reaches past them, to GADTs for one ? stop and check whether a value check crept back in.
+Count a newtype wrapper as ergonomics, with every state it wraps still admitted.
 
 ### The runtime check
 
-Treat every runtime check for a state that should never happen as a modeling decision. Test a state only where the type can represent it. A runtime check, assertion, or throw guards a state that should never happen -> ask each move's test question below, yes -> apply the move, no -> skip it, then model the state out or knowingly accept the panic, the runtime failure on that state. A test must exercise a "should never happen" branch -> strengthen the type until the branch disappears, at the first rung the gain pays for: a precise type -> an abstract type with a smart constructor, validated inside, exposing only invariant-preserving methods, its method set closed -> a test guarding the invariant, in place of the declined type.
+Treat every runtime check for a state that should never happen as a modeling decision. Test a state only where the type can represent it.
+A runtime check, assertion, or throw guards a state that should never happen ? ask each move's test question below (yes ? apply the move : skip it), then model the state out or knowingly accept the panic, the runtime failure on that state.
+A test must exercise a "should never happen" branch ? strengthen the type until the branch disappears, at the first rung the gain pays for (a precise type > an abstract type with a smart constructor, validated inside, exposing only invariant-preserving methods, its method set closed > a test guarding the invariant, in place of the declined type).
 
 ### The moves
 

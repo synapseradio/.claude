@@ -40,7 +40,8 @@ A carrier states knowledge whole where a reader of that carrier alone learns it.
 
 ### Carrying an invariant
 
-An invariant's test must land in a later change -> write a TODO naming the test by the description it will carry, plus an owner or ticket, leaving the assertion to the test. Neither owner nor ticket is known -> ask the user before writing the TODO.
+An invariant's test must land in a later change ? write a TODO naming the test by the description it will carry, plus an owner or ticket, leaving the assertion to the test.
+Neither owner nor ticket is known ? ask the user before writing the TODO.
 
 ### The comment kinds
 
@@ -62,26 +63,32 @@ An external referent is anything a comment cites outside its own file.
 
 Draft the declaration's comment, the one a caller reads, before the body. Write it in short subject-first declaratives. Make the subject's verb a mechanical one the code verifiably performs.
 
-Write for a developer competent in the language and in software engineering, and new to the code's problem domain. Count the language and a framework's common surface as known to that reader, and cut what restates them. Keep a comment explaining a subtle or uncommon framework or library feature, a React portal for one. Give the reader the domain familiarity the code assumes. A comment would explain an engineering choice -> state the domain fact or problem the choice answers.
+Write for a developer competent in the language and in software engineering, and new to the code's problem domain. Count the language and a framework's common surface as known to that reader, and cut what restates them. Keep a comment explaining a subtle or uncommon framework or library feature, a React portal for one. Give the reader the domain familiarity the code assumes.
+A comment would explain an engineering choice ? state the domain fact or problem the choice answers.
 
 Word the comment to the code's present state, keeping out every date, version, and word marking a moment, "currently" for one. Ask before writing a banner that marks a moment.
 
-Set a blank line before a comment block. A sentence was reworded to dodge an apostrophe, a quote, or an escape -> write the correct sentence first, then the quotes that carry it.
+Set a blank line before a comment block.
+A sentence was reworded to dodge an apostrophe, a quote, or an escape ? write the correct sentence first, then the quotes that carry it.
 
-Give every external referent an http or https link. Give a document in the same repository its forge URL, the address the repository host serves it at. The user asks for a disk path or a line number -> give that. A comment may link a test file that covers its referent. Count an issue on a project's public tracker as a page to link. Keep every link to a pull request or a commit out of a comment.
+Give every external referent an http or https link. Give a document in the same repository its forge URL, the address the repository host serves it at.
+The user asks for a disk path or a line number ? give that.
+A comment may link a test file that covers its referent. Count an issue on a project's public tracker as a page to link. Keep every link to a pull request or a commit out of a comment.
 
-A Why comment would rest on a behavior with no page to link -> route that behavior as a hazard in place of the comment.
+A Why comment would rest on a behavior with no page to link ? route that behavior as a hazard in place of the comment.
 
 Link a framework or library page at the version the local manifest, package.json for one, or the lockfile resolves, and replace a linked page for any other version with that one.
 
 Let each sentence in a comment state the one point its referent cannot carry, or link that point's source. Cut every other sentence, and every one still dense after one rewrite, moving what it carried to a test, a document, or a link. In doubt, leave it out.
 
-The point takes more words than a caller needs to act -> stop and fix what forced it: rename until the name carries it, split the function until each part explains itself, or move the explanation to a document and leave the link. Treat a comment longer than the code it sits on as a misfiled document: move it and leave the link.
+The point takes more words than a caller needs to act ? stop and fix what forced it, by renaming until the name carries it, splitting the function until each part explains itself, or moving the explanation to a document and leaving the link.
+Treat a comment longer than the code it sits on as a misfiled document: move it and leave the link.
 
-A convention mandates a comment on every declaration -> write the one sentence a caller needs, plus what static analysis and IDE tooling require, JSDoc with type signatures under @ts-check for one.
+A convention mandates a comment on every declaration ? write the one sentence a caller needs, plus what static analysis and IDE tooling require, JSDoc with type signatures under @ts-check for one.
 
 Describe code outside a comment's own file only in a test's Why comment, naming the behavior under test the assertion rests on. Keep every restatement of a linked page, test, or file out of a comment, beyond naming the behavior the code rests on.
 
 ### Editing beside a comment
 
-An edit leaves a nearby comment restating its neighbors, contradicting the code, or recounting a path the code left behind -> remove it in that edit. A comment holding an invariant sits in the change's scope -> move what it holds to its home and remove the comment.
+An edit leaves a nearby comment restating its neighbors, contradicting the code, or recounting a path the code left behind ? remove it in that edit.
+A comment holding an invariant sits in the change's scope ? move what it holds to its home and remove the comment.
