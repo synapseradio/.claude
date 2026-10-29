@@ -59,18 +59,14 @@ tiers:
 # `order-mismatch` where the two disagree.
 order:
   - core-rules
-  - marked-messages
   - sorting
   - resolving-input
-  - tracked-tasks
-  - breaks
   - user-approval
   - reporting
   - reasoning-guidelines
   - inquiring
   - ask-user-before-assuming
   - asking-questions
-  - scope-is-user-decision
   - claims
   - writing-prose
   - comments
@@ -81,10 +77,8 @@ order:
   - repairing
   - debugging
   - search-tools
-  - reading-docs
   - structural-search
   - exact-edits
-  - shell-quoting
   - bash-commands
   - waiting-on-processes
   - git-commit

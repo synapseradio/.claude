@@ -8,11 +8,17 @@ For every lookup, one the user asked for in words like "look it up", one before 
 
 The question is a library, framework, SDK, or CLI's documentation ? go to context7 first.
 Read documentation at the version the lockfile resolves.
-The tvly CLI, Tavily's command line, is unavailable ? use the linkup MCP tools : use the tvly CLI for search, extraction, crawling, and research.
-
+The tvly CLI, Tavily's command line, is available ? use it for search, extraction, crawling, and research : use the linkup MCP tools.
 Put a year in a query only where the user supplies one.
-A tool call fails ? read the error before choosing the next step.
-Treat the recollection that produced the failed call as no ground for a retry.
+A tool call fails ? read the error before choosing the next step, and treat the recollection that produced the call as no ground for a retry.
+
+### A documentation site
+
+Before scraping, crawling, or extracting a page from a documentation site, a docs subdomain, a `/docs` path, or a package's reference pages, run `curl -sfL "$origin/llms.txt"` in Bash, with `$origin` the URL's scheme and host.
+The index lists a page that answers the question ? scrape that page : scrape the page as usual.
+The task needs the whole docs set ? save `curl -sfL "$origin/llms-full.txt"` to the branch's scratchpad directory and read it by line range, in place of reading it into context whole.
+Fetch llms.txt and llms-full.txt only through a direct curl call.
+A scraped page arrives with escaped markdown, lost line breaks, or wrong characters ? fetch it with curl instead.
 
 ### The source ladder
 

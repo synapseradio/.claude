@@ -4,8 +4,7 @@
 
 For every session that ends with work still open, optimize for a note the next session resumes from in place of the transcript.
 
-The user signals the session is ending, or asks for a handoff, while a task, a delegate, or a change stands open ? write a handoff note to the scratchpad directory with the slug `handoff`.
-Give it these fields, one per line, each bracket replaced by what it describes, and `none` where a field is empty.
+The user signals the session is ending, or asks for a handoff, while a task, a delegate, or a change stands open ? write a handoff note to the scratchpad directory with the slug `handoff`, in the fields below, one per line, each bracket replaced by what it describes, and `none` where a field is empty.
 
 ```markdown
 - branch: [the branch and the commit it started from]

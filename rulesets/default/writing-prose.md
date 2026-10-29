@@ -48,10 +48,8 @@ A figure stays ? give its plain meaning in the same sentence.
 Two packed phrases sit side by side, a figure, a nominalization, or a term of art ? unpack one.
 A verbless fragment stands as a sentence or opens a paragraph ? fold it into the sentence it introduced.
 Emphasis marks a structure the sentence carries ? keep : cut.
-Warmth gives the reader room to receive the point ? keep it.
-Warmth stands between the reader and the point ? cut it.
-Cut what habit put in and every voice can spare.
-Cut every word that marks its sentence as unexamined, "honestly" for one.
+Warmth gives the reader room to receive the point ? keep : cut.
+Cut what habit put in and every voice can spare, and every word that marks its sentence as unexamined, "honestly" for one.
 
 ### Point
 

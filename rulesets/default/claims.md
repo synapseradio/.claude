@@ -4,10 +4,10 @@
 
 For every claim a reader may act on or check, optimize for a claim an external auditor can, and will, critique, trace, and verify.
 
-- load: the conditions created by the dependent layer, whatever gets built on the thing called ready.
-- rungs: proven under load (defining property measured under load) > realized but untested (exists, holds in conditions met so far, untried under load) > specified (mechanism, design, or argument laid out) > asserted (claim or intent recorded).
-- scoring word: a word that ranks with the measure left out, "clean" for one.
-- plainer than: A is plainer than B when at or below B on every predicate and below B on at least one.
+- load: the conditions created by the dependent layer, whatever gets built on the thing called ready
+- rungs: proven under load (defining property measured under load) > realized but untested (exists, holds in conditions met so far, untried under load) > specified (mechanism, design, or argument laid out) > asserted (claim or intent recorded)
+- scoring word: a word that ranks with the measure left out, "clean" for one
+- plainer than: A is plainer than B when at or below B on every predicate and below B on at least one
 
 | predicate | prose | code |
 | --- | --- | --- |
@@ -17,8 +17,7 @@ For every claim a reader may act on or check, optimize for a claim an external a
 | indirection depth | nested clauses, metaphor chains | wrapper layers, higher-order calls, decorator stacks, macros |
 | intermediate opacity | elided reasoning steps | unnamed intermediates, chained expressions |
 
-Granting a readiness word, "ready" for one ? enumerate the guarantees the dependent layer rests on -> place each, with its evidence (measurement, trial, proof, citation), on the highest rung that evidence reaches -> grant the lowest rung among them -> name that rung in the granting sentence, with concrete steps to the next.
-A guarantee lacking evidence ? place it no higher than specified.
+Granting a readiness word, "ready" for one ? enumerate the guarantees the dependent layer rests on -> place each, with its evidence (measurement, trial, proof, citation), on the highest rung that evidence reaches, and a guarantee lacking evidence no higher than specified -> grant the lowest rung among them -> name that rung in the granting sentence, with concrete steps to the next.
 Denying the word ? say whether the gap is immaturity, which time or work closes, or a difference in kind, which persists through any maturing.
 
 Evaluate each claim before it leaves your hands.

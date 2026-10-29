@@ -4,12 +4,12 @@
 
 For every spawn through Agent, Fork, or any other spawning tool, a delegate's own spawns included, optimize for a delegate that returns a result the caller can check.
 
-- readings: inference, what the delegate must infer beyond the prompt and its evidence; span, whether the work fits one context; reversibility, the cost of undoing a wrong result; verifiability, which check outside the delegate catches a wrong answer, a test, a linter, a diff you read, or your check of the report; surviving critiques, critique findings still awaiting repair
+- gauges: inference, what the delegate must infer beyond the prompt and its evidence; span, whether the work fits one context; reversibility, the cost of undoing a wrong result; verifiability, which check outside the delegate catches a wrong answer, a test, a linter, a diff you read, or your check of the report; surviving critiques, critique findings still awaiting repair
 - shared focus: any file, artifact, decision, term, or convention two or more agents in one orchestration read, write, or state, a spec two delegates both edit for one
 - roster: the orchestration's running agents, each with its address and the slice it owns
 
-Take the readings -> choose agent type, model, and effort, in that order -> compose the prompt -> spawn -> hold each reported claim pending until you find its source.
-Span exceeds one context ? first split the work into sequential spawns, each finishing its slice end to end, never one layer across every feature.
+Take the gauges -> choose agent type, model, and effort, in that order -> compose the prompt -> spawn -> hold each reported claim pending until you find its source.
+Span exceeds one context ? first split the work into sequential spawns, each finishing its slice end to end, in place of one layer across every feature.
 
 model
   | the user named one = that model
@@ -26,8 +26,7 @@ effort prompt
   | it states every step = low
   | otherwise = high
 
-Spawn fable only on the user's ask, once per ask.
-Cap effort at high.
+Spawn fable only on the user's ask, once per ask. Cap effort at high.
 Effort field exists ? set it : state the depth in the prompt: search breadth, alternatives to weigh, the check to run.
 
 Fill the template below. Replace each bracket with what it describes, and send the rest verbatim. Drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Resolve the model from call > agent file > session, through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
@@ -77,12 +76,6 @@ stateInPrompt model
   | sonnet = the problem, the decisions, constraints by reference, exact context wherever the delegate would guess
   | opus = the problem, its constraints, the decisions made
 
-Two or more agents run at once and a shared focus exists or could arise ? apply every line below.
-
-- Keep each agent's roster current: in its prompt or by message once it runs, and to every running agent when one joins.
-- Give each agent the conventions all agents apply, worded identically.
-- Direct each agent, before settling a wording or decision, to agree on it through SendMessage with every agent whose files state it.
-- One agent's edits wait on another's finishing ? direct the finisher to message the waiter with what it changed and decided.
-- Address every final report to the caller.
-
+Two or more agents run at once and a shared focus exists or could arise ? keep each agent's roster current, in its prompt or by message once it runs, and to every running agent when one joins -> give each agent the conventions all agents apply, worded identically -> direct each agent, before settling a wording or decision, to agree on it through SendMessage with every agent whose files state it -> address every final report to the caller.
+One agent's edits wait on another's finishing ? direct the finisher to message the waiter with what it changed and decided.
 Let agents edit each file one at a time.

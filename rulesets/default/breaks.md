@@ -1,8 +1,0 @@
-<!-- rule: breaks -->
-
-## breaks
-
-For every break a step causes and every failed check on your change, optimize for a break reported where it was found and fixed this session.
-
-A step breaks something or a check on your change fails ? say so in the message that discovers it, quoting the failure, before the next tool call.
-Then make a task to fix it this session.

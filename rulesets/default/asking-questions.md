@@ -4,13 +4,13 @@
 
 For every question to the user, through AskUserQuestion or as options at a fork in the work, optimize for a question the user can answer from the message that asks it.
 
-An option is a reading somebody could hold, stated with what gets built under it.
+- option: a reading somebody could hold, stated with what gets built under it
 
 Explain every option before requesting the decision. Ask one thing per choice point.
 Two readings compete ? offer both as options, in place of a yes-or-no question.
 Measurable ground favors one option ? recommend it and state the ground.
 Several choice points stand open ? ask them in one call.
 
-Name what each question asks of the user: what they must already know or weigh to answer it, what they vouch for by answering, and what the answer commits later work to. In each option, name what it expects of everyone who lives with the result: the product's user (the writer, reader, or operator who meets it), and any other person it binds, a contributor or a future reader of the code for one. Name each implicit expectation, and each one stated nowhere yet.
+Name what each question asks of the user: what they must already know or weigh to answer it, what they vouch for by answering, and what the answer commits later work to. In each option, name what it expects of everyone who lives with the result, the product's user, the writer, reader, or operator who meets it, and any other person it binds, a contributor or a future reader of the code for one, each implicit expectation and each one stated nowhere yet included.
 
-Every answer leaves the next action the same ? cut the question : a question would close a message as a courtesy ? cut it : ask it.
+Every answer leaves the next action the same, or the question would close a message as a courtesy ? cut it : ask it.

@@ -7,7 +7,7 @@ For every plan file you write and every exit from plan mode, optimize for a plan
 - executor: the agent running the plan, delegating at will, holding the plan and each file it names by absolute path, never the conversation
 - work unit: work that lands as one commit
 - document of record: a file the plan names as binding
-- arm: a fork in the plan, with the act under each result
+- plan arm: a fork in the plan, with the act under each result
 - readiness file: the plan's items, one line each, at the branch's scratchpad path, apart from the plan
 
 Write for the executor.
@@ -15,10 +15,8 @@ Plan mode is on ? ask the user to lift it.
 Until approval, change only the plan file and the scratchpad.
 Land findings (evidence by path, open questions, approaches with tradeoffs) in a turn of their own -> stop -> write the plan on the framing the user picks.
 
-Settle each unknown:
-
 settle unknown
-  | only the work observes it = an arm
+  | only the work observes it = a plan arm
   | a source or a check settles it = a must verify line
   | otherwise = a must ask line, its answer written in as a decision
 
@@ -26,7 +24,6 @@ settle unknown
 
 Replace each bracket with what it describes.
 The plan delegates nothing and builds on no document of record ? short form (Target outcomes, entries, Verification) : brief form.
-
 Name once the absolute root that entry paths resolve against.
 
 ```markdown
@@ -88,6 +85,4 @@ Ask must ask lines in grouped rounds, through an installed asking skill or plugi
 
 ### Exit
 
-Reread each cited source at the head of the branch the work builds on, dating each read -> check open branches and pull requests for changes to the same paths.
-Present the plan in the document register, with headers as labels and one idea per bullet.
-Enter plan mode only to call ExitPlanMode, planning's last step, once the readiness file holds no must verify or must ask line.
+Reread each cited source at the head of the branch the work builds on, dating each read -> check open branches and pull requests for changes to the same paths -> present the plan in the document register, with headers as labels and one idea per bullet -> enter plan mode only to call ExitPlanMode, planning's last step, once the readiness file holds no must verify or must ask line.
