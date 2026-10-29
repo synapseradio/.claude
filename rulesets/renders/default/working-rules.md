@@ -671,7 +671,7 @@ Both counts are above zero, meaning `$target` and its upstream have diverged ? s
 
 For every step of work a delegate could take, optimize for a step done by the cheapest tier able to take it, with your own context kept for the conversation.
 
-Hold every spawn as costing about 50k tokens of fresh context before its first act, with the user waiting on it. Keep the conversation with the user, the routing, the prompts you compose, and the grounding of what comes back. Take the first arm that fits.
+Hold every spawn as costing about 50k tokens of fresh context before its first act, about half a cent on haiku, a dime on sonnet, twenty cents on opus, and fifty cents on fable, with the user waiting on it. Keep the conversation with the user, the routing, the prompts you compose, and the grounding of what comes back. Take the first arm that fits.
 
 route step
   | a step finishes in one tool call with the context in hand = act directly
