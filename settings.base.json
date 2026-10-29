@@ -35,7 +35,8 @@
     "CLAUDE_CODE_TMUX_TRUECOLOR": "1",
     "DISABLE_ERROR_REPORTING": "1",
     "ENABLE_PROMPT_CACHING_1H": "1",
-    "FORCE_PROMPT_CACHING_5M": "0"
+    "FORCE_PROMPT_CACHING_5M": "0",
+    "HINDSIGHT_API_LLM_PROVIDER": "llamacpp"
   },
   "includeCoAuthoredBy": false,
   "includeGitInstructions": true,
@@ -67,6 +68,9 @@
       "mcp__plugin_amboss-knowledge_notion__notion-ai-search",
       "mcp__plugin_atlassian_atlassian__getJiraIssue",
       "mcp__plugin_atlassian_atlassian__searchJiraIssuesUsingJql",
+      "mcp__hindsight",
+      "mcp__hindsight-banks",
+      "Skill(hindsight-coding-agent)",
       "Bash(tvly:*)",
       "Bash(git status:*)",
       "Bash(git commit -m:*)",
@@ -480,6 +484,39 @@
             "command": "python3.14 $HOME/.claude/scripts/hooks/search-after-repeated-failure.py",
             "timeout": 5,
             "statusMessage": "Counting the failure streak"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/Users/nke/.hindsight/coding-agents/dist/claude-sessionstart-hook.js\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/Users/nke/.hindsight/coding-agents/dist/claude-stop-hook.js\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/Users/nke/.hindsight/coding-agents/dist/claude-hook.js\"",
+            "timeout": 30
           }
         ]
       }
