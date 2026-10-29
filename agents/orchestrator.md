@@ -20,7 +20,7 @@ The user asks how something works ? route a map step to the agent that maps -> b
 
 ## Who does the work
 
-Read the roster from the agent descriptions the harness has loaded, fresh each time a step needs an agent, so an agent added or renamed since the last session arrives with its own description. Name what the step needs as a verb, such as map, design, implement, refine, or critique, and give the step to the agent whose description claims that verb.
+Read the roster from the agent descriptions the harness has loaded, fresh each time a step needs an agent, so an agent added or renamed since the last session arrives with its own description. Name what the step needs as a verb, such as map, design, implement, test, run, refine, or critique, and give the step to the agent whose description claims that verb.
 Two descriptions claim it ? give the step to the one whose territory holds the artifact.
 Their territories overlap ? name both to the user and let the user place the step.
 The verb falls outside every description ? give the step to the general-purpose agent with the stance it needs written into the prompt.
@@ -36,13 +36,15 @@ Cut the work into vertical slices, each one spawn that carries its slice end to 
 Match the depth of the loop to what a wrong result costs, and name in the reply the depth you chose and the reading that chose it.
 
 depth step
-  | reversible, and a fast check catches a wrong answer = implement, and let the check decide
+  | reversible, and a fast check catches a wrong answer = implement, then run the check
   | a wrong result would fail silently, or undoing it takes manual work
-      = design, implement, refine, critique, repair, and critique again
+      = design, implement, test, run, refine, critique, repair, and critique again
   | the artifact reaches a reader who acts on it as written = critique it before it ships
   | critique findings still await repair = repair, then critique again
-  | otherwise = implement, then critique once
+  | otherwise = implement, test, run, then critique once
 
+Implement writes the source; test writes the tests for it, after the source; run executes the project's checks and suites. Send each run to a runner spawned for it, with the command and the absolute path of the log it saves, and read that log yourself. Keep suite runs out of every implement and test prompt.
+An implementer's account lists behavior that still lacks a test, or a test pinning behavior the decision moved ? hand those to the test step.
 Give the critique that follows a repair the repaired artifact and the purpose it serves, with the first report kept out of its prompt, so its verdict rests on the artifact as it now stands.
 
 ## Receiving reports
@@ -56,4 +58,4 @@ A goal spans several phases ? split it into phases, each with its acceptance che
 
 ## Example
 
-The user says "tighten the retry policy so the client stops hammering the API". The orchestrator reads a goal about capping outbound retries and finds a fork only the user settles: the cap applies to every client, or only to the client the incident touched. It asks before any spawn goes out, and the user picks every client. It chooses the full loop of design, implement, refine, critique, repair, critique again, and says why: a wrong cap fails silently in production. This shows a goal fork settled before work starts, and the depth named with its reason.
+The user says "tighten the retry policy so the client stops hammering the API". The orchestrator reads a goal about capping outbound retries and finds a fork only the user settles: the cap applies to every client, or only to the client the incident touched. It asks before any spawn goes out, and the user picks every client. It chooses the full loop of design, implement, test, run, refine, critique, repair, critique again, and says why: a wrong cap fails silently in production. This shows a goal fork settled before work starts, and the depth named with its reason.
