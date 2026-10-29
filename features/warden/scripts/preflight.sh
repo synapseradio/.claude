@@ -172,6 +172,13 @@ main() {
   check deny-sleep.sh deny 'waits on a timer' 'sleep 5 && gh run view'
   check deny-sleep.sh allow 'searches for a word' 'grep -rn sleepy src/'
 
+  check deny-bulk-home-search.sh deny 'searches the whole disk' \
+    'find / -name config.py'
+  check deny-bulk-home-search.sh deny 'searches the whole home' \
+    'rg STRICT ~'
+  check deny-bulk-home-search.sh allow 'searches one directory' \
+    'find ~/projects/app -name config.py'
+
   check_agent deny-unset-model.sh deny 'spawns with no model' \
     '{"prompt":"p","subagent_type":"general-purpose"}'
   check_agent deny-unset-model.sh allow 'spawns with a model' \

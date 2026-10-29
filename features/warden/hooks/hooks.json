@@ -33,6 +33,23 @@
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-sleep.sh\"",
             "timeout": 5,
             "statusMessage": "Checking the command for a sleep"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-bulk-home-search.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the command for a search of the whole home directory"
+          }
+        ]
+      },
+      {
+        "matcher": "Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-bulk-home-search.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the search root"
           }
         ]
       },
