@@ -11,7 +11,8 @@ Use whichever skills this session offers that fit a step of this work.
 
 ## The driving question
 
-Begin with the one question whose answer moves most of the remaining work. State it so a reader recognizes a wrong answer to it, and give it a falsifier: the observation that would show the question aims at the wrong target. Where the subject arrives already naming its answer, its solution, or its target, restate it as the question that answer presumes, and keep the restatement wherever it changes what a right answer would look like.
+Begin with the one question whose answer moves most of the remaining work. State it so a reader recognizes a wrong answer to it, and give it a falsifier: the observation that would show the question aims at the wrong target.
+The subject arrives already naming its answer, its solution, or its target ? restate it as the question that answer presumes, and keep the restatement wherever it changes what a right answer would look like.
 
 ## Assumptions and gaps
 
@@ -21,7 +22,7 @@ List what matters and is still to be learned. Name each gap by kind, whether unm
 
 ## Where the move sits
 
-Where the subject is a plan, a design, a choice already made, or a behavior that keeps returning, name in one clause its central move, or the mechanism that produces the behavior, and place it on the ladder of leverage levels below, ranked from the weakest intervention to the strongest. Walk the levels from the strongest down, and place the move at the first level whose object it changes. A move whose whole content is a number sits at parameter until the number crosses a threshold that changes what the system does in kind, and from that point it sits at the first level up from buffer whose object that change alters.
+The subject is a plan, a design, a choice already made, or a behavior that keeps returning ? name in one clause its central move, or the mechanism that produces the behavior, and place it on the ladder of leverage levels below, ranked from the weakest intervention to the strongest: walk the levels from the strongest down, and place the move at the first level whose object it changes. A move whose whole content is a number sits at parameter until the number crosses a threshold that changes what the system does in kind, and from that point it sits at the first level up from buffer whose object that change alters.
 
 - Parameter: what number does this change, and does the system's behavior change in kind afterward or only in degree?
 - Buffer: does this resize a reserve, an inventory, or slack relative to its normal flow, and in which direction?
@@ -36,7 +37,9 @@ Where the subject is a plan, a design, a choice already made, or a behavior that
 - Paradigm: what assumption about how this domain works does this take for granted, and how would it look to someone holding another one?
 - Transcendence: does the owner hold this frame as correct, or as one frame among others they would drop for the goal?
 
-Word the placed level's question to the move, and add it to the questions. Where the level names a risky direction, at delay, balancing loop, reinforcing loop, or self-organization, and the move goes that direction, put that question first among the open ones, with the observation that would show the move going the other way. At transcendence, read the record for how the owner holds the frame, and state that reading beside the questions as an inference. Add the questions from parameter, information, reinforcing loop, and goal wherever they differ from the placed level, each worded to the move.
+Word the placed level's question to the move, and add it to the questions. Add the questions from parameter, information, reinforcing loop, and goal wherever they differ from the placed level, each worded to the move.
+The level names a risky direction, at delay, balancing loop, reinforcing loop, or self-organization, and the move goes that direction ? put that question first among the open ones, with the observation that would show the move going the other way.
+The move sits at transcendence ? read the record for how the owner holds the frame, and state that reading beside the questions as an inference.
 
 ## The ladder
 
@@ -46,16 +49,12 @@ For each question, state what must already hold for it to make sense, and set th
 
 ## Settling what evidence reaches
 
-Answer each question the code, the record, the rules, the docs, or a read-only command settles, and give each answer its ground, a file and line, a command's output, or a line of the record, with how strongly that ground settles it. Where the evidence contradicts what a question presumes, restate the question.
-
+Answer each question the code, the record, the rules, the docs, or a read-only command settles, and give each answer its ground, a file and line, a command's output, or a line of the record, with how strongly that ground settles it.
+The evidence contradicts what a question presumes ? restate the question.
 Hand each question resting on intent, direction, or what done means to whoever settles it, the user, the caller, or a named owner, with its answers and what each changes.
 
 Your work is done when the driving question carries its falsifier, the ladder reads foundation first with each question earning its place, every question evidence reaches is answered with its ground, and every other question stands addressed to whoever settles it, with its options.
 
-## Examples
-
-Asked what to ask before committing to a notifications rework, the systems thinker makes "which notification does a user act on, and which do they dismiss?" the driving question, with an action log showing every kind acted on at the same rate as its falsifier. Beneath it sits "which channels carry traffic today?", which the repository answers from the file that registers two senders. Above it sits "what counts as a notification having served its user?", which goes to the user with two answers: delivery, which stops the rework at the senders, or an action taken, which needs a signal the pipeline has yet to carry. This shows evidence spent on what it reaches, and the question that sets what done means handed up with what each answer builds.
-
-Asked for the question behind "we need a cache in front of the search endpoint", the systems thinker restates it as "which searches repeat often enough that a stored answer changes what a user waits for?", with a query log showing a long tail and few repeats as the falsifier. This shows a request that names its solution turned into the question the solution presumes, killable by one measurement.
+## Example
 
 Asked about a clinic moving follow-up calls from two weeks after discharge to two days, the systems thinker places the move at delay, going the shorten direction, and opens on whether the complications that surface between day two and day fourteen get caught by a day-two call or missed. It adds the goal question, which objective decides every trade-off here. This shows a plan that reads as an improvement placed where its direction carries a risk, and that risk asked about first.
