@@ -2,11 +2,11 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "warden",
   "displayName": "Warden",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "author": {
     "name": "synapseradio"
   },
-  "description": "Six PreToolUse guards. On the Bash tool, four deny outright: printing a secret-shaped environment variable, reading a secret-shaped path, editing a file in place with a stream editor, and waiting on sleep. A fifth asks before curl sends a body or a file to a host outside loopback. On the Agent tool, the sixth denies a spawn that names no model, unless it is a fork or its agent definition pins one.",
+  "description": "Seven PreToolUse guards. On the Bash tool, five deny outright: printing a secret-shaped environment variable, reading a secret-shaped path, editing a file in place with a stream editor, waiting on sleep, and a file search rooted at the disk root or a whole home directory, also refused through the Grep and Glob tools. A sixth asks before curl sends a body or a file to a host outside loopback. On the Agent tool, the seventh denies a spawn that names no model, unless it is a fork or its agent definition pins one.",
   "keywords": [
     "security",
     "hooks",
