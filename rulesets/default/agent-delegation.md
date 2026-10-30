@@ -23,11 +23,10 @@ model
   | otherwise = sonnet
 
 effort prompt
-  | it states every step of a task in several parts = medium
-  | it states every step = low
-  | otherwise = high
+  | it states every step of a task in one part = low
+  | otherwise = medium
 
-Spawn fable only on the user's ask, once per ask. Cap effort at high.
+Spawn fable only on the user's ask, once per ask. Spawn at effort high or above only on the user's ask or permission.
 Effort field exists ? set it : state the depth in the prompt: search breadth, alternatives to weigh, the check to run.
 
 Fill the template below. Replace each bracket with what it describes, and send the rest verbatim. Drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Resolve the model from call > agent file > session, through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
