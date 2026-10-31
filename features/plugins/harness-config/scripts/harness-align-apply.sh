@@ -208,18 +208,21 @@ wanted() {
 parse_args() {
   while (($# > 0)); do
     case "$1" in
-      --dry-run) DRY_RUN=1 ;;
-      --variant)
-        [[ -n "${2:-}" ]] || harness::die "${EXIT_USAGE}" "--variant needs a basename"
-        ONLY_VARIANTS+=("$2")
-        shift
-        ;;
-      -h | --help | help) usage; exit 0 ;;
-      *)
-        harness::err "unknown argument '$1'"
-        usage >&2
-        exit "${EXIT_USAGE}"
-        ;;
+    --dry-run) DRY_RUN=1 ;;
+    --variant)
+      [[ -n "${2:-}" ]] || harness::die "${EXIT_USAGE}" "--variant needs a basename"
+      ONLY_VARIANTS+=("$2")
+      shift
+      ;;
+    -h | --help | help)
+      usage
+      exit 0
+      ;;
+    *)
+      harness::err "unknown argument '$1'"
+      usage >&2
+      exit "${EXIT_USAGE}"
+      ;;
     esac
     shift
   done

@@ -123,15 +123,26 @@ class TestTheHookWaits:
         state = tmp_path / "state"
 
         result = subprocess.run(
-            [sys.executable, str(HOOK), "--root", str(corpus), "--state", str(state),
-             "--part", "1"],
-            input=PAYLOAD, capture_output=True, text=True, env={"PATH": "/usr/bin:/bin"},
+            [
+                sys.executable,
+                str(HOOK),
+                "--root",
+                str(corpus),
+                "--state",
+                str(state),
+                "--part",
+                "1",
+            ],
+            input=PAYLOAD,
+            capture_output=True,
+            text=True,
+            env={"PATH": "/usr/bin:/bin"},
         )
 
         assert result.returncode == 0
-        assert ordering.wait_for_predecessor(
-            ordering.slot_dir(state, PAYLOAD), 2, deadline=0.5
-        ), "part 1 left no registration for part 2 to wait on"
+        assert ordering.wait_for_predecessor(ordering.slot_dir(state, PAYLOAD), 2, deadline=0.5), (
+            "part 1 left no registration for part 2 to wait on"
+        )
 
     def test_part_two_exits_only_after_part_one_is_gone(self, tmp_path):
         corpus = build_two_part_corpus(tmp_path)
@@ -139,9 +150,19 @@ class TestTheHookWaits:
         predecessor = hold_open(ordering.slot_dir(state, PAYLOAD))
 
         part_two = subprocess.Popen(
-            [sys.executable, str(HOOK), "--root", str(corpus), "--state", str(state),
-             "--part", "2"],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+            [
+                sys.executable,
+                str(HOOK),
+                "--root",
+                str(corpus),
+                "--state",
+                str(state),
+                "--part",
+                "2",
+            ],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,
             env={"PATH": "/usr/bin:/bin"},
         )
         part_two.stdin.write(PAYLOAD)

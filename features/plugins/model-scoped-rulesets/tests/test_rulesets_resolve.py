@@ -941,7 +941,11 @@ class TestDelegateResolution:
         env = {"CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-5"}
 
         result = resolve.delegate_resolution(
-            self._payload(agent_type="helper"), full_root, state, env, definitions={"helper": "inherit"}
+            self._payload(agent_type="helper"),
+            full_root,
+            state,
+            env,
+            definitions={"helper": "inherit"},
         )
 
         assert result.tier == "opus"

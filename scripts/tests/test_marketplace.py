@@ -14,7 +14,7 @@ import pathlib
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 MARKETPLACE = REPO_ROOT / ".claude-plugin" / "marketplace.json"
-FEATURES = REPO_ROOT / "features"
+FEATURE_KINDS = (REPO_ROOT / "features" / "plugins", REPO_ROOT / "features" / "mods")
 
 
 def listing() -> dict:
@@ -26,11 +26,13 @@ def entries() -> list[dict]:
 
 
 def packaged() -> list[pathlib.Path]:
-    """Every feature directory carrying a plugin manifest."""
+    """Every plugin or mod directory carrying a plugin manifest."""
 
     return sorted(
         child
-        for child in FEATURES.iterdir()
+        for kind in FEATURE_KINDS
+        if kind.is_dir()
+        for child in kind.iterdir()
         if (child / ".claude-plugin" / "plugin.json").is_file()
     )
 

@@ -29,7 +29,7 @@ HOME = Path.home()
 # was invoked from and a hook inside a worktree syncs that worktree.
 SCRIPT_ROOT = Path(__file__).resolve().parents[2]
 
-PLUGIN_ROOT = SCRIPT_ROOT / "features" / "model-scoped-rulesets"
+PLUGIN_ROOT = SCRIPT_ROOT / "features" / "plugins" / "model-scoped-rulesets"
 
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 

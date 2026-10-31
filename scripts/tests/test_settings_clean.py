@@ -15,7 +15,7 @@ import pathlib
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 SETTINGS = REPO_ROOT / "settings.base.json"
-PLUGIN_ROOT = REPO_ROOT / "features" / "model-scoped-rulesets"
+PLUGIN_ROOT = REPO_ROOT / "features" / "plugins" / "model-scoped-rulesets"
 WIRING = PLUGIN_ROOT / "hooks" / "hooks.json"
 
 # The script names the settings file used to run for this feature. A command
