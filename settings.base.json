@@ -473,6 +473,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "WebFetch|WebSearch|Bash|mcp__linkup__.*|mcp__plugin_context7_.*|mcp__.*tavily.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3.14 $HOME/.claude/scripts/hooks/hindsight-research-retain.py",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUseFailure": [
@@ -505,6 +515,11 @@
             "type": "command",
             "command": "node \"$HOME/.hindsight/coding-agents/dist/claude-stop-hook.js\"",
             "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "python3.14 $HOME/.claude/scripts/hooks/hindsight-thinkies-retain.py",
+            "timeout": 15
           }
         ]
       }
