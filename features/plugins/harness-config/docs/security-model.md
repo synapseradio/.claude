@@ -31,7 +31,7 @@ by accident or by a tool.
 
 **Where it fails:** an allowlist entry widened for another purpose. This
 plugin needs `features/**` allowlisted, and `features/**` is broad. A settings
-variant placed under `features/harness-config/` would be tracked.
+variant placed under `features/plugins/harness-config/` would be tracked.
 
 **What catches that failure:** layer 1.2.
 
@@ -292,7 +292,7 @@ A reviewer confirms the property across the suite with one command, and it is
 the meta-test itself:
 
 ```bash
-bats features/harness-config/tests/guard-suite-hygiene.bats
+bats features/plugins/harness-config/tests/guard-suite-hygiene.bats
 ```
 
 The check that matters is not that it passes. It is that it fails when a
@@ -312,12 +312,12 @@ of what the test names.
 
 | Rule | The command a reviewer runs |
 |------|----------------------------|
-| No credential, private path, or account identifier in the plugin | `features/harness-config/scripts/harness-guard.sh material features/harness-config` |
-| Every settings variant stays out of git, including names not yet used | `features/harness-config/scripts/harness-guard.sh ignore` |
-| No shipped script reads settings values or runs a helper | `features/harness-config/scripts/harness-guard.sh scripts` |
-| No test touches real user state | `bats features/harness-config/tests/guard-suite-hygiene.bats` |
-| No `apiKeyHelper` script in the plugin | `find features/harness-config -name '*api*key*' -not -name '*.template.sh'`, which prints nothing |
-| All four at once | `features/harness-config/scripts/harness-guard.sh all` |
+| No credential, private path, or account identifier in the plugin | `features/plugins/harness-config/scripts/harness-guard.sh material features/plugins/harness-config` |
+| Every settings variant stays out of git, including names not yet used | `features/plugins/harness-config/scripts/harness-guard.sh ignore` |
+| No shipped script reads settings values or runs a helper | `features/plugins/harness-config/scripts/harness-guard.sh scripts` |
+| No test touches real user state | `bats features/plugins/harness-config/tests/guard-suite-hygiene.bats` |
+| No `apiKeyHelper` script in the plugin | `find features/plugins/harness-config -name '*api*key*' -not -name '*.template.sh'`, which prints nothing |
+| All four at once | `features/plugins/harness-config/scripts/harness-guard.sh all` |
 
 ## What this model does not cover
 

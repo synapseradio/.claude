@@ -52,7 +52,7 @@ features/**/*.pyc
 # against every allowlist above, !features/** and !scripts/** included, and a
 # variant dropped inside an allowlisted directory stays ignored.
 # settings.base.json is the one tracked settings file, re-admitted right after.
-# Verify with: features/harness-config/scripts/harness-guard.sh ignore
+# Verify with: features/plugins/harness-config/scripts/harness-guard.sh ignore
 settings.json
 settings.*.json
 !settings.base.json
