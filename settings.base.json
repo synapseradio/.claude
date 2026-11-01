@@ -607,5 +607,7 @@
   "cleanupPeriodDays": 3,
   "askUserQuestionTimeout": "never",
   "subagentPromptCacheTtl": "1h",
-  "tui": "fullscreen"
+  "tui": "fullscreen",
+  "verbose": false,
+  "viewMode": "default"
 }

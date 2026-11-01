@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, SessionContextBreakdown } from 'claude-code'
+import type { EngineInterface, Register, SessionContextBreakdown, SessionContextUsage } from 'claude-code'
 
 import type { UsageModel } from '../types'
 
@@ -70,15 +70,29 @@ async function effectiveMax($: EngineInterface, b: SessionContextBreakdown): Pro
   return b.autoCompactThreshold ?? b.rawMaxTokens
 }
 
-async function modelFrom($: EngineInterface, b: SessionContextBreakdown | undefined): Promise<UsageModel | null> {
+/**
+ * Counts `used` from the last API response's input tokens, the figure the
+ * status line shows, and falls back to the breakdown's local estimate until a
+ * response arrives in a fresh, cleared, or compacted window. Category figures
+ * are scaled so they sum to `used`.
+ */
+async function modelFrom($: EngineInterface, context: SessionContextUsage): Promise<UsageModel | null> {
+  const b = context.breakdown
   if (!b || b.rawMaxTokens <= 0) return null
   const max = await effectiveMax($, b)
-  const used = b.totalTokens
+  const used = context.tokens ?? b.totalTokens
   const percent = Math.max(0, Math.min(100, Math.round((used / max) * 100)))
+  const scale = b.totalTokens > 0 ? used / b.totalTokens : 1
   const categories = b.categories
     .filter(c => c.kind === 'used' && c.tokens > 0)
-    .map(c => ({ label: c.name, tokens: c.tokens, color: c.color, kind: c.kind }))
+    .map(c => ({ label: c.name, tokens: Math.round(c.tokens * scale), color: c.color, kind: c.kind }))
   return { used, max, percent, categories }
+}
+
+async function refresh($: EngineInterface): Promise<void> {
+  const { context } = await $.session.usage({ breakdown: 'summary' })
+  const model = await modelFrom($, context)
+  await update($, usage, () => model)
 }
 
 function barSegments(model: UsageModel): { color: string; chars: string }[] {
@@ -109,18 +123,21 @@ function barSegments(model: UsageModel): { color: string; chars: string }[] {
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    const { context } = await $.session.usage({ breakdown: 'summary' })
-    const model = await modelFrom($, context.breakdown)
-    await update($, usage, () => model)
+    await refresh($)
     return next(e)
   })
 
   on('session.measure', async ($, e, next) => {
-    const { context } = await $.session.usage({ breakdown: 'summary' })
-    const model = await modelFrom($, context.breakdown)
-    await update($, usage, () => model)
+    await refresh($)
     return next(e)
   })
+
+  // `/clear` ends the session without a `session.start` for the new one;
+  // the classic SessionStart event carries it as `source: 'clear'`.
+  on('classic.SessionStart', async ($, e, next) => {
+    await refresh($)
+    return next(e)
+  }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
     const model = await read($, usage)
