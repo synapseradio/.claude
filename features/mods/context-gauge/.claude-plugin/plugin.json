@@ -1,6 +1,6 @@
 {
   "name": "context-gauge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A colored, multi-layer context-usage gauge under the prompt",
   "types": "./types/index.d.ts"
 }
