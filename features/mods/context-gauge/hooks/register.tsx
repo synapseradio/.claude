@@ -7,15 +7,16 @@ const usage = atom({ plugin: 'context-gauge', key: 'usage' } as const, null as U
 
 const BAR_CELLS = 14
 
-const CATEGORY_SYMBOLS: Readonly<Record<string, string>> = {
-  System: '⊞',
-  Messages: '✎',
-  Tools: '⚙',
-  Memory: '▤',
-  MCP: '⇄',
-  Skills: '✦',
-  Slash: '/',
-  Agents: '◇',
+/** Icon and short label for each breakdown row, keyed by the row name /context prints. */
+const CATEGORY_TAGS: Readonly<Record<string, { icon: string; label: string }>> = {
+  'System prompt': { icon: '⊞', label: 'sys' },
+  'System tools': { icon: '⚙', label: 'tools' },
+  'MCP tools': { icon: '⇄', label: 'mcp' },
+  'MCP server instructions': { icon: '⇄', label: 'mcp info' },
+  'Custom agents': { icon: '◇', label: 'agents' },
+  'Memory files': { icon: '▤', label: 'memory' },
+  Skills: { icon: '✦', label: 'skills' },
+  Messages: { icon: '✉', label: 'msgs' },
 }
 
 function moon(percent: number): string {
@@ -53,11 +54,9 @@ function commas(n: number): string {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
-function symbolFor(label: string): string {
-  for (const [key, sym] of Object.entries(CATEGORY_SYMBOLS)) {
-    if (label.toLowerCase().includes(key.toLowerCase())) return sym
-  }
-  return '·'
+function tagFor(name: string): string {
+  const tag = CATEGORY_TAGS[name]
+  return tag ? `${tag.icon} ${tag.label}` : name.toLowerCase()
 }
 
 async function effectiveMax($: EngineInterface, b: SessionContextBreakdown): Promise<number> {
@@ -128,7 +127,7 @@ export const register: Register = on => {
     if (model === null) return next(e)
 
     const { Box, Text } = $.ui.resolve(e)
-    const top = model.categories.slice(0, 2)
+    const top = [...model.categories].sort((a, b) => b.tokens - a.tokens).slice(0, 2)
 
     return (
       <Box>
@@ -149,10 +148,10 @@ export const register: Register = on => {
         <Text dimColor>{phrase(model.percent)}</Text>
         {top.map((c, i) => (
           <Text key={`c${i}`} dimColor>
-            {' '}· {symbolFor(c.label)} {abbrev(c.tokens)}
+            {' '}· {tagFor(c.label)} {abbrev(c.tokens)}
           </Text>
         ))}
-        <Text dimColor> · {e.props.isWorking ? 'esc to interrupt' : '?'}</Text>
+        {e.props.hint ? <Text dimColor> · {e.props.hint}</Text> : null}
       </Box>
     )
   })
