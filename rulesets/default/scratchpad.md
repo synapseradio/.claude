@@ -9,7 +9,7 @@ For every temporary or working file you produce, an intermediate result, a throw
 - working file: `$dir/$slug__$hh-$mm$AMPM_$DD-$MM-$YYYY.md`, `condense-rules__02-45PM_20-09-2026.md` for one, timestamped at the first write
 
 Write a working note at the moment you discover something important or new.
-Get the path by running `$HOME/.claude/scripts/scratchpad-path.py $slug` from inside the repository, which reads the timestamp from the clock and creates the directory.
+Get the path by running `~/.claude/scripts/scratchpad-path.py $slug` from inside the repository, which reads the timestamp from the clock and creates the directory.
 Plan mode holds ? keep working notes in the plan file until writing opens up.
 A read-only mode holds ? skip setup.
 Neither holds ? create the directory on first write and leave everything else as it stands.
