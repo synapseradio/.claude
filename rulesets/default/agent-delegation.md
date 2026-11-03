@@ -10,6 +10,8 @@ For every spawn through Agent, Fork, or any other spawning tool, a delegate's ow
 
 Take the gauges -> choose agent type, model, and effort, in that order -> compose the prompt -> spawn -> hold each reported claim pending until you find its source.
 Span exceeds one context ? first split the work into sequential spawns, each finishing its slice end to end, in place of one layer across every feature.
+Hold a haiku delegate's context as a 99k-token budget when gauging span.
+Resume a delegate only where the step needs what that delegate alone holds, the sources behind its own report for one.
 
 model
   | the user named one = that model

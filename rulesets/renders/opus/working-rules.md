@@ -591,6 +591,11 @@ For every Bash tool call, optimize for a command the session's allow rules match
 
 Hold every part of a compound command as matched against the allow rules on its own, split at `&&`, `||`, `;`, `|`, `&`, and newlines. Give each call the fewest parts its step needs, two steps in one call only where they share shell state. Write every redirect target and every `tee` target as an absolute path, with a leading `~` kept out. Run git in another directory with `git -C <path> <subcommand>`, with `cd` kept out of every call that holds a git command.
 
+### Output size
+
+A command's output may exceed 20000 characters, a test suite's run for one ? redirect its stdout and stderr to a file at an absolute path in the scratchpad -> scan that file with grep, jq, ast-grep, or a Read by line range, each scan's output bounded within 20000 characters.
+Keep every Bash response over 20000 characters out of context.
+
 ### Quoting
 
 Quote every command for zsh, the shell the Bash tool runs. Quote every variable expansion. Pass several arguments held in one variable as an array, `"${args[@]}"`. Single-quote an argument that holds `!`, `?`, `*`, `[`, `]`, `$`, parentheses, or whitespace. Put multi-line or special-character content in a heredoc with a quoted delimiter, `<<'EOF'`. Keep double quotes out of every double-quoted string.
@@ -672,7 +677,12 @@ Both counts are above zero, meaning `$target` and its upstream have diverged ? s
 For every step of work a delegate could take, optimize for a spawn that pays its cost in time and tokens.
 
 The work is sizeable and independent of the step in hand, or a fix for a break would pull you off the current task ? spawn it.
+Hold a read, a grep, a log scan, or any other gathering of information as work beyond the context already in hand.
+Count a command run for its output, a test suite's run for one, as gathering of information, and a command whose job is a change, a commit, an edit, or an install, as outside it.
 The work finishes with the context already in hand ? do it yourself.
+The work is the Read of a file that the Edit tool, or the Write tool over an existing file, requires before your next change to that file, the reading of the newest handoff note at a session's first turn, the opening of a cited line to confirm it backs a claim, or a scan of a saved command output by grep, jq, ast-grep, or a Read by line range ? do it yourself.
+The work is any other read, scan, or gathering of information, and you hold no tool that spawns an agent ? do it yourself.
+The work is any other read, scan, or gathering of information ? spawn it to a fresh haiku, one haiku holding the step's related reads > parallel haikus, each command run's output saved by the haiku to a file in the scratchpad.
 One delegate completes the task ? spawn one.
 Spawn a re-check of your own result only on the user's ask.
 
@@ -688,6 +698,8 @@ For every spawn through Agent, Fork, or any other spawning tool, a delegate's ow
 
 Take the gauges -> choose agent type, model, and effort, in that order -> compose the prompt -> spawn -> hold each reported claim pending until you find its source.
 Span exceeds one context ? first split the work into sequential spawns, each finishing its slice end to end, in place of one layer across every feature.
+Hold a haiku delegate's context as a 99k-token budget when gauging span.
+Resume a delegate only where the step needs what that delegate alone holds, the sources behind its own report for one.
 
 model
   | the user named one = that model

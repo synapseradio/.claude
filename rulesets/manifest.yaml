@@ -19,8 +19,11 @@ tiers:
     include: "*"
   opus:
     include: "*"
-  # sonnet and haiku never spawn, so both leave out the rules on delegation
-  # and the spawn decision. haiku runs as a subagent handed reads, maps,
+  # sonnet spawns only haikus for reads, and haiku never spawns, so both
+  # leave out the rule on delegation. sonnet reads its own body for the
+  # spawn decision, `sonnet/spawn-decision.md`, which routes its reads to
+  # haikus, and haiku leaves the spawn decision out, so it does its reads
+  # itself. haiku runs as a subagent handed reads, maps,
   # summaries, and stated changes, without AskUserQuestion, so it leaves out
   # the rules for other work and for that tool, and the handoff a main session
   # writes. haiku reads its own body for the rule on prose,
@@ -29,7 +32,6 @@ tiers:
     include: "*"
     exclude:
       - agent-delegation
-      - spawn-decision
   haiku:
     include: "*"
     exclude:

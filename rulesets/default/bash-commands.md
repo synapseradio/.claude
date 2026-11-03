@@ -10,6 +10,11 @@ For every Bash tool call, optimize for a command the session's allow rules match
 
 Hold every part of a compound command as matched against the allow rules on its own, split at `&&`, `||`, `;`, `|`, `&`, and newlines. Give each call the fewest parts its step needs, two steps in one call only where they share shell state. Write every redirect target and every `tee` target as an absolute path, with a leading `~` kept out. Run git in another directory with `git -C <path> <subcommand>`, with `cd` kept out of every call that holds a git command.
 
+### Output size
+
+A command's output may exceed 20000 characters, a test suite's run for one ? redirect its stdout and stderr to a file at an absolute path in the scratchpad -> scan that file with grep, jq, ast-grep, or a Read by line range, each scan's output bounded within 20000 characters.
+Keep every Bash response over 20000 characters out of context.
+
 ### Quoting
 
 Quote every command for zsh, the shell the Bash tool runs. Quote every variable expansion. Pass several arguments held in one variable as an array, `"${args[@]}"`. Single-quote an argument that holds `!`, `?`, `*`, `[`, `]`, `$`, parentheses, or whitespace. Put multi-line or special-character content in a heredoc with a quoted delimiter, `<<'EOF'`. Keep double quotes out of every double-quoted string.
