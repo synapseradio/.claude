@@ -1,5 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "bashOutputMaxChars": 20000,
   "alignment": {
     "exempt": [
       {
@@ -31,12 +32,14 @@
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "35",
     "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "0",
+    "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "5000",
     "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2",
     "CLAUDE_CODE_TMUX_TRUECOLOR": "1",
     "DISABLE_ERROR_REPORTING": "1",
     "ENABLE_PROMPT_CACHING_1H": "1",
     "FORCE_PROMPT_CACHING_5M": "0",
-    "HINDSIGHT_API_LLM_PROVIDER": "claude-code"
+    "HINDSIGHT_API_LLM_PROVIDER": "claude-code",
+    "MAX_MCP_OUTPUT_TOKENS": "10000"
   },
   "includeCoAuthoredBy": false,
   "includeGitInstructions": true,
