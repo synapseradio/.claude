@@ -8,7 +8,7 @@ definition's models; the built-in Explore and Plan agents skip the default varia
 Explore under a Fable parent lists the `opus` alias on a direct connection; and a
 host-managed provider raises a notice in every kind of resolution.
 
-Run with `python3.14 -m pytest features/rulesets/tests/test_delegate_levers.py`.
+Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_delegate_levers.py`.
 """
 
 import pathlib

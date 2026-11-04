@@ -7,7 +7,7 @@ and strikes it states, and which references it could not resolve, without re-der
 reference forms, the reserved rulesets, or the rule that removes follow adds. Each case
 builds its pool and manifest under `tmp_path`.
 
-Run with `python3.14 -m pytest features/rulesets/tests/test_references.py`.
+Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_references.py`.
 """
 
 import pathlib

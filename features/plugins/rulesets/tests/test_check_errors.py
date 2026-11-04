@@ -7,7 +7,7 @@ file and line to open, and one run reports every error together. There is one ca
 the error table in design.md "Explain and check", plus the cases that must stay silent. Each
 case builds its rulesets directory under `tmp_path`.
 
-Run with `python3.14 -m pytest features/rulesets/tests/test_check_errors.py`.
+Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_check_errors.py`.
 """
 
 import os

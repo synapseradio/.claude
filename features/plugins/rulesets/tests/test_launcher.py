@@ -6,7 +6,7 @@ path decides whether their sessions start with rules. Each case puts stub
 interpreters on `PATH`, each answering the launcher's probe as one real
 interpreter would, and runs `hooks/with-python.sh` as a hook command does.
 
-Run with `python3.14 -m pytest features/rulesets/tests/test_launcher.py`.
+Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_launcher.py`.
 """
 
 import os

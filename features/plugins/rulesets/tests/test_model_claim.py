@@ -7,7 +7,7 @@ reports to reach the right item. The table at the end of design.md "Models" is
 the first group below, row for row. Every case passes its own `models` list,
 since the engine holds no model name.
 
-Run with `python3.14 -m pytest features/rulesets/tests/test_model_claim.py`.
+Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_model_claim.py`.
 """
 
 import pathlib

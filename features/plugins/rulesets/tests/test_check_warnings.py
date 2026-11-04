@@ -7,7 +7,7 @@ the wrong rule, a body too long for one part, and a citation of a file that cann
 over. Each warning names its kind, subject, file, and line, and leaves the errors empty. Each
 case builds its rulesets directory under `tmp_path`.
 
-Run with `python3.14 -m pytest features/rulesets/tests/test_check_warnings.py`.
+Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_check_warnings.py`.
 """
 
 import pathlib

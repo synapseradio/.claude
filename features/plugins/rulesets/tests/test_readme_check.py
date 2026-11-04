@@ -7,7 +7,7 @@ fixture's tree, the `check` command it gives exits zero on that fixture as writt
 item it adds draws the line it shows, and the error and warning kinds it lists are the kinds
 check can report. A claim that drifts from the code turns one of these cases red.
 
-Run with `python3.14 -m pytest features/rulesets/tests/test_readme_check.py`.
+Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_readme_check.py`.
 """
 
 import pathlib

@@ -6,7 +6,7 @@ is keyed on, they read back a tree of fact tests, learn from a precise error why
 is no condition, and evaluate the tree over a context's facts without re-deriving operator
 precedence or what an absent fact means. Contexts are built in memory, so no case touches disk.
 
-Run with `python3.14 -m pytest features/rulesets/tests/test_conditions.py`.
+Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_conditions.py`.
 """
 
 import pathlib

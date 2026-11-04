@@ -7,7 +7,7 @@ then the model the session recorded. The first string stands, claimed or not, an
 value that is not a string leaves the model missing. A switch takes its target. The
 environment reaches each case as a mapping, so no test reads the real one.
 
-Run with `python3.14 -m pytest features/rulesets/tests/test_session_facts.py`.
+Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_session_facts.py`.
 """
 
 import json

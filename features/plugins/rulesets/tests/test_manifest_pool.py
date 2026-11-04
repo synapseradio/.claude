@@ -6,7 +6,7 @@ the pool for a rule's default form and variants and for what each body claims in
 its first line, and never walk `rules/` themselves. Each case builds its own
 rulesets directory under `tmp_path`.
 
-Run with `python3.14 -m pytest features/rulesets/tests/test_manifest_pool.py`.
+Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_manifest_pool.py`.
 """
 
 import pathlib
