@@ -405,15 +405,33 @@ class TestABodyCitingAFileTheCorpusCannotHandOver:
 
         assert warnings_of(root, "dangling-reference") == []
 
-    def test_a_path_outside_the_configuration_directory_is_external(self, tmp_path):
+    def test_a_relative_citation_under_references_dangles_where_the_file_is_not_there(
+        self, tmp_path
+    ):
+        root = build(tmp_path, bodies={"voice": "Text.\nOpen `references/table.md` in full.\n"})
+
+        (warning,) = warnings_of(root, "dangling-reference")
+        assert warning.subject == RuleSubject("voice")
+        assert warning.line == 2
+        assert "`references/table.md`" in warning.message
+        assert warnings_of(root, "external-reference") == []
+
+    def test_a_relative_citation_under_references_draws_nothing_where_the_file_is_there(
+        self, tmp_path
+    ):
+        root = build(tmp_path, bodies={"voice": "Open `references/table.md` in full.\n"})
+        (root / "references").mkdir()
+        (root / "references" / "table.md").write_text("table\n", encoding="utf-8")
+
+        assert check(root).warnings == ()
+
+    def test_a_path_under_the_configuration_directory_is_not_external(self, tmp_path):
         root = build(
             tmp_path,
             bodies={"voice": "Text.\nOpen `~/.claude/references/table.md` in full.\n"},
         )
 
-        (warning,) = warnings_of(root, "external-reference")
-        assert warning.subject == RuleSubject("voice")
-        assert warning.line == 2
+        assert warnings_of(root, "external-reference") == []
         assert warnings_of(root, "dangling-reference") == []
 
     def test_a_home_path_outside_the_configuration_directory_is_external(self, tmp_path):

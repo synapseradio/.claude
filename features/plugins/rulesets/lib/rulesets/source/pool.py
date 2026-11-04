@@ -19,10 +19,13 @@ from rulesets.source.text_file import UnreadableFile, read_text_file
 
 _POOL_DIRECTORY = "rules"
 REFERENCES_DIRECTORY = "references"
+_RENDER_DIRECTORY = "-render"
 
 _MARKER = re.compile(r"<!-- rule: (?P<rule>[^\s@]+)(?: variant: (?P<variant>\S+))? -->")
 
-_REFERENCE_CITATION = re.compile(r"`(?P<path>~/[^`\s]+|/[^`\s/]+/[^`\s]+)`")
+_REFERENCE_CITATION = re.compile(
+    rf"`(?P<path>~/[^`\s]+|/[^`\s/]+/[^`\s]+|{REFERENCES_DIRECTORY}/[^`\s]+)`"
+)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -53,8 +56,9 @@ class Frontmatter:
 class Citation:
     """A path a body cites in backticks, as written, with the file line it sits on.
 
-    A path opens on `~/`, or on `/` and a second segment, and holds no whitespace. A bare
-    `/`, a slash command such as `/clear`, a relative path, and a URL are no citation.
+    A path opens on `~/`, on `/` and a second segment, or on `references/`, and holds no
+    whitespace. A bare `/`, a slash command such as `/clear`, any other relative path, and a
+    URL are no citation.
     """
 
     text: str
@@ -186,14 +190,15 @@ def read_pool(root: pathlib.Path) -> Pool:
     """Read `rules/` of one rulesets directory.
 
     A file's rule is its stem up to the first `@`, and the rest of the stem is its variant.
-    The `references/` folder beside the pool is reserved and read as nothing.
+    The `references/` and `-render/` folders beside the pool are reserved and read as nothing.
     """
 
     pool_directory = root / _POOL_DIRECTORY
     stray = [
         entry
         for entry in (sorted(root.iterdir()) if root.is_dir() else ())
-        if entry.is_dir() and entry.name not in (_POOL_DIRECTORY, REFERENCES_DIRECTORY)
+        if entry.is_dir()
+        and entry.name not in (_POOL_DIRECTORY, REFERENCES_DIRECTORY, _RENDER_DIRECTORY)
     ]
     defaults: dict[str, PoolFile] = {}
     variants: dict[str, dict[str, PoolFile]] = {}

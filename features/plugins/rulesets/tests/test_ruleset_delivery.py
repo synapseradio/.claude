@@ -231,3 +231,25 @@ class TestEveryPartOfOneDeliveryCarriesWhatItsFirstPartComposed:
         assert delivery.context == "".join(bodies.values())
         assert "security-pass" not in delivery.context
         assert [part for part, out in delivery.outputs.items() if out] == [1, 2, 3]
+
+
+class TestRulesPastTheLastPartReachAShownNotice:
+    def test_a_composition_needing_eleven_parts_delivers_ten_and_names_the_rule_left_out(
+        self, world
+    ):
+        names = [f"rule-{number:02d}" for number in range(10)]
+        bodies = {name: name + " " + "x" * (8500 - len(name) - 2) + "\n" for name in names}
+        for name, text in bodies.items():
+            world.rule(name, text)
+        world.rule("zeta", "zeta " + "x" * 8494 + "\n")
+        world.manifest(DECLARED + "defaults: ['*']\n")
+
+        delivery = world.start_session()
+
+        assert delivery.context == "".join(bodies.values())
+        assert "zeta" in delivery.message
+        (record,) = world.records()
+        assert record["left_out"] == ["zeta"]
+        assert [rule["rule"] for rule in record["rules"]] == [*names, "zeta"]
+        left_out = notice_entries(world, "rule-left-out")
+        assert [(n["shown"], "zeta" in n["subject"]) for n in left_out] == [(True, True)]

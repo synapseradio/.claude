@@ -25,6 +25,7 @@ def check(root: pathlib.Path) -> Report:
     """
 
     pool = read_pool(root)
+    directory = read_directory(root)
     errors: list[CheckError] = []
     warnings: list[CheckWarning] = []
     try:
@@ -35,9 +36,8 @@ def check(root: pathlib.Path) -> Report:
         expander = Expander(manifest.spreadable(), pool.variants_by_rule())
         errors.extend(manifest_errors(manifest, expander))
         warnings.extend(inclusion_warnings(manifest, pool, expander))
-        directory = read_directory(root)
         errors.extend(check_conflicts(directory))
-        warnings.extend(check_part_count(directory))
+    warnings.extend(check_part_count(directory))
     errors.extend(pool_errors(pool))
     warnings.extend(pool_warnings(pool))
     warnings.extend(cross_reference_warnings(pool))

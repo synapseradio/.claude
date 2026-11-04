@@ -373,6 +373,11 @@ class TestCitedPaths:
             Citation(text="/etc/hosts", line=2),
         )
 
+    def test_a_path_under_references_written_relative_is_a_citation(self, tmp_path):
+        text = "Open `references/table.md`.\n"
+
+        assert self.cited(tmp_path, text) == (Citation(text="references/table.md", line=1),)
+
     def test_a_url_is_no_path(self, tmp_path):
         text = "See `https://example.com/docs/page` and `//cdn.example.com/x/y`.\n"
 

@@ -48,6 +48,7 @@ class DeliveryRecord:
     flags: tuple[str, ...]
     rules: tuple[RuleLine, ...]
     withheld: tuple[WithheldLine, ...]
+    left_out: tuple[str, ...]
     notices: tuple[Notice, ...]
     message_sent: bool
 

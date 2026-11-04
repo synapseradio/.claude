@@ -15,9 +15,10 @@ from rulesets.audit.delivery_record import (
 )
 from rulesets.compose.composition import Composition, compose
 from rulesets.delivery.hook_output import MESSAGE_SHOWN, PartOutput
-from rulesets.delivery.parts import bodies_of, pack_parts
+from rulesets.delivery.parts import MAX_PARTS, pack_parts
 from rulesets.delivery.plan import Plan, write_plan
 from rulesets.delivery.request import ForkStart, SessionStart, SubagentStart
+from rulesets.delivery.rule_bodies import bodies_of
 from rulesets.facts.model.fact import (
     Claimed,
     FromForceLever,
@@ -32,6 +33,7 @@ from rulesets.notices import (
     SHOWN,
     Notice,
     fork_notice,
+    left_out_notice,
     reference_notice,
     variant_conflict_notice,
     withheld_notice,
@@ -60,10 +62,16 @@ def deliver_first(
     resolved = resolve_context(request, directory, locations, environ)
     composition = compose(directory, resolved.facts, state)
     bodies = bodies_of(composition, directory.pool)
-    parts = pack_parts(bodies)
+    packed = pack_parts(bodies)
+    parts, past_last = packed[:MAX_PARTS], packed[MAX_PARTS:]
+    left_out = tuple(body.rule for part in past_last for body in part.bodies)
     write_plan(slot, Plan(parts))
 
-    notices = (*resolved.notices, *_composition_notices(composition))
+    notices = (
+        *resolved.notices,
+        *_composition_notices(composition),
+        *(left_out_notice(rule) for rule in left_out),
+    )
     message = _message(request.event, notices)
     digests = {body.rule: digest_of(body) for body in bodies}
     log.append(
@@ -78,6 +86,7 @@ def deliver_first(
             flags=tuple(sorted(resolved.facts.flags)),
             rules=tuple(RuleLine(r.rule, r.variant, digests[r.rule]) for r in composition.rules),
             withheld=tuple(WithheldLine(w.rule, w.error) for w in composition.withheld),
+            left_out=left_out,
             notices=notices,
             message_sent=message is not None,
         ).to_json(),
@@ -102,6 +111,7 @@ def _deliver_fork(request: ForkStart, locations: Locations, slot: pathlib.Path) 
             flags=(),
             rules=(),
             withheld=(),
+            left_out=(),
             notices=(fork_notice(),),
             message_sent=False,
         ).to_json(),

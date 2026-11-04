@@ -5,61 +5,30 @@ from __future__ import annotations
 import dataclasses
 import itertools
 import pathlib
-from collections.abc import Callable
 
 from rulesets.check.findings import CheckError, ReferencesSubject, ReferenceSubject
 from rulesets.compose.applying import AppliedList
-from rulesets.compose.precedence import PositionBand, Statement, conflicts
+from rulesets.compose.precedence import (
+    Adds,
+    PositionBand,
+    Statement,
+    Strikes,
+    VariantConflict,
+    conflicts,
+)
 from rulesets.compose.statements import statements
 from rulesets.facts.kinds import block_rank
-from rulesets.source.condition import (
-    And,
-    Condition,
-    ConditionError,
-    FactTest,
-    evaluate_with,
-    fact_tests,
-    parse_condition,
-)
+from rulesets.source.condition import And, Condition, ConditionError, Not, parse_condition
 from rulesets.source.directory import Present, RulesetsDirectory
 from rulesets.source.expansion import Expander
 from rulesets.source.manifest import WhenItem
-
-# A context holds one value of each of these facts, so two tests of different values cannot both hold.
-_SINGLE_VALUED = ("model", "agent", "kind", "session")
+from rulesets.source.satisfiability import can_hold
 
 
 @dataclasses.dataclass(frozen=True)
 class _Block:
     condition: Condition
     statements: tuple[Statement, ...]
-
-
-def can_hold_together(first: Condition, second: Condition) -> bool:
-    """Whether some context makes both conditions true, given that a context has one model,
-    one agent, one kind, and one session."""
-
-    both = And(first, second)
-    tests = fact_tests(both)
-    values = [sorted({t.value for t in tests if t.fact == fact}) for fact in _SINGLE_VALUED]
-    flags = sorted({t.value for t in tests if t.fact == "flag"})
-    for chosen in itertools.product(*([None, *each] for each in values)):
-        picked = dict(zip(_SINGLE_VALUED, chosen, strict=True))
-        for bits in itertools.product((False, True), repeat=len(flags)):
-            set_flags = {flag for flag, bit in zip(flags, bits, strict=True) if bit}
-
-            if evaluate_with(both, _holds_in(picked, set_flags)):
-                return True
-    return False
-
-
-def _holds_in(picked: dict[str, str | None], set_flags: set[str]) -> Callable[[FactTest], bool]:
-    def holds(test: FactTest) -> bool:
-        if test.fact == "flag":
-            return test.value in set_flags
-        return picked[test.fact] == test.value
-
-    return holds
 
 
 def check_conflicts(directory: RulesetsDirectory) -> tuple[CheckError, ...]:
@@ -72,19 +41,43 @@ def check_conflicts(directory: RulesetsDirectory) -> tuple[CheckError, ...]:
     blocks = [block for item in manifest.items if (block := _block(item, expander))]
     errors: list[CheckError] = []
     for first, second in itertools.combinations(blocks, 2):
-        if not can_hold_together(first.condition, second.condition):
+        if not can_hold(And(first.condition, second.condition)):
             continue
         by_rule: dict[str, list[Statement]] = {}
         for statement in (*first.statements, *second.statements):
             by_rule.setdefault(statement.rule, []).append(statement)
+        others = [block for block in blocks if block is not first and block is not second]
         for rule, about in by_rule.items():
             for conflict in conflicts(tuple(about)):
                 setting = {id(statement) for statement in conflict.statements}
                 if all(
                     any(id(s) in setting for s in block.statements) for block in (first, second)
-                ):
+                ) and _stands_in_some_context(first, second, others, conflict):
                     errors.append(_error(manifest.path, rule, conflict.statements))
     return tuple(errors)
+
+
+def _stands_in_some_context(
+    first: _Block, second: _Block, others: list[_Block], conflict: VariantConflict
+) -> bool:
+    """Whether some context holds both blocks and no other block strikes a conflicting variant.
+
+    A strike at the conflict's position or above removes its variant from the position's sets.
+    """
+
+    variants = {s.says.variant for s in conflict.statements if isinstance(s.says, Adds)}
+    wanted: Condition = And(first.condition, second.condition)
+    for block in others:
+        strikes = any(
+            isinstance(s.says, Strikes)
+            and s.rule == conflict.rule
+            and s.says.variant in variants
+            and s.position >= conflict.position
+            for s in block.statements
+        )
+        if strikes:
+            wanted = And(wanted, Not(block.condition))
+    return can_hold(wanted)
 
 
 def _block(item: WhenItem, expander: Expander) -> _Block | None:

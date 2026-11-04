@@ -18,6 +18,7 @@ type NoticeKind = Literal[
     "per-spawn-unreadable",
     "provider-variable",
     "reference-skipped",
+    "rule-left-out",
     "rule-withheld",
     "variant-conflict",
 ]
@@ -28,6 +29,7 @@ SHOWN: frozenset[NoticeKind] = frozenset(
         "model-missing",
         "model-unclaimed",
         "reference-skipped",
+        "rule-left-out",
         "rule-withheld",
         "variant-conflict",
     }
@@ -75,6 +77,12 @@ def reference_notice(reference: str, line: int, name: str) -> Notice:
     return Notice(
         "reference-skipped",
         f"the reference `{reference}` at manifest line {line} names `{name}`, which is not declared; skipped",
+    )
+
+
+def left_out_notice(rule: str) -> Notice:
+    return Notice(
+        "rule-left-out", f"rule `{rule}` is left out of the delivery: no part carries its body"
     )
 
 

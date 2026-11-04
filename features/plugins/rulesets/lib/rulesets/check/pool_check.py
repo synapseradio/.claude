@@ -13,7 +13,7 @@ _CONDITION_KEYS = frozenset({"paths", "when", *FACTS, *(f"{fact}s" for fact in F
 
 _CONFIGURATION_DIRECTORY = "~/.claude/"
 _CORPUS_REFERENCES = f"{_CONFIGURATION_DIRECTORY}rulesets/{REFERENCES_DIRECTORY}/"
-_BARE_REFERENCES = f"{_CONFIGURATION_DIRECTORY}{REFERENCES_DIRECTORY}/"
+_RELATIVE_REFERENCES = f"{REFERENCES_DIRECTORY}/"
 
 
 def pool_errors(pool: Pool) -> tuple[CheckError, ...]:
@@ -107,25 +107,18 @@ def _body_warnings(pool: Pool, file: PoolFile) -> list[CheckWarning]:
 def _citation_warning(pool: Pool, file: PoolFile, citation: Citation) -> CheckWarning | None:
     subject = RuleSubject(file.rule)
     path = citation.text
-    if path.startswith(_CORPUS_REFERENCES):
-        name = path.removeprefix(_CORPUS_REFERENCES)
-        if not name or pool.has_reference(name):
-            return None
-        return CheckWarning(
-            "dangling-reference",
-            subject,
-            file.path,
-            citation.line,
-            f"`{file.path.name}` cites `{name}`, and `{REFERENCES_DIRECTORY}/{name}` is not there",
-        )
-    if path.startswith(_BARE_REFERENCES):
-        return CheckWarning(
-            "external-reference",
-            subject,
-            file.path,
-            citation.line,
-            f"`{file.path.name}` cites `{path}`, which the corpus does not carry",
-        )
+    for prefix in (_CORPUS_REFERENCES, _RELATIVE_REFERENCES):
+        if path.startswith(prefix):
+            name = path.removeprefix(prefix)
+            if not name or pool.has_reference(name):
+                return None
+            return CheckWarning(
+                "dangling-reference",
+                subject,
+                file.path,
+                citation.line,
+                f"`{file.path.name}` cites `{path}`, and `{REFERENCES_DIRECTORY}/{name}` is not there",
+            )
     if path.startswith(_CONFIGURATION_DIRECTORY):
         return None
     return CheckWarning(
