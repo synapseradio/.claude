@@ -13,10 +13,13 @@ Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_ruleset_comp
 import pathlib
 import sys
 
+from delivery_world import DECLARED, OPUS, World
+
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
+from rulesets import spawn_log  # noqa: E402
 from rulesets.check.findings import ContextSubject, ReferencesSubject, ReferenceSubject  # noqa: E402
 from rulesets.check.report_format import finding_line  # noqa: E402
 from rulesets.check.run import check  # noqa: E402
@@ -486,3 +489,21 @@ class TestCheckWarnsAboutBodySizeAndReferences:
         assert (warning.kind, warning.file) == ("dangling-reference", root / "rules" / "voice.md")
         assert "table.md" in warning.message
         assert main(["check", "--root", str(root)]) == 0
+
+
+class TestTerms:
+    def test_the_delivery_record_names_a_rule_in_the_main_sessions_delivery_and_not_in_a_haiku_delegates(
+        self, tmp_path
+    ):
+        world = World(tmp_path)
+        world.rule("writing-code")
+        world.manifest(
+            DECLARED + "defaults: ['writing-code']\nwhen:\n  - model haiku: ['-writing-code']\n"
+        )
+        spawn_log.append_spawn("s1", "p1", "critic", "haiku", Locations(world.config).state)
+
+        world.start_session(model=OPUS)
+        world.start_delegate("critic")
+
+        named = {r["scope"]: [line["rule"] for line in r["rules"]] for r in world.records()}
+        assert named == {"session": ["writing-code"], "delegate": []}
