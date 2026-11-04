@@ -201,6 +201,27 @@ class Expander:
             case _:
                 assert_never(target)
 
+    def problems_reached(self, references: Sequence[Reference]) -> tuple[ReferenceProblem, ...]:
+        """The problems of a list and of every ruleset it spreads, each ruleset counted once."""
+
+        found: list[ReferenceProblem] = []
+        pending = [references]
+        seen: set[str] = set()
+        while pending:
+            current = pending.pop(0)
+            found.extend(self.expand(current).problems)
+            for reference in current:
+                target = reference.target
+                if (
+                    isinstance(target, SpreadTarget)
+                    and target.ruleset in self._lists
+                    and target.ruleset not in self._cycles
+                    and target.ruleset not in seen
+                ):
+                    seen.add(target.ruleset)
+                    pending.append(self._lists[target.ruleset])
+        return tuple(found)
+
     def expand(self, references: Sequence[Reference]) -> Expansion:
         """Expand one list, applying every remove after every add."""
 

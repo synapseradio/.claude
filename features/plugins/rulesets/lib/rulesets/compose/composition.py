@@ -94,7 +94,7 @@ def _skipped(applied: tuple[AppliedList, ...], expander: Expander) -> tuple[Skip
 
     found: dict[tuple[str, int], SkippedReference] = {}
     for applying in applied:
-        for problem in expander.expand(applying.references).problems:
+        for problem in expander.problems_reached(applying.references):
             match problem:
                 case UnknownRule(reference, name) | UnknownRuleset(reference, name):
                     pass
