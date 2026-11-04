@@ -1,4 +1,4 @@
-"""The notices a delivery's record carries, typed by kind."""
+"""The notices a delivery draws, typed by kind, and which kinds the person is shown."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -8,12 +8,16 @@ from rulesets.facts.environment import flag_is_set
 
 HOST_MANAGED_VARIABLE = "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST"
 
-type NoticeKind = Literal["per-spawn-ambiguous", "per-spawn-unreadable", "provider-variable"]
+type NoticeKind = Literal[
+    "per-spawn-ambiguous", "per-spawn-unreadable", "provider-variable", "variant-conflict"
+]
+
+SHOWN: frozenset[NoticeKind] = frozenset({"variant-conflict"})
 
 
 @dataclass(frozen=True)
 class Notice:
-    """A record-only note, with what it names."""
+    """A note, with what it names. `SHOWN` says whether the person sees it."""
 
     kind: NoticeKind
     subject: str
@@ -29,3 +33,12 @@ def provider_notices(env: Mapping[str, str]) -> tuple[Notice, ...]:
     if flag_is_set(env, HOST_MANAGED_VARIABLE):
         return (Notice("provider-variable", HOST_MANAGED_VARIABLE),)
     return ()
+
+
+def variant_conflict_notice(rule: str, variant: str | None) -> Notice:
+    """The notice for a rule whose sets conflicted, naming the variant delivered."""
+
+    delivered = "its default form" if variant is None else f"variant `{variant}`"
+    return Notice(
+        "variant-conflict", f"rule `{rule}` sets conflicting variants; delivered at {delivered}"
+    )

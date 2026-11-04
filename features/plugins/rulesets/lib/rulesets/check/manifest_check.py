@@ -11,6 +11,7 @@ from typing import assert_never
 
 from rulesets.check.findings import (
     CheckError,
+    FlagSubject,
     ItemSubject,
     KeySubject,
     ManifestSubject,
@@ -40,6 +41,7 @@ from rulesets.source.manifest import (
     ReservedRulesetDeclared,
     ShapeProblem,
     UnknownKey,
+    UnquotedFlag,
     UnquotedModel,
     WrongKeyShape,
     WrongRulesetShape,
@@ -48,6 +50,7 @@ from rulesets.source.reference import EntryForm
 
 _KEY_SHAPES: dict[ManifestKey, str] = {
     "models": "must be a list of model names",
+    "flags": "must be a list of flag names",
     "defaults": "must be a list of references",
     "rulesets": "must be a mapping of ruleset names to lists of references",
     "when": "must be a list of items",
@@ -134,6 +137,14 @@ def _shape_error(manifest: Manifest, problem: ShapeProblem) -> CheckError:
             return CheckError(
                 "unquoted-entry",
                 ModelSubject(text),
+                manifest.path,
+                line,
+                _unquoted_message(text, form),
+            )
+        case UnquotedFlag(text, line, form):
+            return CheckError(
+                "unquoted-entry",
+                FlagSubject(text),
                 manifest.path,
                 line,
                 _unquoted_message(text, form),

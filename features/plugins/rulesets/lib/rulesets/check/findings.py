@@ -10,6 +10,8 @@ import dataclasses
 import pathlib
 from typing import Literal
 
+from rulesets.facts.context import Facts
+
 
 @dataclasses.dataclass(frozen=True)
 class RuleSubject:
@@ -49,6 +51,13 @@ class ModelSubject:
 
 
 @dataclasses.dataclass(frozen=True)
+class FlagSubject:
+    """An entry of `flags`, as written."""
+
+    name: str
+
+
+@dataclasses.dataclass(frozen=True)
 class ReferenceSubject:
     """A reference as written, with the file line it sits on."""
 
@@ -69,6 +78,13 @@ class ManifestSubject:
 
 
 @dataclasses.dataclass(frozen=True)
+class ContextSubject:
+    """A context named by its facts."""
+
+    facts: Facts
+
+
+@dataclasses.dataclass(frozen=True)
 class DirectorySubject:
     path: pathlib.Path
 
@@ -80,10 +96,12 @@ type Subject = (
     | ItemSubject
     | KeySubject
     | ModelSubject
+    | FlagSubject
     | ReferenceSubject
     | ReferencesSubject
     | ManifestSubject
     | DirectorySubject
+    | ContextSubject
 )
 
 type ErrorKind = Literal[
@@ -113,6 +131,7 @@ type WarningKind = Literal[
     "oversize-body",
     "dangling-reference",
     "external-reference",
+    "too-many-parts",
 ]
 
 

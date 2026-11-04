@@ -5,7 +5,9 @@ from __future__ import annotations
 from rulesets.check.findings import (
     CheckError,
     CheckWarning,
+    ContextSubject,
     DirectorySubject,
+    FlagSubject,
     ItemSubject,
     KeySubject,
     ManifestSubject,
@@ -36,12 +38,22 @@ def _describe_subject(subject: Subject) -> str:
             return f"key `{name}`"
         case ModelSubject(name):
             return f"model `{name}`"
+        case FlagSubject(name):
+            return f"flag `{name}`"
         case ReferenceSubject(text):
             return f"reference `{text}`"
         case ReferencesSubject(members):
             return "references " + " and ".join(f"`{member.text}`" for member in members)
         case ManifestSubject():
             return "manifest"
+        case ContextSubject(facts):
+            named = [
+                *([f"model {facts.model}"] if facts.model else []),
+                *([f"agent {facts.agent}"] if facts.agent else []),
+                f"kind {facts.kind}",
+                *(f"flag {flag}" for flag in sorted(facts.flags)),
+            ]
+            return "context " + ", ".join(named)
         case DirectorySubject(path):
             return f"directory `{path.name}`"
 

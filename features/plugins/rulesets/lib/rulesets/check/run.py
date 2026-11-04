@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import pathlib
 
+from rulesets.check.conflict_check import check_conflicts
 from rulesets.check.cross_reference_check import cross_reference_warnings
 from rulesets.check.findings import CheckError, CheckWarning, Report
 from rulesets.check.inclusion_check import inclusion_warnings
 from rulesets.check.manifest_check import manifest_errors, unparsable_error
+from rulesets.check.part_count_check import check_part_count
 from rulesets.check.pool_check import pool_errors, pool_warnings
+from rulesets.source.directory import read_directory
 from rulesets.source.expansion import Expander
 from rulesets.source.manifest import ManifestParseError, read_manifest
 from rulesets.source.pool import read_pool
@@ -32,6 +35,9 @@ def check(root: pathlib.Path) -> Report:
         expander = Expander(manifest.spreadable(), pool.variants_by_rule())
         errors.extend(manifest_errors(manifest, expander))
         warnings.extend(inclusion_warnings(manifest, pool, expander))
+        directory = read_directory(root)
+        errors.extend(check_conflicts(directory))
+        warnings.extend(check_part_count(directory))
     errors.extend(pool_errors(pool))
     warnings.extend(pool_warnings(pool))
     warnings.extend(cross_reference_warnings(pool))

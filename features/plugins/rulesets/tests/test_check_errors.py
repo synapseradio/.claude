@@ -136,10 +136,11 @@ class TestOneListSettingTwoVariantsOfOneRule:
 
         assert [kind for kind, _, _ in errors_of(root)] == ["variant-conflict"]
 
-    def test_two_items_setting_different_variants_are_no_error(self, tmp_path):
+    def test_two_items_for_different_models_setting_different_variants_are_no_error(self, tmp_path):
         root = build(
             tmp_path,
-            "when:\n  - flag voice-terse: ['voice@terse']\n  - flag voice-warm: ['voice@warm']\n",
+            "models: ['opus', 'sonnet']\n"
+            "when:\n  - model opus: ['voice@terse']\n  - model sonnet: ['voice@warm']\n",
             stems=["voice", "voice@terse", "voice@warm"],
         )
 
@@ -528,7 +529,7 @@ class TestEveryManifestShapeErrorIsWordedForTheFileToOpen:
         assert [(error.kind, error.message) for error in errors] == [
             (
                 "unknown-key",
-                "`project` is not a manifest key; the keys are models, defaults, rulesets, and when",
+                "`project` is not a manifest key; the keys are models, flags, defaults, rulesets, and when",
             ),
             ("key-shape", "`models` must be a list of model names"),
             ("ruleset-shape", "ruleset `code` must be a list of references"),

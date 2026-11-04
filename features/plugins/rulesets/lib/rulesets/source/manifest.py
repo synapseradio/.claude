@@ -27,7 +27,7 @@ _MISSING_MANIFEST = "defaults: ['all:*']\n"
 _QUOTE_STYLES = ("'", '"')
 _QUOTE_ADVICE = "write every list entry as a quoted string"
 
-type ManifestKey = Literal["models", "defaults", "rulesets", "when"]
+type ManifestKey = Literal["models", "flags", "defaults", "rulesets", "when"]
 
 MANIFEST_KEYS: tuple[str, ...] = get_args(ManifestKey.__value__)
 
@@ -98,6 +98,15 @@ class UnquotedModel:
     form: EntryForm
 
 
+@dataclasses.dataclass(frozen=True)
+class UnquotedFlag:
+    """An entry of `flags` that is no quoted string. `text` is the entry as written."""
+
+    text: str
+    line: int
+    form: EntryForm
+
+
 type ShapeProblem = (
     UnknownKey
     | WrongKeyShape
@@ -105,6 +114,7 @@ type ShapeProblem = (
     | ReservedRulesetDeclared
     | MalformedItem
     | UnquotedModel
+    | UnquotedFlag
 )
 
 
@@ -121,7 +131,7 @@ class ManifestParseError(Exception):
 
 @dataclasses.dataclass(frozen=True)
 class Manifest:
-    """The four keys of a manifest. A key that is missing or the wrong shape holds nothing.
+    """The five keys of a manifest. A key that is missing or the wrong shape holds nothing.
 
     `problems` holds the shape problems found while reading. `defaults` is None where
     the key holds nothing.
@@ -129,6 +139,7 @@ class Manifest:
 
     path: pathlib.Path
     models: tuple[str, ...]
+    flags: tuple[str, ...]
     defaults: Ruleset | None
     rulesets: Mapping[str, Ruleset]
     items: tuple[WhenItem, ...]
@@ -213,6 +224,21 @@ def _read_models(
     return tuple(models), tuple(problems)
 
 
+def _read_flags(
+    value: yaml.Node, text: str, line: int
+) -> tuple[tuple[str, ...], tuple[ShapeProblem, ...]]:
+    if not isinstance(value, yaml.SequenceNode):
+        return (), (WrongKeyShape("flags", line),)
+    flags: list[str] = []
+    problems: list[ShapeProblem] = []
+    for element in value.value:
+        if (name := _quoted_value(element)) is not None:
+            flags.append(name)
+        else:
+            problems.append(UnquotedFlag(_written(element, text), _line(element), _form(element)))
+    return tuple(flags), tuple(problems)
+
+
 def _read_defaults(
     value: yaml.Node, text: str, line: int
 ) -> tuple[Ruleset | None, tuple[ShapeProblem, ...]]:
@@ -294,6 +320,7 @@ def parse_manifest(text: str, path: pathlib.Path) -> Manifest:
     """
 
     models: tuple[str, ...] = ()
+    flags: tuple[str, ...] = ()
     defaults: Ruleset | None = None
     rulesets: dict[str, Ruleset] = {}
     items: tuple[WhenItem, ...] = ()
@@ -306,6 +333,8 @@ def parse_manifest(text: str, path: pathlib.Path) -> Manifest:
         match name:
             case "models":
                 models, found = _read_models(value, text, line)
+            case "flags":
+                flags, found = _read_flags(value, text, line)
             case "defaults":
                 defaults, found = _read_defaults(value, text, line)
             case "rulesets":
@@ -319,6 +348,7 @@ def parse_manifest(text: str, path: pathlib.Path) -> Manifest:
     return Manifest(
         path=path,
         models=models,
+        flags=flags,
         defaults=defaults,
         rulesets=rulesets,
         items=items,

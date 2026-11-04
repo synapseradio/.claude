@@ -1,7 +1,7 @@
 """Parse a `when` item's condition into a tree of fact tests, and evaluate it over a context.
 
-A condition tests facts with `model <name>`, `agent <name>`, `kind session|delegate|fork`, and
-`flag <name>`, and combines the tests with `and`, `or`, `not`, and parentheses. `not` binds
+A condition tests facts with `model <name>`, `agent <name>`, `kind session|delegate|fork`,
+`flag <name>`, and `session <id>`, and combines the tests with `and`, `or`, `not`, and parentheses. `not` binds
 tighter than `and`, and `and` tighter than `or`. A run of one operator groups to the left.
 """
 
@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import dataclasses
 import re
+from collections.abc import Callable
 from typing import Literal, assert_never, get_args
 
-from rulesets.facts import Facts, Kind
+from rulesets.facts.context import Facts, Kind
 
-type Fact = Literal["model", "agent", "kind", "flag"]
+type Fact = Literal["model", "agent", "kind", "flag", "session"]
 
 FACTS: tuple[str, ...] = get_args(Fact.__value__)
 _KINDS: tuple[str, ...] = get_args(Kind.__value__)
@@ -138,26 +139,41 @@ def parse_condition(text: str) -> Condition:
     return _Reader(_TOKEN.findall(text)).condition()
 
 
+def evaluate_with(condition: Condition, holds: Callable[[FactTest], bool]) -> bool:
+    """Two-valued evaluation where `holds` says whether one fact test is true."""
+
+    match condition:
+        case FactTest():
+            return holds(condition)
+        case Not(operand):
+            return not evaluate_with(operand, holds)
+        case And(left, right):
+            return evaluate_with(left, holds) and evaluate_with(right, holds)
+        case Or(left, right):
+            return evaluate_with(left, holds) or evaluate_with(right, holds)
+        case _:
+            assert_never(condition)
+
+
 def evaluate(condition: Condition, facts: Facts) -> bool:
     """Two-valued: a test over an absent fact is false, and its negation true."""
 
-    match condition:
-        case FactTest("model", name):
-            return facts.model == name
-        case FactTest("agent", name):
-            return facts.agent == name
-        case FactTest("kind", name):
-            return facts.kind == name
-        case FactTest("flag", name):
-            return name in facts.flags
-        case Not(operand):
-            return not evaluate(operand, facts)
-        case And(left, right):
-            return evaluate(left, facts) and evaluate(right, facts)
-        case Or(left, right):
-            return evaluate(left, facts) or evaluate(right, facts)
-        case _:
-            assert_never(condition)
+    def holds(test: FactTest) -> bool:
+        match test:
+            case FactTest("model", name):
+                return facts.model == name
+            case FactTest("agent", name):
+                return facts.agent == name
+            case FactTest("kind", name):
+                return facts.kind == name
+            case FactTest("flag", name):
+                return name in facts.flags
+            case FactTest("session", name):
+                return facts.session == name
+            case _:
+                assert_never(test)
+
+    return evaluate_with(condition, holds)
 
 
 def fact_tests(condition: Condition) -> tuple[FactTest, ...]:

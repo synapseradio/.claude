@@ -18,7 +18,7 @@ PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
-from rulesets.facts import Facts  # noqa: E402
+from rulesets.facts.context import Facts  # noqa: E402
 from rulesets.source.condition import (  # noqa: E402  (path must be set before this import)
     And,
     ConditionError,
