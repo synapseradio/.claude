@@ -340,8 +340,6 @@
       "Bash(find ~/ *)",
       "Bash(find $HOME)",
       "Bash(find $HOME *)",
-      "EnterWorktree",
-      "ExitWorktree",
       "WebFetch",
       "WebSearch",
       "Read(~/.kube/**)",
