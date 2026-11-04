@@ -33,6 +33,11 @@
     "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "0",
     "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "5000",
+    "HINDSIGHT_API_DECISION_MODEL_PROVIDER": "typesafe",
+    "HINDSIGHT_API_DECISION_MODEL_BASE_URL": "http://127.0.0.1:8000",
+    "HINDSIGHT_API_DECISION_MODEL_MODEL": "hs-decide-1-flash",
+    "HINDSIGHT_API_RECALL_DECISION_MODEL_PROVIDER": "none",
+    "HINDSIGHT_API_DECISION_MODEL_MAX_CONCURRENT": "2",
     "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2",
     "CLAUDE_CODE_TMUX_TRUECOLOR": "1",
     "DISABLE_ERROR_REPORTING": "1",
@@ -543,6 +548,22 @@
             "type": "command",
             "command": "python3.14 $HOME/.claude/scripts/hooks/hindsight-thinkies-retain.py",
             "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "python3.14 -I $HOME/.claude/scripts/hooks/hindsight-retain-turn-report.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3.14 -I $HOME/.claude/scripts/hooks/hindsight-retain-delegate-report.py",
+            "timeout": 30
           }
         ]
       }

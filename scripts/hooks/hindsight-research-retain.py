@@ -11,20 +11,38 @@ import contextlib
 import json
 import re
 import sys
+import tempfile
+from pathlib import Path
 
 from hindsight_retain import repo_name, retain
+
+TURN_MARKERS = Path(tempfile.gettempdir()) / "hindsight-research-turn"
 
 MAX_CHARS = 40_000
 RESEARCH_TOOL = re.compile(
     r"^(WebFetch|WebSearch|mcp__linkup__.*|mcp__plugin_context7_.*|mcp__.*tavily.*)$"
 )
-RESEARCH_COMMAND = re.compile(r"(^|[\s;&|(])(tvly\s|curl\s[^|;&]*https?://)")
+RESEARCH_COMMAND = re.compile(
+    r"(^|[\s;&|(])(tvly\s|curl\s[^|;&]*https?://(?!localhost[:/]|127\.|\[::1\]))"
+)
 
 
 def is_research(tool, tool_input):
     if RESEARCH_TOOL.match(tool):
         return True
     return tool == "Bash" and bool(RESEARCH_COMMAND.search(tool_input.get("command", "")))
+
+
+def mark_turn(payload):
+    """Flag the main session's turn as research, for the Stop hook that retains its report.
+
+    A call inside a delegate carries agent_id; the delegate's own stop hook covers it.
+    """
+    session = payload.get("session_id")
+    if not session or payload.get("agent_id"):
+        return
+    TURN_MARKERS.mkdir(parents=True, exist_ok=True)
+    (TURN_MARKERS / session).touch()
 
 
 def response_text(response):
@@ -39,6 +57,7 @@ def main():
     tool_input = payload.get("tool_input") or {}
     if not is_research(tool, tool_input):
         return
+    mark_turn(payload)
     repo = repo_name(payload.get("cwd") or ".")
     bank = f"research::{repo}" if repo else "research::general"
     content = (

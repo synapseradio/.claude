@@ -55,6 +55,15 @@ def test_bash_counts_only_for_tvly_or_curl_over_http():
     assert not research.is_research("Bash", {"command": "git status"})
 
 
+def test_bash_curl_to_a_local_server_is_not_online_research():
+    for url in (
+        "http://127.0.0.1:9077/health",
+        "http://localhost:8000/v1/systemone",
+        "http://[::1]:8000/",
+    ):
+        assert not research.is_research("Bash", {"command": f"curl -s {url}"}), url
+
+
 def test_other_tools_are_not_research():
     assert not research.is_research("Read", {"file_path": "/x"})
     assert not research.is_research("mcp__hindsight__recall", {})
