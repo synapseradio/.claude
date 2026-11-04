@@ -100,7 +100,7 @@ class ModelResolution:
 
 
 def claimed_name(fact: ModelFact) -> str | None:
-    """The value of `Facts.model` for a model fact."""
+    """The declared name that claimed the fact, or None where it is unclaimed or missing."""
 
     match fact:
         case Claimed(name=name):

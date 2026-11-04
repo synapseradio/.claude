@@ -9,8 +9,16 @@ from rulesets.compose.precedence import PositionBand
 from rulesets.facts.context import Facts
 from rulesets.facts.kinds import Rank, block_rank
 from rulesets.session.state import Band, SessionState
-from rulesets.source.condition import ConditionError, evaluate, parse_condition
+from rulesets.source.condition import (
+    Condition,
+    ConditionError,
+    Truth,
+    evaluate,
+    fact_tests,
+    parse_condition,
+)
 from rulesets.source.directory import Present, RulesetsDirectory
+from rulesets.source.manifest import Manifest
 from rulesets.source.reference import Reference, parse_reference
 
 
@@ -19,6 +27,42 @@ class AppliedList:
     band: PositionBand
     rank: Rank
     references: Sequence[Reference]
+
+
+@dataclasses.dataclass(frozen=True)
+class SkippedBlock:
+    """A block whose condition names models the manifest does not declare; it applies nowhere."""
+
+    condition: str
+    models: tuple[str, ...]
+
+
+def undeclared_models(condition: Condition, manifest: Manifest) -> tuple[str, ...]:
+    """The models the condition tests that the manifest does not declare, once each."""
+
+    return tuple(
+        dict.fromkeys(
+            test.value
+            for test in fact_tests(condition)
+            if test.fact == "model" and test.value not in manifest.models
+        )
+    )
+
+
+def skipped_blocks(directory: RulesetsDirectory) -> tuple[SkippedBlock, ...]:
+    """The blocks delivery skips for naming an undeclared model."""
+
+    if not isinstance(directory.manifest, Present):
+        return ()
+    skipped: list[SkippedBlock] = []
+    for item in directory.manifest.manifest.items:
+        try:
+            condition = parse_condition(item.condition)
+        except ConditionError:
+            continue
+        if names := undeclared_models(condition, directory.manifest.manifest):
+            skipped.append(SkippedBlock(item.condition, names))
+    return tuple(skipped)
 
 
 _SPREAD_ALL = parse_reference("*", 0)
@@ -47,7 +91,9 @@ def applying_lists(
                     condition = parse_condition(item.condition)
                 except ConditionError:
                     continue
-                if evaluate(condition, facts):
+                if undeclared_models(condition, manifest):
+                    continue
+                if evaluate(condition, facts) is Truth.TRUE:
                     applied.append(
                         AppliedList(PositionBand.DIRECTORY, block_rank(condition), item.references)
                     )

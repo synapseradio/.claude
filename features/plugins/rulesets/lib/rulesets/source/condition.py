@@ -10,9 +10,10 @@ from __future__ import annotations
 import dataclasses
 import re
 from collections.abc import Callable
+from enum import Enum
 from typing import Literal, assert_never, get_args
 
-from rulesets.facts.context import Facts, Kind
+from rulesets.facts.context import Absent, Facts, Kind, NoClaim
 
 type Fact = Literal["model", "agent", "kind", "flag", "session"]
 
@@ -139,41 +140,86 @@ def parse_condition(text: str) -> Condition:
     return _Reader(_TOKEN.findall(text)).condition()
 
 
-def evaluate_with(condition: Condition, holds: Callable[[FactTest], bool]) -> bool:
-    """Two-valued evaluation where `holds` says whether one fact test is true."""
+class Truth(Enum):
+    """What a condition evaluates to: a block applies only where it is TRUE."""
+
+    TRUE = "true"
+    FALSE = "false"
+    UNKNOWN = "unknown"
+
+    @staticmethod
+    def of(holds: bool) -> Truth:
+        return Truth.TRUE if holds else Truth.FALSE
+
+    def negated(self) -> Truth:
+        match self:
+            case Truth.TRUE:
+                return Truth.FALSE
+            case Truth.FALSE:
+                return Truth.TRUE
+            case Truth.UNKNOWN:
+                return Truth.UNKNOWN
+
+    def both(self, other: Truth) -> Truth:
+        if Truth.FALSE in (self, other):
+            return Truth.FALSE
+        if Truth.UNKNOWN in (self, other):
+            return Truth.UNKNOWN
+        return Truth.TRUE
+
+    def either(self, other: Truth) -> Truth:
+        if Truth.TRUE in (self, other):
+            return Truth.TRUE
+        if Truth.UNKNOWN in (self, other):
+            return Truth.UNKNOWN
+        return Truth.FALSE
+
+
+def evaluate_with(condition: Condition, truth_of: Callable[[FactTest], Truth]) -> Truth:
+    """Three-valued evaluation where `truth_of` says what one fact test evaluates to."""
 
     match condition:
         case FactTest():
-            return holds(condition)
+            return truth_of(condition)
         case Not(operand):
-            return not evaluate_with(operand, holds)
+            return evaluate_with(operand, truth_of).negated()
         case And(left, right):
-            return evaluate_with(left, holds) and evaluate_with(right, holds)
+            return evaluate_with(left, truth_of).both(evaluate_with(right, truth_of))
         case Or(left, right):
-            return evaluate_with(left, holds) or evaluate_with(right, holds)
+            return evaluate_with(left, truth_of).either(evaluate_with(right, truth_of))
         case _:
             assert_never(condition)
 
 
-def evaluate(condition: Condition, facts: Facts) -> bool:
-    """Two-valued: a test over an absent fact is false, and its negation true."""
+def evaluate(condition: Condition, facts: Facts) -> Truth:
+    """A test over an absent fact is UNKNOWN, and over an unclaimed model FALSE."""
 
-    def holds(test: FactTest) -> bool:
+    def truth_of(test: FactTest) -> Truth:
         match test:
             case FactTest("model", name):
-                return facts.model == name
+                match facts.model:
+                    case Absent():
+                        return Truth.UNKNOWN
+                    case NoClaim():
+                        return Truth.FALSE
+                    case claimed:
+                        return Truth.of(claimed == name)
             case FactTest("agent", name):
-                return facts.agent == name
+                return _known_equal(facts.agent, name)
             case FactTest("kind", name):
-                return facts.kind == name
+                return Truth.of(facts.kind == name)
             case FactTest("flag", name):
-                return name in facts.flags
+                return Truth.of(name in facts.flags)
             case FactTest("session", name):
-                return facts.session == name
+                return _known_equal(facts.session, name)
             case _:
                 assert_never(test)
 
-    return evaluate_with(condition, holds)
+    return evaluate_with(condition, truth_of)
+
+
+def _known_equal(fact: str | Absent, name: str) -> Truth:
+    return Truth.UNKNOWN if isinstance(fact, Absent) else Truth.of(fact == name)
 
 
 def fact_tests(condition: Condition) -> tuple[FactTest, ...]:

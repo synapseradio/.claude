@@ -6,10 +6,10 @@ import dataclasses
 from collections.abc import Mapping
 
 from rulesets.delivery.request import SessionStart, SubagentStart
-from rulesets.facts.context import Facts
+from rulesets.facts.context import ABSENT, UNCLAIMED, Absent, Facts, NoClaim
 from rulesets.facts.flags import launch_flags
 from rulesets.facts.model.delegate import resolve_delegate_model
-from rulesets.facts.model.fact import ModelFact, claimed_name
+from rulesets.facts.model.fact import Claimed, Missing, ModelFact, Unclaimed
 from rulesets.facts.model.notice import model_notice
 from rulesets.facts.model.session import resolve_session_model
 from rulesets.locations import Locations
@@ -54,8 +54,24 @@ def resolve_context(
     notices.extend(flag_notice(name) for name in launched.undeclared)
     if agent is None and _tests_agent(manifest):
         notices.append(absent_agent_notice())
-    facts = Facts(claimed_name(resolution.fact), agent, kind, launched.declared)
+    facts = Facts(
+        _model_in_facts(resolution.fact),
+        ABSENT if agent is None else agent,
+        kind,
+        launched.declared,
+        request.session_id,
+    )
     return ResolvedContext(facts, resolution.fact, tuple(notices))
+
+
+def _model_in_facts(fact: ModelFact) -> str | NoClaim | Absent:
+    match fact:
+        case Claimed(name=name):
+            return name
+        case Unclaimed():
+            return UNCLAIMED
+        case Missing():
+            return ABSENT
 
 
 def _tests_agent(manifest: Manifest | None) -> bool:

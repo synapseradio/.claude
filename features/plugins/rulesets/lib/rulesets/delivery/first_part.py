@@ -32,6 +32,7 @@ from rulesets.locations import Locations
 from rulesets.notices import (
     SHOWN,
     Notice,
+    block_skipped_notice,
     fork_notice,
     left_out_notice,
     reference_notice,
@@ -81,7 +82,7 @@ def deliver_first(
             agent_id=request.agent_id if isinstance(request, SubagentStart) else None,
             scope=scope,
             kind=resolved.facts.kind,
-            agent=resolved.facts.agent,
+            agent=resolved.facts.agent if isinstance(resolved.facts.agent, str) else None,
             model=_model_line(resolved.model),
             flags=tuple(sorted(resolved.facts.flags)),
             rules=tuple(RuleLine(r.rule, r.variant, digests[r.rule]) for r in composition.rules),
@@ -121,6 +122,7 @@ def _deliver_fork(request: ForkStart, locations: Locations, slot: pathlib.Path) 
 
 def _composition_notices(composition: Composition) -> tuple[Notice, ...]:
     return (
+        *(block_skipped_notice(b.condition, b.models) for b in composition.skipped_blocks),
         *(reference_notice(s.text, s.line, s.name) for s in composition.skipped),
         *(withheld_notice(w.rule, w.error) for w in composition.withheld),
         *(variant_conflict_notice(c.rule, c.variant) for c in composition.conflicts),

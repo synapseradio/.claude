@@ -18,13 +18,14 @@ PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
-from rulesets.facts.context import Facts  # noqa: E402
+from rulesets.facts.context import ABSENT, Facts  # noqa: E402
 from rulesets.source.condition import (  # noqa: E402  (path must be set before this import)
     And,
     ConditionError,
     FactTest,
     Not,
     Or,
+    Truth,
     evaluate,
     fact_tests,
     parse_condition,
@@ -32,11 +33,20 @@ from rulesets.source.condition import (  # noqa: E402  (path must be set before 
 
 
 def facts(*, model=None, agent=None, kind="session", flags=()):
-    return Facts(model=model, agent=agent, kind=kind, flags=frozenset(flags))
+    return Facts(
+        model=ABSENT if model is None else model,
+        agent=ABSENT if agent is None else agent,
+        kind=kind,
+        flags=frozenset(flags),
+    )
+
+
+def truth(text, **context):
+    return evaluate(parse_condition(text), facts(**context))
 
 
 def holds(text, **context):
-    return evaluate(parse_condition(text), facts(**context))
+    return truth(text, **context) is Truth.TRUE
 
 
 MODEL_HAIKU = FactTest("model", "haiku")
@@ -181,25 +191,26 @@ class TestParenthesesGroup:
         assert parse_condition(text) == AGENT_CRITIC
 
 
-class TestATestOverAnAbsentFactIsFalseAndItsNegationTrue:
-    def test_a_model_test_with_no_model_is_false(self):
-        assert holds("model haiku", model=None) is False
+class TestATestOverAnAbsentFactIsUnknownAndSoIsItsNegation:
+    def test_a_model_test_with_no_model_is_unknown(self):
+        assert truth("model haiku", model=None) is Truth.UNKNOWN
 
-    def test_a_negated_model_test_with_no_model_is_true(self):
-        assert holds("not model haiku", model=None) is True
+    def test_a_negated_model_test_with_no_model_is_unknown(self):
+        assert truth("not model haiku", model=None) is Truth.UNKNOWN
 
-    def test_a_negation_over_a_missing_model_lets_the_rest_of_the_condition_decide(self):
+    def test_an_unknown_model_test_leaves_a_block_unapplied_unless_the_rest_decides_false(self):
         text = "agent critic and not model haiku"
 
-        assert holds(text, agent="critic", model=None) is True
-        assert holds(text, agent="critic", model="opus") is True
-        assert holds(text, agent="critic", model="haiku") is False
+        assert truth(text, agent="critic", model=None) is Truth.UNKNOWN
+        assert truth(text, agent="auditor", model=None) is Truth.FALSE
+        assert truth(text, agent="critic", model="opus") is Truth.TRUE
+        assert truth(text, agent="critic", model="haiku") is Truth.FALSE
 
-    def test_an_agent_test_in_a_plain_main_session_is_false(self):
-        assert holds("agent critic", agent=None) is False
+    def test_an_agent_test_in_a_plain_main_session_is_unknown(self):
+        assert truth("agent critic", agent=None) is Truth.UNKNOWN
 
-    def test_a_negated_agent_test_in_a_plain_main_session_is_true(self):
-        assert holds("not agent critic", agent=None) is True
+    def test_a_negated_agent_test_in_a_plain_main_session_is_unknown(self):
+        assert truth("not agent critic", agent=None) is Truth.UNKNOWN
 
 
 class TestFlagsAreNeverAbsent:

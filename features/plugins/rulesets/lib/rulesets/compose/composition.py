@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 
-from rulesets.compose.applying import AppliedList, applying_lists
+from rulesets.compose.applying import AppliedList, SkippedBlock, applying_lists, skipped_blocks
 from rulesets.compose.precedence import Included, Statement, VariantConflict, inclusion, variant
 from rulesets.compose.statements import statements
 from rulesets.compose.withheld import withheld
@@ -56,6 +56,7 @@ class Composition:
     conflicts: tuple[DeliveredConflict, ...]
     skipped: tuple[SkippedReference, ...] = ()
     withheld: tuple[WithheldRule, ...] = ()
+    skipped_blocks: tuple[SkippedBlock, ...] = ()
 
 
 def compose(directory: RulesetsDirectory, facts: Facts, state: SessionState) -> Composition:
@@ -86,7 +87,13 @@ def compose(directory: RulesetsDirectory, facts: Facts, state: SessionState) -> 
         delivered.append(DeliveredRule(rule, outcome.variant))
         if outcome.conflict is not None:
             met.append(DeliveredConflict(rule, outcome.variant, outcome.conflict))
-    return Composition(tuple(delivered), tuple(met), _skipped(applied, expander), tuple(held))
+    return Composition(
+        tuple(delivered),
+        tuple(met),
+        _skipped(applied, expander),
+        tuple(held),
+        skipped_blocks(directory),
+    )
 
 
 def _skipped(applied: tuple[AppliedList, ...], expander: Expander) -> tuple[SkippedReference, ...]:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import itertools
 from collections.abc import Callable
 
-from rulesets.source.condition import Condition, FactTest, evaluate_with, fact_tests
+from rulesets.source.condition import Condition, FactTest, Truth, evaluate_with, fact_tests
 
 _SINGLE_VALUED = ("model", "agent", "kind", "session")
 
@@ -25,15 +25,15 @@ def can_hold(condition: Condition) -> bool:
         for bits in itertools.product((False, True), repeat=len(flags)):
             set_flags = {flag for flag, bit in zip(flags, bits, strict=True) if bit}
 
-            if evaluate_with(condition, _holds_in(picked, set_flags)):
+            if evaluate_with(condition, _truth_in(picked, set_flags)) is Truth.TRUE:
                 return True
     return False
 
 
-def _holds_in(picked: dict[str, str | None], set_flags: set[str]) -> Callable[[FactTest], bool]:
-    def holds(test: FactTest) -> bool:
+def _truth_in(picked: dict[str, str | None], set_flags: set[str]) -> Callable[[FactTest], Truth]:
+    def truth_of(test: FactTest) -> Truth:
         if test.fact == "flag":
-            return test.value in set_flags
-        return picked[test.fact] == test.value
+            return Truth.of(test.value in set_flags)
+        return Truth.of(picked[test.fact] == test.value)
 
-    return holds
+    return truth_of

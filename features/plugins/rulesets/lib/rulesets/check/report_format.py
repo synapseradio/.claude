@@ -48,8 +48,8 @@ def _describe_subject(subject: Subject) -> str:
             return "manifest"
         case ContextSubject(facts):
             named = [
-                *([f"model {facts.model}"] if facts.model else []),
-                *([f"agent {facts.agent}"] if facts.agent else []),
+                *([f"model {facts.model}"] if isinstance(facts.model, str) else []),
+                *([f"agent {facts.agent}"] if isinstance(facts.agent, str) else []),
                 f"kind {facts.kind}",
                 *(f"flag {flag}" for flag in sorted(facts.flags)),
             ]

@@ -30,11 +30,11 @@ from rulesets.compose.applying import applying_lists  # noqa: E402
 from rulesets.compose.composition import DeliveredRule, compose  # noqa: E402
 from rulesets.compose.precedence import Adds, Removes  # noqa: E402
 from rulesets.compose.statements import statements  # noqa: E402
-from rulesets.facts.context import Facts  # noqa: E402
+from rulesets.facts.context import ABSENT, UNCLAIMED, Facts  # noqa: E402
 from rulesets.facts.model import fact as model_fact  # noqa: E402
 from rulesets.locations import Locations  # noqa: E402
 from rulesets.session.state import Band, SessionState, write_state  # noqa: E402
-from rulesets.source.condition import evaluate, parse_condition  # noqa: E402
+from rulesets.source.condition import Truth, evaluate, parse_condition  # noqa: E402
 from rulesets.source.directory import Present, read_directory  # noqa: E402
 from rulesets.source.expansion import Expander  # noqa: E402
 from rulesets.source.pool import read_pool  # noqa: E402
@@ -58,7 +58,7 @@ def build(tmp_path, manifest, rules):
 
 
 def session_facts(*, flags=()):
-    return Facts(model=None, agent=None, kind="session", flags=frozenset(flags))
+    return Facts(model=ABSENT, agent=ABSENT, kind="session", flags=frozenset(flags))
 
 
 @pytest.fixture
@@ -767,12 +767,12 @@ class TestTheEnginesCodeNamesNoContent:
 
         assert fact == model_fact.Unclaimed("haiku", "built-in-pin")
         facts = Facts(
-            model=model_fact.claimed_name(fact),
+            model=UNCLAIMED,
             agent="claude-code-guide",
             kind="delegate",
             flags=frozenset(),
         )
-        assert not any(
-            evaluate(parse_condition(f"model {name}"), facts)
+        assert all(
+            evaluate(parse_condition(f"model {name}"), facts) is Truth.FALSE
             for name in ("haiku", "opus", "sonnet")
         )

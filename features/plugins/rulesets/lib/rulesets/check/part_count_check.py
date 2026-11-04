@@ -8,7 +8,7 @@ from rulesets.check.findings import CheckWarning, ContextSubject
 from rulesets.compose.composition import compose
 from rulesets.delivery.parts import MAX_PARTS, pack_parts
 from rulesets.delivery.rule_bodies import bodies_of
-from rulesets.facts.context import Facts, Kind
+from rulesets.facts.context import ABSENT, UNCLAIMED, Absent, Facts, Kind
 from rulesets.session.state import SessionState
 from rulesets.source.condition import ConditionError, fact_tests, parse_condition
 from rulesets.source.directory import Present, RulesetsDirectory
@@ -32,7 +32,7 @@ def check_part_count(directory: RulesetsDirectory) -> tuple[CheckWarning, ...]:
         case _:
             models, flags_declared, items = (), (), ()
             where = directory.root / "manifest.yaml"
-    agents: list[str | None] = [None]
+    agents: list[str | Absent] = [ABSENT]
     for item in items:
         try:
             tests = fact_tests(parse_condition(item.condition))
@@ -44,7 +44,7 @@ def check_part_count(directory: RulesetsDirectory) -> tuple[CheckWarning, ...]:
     )
     warnings: list[CheckWarning] = []
     for model, agent, kind, flags in itertools.product(
-        (*models, None), dict.fromkeys(agents), _KINDS, flag_sets
+        (*models, UNCLAIMED), dict.fromkeys(agents), _KINDS, flag_sets
     ):
         facts = Facts(model, agent, kind, flags)
         parts = pack_parts(bodies_of(compose(directory, facts, SessionState()), directory.pool))

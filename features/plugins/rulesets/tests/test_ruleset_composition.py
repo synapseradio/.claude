@@ -27,7 +27,7 @@ from rulesets.cli import main  # noqa: E402
 from rulesets.compose.composition import compose  # noqa: E402  (path must be set before this import)
 from rulesets.delivery.parts import pack_parts  # noqa: E402
 from rulesets.delivery.rule_bodies import bodies_of  # noqa: E402
-from rulesets.facts.context import Facts  # noqa: E402
+from rulesets.facts.context import ABSENT, UNCLAIMED, Facts  # noqa: E402
 from rulesets.locations import Locations  # noqa: E402
 from rulesets.session.state import Band, SessionState, read_state, write_state  # noqa: E402
 from rulesets.source.directory import read_directory  # noqa: E402
@@ -50,7 +50,13 @@ def build(tmp_path, manifest, rules):
 
 
 def context(*, model=None, agent=None, kind="session", flags=(), session=None):
-    return Facts(model=model, agent=agent, kind=kind, flags=frozenset(flags), session=session)
+    return Facts(
+        model=ABSENT if model is None else model,
+        agent=ABSENT if agent is None else agent,
+        kind=kind,
+        flags=frozenset(flags),
+        session=ABSENT if session is None else session,
+    )
 
 
 def composed(root, facts, state=None):
@@ -258,7 +264,8 @@ class TestABareStatementDecidesInclusionAlone:
     def test_a_higher_bare_add_leaves_a_lower_set_variant_in_force(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: []\nwhen:\n  - flag strict: ['voice']\n  - model haiku: ['voice@terse']\n",
+            "models: ['haiku']\ndefaults: []\n"
+            "when:\n  - flag strict: ['voice']\n  - model haiku: ['voice@terse']\n",
             {"voice": None, "voice@terse": None},
         )
 
@@ -297,6 +304,7 @@ class TestAStrikeDecidesOnlyAgainstTheVariantItNames:
     def test_a_strike_leaves_the_rule_on_and_strikes_only_the_variant_it_names(self, tmp_path):
         root = build(
             tmp_path,
+            "models: ['haiku']\n"
             "defaults: ['voice@warm']\n"
             "when:\n"
             "  - model haiku: ['voice@terse']\n"
@@ -606,8 +614,8 @@ class TestCheckWarnsAboutBodySizeAndReferences:
         warnings = [w for w in check(root).warnings if w.kind == "too-many-parts"]
 
         assert [w.subject for w in warnings] == [
-            ContextSubject(Facts(None, None, "session", frozenset())),
-            ContextSubject(Facts(None, None, "delegate", frozenset())),
+            ContextSubject(Facts(UNCLAIMED, ABSENT, "session", frozenset())),
+            ContextSubject(Facts(UNCLAIMED, ABSENT, "delegate", frozenset())),
         ]
 
     def test_a_directory_with_no_manifest_draws_the_warning_for_the_every_rule_context(
@@ -620,8 +628,8 @@ class TestCheckWarnsAboutBodySizeAndReferences:
         warnings = [w for w in check(root).warnings if w.kind == "too-many-parts"]
 
         assert [w.subject for w in warnings] == [
-            ContextSubject(Facts(None, None, "session", frozenset())),
-            ContextSubject(Facts(None, None, "delegate", frozenset())),
+            ContextSubject(Facts(UNCLAIMED, ABSENT, "session", frozenset())),
+            ContextSubject(Facts(UNCLAIMED, ABSENT, "delegate", frozenset())),
         ]
 
     def test_a_directory_with_an_unparsable_manifest_draws_the_warning_for_the_every_rule_context(

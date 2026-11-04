@@ -1,22 +1,39 @@
 """The facts a context's conditions can test."""
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Literal
 
 type Kind = Literal["session", "delegate", "fork"]
+
+
+class Absent(Enum):
+    """A fact the context does not carry; every test over it evaluates unknown."""
+
+    ABSENT = "absent"
+
+
+class NoClaim(Enum):
+    """A model identifier that no declared name claims; every `model` test over it is false."""
+
+    UNCLAIMED = "unclaimed"
+
+
+ABSENT = Absent.ABSENT
+UNCLAIMED = NoClaim.UNCLAIMED
 
 
 @dataclass(frozen=True)
 class Facts:
     """What a `when` item's condition can test in one context.
 
-    `model` is the declared name that claimed the context's model identifier, and
-    None where the identifier is unclaimed or missing, so every `model` test is
-    false there. `agent` and `session` are None where the context carries no such fact.
+    `model` is the declared name that claimed the context's model identifier,
+    UNCLAIMED where no name claimed it, and ABSENT where the identifier is missing.
+    `agent` and `session` are ABSENT where the context carries no such fact.
     """
 
-    model: str | None
-    agent: str | None
+    model: str | NoClaim | Absent
+    agent: str | Absent
     kind: Kind
     flags: frozenset[str]
-    session: str | None = None
+    session: str | Absent = ABSENT

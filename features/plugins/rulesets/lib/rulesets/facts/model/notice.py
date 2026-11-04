@@ -13,7 +13,7 @@ def model_notice(fact: ModelFact) -> Notice | None:
         case Unclaimed(identifier=identifier):
             return Notice("model-unclaimed", f"no declared model name claims `{identifier}`")
         case Missing(not_a_string=None):
-            return Notice("model-missing", "no source named a model identifier")
+            return Notice("model-missing", "no model identifier was available: no source named one")
         case Missing(not_a_string=reported):
             return Notice(
                 "model-missing",

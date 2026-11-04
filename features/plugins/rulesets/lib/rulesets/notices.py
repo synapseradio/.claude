@@ -10,6 +10,7 @@ HOST_MANAGED_VARIABLE = "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST"
 
 type NoticeKind = Literal[
     "agent-absent",
+    "block-skipped",
     "fork-inherits",
     "launch-flag-undeclared",
     "model-missing",
@@ -25,6 +26,7 @@ type NoticeKind = Literal[
 
 SHOWN: frozenset[NoticeKind] = frozenset(
     {
+        "block-skipped",
         "launch-flag-undeclared",
         "model-missing",
         "model-unclaimed",
@@ -70,6 +72,16 @@ def flag_notice(name: str) -> Notice:
 
     return Notice(
         "launch-flag-undeclared", f"the launch flag `{name}` is not declared and is dropped"
+    )
+
+
+def block_skipped_notice(condition: str, models: tuple[str, ...]) -> Notice:
+    """The notice for a block whose condition names models the manifest does not declare."""
+
+    names = ", ".join(f"`{name}`" for name in models)
+    return Notice(
+        "block-skipped",
+        f"the block keyed `{condition}` is skipped: {names} is not a declared model",
     )
 
 
