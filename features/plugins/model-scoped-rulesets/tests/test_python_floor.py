@@ -5,7 +5,7 @@ The launcher accepts any interpreter from 3.12 up, so a module using newer
 syntax passes on the author's 3.14 and fails at the first hook run on a
 machine whose newest Python is 3.12, and that session starts with no rules.
 
-Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_python_floor.py`.
+Run with `python3.14 -m pytest features/plugins/model-scoped-rulesets/tests/test_python_floor.py`.
 """
 
 import ast

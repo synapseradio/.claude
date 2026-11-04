@@ -8,7 +8,7 @@ corpus code it reads, into every caller that resolves a fact. Each case imports 
 interpreter, since a module an earlier test imported stays in `sys.modules` for the rest
 of the run.
 
-Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_facts_imports.py`.
+Run with `python3.14 -m pytest features/plugins/model-scoped-rulesets/tests/test_facts_imports.py`.
 """
 
 import json

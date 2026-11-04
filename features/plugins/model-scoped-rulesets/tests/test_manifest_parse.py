@@ -6,7 +6,7 @@ declaration, `when` item, and reference arrives with its line, a file that does 
 is told apart from one that parses into the wrong shape, and a missing manifest reads as
 the default every pool rule gets. Each case writes its manifest under `tmp_path`.
 
-Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_manifest_parse.py`.
+Run with `python3.14 -m pytest features/plugins/model-scoped-rulesets/tests/test_manifest_parse.py`.
 """
 
 import pathlib

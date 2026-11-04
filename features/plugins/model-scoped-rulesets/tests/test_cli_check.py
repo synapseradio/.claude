@@ -7,7 +7,7 @@ its file and line, in the words the engine uses outward, and the exit status say
 error stands. Each case builds its rulesets directory under `tmp_path` and runs `cli.py` as a
 script, as the skill and the job do.
 
-Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_cli_check.py`.
+Run with `python3.14 -m pytest features/plugins/model-scoped-rulesets/tests/test_cli_check.py`.
 """
 
 import pathlib

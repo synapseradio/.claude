@@ -8,7 +8,7 @@ identifier. This is the harness's own order. The caller's model joins the delega
 start on `prompt_id` and agent type. Agent definitions, spawn records, and the parent's
 record sit under `tmp_path`, and the environment reaches each case as a mapping.
 
-Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_delegate_facts.py`.
+Run with `python3.14 -m pytest features/plugins/model-scoped-rulesets/tests/test_delegate_facts.py`.
 """
 
 import pathlib

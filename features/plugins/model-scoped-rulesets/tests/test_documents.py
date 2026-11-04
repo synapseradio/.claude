@@ -6,7 +6,7 @@ definition reader all open a file the same way, so a file ending its block with 
 newline, with Windows line endings, or with spaces after the fence reads as having
 frontmatter in all of them or in none. Each case builds its text inline.
 
-Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_documents.py`.
+Run with `python3.14 -m pytest features/plugins/model-scoped-rulesets/tests/test_documents.py`.
 """
 
 import pathlib
