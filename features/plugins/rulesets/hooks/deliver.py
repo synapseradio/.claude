@@ -21,17 +21,20 @@ from rulesets.delivery.fork import deliver_fork
 from rulesets.delivery.hook_output import PartOutput, hook_output
 from rulesets.delivery.later_part import deliver_later
 from rulesets.delivery.plan import Silent, new_generation, write_plan
+from rulesets.delivery.replay import deliver_replay
 from rulesets.delivery.request import (
     DeliveryStart,
     ForkStart,
     ModelSwitch,
     SessionEnd,
     SessionStart,
+    SubagentStart,
     Unreadable,
     parse_request,
 )
 from rulesets.delivery.rerun import RERUN_FLAG
 from rulesets.delivery.switch import deliver_switch
+from rulesets.delivery.unreadable import report_unreadable
 from rulesets.locations import Locations
 from rulesets.session.lifecycle import on_session_end, on_session_start
 
@@ -48,11 +51,13 @@ def main() -> int:
     try:
         raw = sys.stdin.buffer.read().decode("utf-8")
         request = parse_request(json.loads(raw))
-    except (UnicodeDecodeError, json.JSONDecodeError):
+    except UnicodeDecodeError, json.JSONDecodeError:
         raw, request = "", Unreadable("the payload is not UTF-8 JSON")
-    if isinstance(request, Unreadable):
-        return 0
     locations = Locations.from_environment(os.environ)
+    if isinstance(request, Unreadable):
+        if arguments.end or arguments.part == 1:
+            sys.stdout.write(report_unreadable(request, locations))
+        return 0
     hooks = pathlib.Path(__file__).resolve().parent
     part = 0 if arguments.end else arguments.part
     output = run_guarded(
@@ -111,7 +116,10 @@ def _first_part(
         case SessionStart():
             notices = on_session_start(request, locations)
             return deliver_first(request, locations, os.environ, slot, generation, notices)
-        case _:
+        case SubagentStart():
+            replayed = deliver_replay(request, locations, slot, generation)
+            if replayed is not None:
+                return replayed
             return deliver_first(request, locations, os.environ, slot, generation)
 
 

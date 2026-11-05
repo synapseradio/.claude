@@ -93,7 +93,11 @@ class SessionEnd:
 
 @dataclasses.dataclass(frozen=True)
 class Unreadable:
+    """A payload that is no request: why, and the session and event it still names."""
+
     reason: str
+    session_id: str | None = None
+    event: str | None = None
 
 
 type DeliveryStart = SessionStart | ModelSwitch | SubagentStart | ForkStart
@@ -107,9 +111,10 @@ def parse_request(payload: object) -> HookRequest:
     if not isinstance(payload, dict):
         return Unreadable("the payload is not a JSON object")
     session_id = _text(payload.get("session_id"))
+    event_name = _text(payload.get("hook_event_name"))
     if session_id is None:
-        return Unreadable("the payload names no session")
-    match payload.get("hook_event_name"):
+        return Unreadable("the payload names no session", event=event_name)
+    match event_name:
         case "SessionStart":
             return SessionStart(session_id, payload)
         case "SubagentStart":
@@ -121,7 +126,7 @@ def parse_request(payload: object) -> HookRequest:
         case "PostModelSwitch":
             to_model = _text(payload.get("to_model"))
             if to_model is None:
-                return Unreadable("the switch names no target model")
+                return Unreadable("the switch names no target model", session_id, event_name)
             return ModelSwitch(
                 session_id,
                 _text(payload.get("from_model")),
@@ -132,7 +137,7 @@ def parse_request(payload: object) -> HookRequest:
         case "SessionEnd":
             return SessionEnd(session_id)
         case event:
-            return Unreadable(f"no delivery answers the event {event!r}")
+            return Unreadable(f"no delivery answers the event {event!r}", session_id, event)
 
 
 def _text(value: object) -> str | None:

@@ -10,6 +10,7 @@ Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_python_floor
 
 import ast
 import pathlib
+import tomllib
 
 import pytest
 
@@ -33,3 +34,9 @@ def test_the_module_parses_at_the_floor(path):
         ast.parse(path.read_text(encoding="utf-8"), filename=str(path), feature_version=FLOOR)
     except SyntaxError as error:
         pytest.fail(f"{path.name}:{error.lineno} needs syntax newer than Python 3.14: {error.msg}")
+
+
+def test_the_lint_target_is_the_floor():
+    settings = tomllib.loads((PLUGIN_ROOT / ".ruff.toml").read_text(encoding="utf-8"))
+
+    assert settings["target-version"] == f"py{FLOOR[0]}{FLOOR[1]}"

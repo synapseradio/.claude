@@ -3,6 +3,7 @@
 import json
 import os
 import pathlib
+import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 
@@ -17,6 +18,52 @@ DECLARED = "models: ['opus', 'haiku']\n"
 
 # Variables the engine reads, which the developer's own shell may set.
 _ENGINE_PREFIXES = ("ANTHROPIC_", "CLAUDE_CODE_", "CLAUDE_CONTEXT_", "RULESETS_")
+
+
+# The payload field each event's matcher filters on.
+_MATCHED_FIELD = {
+    "SessionStart": "source",
+    "SubagentStart": "agent_type",
+    "PostModelSwitch": "to_model",
+    "SessionEnd": "reason",
+    "PreToolUse": "tool_name",
+    "InstructionsLoaded": "load_reason",
+}
+
+_EXACT_MATCHER = re.compile(r"[\w\- ,|]+")
+
+
+def matcher_admits(matcher: str | None, value: str) -> bool:
+    """Whether the harness runs a hook group whose matcher is `matcher` for an event matched on `value`.
+
+    https://code.claude.com/docs/en/hooks.md#matcher-patterns: an absent, empty, or `*` matcher
+    admits every value, a matcher of plain characters lists exact values, and any other matcher
+    is an unanchored regular expression.
+    """
+
+    if matcher in (None, "", "*"):
+        return True
+    if _EXACT_MATCHER.fullmatch(matcher):
+        return value in [alternative.strip() for alternative in re.split(r"[|,]", matcher)]
+    return re.search(matcher, value) is not None
+
+
+def select_commands(groups: list[dict], value: str) -> list[str]:
+    """The commands of the hook groups whose matcher admits `value`, in file order."""
+
+    return [
+        hook["command"]
+        for group in groups
+        if matcher_admits(group.get("matcher"), value)
+        for hook in group["hooks"]
+    ]
+
+
+def matched_value(event: str, payload: dict) -> str:
+    """The text the harness matches the event's hook groups against."""
+
+    value = payload.get(_MATCHED_FIELD[event])
+    return value if isinstance(value, str) else ""
 
 
 class Delivery:
@@ -129,7 +176,7 @@ class World:
 
         env = {**self._environ(), **(environment or {})}
         return subprocess.run(
-            ["bash", "-c", self._command("PreToolUse", 'record-spawn.py"')],
+            ["bash", "-c", self._command("PreToolUse", 'record-spawn.py"', "Agent")],
             input=stdin,
             capture_output=True,
             text=True,
@@ -175,10 +222,19 @@ class World:
             **self.environment,
         }
 
-    def _command(self, event: str, last_argument: str) -> str:
+    def commands_for(self, event: str, value: str = "") -> list[str]:
+        """The commands `hooks.json` runs for an event whose matcher field holds `value`."""
+
         groups = json.loads(HOOKS_JSON.read_text(encoding="utf-8"))["hooks"][event]
-        commands = [hook["command"] for group in groups for hook in group["hooks"]]
-        return next(c for c in commands if c.endswith(last_argument))
+        return select_commands(groups, value)
+
+    def _command(self, event: str, last_argument: str, value: str = "") -> str:
+        commands = self.commands_for(event, value)
+        found = [c for c in commands if c.endswith(last_argument)]
+        assert found, (
+            f"no {event} entry ending {last_argument!r} runs where the matcher field is {value!r}"
+        )
+        return found[0]
 
     def toggle(self, arguments: str, session_id: str = "s1") -> subprocess.CompletedProcess[str]:
         """The command the toggle skill injects, with the placeholders filled as the harness fills them."""
@@ -243,13 +299,16 @@ class World:
         return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
 
     def run_load_hook(
-        self, stdin: str, environment: dict[str, str] | None = None
+        self,
+        stdin: str,
+        environment: dict[str, str] | None = None,
+        load_reason: str = "session_start",
     ) -> subprocess.CompletedProcess[str]:
-        """The InstructionsLoaded entry, fed `stdin` as the harness feeds it."""
+        """The InstructionsLoaded entry for a load of `load_reason`, fed `stdin` as the harness feeds it."""
 
         env = {**self._environ(), **(environment or {})}
         return subprocess.run(
-            ["bash", "-c", self._command("InstructionsLoaded", 'record-load.py"')],
+            ["bash", "-c", self._command("InstructionsLoaded", 'record-load.py"', load_reason)],
             input=stdin,
             capture_output=True,
             text=True,
@@ -276,13 +335,13 @@ class World:
             "load_reason": load_reason,
             **extra,
         }
-        return self.run_load_hook(json.dumps(payload))
+        return self.run_load_hook(json.dumps(payload), load_reason=load_reason)
 
     def end_session(self, session_id: str = "s1") -> None:
         """The SessionEnd hook entry, fed the payload on stdin."""
 
         done = subprocess.run(
-            ["bash", "-c", self._command("SessionEnd", "--end")],
+            ["bash", "-c", self._command("SessionEnd", "--end", "other")],
             input=json.dumps(
                 {"session_id": session_id, "hook_event_name": "SessionEnd", "reason": "other"}
             ),
@@ -299,7 +358,7 @@ class World:
         """One hook entry of an event, fed the payload on stdin, with its exit status and stderr."""
 
         return subprocess.run(
-            ["bash", "-c", self._command(event, f"--part {part}")],
+            ["bash", "-c", self._command(event, f"--part {part}", matched_value(event, payload))],
             input=json.dumps({**payload, "hook_event_name": event}),
             capture_output=True,
             text=True,
@@ -326,12 +385,12 @@ class World:
         )
 
     def run_hook_bytes(
-        self, event: str, last_argument: str, stdin: bytes
+        self, event: str, last_argument: str, stdin: bytes, matched: str = ""
     ) -> subprocess.CompletedProcess[bytes]:
-        """One hook entry of an event, fed raw bytes on stdin."""
+        """One hook entry of an event whose matcher field holds `matched`, fed raw bytes on stdin."""
 
         return subprocess.run(
-            ["bash", "-c", self._command(event, last_argument)],
+            ["bash", "-c", self._command(event, last_argument, matched)],
             input=stdin,
             capture_output=True,
             env=self._environ(),

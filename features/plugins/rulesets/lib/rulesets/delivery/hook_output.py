@@ -7,11 +7,13 @@ import json
 from collections.abc import Mapping
 
 # A SubagentStart message lands in the subagent's own transcript and reaches no one else, so
-# that event sends none (observed on Claude Code 2.1.318).
+# that event sends none (observed on Claude Code 2.1.318). No run has observed a PostModelSwitch
+# message reaching the person, so that event sends none either, and its shown notices go to the
+# record alone until a run shows otherwise.
 MESSAGE_SHOWN: Mapping[str, bool] = {
     "SessionStart": True,
     "SubagentStart": False,
-    "PostModelSwitch": True,
+    "PostModelSwitch": False,
 }
 
 

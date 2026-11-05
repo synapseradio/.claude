@@ -75,10 +75,16 @@ def _record(
 ) -> bool:
     """Append the failed delivery's record; False where the log cannot be written."""
 
+    return append_failed(locations, _failed_record(request, notice, message_sent))
+
+
+def append_failed(locations: Locations, record: DeliveryRecord) -> bool:
+    """Append a failed delivery's record to its session's log; False where the log cannot be written."""
+
     with contextlib.suppress(OSError):
         log.append(
-            log.session_dir(locations, request.session_id) / log.DELIVERIES_FILE,
-            _failed_record(request, notice, message_sent).to_json(),
+            log.session_dir(locations, record.session_id) / log.DELIVERIES_FILE,
+            record.to_json(),
         )
         return True
     return False
@@ -100,9 +106,34 @@ def _failed_record(
             scope, kind = "delegate", "delegate"
         case ForkStart():
             scope, kind = "delegate", "fork"
-    return DeliveryRecord(
+    return failed_record(
         session_id=request.session_id,
         agent_id=request.agent_id if isinstance(request, SubagentStart | ForkStart) else None,
+        scope=scope,
+        kind=kind,
+        notice=notice,
+        message_sent=message_sent,
+        switch=SwitchLine(request.from_model, request.to_model, request.prompt_id)
+        if isinstance(request, ModelSwitch)
+        else None,
+    )
+
+
+def failed_record(
+    *,
+    session_id: str,
+    agent_id: str | None,
+    scope: Scope,
+    kind: RecordKind,
+    notice: Notice,
+    message_sent: bool,
+    switch: SwitchLine | None,
+) -> DeliveryRecord:
+    """The record of a delivery that failed before it read any fact: it carries only the notice."""
+
+    return DeliveryRecord(
+        session_id=session_id,
+        agent_id=agent_id,
         scope=scope,
         kind=kind,
         time_ns=time.time_ns(),
@@ -120,7 +151,5 @@ def _failed_record(
         left_out=(),
         notices=(notice,),
         message_sent=message_sent and notice.kind in SHOWN,
-        switch=SwitchLine(request.from_model, request.to_model, request.prompt_id)
-        if isinstance(request, ModelSwitch)
-        else None,
+        switch=switch,
     )

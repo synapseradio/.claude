@@ -18,7 +18,15 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 import yaml
-from delivery_world import DECLARED, HOOKS_JSON, OPUS, Delivery, World
+from delivery_world import (
+    DECLARED,
+    HOOKS_JSON,
+    OPUS,
+    Delivery,
+    World,
+    matcher_admits,
+    select_commands,
+)
 from launcher_stubs import launch, path_of, stub
 from transcripts import write_transcript
 
@@ -79,6 +87,85 @@ class TestEveryContextReceivesItsRulesByHook:
         assert delivery.context == "Hold every rule as mandatory.\n"
         assert definition.read_bytes() == before
 
+    def test_a_delivery_leaves_a_project_scope_agent_definition_file_byte_for_byte_as_it_was(
+        self, world
+    ):
+        world.rule("core-rules", "Hold every rule as mandatory.\n")
+        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        definition = world.project / ".claude" / "agents" / "critic.md"
+        definition.parent.mkdir(parents=True)
+        definition.write_bytes(
+            b"---\nname: critic\ndescription: a test agent\ntools: Read, Grep\n---\n"
+            b"Review the diff.\r\n\xc3\xa9"
+        )
+        before = definition.read_bytes()
+
+        delivery = world.start_delegate("critic", cwd=str(world.project))
+
+        assert delivery.context == "Hold every rule as mandatory.\n"
+        (record,) = delegate_records(world)
+        assert record["tools"]["state"] == "listed", "the delegate read the project definition"
+        assert definition.read_bytes() == before
+
+
+ALL_PARTS = [str(number) for number in range(1, 11)]
+
+
+def part_numbers(commands):
+    return [command.rsplit("--part ", 1)[1] for command in commands if "--part " in command]
+
+
+class TestTheHarnessMatchersAreHonoredByTheWorldThatRunsTheHooks:
+    @pytest.mark.parametrize(
+        ("matcher", "value", "admitted"),
+        [
+            (None, "resume", True),
+            ("", "resume", True),
+            ("*", "resume", True),
+            ("startup", "startup", True),
+            ("startup", "resume", False),
+            ("startup|resume", "resume", True),
+            ("startup, clear", "clear", True),
+            ("Edit", "NotebookEdit", False),
+            ("^Notebook", "NotebookEdit", True),
+            ("^Notebook", "Edit", False),
+        ],
+    )
+    def test_a_matcher_admits_the_values_the_hooks_documentation_gives_it(
+        self, matcher, value, admitted
+    ):
+        assert matcher_admits(matcher, value) is admitted
+
+    def test_a_group_whose_matcher_leaves_out_a_value_runs_no_command_for_it(self):
+        groups = [
+            {"matcher": "startup", "hooks": [{"command": "only-at-startup"}]},
+            {"hooks": [{"command": "always"}]},
+        ]
+
+        assert select_commands(groups, "startup") == ["only-at-startup", "always"]
+        assert select_commands(groups, "resume") == ["always"]
+
+
+class TestEveryDeliveryEntryRunsWhateverStartsTheContext:
+    @pytest.mark.parametrize("source", ["startup", "resume", "clear", "compact", "fork"])
+    def test_every_session_start_entry_runs_for_each_source(self, world, source):
+        assert part_numbers(world.commands_for("SessionStart", source)) == ALL_PARTS
+
+    @pytest.mark.parametrize(
+        "agent_type",
+        ["general-purpose", "Explore", "Plan", "fork", "critic", "plugin:reviewer", ""],
+    )
+    def test_every_subagent_start_entry_runs_for_each_agent_type(self, world, agent_type):
+        assert part_numbers(world.commands_for("SubagentStart", agent_type)) == ALL_PARTS
+
+    @pytest.mark.parametrize("target", [OPUS, "claude-haiku-4-5", "glm-5", ""])
+    def test_every_model_switch_entry_runs_for_each_target(self, world, target):
+        assert part_numbers(world.commands_for("PostModelSwitch", target)) == ALL_PARTS
+
+    @pytest.mark.parametrize("reason", ["clear", "resume", "logout", "prompt_input_exit", "other"])
+    def test_the_session_end_entry_runs_for_each_reason(self, world, reason):
+        assert [c for c in world.commands_for("SessionEnd", reason) if c.endswith("--end")]
+
 
 class TestAForkSubagentReceivesNoRulesDelivery:
     def test_a_fork_starting_under_a_parent_that_received_rules_gets_no_rule_text(self, world):
@@ -101,6 +188,10 @@ class TestAForkSubagentReceivesNoRulesDelivery:
 
         delivery = world.start_delegate("fork")
 
+        (record,) = [r for r in world.records() if r["agent_id"] == "a1"]
+        assert record["kind"] == "fork"
+        assert (record["model"]["identifier"], record["model"]["source"]) == (OPUS, "fork-parent")
+        assert record["rules"] == []
         inherited = [
             n for r in world.records() for n in r["notices"] if n["kind"] == "fork-inherits"
         ]
@@ -211,13 +302,18 @@ class TestADelegateStartThatShowsNoMessageSendsShownNoticesToTheRecordAlone:
         unreadable(world.rule("tone"))
         world.manifest(DECLARED + "defaults: ['tone', 'voice']\n")
 
+        session = world.start_session()
+
         delivery = world.start_delegate("critic")
 
         assert delivery.messages == []
-        withheld = notice_entries(world, "rule-withheld")
-        assert [n["shown"] for n in withheld] == [True]
-        assert [r["message_sent"] for r in world.records()] == [False]
         assert delivery.context == "text of voice\n"
+        (start, delegate) = world.records()
+        assert [n["shown"] for n in start["notices"] if n["kind"] == "rule-withheld"] == [True]
+        assert [n["shown"] for n in delegate["notices"] if n["kind"] == "rule-withheld"] == [True]
+        assert session.message is not None
+        assert start["message_sent"] is True, "a session start shows the notice"
+        assert delegate["message_sent"] is False, "a delegate start shows no message"
 
 
 class TestEveryPartOfOneDeliveryCarriesWhatItsFirstPartComposed:
@@ -237,6 +333,8 @@ class TestEveryPartOfOneDeliveryCarriesWhatItsFirstPartComposed:
         payload = {"session_id": "s1", "agent_id": "a1", "agent_type": "critic", "prompt_id": "p1"}
 
         first = world.run_part("SubagentStart", payload, 1)
+        world.rule("b-rule", "b-rule EDITED after the first part\n")
+        (world.rulesets / "rules" / "c-rule.md").unlink()
         write_state(Locations(world.config), "s1", SessionState(Band.ALL))
         world.environment["RULESETS_FLAGS"] = "strict"
         later = {part: world.run_part("SubagentStart", payload, part) for part in range(2, 11)}
@@ -319,6 +417,9 @@ class TestAToggleReachesOnlyDelegateDeliveriesThatBeginAfterIt:
         assert toggled.returncode == 0, toggled.stderr
         assert "text of writing-code" not in toggled.stdout
         assert world.start_delegate().context == "text of voice\n"
+        for source in ("compact", "resume"):
+            later = world.start_session(source=source)
+            assert later.context == "text of voice\ntext of writing-code\n", source
 
     def test_a_compaction_after_a_toggle_composes_from_the_launch_flags_alone(self, world):
         world.rule("core-rules")
@@ -348,6 +449,8 @@ class TestAToggleReachesOnlyDelegateDeliveriesThatBeginAfterIt:
         payload = {"session_id": "s1", "agent_id": "a1", "agent_type": "critic", "prompt_id": "p1"}
 
         first = world.run_part("SubagentStart", payload, 1)
+        world.rule("b-rule", "b-rule EDITED after the first part\n")
+        (world.rulesets / "rules" / "c-rule.md").unlink()
         assert world.toggle("none").returncode == 0
         later = {part: world.run_part("SubagentStart", payload, part) for part in range(2, 11)}
 
@@ -368,6 +471,8 @@ class TestAToggleReachesOnlyDelegateDeliveriesThatBeginAfterIt:
         assert toggled.returncode == 0, toggled.stderr
         assert "text of" not in toggled.stdout
         assert world.start_delegate().context == CORE + "text of critic-rules\n"
+        for source in ("compact", "resume"):
+            assert world.start_session(source=source).context == CORE, source
 
 
 class TestThePluginShipsAToggleSkillWithFiveActions:
@@ -403,16 +508,30 @@ class TestTheActionsAllAndNoneSetTheSessionBandsList:
 
 
 class TestTheFlagActionsCheckTheNameAgainstTheManifestsFlags:
-    def test_an_undeclared_flag_name_is_named_refused_and_writes_nothing(self, world):
+    @pytest.mark.parametrize("action", ["flag", "unflag"])
+    def test_an_undeclared_flag_name_is_named_refused_and_writes_nothing(self, world, action):
         declare_strict(world)
         before = world.start_delegate(agent_id="a0").context
 
-        toggled = world.toggle("flag stirct")
+        toggled = world.toggle(f"{action} stirct")
 
         assert toggled.returncode != 0
         assert "stirct" in toggled.stderr
         assert not world.state_file().exists()
         assert world.start_delegate(agent_id="a1").context == before == CORE
+
+    @pytest.mark.parametrize("action", ["flag", "unflag"])
+    def test_an_undeclared_flag_name_leaves_the_state_a_toggle_already_wrote_as_it_was(
+        self, world, action
+    ):
+        declare_strict(world)
+        assert world.toggle("flag strict").returncode == 0
+        written = world.state_file().read_bytes()
+
+        toggled = world.toggle(f"{action} stirct")
+
+        assert toggled.returncode != 0
+        assert world.state_file().read_bytes() == written
 
 
 class TestTheActionClearRemovesTheSessionsState:
@@ -457,8 +576,19 @@ class TestSessionStateEndsAtAClearAndAtTheSessionsEnd:
         assert world.toggle("none").returncode == 0
 
         world.end_session()
+        assert not world.state_file().exists()
         world.start_session(source="resume")
 
+        assert world.start_delegate().context == CORE
+
+    def test_a_resume_after_a_crash_that_sent_no_session_end_starts_without_toggles(self, world):
+        declare_strict(world)
+        assert world.toggle("flag strict").returncode == 0
+        assert world.state_file().exists()
+
+        world.start_session(source="resume")
+
+        assert not world.state_file().exists()
         assert world.start_delegate().context == CORE
 
 
@@ -787,9 +917,57 @@ class TestEveryHookExitsZeroOnAPayloadThatIsNotUtf8:
         ],
     )
     def test_the_hook_exits_zero_and_prints_nothing(self, world, event, last_argument):
-        result = world.run_hook_bytes(event, last_argument, NOT_UTF_8)
+        matched = "Agent" if event == "PreToolUse" else "session_start"
+        result = world.run_hook_bytes(event, last_argument, NOT_UTF_8, matched)
 
         assert (result.returncode, result.stdout) == (0, b"")
+
+
+class TestAnUnreadablePayloadLeavesATrace:
+    def test_a_start_naming_no_session_prints_the_reason_to_stderr_and_shows_the_person_a_notice(
+        self, world
+    ):
+        world.rule("voice")
+        world.manifest(DECLARED + "defaults: ['voice']\n")
+
+        result = world.run_part_process("SessionStart", {"source": "startup"}, 1)
+
+        assert result.returncode == 0
+        assert "the payload names no session" in result.stderr
+        message = json.loads(result.stdout)["systemMessage"]
+        assert "the payload names no session" in message
+        assert "additionalContext" not in result.stdout
+
+    def test_a_switch_naming_no_target_model_leaves_a_record_with_the_reason_and_delivers_nothing(
+        self, world
+    ):
+        declare_tiers(world, "opus")
+        world.start_session(model=SONNET)
+
+        result = world.run_part_process(
+            "PostModelSwitch", {"session_id": "s1", "from_model": SONNET, "prompt_id": "p1"}, 1
+        )
+
+        assert result.returncode == 0
+        assert "the switch names no target model" in result.stderr
+        assert result.stdout == ""
+        _, failed = world.records()
+        (notice,) = failed["notices"]
+        assert notice["kind"] == "delivery-failure"
+        assert "the switch names no target model" in notice["subject"]
+        assert failed["rules"] == []
+        assert counted_models(world) == [SONNET]
+
+    def test_a_payload_that_is_not_json_prints_the_reason_to_stderr_and_nothing_else(self, world):
+        result = world.run_hook_bytes("SessionStart", "--part 1", b"{not json")
+
+        assert (result.returncode, result.stdout) == (0, b"")
+        assert b"not UTF-8 JSON" in result.stderr
+
+    def test_a_later_part_prints_nothing_for_an_unreadable_payload(self, world):
+        result = world.run_part_process("SessionStart", {"source": "startup"}, 2)
+
+        assert (result.returncode, result.stdout, result.stderr) == (0, "", "")
 
 
 class TestASessionsModelFactIsRecordedAndReadBack:
@@ -868,6 +1046,34 @@ class TestADelegateReceivesAllItsRulesAtItsStart:
         assert before.context == "old voice\n"
         assert after.context == "edited voice\n"
 
+    def test_a_rule_edited_after_a_delegate_starts_reaches_the_next_delegate_and_not_the_running_one(
+        self, world
+    ):
+        three_part_pool(world)
+        payload = {"session_id": "s1", "agent_id": "a1", "agent_type": "critic", "prompt_id": "p1"}
+
+        first = world.run_part("SubagentStart", payload, 1)
+        three_part_pool(world, mark="NEW")
+        later = {part: world.run_part("SubagentStart", payload, part) for part in range(2, 11)}
+        running = Delivery({1: first, **later})
+        next_delegate = world.start_delegate(agent_id="a2")
+
+        assert [running.part_texts[part][:12] for part in (1, 2, 3)] == [
+            "a-rule OLD x",
+            "b-rule OLD x",
+            "c-rule OLD x",
+        ]
+        assert [next_delegate.part_texts[part][:12] for part in (1, 2, 3)] == [
+            "a-rule NEW x",
+            "b-rule NEW x",
+            "c-rule NEW x",
+        ]
+        (first_record, _) = delegate_records(world)
+        assert (
+            first_record["rules"][0]["digest"]
+            == hashlib.sha256(running.part_texts[1].encode()).hexdigest()
+        )
+
     def test_delegates_on_different_models_each_receive_the_composition_of_their_own_facts(
         self, world
     ):
@@ -895,9 +1101,12 @@ class TestADelegatesDeliveryWritesNoSessionFile:
         record = world.model_record()
         record_bytes = (world.config / ".tmp/rulesets-engine/models/s1.json").read_bytes()
         rulesets = tree_of(world.rulesets)
+        assert world.load(world.rulesets / "rules" / "core-rules.md").returncode == 0
+        loads = (world.record_files() / "loads.jsonl").read_bytes()
 
         delegate = world.start_delegate("quick")
 
+        assert (world.record_files() / "loads.jsonl").read_bytes() == loads
         assert session.context == "text of core-rules\n"
         assert delegate.context == "text of core-rules\ntext of haiku-rules\n"
         assert record is not None
@@ -1001,6 +1210,33 @@ class TestADeliveryFailureKeepsTheSessionRunning:
         assert "deliver.py" in delivery.message
         assert "--part 1" in delivery.message
 
+    def test_a_defect_writes_its_traceback_to_stderr_and_an_environment_failure_does_not(
+        self, world, tmp_path
+    ):
+        world.rule("voice")
+        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.state_file().parent.mkdir(parents=True)
+        world.state_file().write_text("band: sideways\n", encoding="utf-8")
+        delegate = {"session_id": "s1", "agent_id": "a1", "agent_type": "critic"}
+
+        defect = world.run_part_process("SubagentStart", delegate, 1)
+
+        assert defect.returncode == 0
+        assert "Traceback (most recent call last)" in defect.stderr
+        assert "ValueError" in defect.stderr
+        assert defect.stdout == "", "a delegate start shows no message and delivers no text"
+        assert [r["notices"][0]["kind"] for r in world.records()] == ["delivery-failure"]
+
+        not_a_directory = tmp_path / "file"
+        not_a_directory.write_text("", encoding="utf-8")
+        world.environment["CLAUDE_CONFIG_DIR"] = str(not_a_directory)
+
+        environment = world.run_part_process("SessionStart", {"session_id": "s2"}, 1)
+
+        assert environment.returncode == 0
+        assert "Traceback" not in environment.stderr
+        assert "NotADirectoryError" in environment.stderr or "Not a directory" in environment.stderr
+
 
 THREE_PARTS = ("a-rule", "b-rule", "c-rule")
 
@@ -1053,6 +1289,64 @@ class TestAFailureAfterThePlanIsWrittenDeliversNoPartAtAll:
         delivery = world.run_event("SessionStart", payload)
 
         assert sorted(delivery.part_texts) == [1, 2, 3]
+
+
+class TestAResumedDelegateReplaysTheDeliveryItFirstReceived:
+    def test_a_start_for_an_agent_id_that_already_started_carries_the_text_of_its_first_delivery(
+        self, world
+    ):
+        world.rule("core-rules")
+        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        first = world.start_delegate(agent_id="a1")
+        assert world.toggle("none").returncode == 0
+        world.rule("core-rules", "core-rules, edited\n")
+
+        resumed = world.start_delegate(agent_id="a1")
+
+        assert first.context == CORE
+        assert resumed.context == CORE
+
+    def test_every_part_of_the_first_delivery_is_replayed(self, world):
+        three_part_pool(world)
+        first = world.start_delegate(agent_id="a1")
+        three_part_pool(world, mark="NEW")
+
+        resumed = world.start_delegate(agent_id="a1")
+
+        assert sorted(first.part_texts) == [1, 2, 3]
+        assert resumed.part_texts == first.part_texts
+
+    def test_an_agent_id_that_never_started_is_composed_afresh(self, world):
+        world.rule("core-rules")
+        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.start_delegate(agent_id="a1")
+        assert world.toggle("none").returncode == 0
+
+        assert world.start_delegate(agent_id="a2").context == ""
+
+    def test_a_replay_leaves_the_one_record_of_the_delivery_it_repeats(self, world):
+        world.rule("core-rules")
+        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.start_delegate(agent_id="a1")
+
+        world.start_delegate(agent_id="a1")
+
+        assert [r["agent_id"] for r in delegate_records(world)] == ["a1"]
+        assert world.delivery_check().stdout == ""
+
+    def test_a_delegate_whose_first_delivery_failed_is_composed_afresh_when_it_starts_again(
+        self, world
+    ):
+        world.rule("core-rules")
+        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        jam_delivery_records(world)
+        failed = world.start_delegate(agent_id="a1")
+        (world.record_files() / "deliveries.jsonl").rmdir()
+
+        again = world.start_delegate(agent_id="a1")
+
+        assert failed.context == ""
+        assert again.context == CORE
 
 
 class TestAFailedDeliveryWritesItsRecord:
@@ -1318,6 +1612,20 @@ class TestASwitchThatChangesNoRuleDeliversNothing:
         assert model is not None
         assert model["identifier"] == HAIKU
 
+    def test_a_switch_whose_compositions_differ_only_in_a_variant_delivers_the_target_variant(
+        self, world
+    ):
+        world.rule("voice", "default voice\n")
+        world.rule("voice@terse", "terse voice\n")
+        world.manifest(TIERS + "defaults: ['voice']\nwhen:\n  - model haiku: ['voice@terse']\n")
+        world.start_session(model=SONNET)
+
+        delivery = world.switch_model(HAIKU, from_model=SONNET, prompt_id="p1")
+
+        assert delivery.context == "terse voice\n"
+        (record,) = switch_records(world)
+        assert [(r["rule"], r["variant"]) for r in record["rules"]] == [("voice", "terse")]
+
     def test_a_delegate_after_a_switch_that_composes_alike_reads_the_new_model_as_its_parents(
         self, world
     ):
@@ -1477,7 +1785,9 @@ class TestASessionReceivesAllItsRulesAtEveryStart:
     def test_a_ruleset_over_9000_characters_divides_into_whole_sorted_parts_one_entry_each(
         self, world
     ):
-        bodies = {name: f"{name} " + "x" * 3990 + "\n" for name in ("a-rule", "b-rule", "c-rule")}
+        # The sizes give a different split under a budget of 8,999, 9,000, and 9,001, and under
+        # `<` against `<=`: b joins a only at 9,001, and c joins b at 9,000 exactly.
+        bodies = {"a-rule": "a" * 4500, "b-rule": "b" * 4501, "c-rule": "c" * 4499}
         for name, text in bodies.items():
             world.rule(name, text)
         world.manifest(DECLARED + "defaults: ['c-rule', 'a-rule', 'b-rule']\n")
@@ -1485,8 +1795,8 @@ class TestASessionReceivesAllItsRulesAtEveryStart:
         delivery = world.start_session()
 
         assert delivery.part_texts == {
-            1: bodies["a-rule"] + bodies["b-rule"],
-            2: bodies["c-rule"],
+            1: bodies["a-rule"],
+            2: bodies["b-rule"] + bodies["c-rule"],
         }
         assert all(len(text) <= 9000 for text in delivery.part_texts.values())
         assert [delivery.outputs[part].strip() for part in range(3, 11)] == [""] * 8
@@ -1510,6 +1820,48 @@ class TestASessionReceivesAllItsRulesAtEveryStart:
         delivery = world.start_session()
 
         assert delivery.part_texts == {1: "a" * 4500, 2: "b" * 4501 + "c" * 10}
+
+
+OTHER_OPUS = "claude-opus-5-6"
+
+
+class TestASwitchIsComparedWithWhatTheConversationHolds:
+    def test_a_no_change_switch_after_a_superseded_switch_delivers_the_rules_the_conversation_lacks(
+        self, world
+    ):
+        declare_tiers(world, "opus")
+        world.start_session(model=SONNET)
+        world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
+
+        second = world.switch_model(OTHER_OPUS, from_model=OPUS, prompt_id="p1")
+
+        assert second.context == "text of core-rules\ntext of opus-rules\n"
+        assert counted_models(world) == [SONNET, OTHER_OPUS]
+
+    def test_a_no_change_switch_after_a_switch_that_counted_delivers_nothing(self, world):
+        declare_tiers(world, "opus")
+        world.start_session(model=SONNET)
+        world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
+
+        second = world.switch_model(OTHER_OPUS, from_model=OPUS, prompt_id="p2")
+
+        assert [out for out in second.outputs.values() if out] == []
+        assert counted_models(world) == [SONNET, OPUS]
+        model = world.model_record()
+        assert model is not None
+        assert model["identifier"] == OTHER_OPUS
+
+    def test_a_switch_back_to_the_rules_the_conversation_holds_replaces_the_superseded_record(
+        self, world
+    ):
+        declare_tiers(world, "opus")
+        world.start_session(model=SONNET)
+        world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
+
+        back = world.switch_model(HAIKU, from_model=OPUS, prompt_id="p1")
+
+        assert back.context == "text of core-rules\n"
+        assert counted_models(world) == [SONNET, HAIKU]
 
 
 class TestOnlyTheLastOfSeveralRapidSwitchesCountsAsDelivered:

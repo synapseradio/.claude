@@ -40,14 +40,14 @@ def new_generation() -> str:
     return uuid.uuid4().hex
 
 
-def write_plan(slot: pathlib.Path, plan: Plan) -> None:
-    """Write the plan in one atomic replace."""
+def plan_document(plan: Plan) -> dict[str, object]:
+    """The JSON form of a plan, as the slot and a delegate's stored delivery keep it."""
 
     match plan:
         case Silent(generation):
-            document: dict[str, object] = {"generation": generation}
+            return {"generation": generation}
         case Delivering(generation, parts, model):
-            document = {
+            return {
                 "generation": generation,
                 "model": dataclasses.asdict(model),
                 "parts": [
@@ -58,8 +58,29 @@ def write_plan(slot: pathlib.Path, plan: Plan) -> None:
                     for part in parts
                 ],
             }
+
+
+def plan_of(document: dict[str, object]) -> Plan:
+    """The plan a `plan_document` wrote."""
+
+    generation = document["generation"]
+    if "parts" not in document:
+        return Silent(generation)
+    return Delivering(
+        generation,
+        tuple(
+            Part(entry["index"], tuple(Body(b["rule"], b["text"]) for b in entry["bodies"]))
+            for entry in document["parts"]
+        ),
+        ModelLine.from_json(document["model"]),
+    )
+
+
+def write_plan(slot: pathlib.Path, plan: Plan) -> None:
+    """Write the plan in one atomic replace."""
+
     temporary = slot / f"{PLAN_FILE}.tmp"
-    temporary.write_text(json.dumps(document), encoding="utf-8")
+    temporary.write_text(json.dumps(plan_document(plan)), encoding="utf-8")
     temporary.replace(slot / PLAN_FILE)
 
 
@@ -110,17 +131,6 @@ def _mark_taken(slot: pathlib.Path, part: int, generation: str) -> None:
 
 def _read_plan(slot: pathlib.Path) -> Plan | None:
     try:
-        document = json.loads((slot / PLAN_FILE).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+        return plan_of(json.loads((slot / PLAN_FILE).read_text(encoding="utf-8")))
+    except OSError, json.JSONDecodeError:
         return None
-    generation = document["generation"]
-    if "parts" not in document:
-        return Silent(generation)
-    return Delivering(
-        generation,
-        tuple(
-            Part(entry["index"], tuple(Body(b["rule"], b["text"]) for b in entry["bodies"]))
-            for entry in document["parts"]
-        ),
-        ModelLine.from_json(document["model"]),
-    )

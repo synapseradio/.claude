@@ -1,4 +1,4 @@
-"""Session state across clear, fork, and end; compaction and resume leave it as it is."""
+"""Session state across clear, resume, fork, and end; compaction leaves it as it is."""
 
 from __future__ import annotations
 
@@ -11,7 +11,9 @@ from rulesets.session.state import copy_state, remove_state
 
 
 def on_session_start(request: SessionStart, locations: Locations) -> tuple[Notice, ...]:
-    """A clear ends the session's state; a fork starts with a copy of its parent's.
+    """A clear or a resume ends the session's state; a fork starts with a copy of its parent's.
+
+    A resume ends it because a session that crashed sent no SessionEnd.
 
     A fork whose parent is not found starts with empty state, and the notices say so. Every
     start records the agent the session launched under, for the switches that follow.
@@ -19,7 +21,7 @@ def on_session_start(request: SessionStart, locations: Locations) -> tuple[Notic
 
     write_launch_agent(locations, request.session_id, request.agent)
     match request.source:
-        case "clear":
+        case "clear" | "resume":
             remove_state(locations, request.session_id)
         case "fork":
             parent = (

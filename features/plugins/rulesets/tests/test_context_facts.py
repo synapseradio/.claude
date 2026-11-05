@@ -1480,4 +1480,6 @@ class TestAModelSwitchsTargetIsTheNextDeliverysIdentifier:
         (unclaimed,) = [n for n in record["notices"] if n["kind"] == "model-unclaimed"]
         assert unclaimed["shown"] is True
         assert "glm-5" in unclaimed["subject"]
-        assert "glm-5" in delivery.message
+        assert delivery.context == "text of core-rules\n"
+        assert delivery.message is None
+        assert record["message_sent"] is False

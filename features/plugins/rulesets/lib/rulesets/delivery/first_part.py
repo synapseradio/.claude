@@ -28,6 +28,7 @@ from rulesets.delivery.delivery_notices import composition_notices, directory_no
 from rulesets.delivery.hook_output import PartOutput
 from rulesets.delivery.parts import MAX_PARTS, pack_parts
 from rulesets.delivery.plan import Delivering, write_plan
+from rulesets.delivery.replay import store_delivery
 from rulesets.delivery.request import ModelSwitch, SessionStart, SubagentStart
 from rulesets.delivery.rule_bodies import bodies_of
 from rulesets.facts.context import Absent, Facts
@@ -128,7 +129,10 @@ def deliver_first(
             switch=_switch_line(request),
         ).to_json(),
     )
-    write_plan(slot, Delivering(generation, parts, model))
+    plan = Delivering(generation, parts, model)
+    if isinstance(request, SubagentStart):
+        store_delivery(locations, request, plan)
+    write_plan(slot, plan)
     first = "".join(body.text for body in parts[0].bodies) if parts else None
     return PartOutput(first, message)
 
