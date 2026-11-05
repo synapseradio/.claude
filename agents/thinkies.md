@@ -43,7 +43,7 @@ Count as the output everything the run produced for its reader: every section, l
 
 Right after the run ends or pauses, and before writing your report, call `mcp__hindsight__hindsight_ingest_document` once per run:
 
-- `title`: `thinkies:<name>: <subject in a few words> (<YYYY-MM-DD>)`, the date from `date -u +%F`, with ` (paused)` added at the end where the run paused.
+- `title`: `thinkies:<name>: <subject in a few words> (<YYYY-MM-DDTHH:MMZ>)`, the time from `date -u +%FT%H:%MZ`, with ` (paused)` added at the end where the run paused. The tool derives the document id from the title and replaces any document under the same id, so the time keeps each run its own document.
 - `content`: the full output, unshortened, opened by one line naming the skill, the subject, and any record file path. Replace each token, key, or password in it with `[redacted]`.
 
 The tool rejects the content for its size ? split it at section boundaries and ingest each part, titled with ` (part <n> of <m>)` added.
