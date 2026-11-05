@@ -7,6 +7,7 @@ import pathlib
 from collections.abc import Mapping
 
 from rulesets.delivery.request import SessionStart, SubagentStart
+from rulesets.facts.absence_notices import absent_fact_notices
 from rulesets.facts.agent_definition import Definition, find_definition
 from rulesets.facts.agent_fact import agent_fact
 from rulesets.facts.context import ABSENT, UNCLAIMED, Absent, Facts, NoClaim
@@ -17,11 +18,9 @@ from rulesets.facts.model.notice import model_notice
 from rulesets.facts.model.session import resolve_session_model
 from rulesets.facts.tools_fact import tools_fact
 from rulesets.locations import Locations
-from rulesets.notices import Notice, absent_agent_notice, absent_tools_notice, flag_notice
+from rulesets.notices import Notice, flag_notice
 from rulesets.session.state import read_state
-from rulesets.source.condition import ConditionError, fact_tests, parse_condition
 from rulesets.source.directory import Present, RulesetsDirectory
-from rulesets.source.manifest import Manifest
 
 
 @dataclasses.dataclass(frozen=True)
@@ -62,12 +61,9 @@ def resolve_context(
         notices.append(notice)
     notices.extend(flag_notice(name) for name in launched.undeclared)
     agent = agent_fact(request)
-    if isinstance(agent, Absent) and _tests(manifest, "agent"):
-        notices.append(absent_agent_notice())
     definition = _definition_of(agent, request, locations)
     tools = tools_fact(definition.front if definition else None)
-    if isinstance(tools, Absent) and _tests(manifest, "tools"):
-        notices.append(absent_tools_notice(None if isinstance(agent, Absent) else agent))
+    notices.extend(absent_fact_notices(manifest, agent, tools))
     facts = Facts(
         _model_in_facts(resolution.fact),
         agent,
@@ -98,16 +94,3 @@ def _definition_of(
         return None
     cwd = request.payload.get("cwd")
     return find_definition(agent, cwd if isinstance(cwd, str) else None, locations.config)
-
-
-def _tests(manifest: Manifest | None, fact: str) -> bool:
-    if manifest is None:
-        return False
-    for item in manifest.items:
-        try:
-            tests = fact_tests(parse_condition(item.condition))
-        except ConditionError:
-            continue
-        if any(test.fact == fact for test in tests):
-            return True
-    return False

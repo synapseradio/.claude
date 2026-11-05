@@ -9,17 +9,10 @@ from rulesets.compose.precedence import PositionBand
 from rulesets.facts.context import Facts
 from rulesets.facts.kinds import Rank, block_rank
 from rulesets.session.state import Band, SessionState
-from rulesets.source.condition import (
-    Condition,
-    ConditionError,
-    Truth,
-    evaluate,
-    fact_tests,
-    parse_condition,
-)
+from rulesets.source.condition import ConditionError, Truth, evaluate, parse_condition
 from rulesets.source.directory import Present, RulesetsDirectory
-from rulesets.source.manifest import Manifest
 from rulesets.source.reference import Reference, parse_reference
+from rulesets.source.undeclared import Undeclared, undeclared_names
 
 
 @dataclasses.dataclass(frozen=True)
@@ -31,26 +24,14 @@ class AppliedList:
 
 @dataclasses.dataclass(frozen=True)
 class SkippedBlock:
-    """A block whose condition names models the manifest does not declare; it applies nowhere."""
+    """A block whose condition names models or flags the manifest does not declare; it applies nowhere."""
 
     condition: str
-    models: tuple[str, ...]
-
-
-def undeclared_models(condition: Condition, manifest: Manifest) -> tuple[str, ...]:
-    """The models the condition tests that the manifest does not declare, once each."""
-
-    return tuple(
-        dict.fromkeys(
-            test.value
-            for test in fact_tests(condition)
-            if test.fact == "model" and test.value not in manifest.models
-        )
-    )
+    undeclared: Undeclared
 
 
 def skipped_blocks(directory: RulesetsDirectory) -> tuple[SkippedBlock, ...]:
-    """The blocks delivery skips for naming an undeclared model."""
+    """The blocks delivery skips for naming an undeclared model or flag."""
 
     if not isinstance(directory.manifest, Present):
         return ()
@@ -60,8 +41,9 @@ def skipped_blocks(directory: RulesetsDirectory) -> tuple[SkippedBlock, ...]:
             condition = parse_condition(item.condition)
         except ConditionError:
             continue
-        if names := undeclared_models(condition, directory.manifest.manifest):
-            skipped.append(SkippedBlock(item.condition, names))
+        undeclared = undeclared_names(condition, directory.manifest.manifest)
+        if undeclared.named:
+            skipped.append(SkippedBlock(item.condition, undeclared))
     return tuple(skipped)
 
 
@@ -91,7 +73,7 @@ def applying_lists(
                     condition = parse_condition(item.condition)
                 except ConditionError:
                     continue
-                if undeclared_models(condition, manifest):
+                if undeclared_names(condition, manifest).named:
                     continue
                 if evaluate(condition, facts) is Truth.TRUE:
                     applied.append(

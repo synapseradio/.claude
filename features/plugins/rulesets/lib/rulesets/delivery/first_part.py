@@ -24,6 +24,7 @@ from rulesets.delivery.plan import Plan, write_plan
 from rulesets.delivery.request import ForkStart, SessionStart, SubagentStart
 from rulesets.delivery.rule_bodies import bodies_of
 from rulesets.facts.context import AllToolsBut, Facts, ListedTools
+from rulesets.facts.model.delegate import resolve_fork_model
 from rulesets.facts.model.fact import (
     Claimed,
     FromForceLever,
@@ -45,7 +46,7 @@ from rulesets.notices import (
     withheld_notice,
 )
 from rulesets.session.state import SessionState, read_state
-from rulesets.source.directory import read_directory
+from rulesets.source.directory import Present, read_directory
 
 
 def deliver_first(
@@ -53,8 +54,12 @@ def deliver_first(
     locations: Locations,
     environ: Mapping[str, str],
     slot: pathlib.Path,
+    lifecycle_notices: tuple[Notice, ...] = (),
 ) -> PartOutput:
-    """Compose the context's rules once, write the plan, append the record, and emit part 1."""
+    """Compose the context's rules once, write the plan, append the record, and emit part 1.
+
+    `lifecycle_notices` are the notices the session's start already drew.
+    """
 
     match request:
         case ForkStart():
@@ -74,6 +79,7 @@ def deliver_first(
     write_plan(slot, Plan(parts))
 
     notices = (
+        *lifecycle_notices,
         *resolved.notices,
         *_composition_notices(composition),
         *(left_out_notice(rule) for rule in left_out),
@@ -103,9 +109,12 @@ def deliver_first(
 
 
 def _deliver_fork(request: ForkStart, locations: Locations, slot: pathlib.Path) -> PartOutput:
-    """A fork inherits its parent's rules, so it receives none and records why."""
+    """A fork inherits its parent's rules, so it receives none; its record names why and the parent's model."""
 
     write_plan(slot, Plan(()))
+    directory = read_directory(locations.rulesets)
+    models = directory.manifest.manifest.models if isinstance(directory.manifest, Present) else ()
+    fact = resolve_fork_model(request.session_id, models, locations.state)
     log.append(
         log.session_dir(locations, request.session_id) / log.DELIVERIES_FILE,
         DeliveryRecord(
@@ -114,7 +123,7 @@ def _deliver_fork(request: ForkStart, locations: Locations, slot: pathlib.Path) 
             scope="delegate",
             kind="fork",
             agent=None,
-            model=None,
+            model=_model_line(fact),
             tools=None,
             flags=(),
             rules=(),
@@ -129,7 +138,7 @@ def _deliver_fork(request: ForkStart, locations: Locations, slot: pathlib.Path) 
 
 def _composition_notices(composition: Composition) -> tuple[Notice, ...]:
     return (
-        *(block_skipped_notice(b.condition, b.models) for b in composition.skipped_blocks),
+        *(block_skipped_notice(b.condition, b.undeclared) for b in composition.skipped_blocks),
         *(reference_notice(s.text, s.line, s.name) for s in composition.skipped),
         *(withheld_notice(w.rule, w.error) for w in composition.withheld),
         *(variant_conflict_notice(c.rule, c.variant) for c in composition.conflicts),

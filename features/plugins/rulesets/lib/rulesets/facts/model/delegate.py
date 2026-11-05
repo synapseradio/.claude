@@ -11,6 +11,7 @@ from rulesets.facts.model.fact import (
     ForceLever,
     FromForceLever,
     IdentifierSource,
+    ModelFact,
     ModelResolution,
     NotAString,
 )
@@ -20,6 +21,15 @@ from rulesets.facts.model.spawn import spawn_model
 from rulesets.notices import Notice
 
 type Candidate = tuple[object, IdentifierSource]
+
+
+def resolve_fork_model(
+    session_id: str | None, models: Iterable[str], state_dir: pathlib.Path
+) -> ModelFact:
+    """A fork's model fact: the parent's recorded identifier, whatever any lever says."""
+
+    parent = read_model_record(session_id, state_dir) if session_id else None
+    return claim_model(parent, "fork-parent", models)
 
 
 def resolve_delegate_model(
@@ -48,11 +58,11 @@ def resolve_delegate_model(
     session_id = _text(payload.get("session_id"))
     agent_type = _text(payload.get("agent_type"))
     cwd = _text(payload.get("cwd"))
+    if agent_type == FORK_AGENT_TYPE:
+        return ModelResolution(resolve_fork_model(session_id, models, state_dir))
+
     parent = read_model_record(session_id, state_dir) if session_id else None
     notices: list[Notice] = []
-
-    if agent_type == FORK_AGENT_TYPE:
-        return ModelResolution(claim_model(parent, "fork-parent", models))
 
     candidate: Candidate
     lever = active_lever(env)

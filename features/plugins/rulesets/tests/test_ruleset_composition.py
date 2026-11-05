@@ -156,6 +156,7 @@ class TestEachApplyingListYieldsStatements:
     def test_adds_include_removes_exclude_and_a_variant_remove_strikes_alone(self, tmp_path):
         root = build(
             tmp_path,
+            "flags: ['strict']\n"
             "defaults: ['*', 'tone@dry']\n"
             "when:\n"
             "  - flag strict: ['voice@terse', '-writing-code', '-tone@dry']\n",
@@ -175,7 +176,7 @@ class TestTheStatementAtTheHigherPositionDecides:
     def test_a_block_that_removes_a_rule_defaults_include_leaves_it_off(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['voice']\nwhen:\n  - flag strict: ['-voice']\n",
+            "flags: ['strict']\ndefaults: ['voice']\nwhen:\n  - flag strict: ['-voice']\n",
             {"voice": None},
         )
 
@@ -185,7 +186,7 @@ class TestTheStatementAtTheHigherPositionDecides:
     def test_a_block_that_includes_a_rule_defaults_exclude_turns_it_on(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['-voice']\nwhen:\n  - flag a: ['voice']\n",
+            "flags: ['a']\ndefaults: ['-voice']\nwhen:\n  - flag a: ['voice']\n",
             {"voice": None},
         )
 
@@ -195,7 +196,7 @@ class TestTheStatementAtTheHigherPositionDecides:
     def test_the_toggle_none_keeps_a_set_flags_include_out_of_a_delegate(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: []\nwhen:\n  - flag strict: ['security-pass']\n",
+            "flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['security-pass']\n",
             {"security-pass": None},
         )
         locations = Locations(tmp_path / "config")
@@ -210,6 +211,7 @@ class TestTheStatementAtTheHigherPositionDecides:
     ):
         root = build(
             tmp_path,
+            "flags: ['a', 'b']\n"
             "rulesets:\n"
             "  review: ['voice']\n"
             "defaults: []\n"
@@ -226,6 +228,7 @@ class TestTheStatementAtTheHigherPositionDecides:
     ):
         root = build(
             tmp_path,
+            "flags: ['a', 'b']\n"
             "rulesets:\n"
             "  review: ['voice']\n"
             "defaults: []\n"
@@ -240,7 +243,7 @@ class TestTheStatementAtTheHigherPositionDecides:
     def test_an_exclude_beats_an_include_of_the_same_rule_at_one_rank(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: []\nwhen:\n  - flag a: ['voice']\n  - flag b: ['-voice']\n",
+            "flags: ['a', 'b']\ndefaults: []\nwhen:\n  - flag a: ['voice']\n  - flag b: ['-voice']\n",
             {"voice": None},
         )
         critic = context(agent="critic", kind="delegate", flags=["a", "b"])
@@ -252,7 +255,7 @@ class TestTheStatementAtTheHigherPositionDecides:
     ):
         root = build(
             tmp_path,
-            "defaults: []\nwhen:\n  - flag b: ['-voice']\n  - flag a: ['voice']\n",
+            "flags: ['a', 'b']\ndefaults: []\nwhen:\n  - flag b: ['-voice']\n  - flag a: ['voice']\n",
             {"voice": None},
         )
         critic = context(agent="critic", kind="delegate", flags=["a", "b"])
@@ -264,7 +267,7 @@ class TestABareStatementDecidesInclusionAlone:
     def test_a_higher_bare_add_leaves_a_lower_set_variant_in_force(self, tmp_path):
         root = build(
             tmp_path,
-            "models: ['haiku']\ndefaults: []\n"
+            "models: ['haiku']\nflags: ['strict']\ndefaults: []\n"
             "when:\n  - flag strict: ['voice']\n  - model haiku: ['voice@terse']\n",
             {"voice": None, "voice@terse": None},
         )
@@ -278,6 +281,7 @@ class TestAStrikeDecidesOnlyAgainstTheVariantItNames:
     ):
         root = build(
             tmp_path,
+            "flags: ['voice-terse']\n"
             "defaults: []\n"
             "when:\n"
             "  - flag voice-terse: ['voice@terse']\n"
@@ -292,6 +296,8 @@ class TestAStrikeDecidesOnlyAgainstTheVariantItNames:
     def test_a_strike_at_a_lower_position_than_the_set_leaves_the_set_standing(self, tmp_path):
         root = build(
             tmp_path,
+            "models: ['haiku']\n"
+            "flags: ['voice-terse']\n"
             "defaults: []\n"
             "when:\n"
             "  - model haiku: ['-voice@terse']\n"
@@ -305,6 +311,7 @@ class TestAStrikeDecidesOnlyAgainstTheVariantItNames:
         root = build(
             tmp_path,
             "models: ['haiku']\n"
+            "flags: ['strict']\n"
             "defaults: ['voice@warm']\n"
             "when:\n"
             "  - model haiku: ['voice@terse']\n"
@@ -318,7 +325,7 @@ class TestAStrikeDecidesOnlyAgainstTheVariantItNames:
     def test_a_strike_below_a_set_leaves_the_rule_on_and_the_set_variant_standing(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['voice', '-voice@terse']\nwhen:\n  - flag a: ['voice@terse']\n",
+            "flags: ['a']\ndefaults: ['voice', '-voice@terse']\nwhen:\n  - flag a: ['voice@terse']\n",
             {"voice": None, "voice@terse": None},
         )
 
@@ -500,7 +507,7 @@ class TestRulesWithNoSetStatementTakeTheirDefaultForm:
     def test_a_rule_no_applying_statement_includes_stays_off(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['sorting']\nwhen:\n  - flag strict: ['voice']\n",
+            "flags: ['strict']\ndefaults: ['sorting']\nwhen:\n  - flag strict: ['voice']\n",
             {"voice": None, "sorting": None},
         )
 

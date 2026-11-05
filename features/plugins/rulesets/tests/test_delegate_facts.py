@@ -19,6 +19,7 @@ import pytest
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
+from rulesets.facts.agent_definition import find_definition  # noqa: E402
 from rulesets.facts.model import fact as model_fact  # noqa: E402
 
 OPUS = "claude-opus-5-5"
@@ -173,6 +174,17 @@ class TestTheCallersModelJoinsByPromptAndAgentType:
         assert resolution.fact == model_fact.Claimed("haiku", "haiku", "per-spawn")
         assert resolution.notices == ()
 
+    def test_a_second_record_of_the_spawn_naming_no_model_leaves_the_named_model_standing(
+        self, scene
+    ):
+        scene.caller_names("haiku")
+        scene.caller_names(None)
+
+        resolution = scene.resolve()
+
+        assert resolution.fact == model_fact.Claimed("haiku", "haiku", "per-spawn")
+        assert resolution.notices == ()
+
     def test_two_spawns_of_one_type_naming_different_models_leave_the_source_yielding(self, scene):
         scene.parent_runs(OPUS)
         scene.caller_names("opus")
@@ -286,11 +298,6 @@ class TestTheDefinitionIsLocatedByAgentType:
 
         assert model_fact.claimed_name(scene.fact("scout")) == "haiku"
 
-    def test_a_definition_naming_nothing_registers_under_its_filename(self, scene):
-        scene.user_agent("scout.md", "model: haiku")
-
-        assert model_fact.claimed_name(scene.fact("scout")) == "haiku"
-
     def test_a_definition_in_a_subfolder_of_the_user_directory_is_found(self, scene):
         scene.user_agent("team/scout.md", "name: scout\nmodel: haiku")
 
@@ -346,11 +353,44 @@ class TestTheDefinitionIsLocatedByAgentType:
 
         assert model_fact.claimed_name(scene.fact("scout")) == "haiku"
 
-    def test_a_file_whose_frontmatter_does_not_parse_registers_nothing(self, scene):
-        scene.parent_runs(OPUS)
-        scene.user_agent("scout.md", "name: [unclosed")
+    @pytest.mark.parametrize(
+        "front",
+        [
+            "name: [unclosed",
+            "model: opus\ndescription: finds the guide",
+            "name: claude-code-guide\nmodel: opus",
+            "name: claude-code-guide\nmodel: opus\ndescription: ",
+        ],
+        ids=["unparseable", "no-name", "no-description", "empty-description"],
+    )
+    def test_a_user_file_the_harness_skips_registers_nothing(self, scene, front):
+        scene.define(scene.config / "agents", "claude-code-guide.md", front)
 
-        assert scene.fact("scout").source == "parent-record"
+        assert scene.fact("claude-code-guide") == model_fact.Claimed(
+            "haiku", "haiku", "built-in-pin"
+        )
+
+    @pytest.mark.parametrize("name", ["-claude-code-guide", "x" * 257])
+    def test_a_file_with_an_invalid_name_registers_under_no_name(self, scene, name):
+        scene.define(scene.config / "agents", "guide.md", f"name: {name}\ndescription: d")
+
+        assert find_definition(name, None, scene.config) is None
+
+    def test_a_file_with_no_frontmatter_registers_no_agent(self, scene):
+        (scene.config / "agents").mkdir(parents=True)
+        (scene.config / "agents" / "README.md").write_text("# Agents\n\nNotes.\n", encoding="utf-8")
+        (scene.config / "agents" / "claude-code-guide.md").write_text("Notes.\n", encoding="utf-8")
+
+        assert find_definition("README", None, scene.config) is None
+        assert scene.fact("claude-code-guide").source == "built-in-pin"
+
+    def test_a_plugin_file_whose_frontmatter_does_not_parse_still_loads_under_its_filename(
+        self, scene
+    ):
+        install = scene.install_plugin()
+        scene.define(install / "agents", "rev.md", "name: [unclosed")
+
+        assert find_definition("kit:rev", None, scene.config) is not None
 
     def test_a_plugin_scoped_type_reads_that_plugins_agents_directory(self, scene):
         install = scene.install_plugin()

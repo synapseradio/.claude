@@ -475,6 +475,38 @@ class TestAForkedSessionStartsWithACopyOfItsParentsSessionState:
         assert world.start_delegate(session_id="s2").context == CORE
 
 
+class TestAForkedSessionWhoseParentIsNotFound:
+    def test_it_starts_with_empty_state_and_a_shown_notice_says_its_parents_state_was_not_found(
+        self, world
+    ):
+        declare_strict(world)
+        assert world.toggle("flag strict", session_id="s1").returncode == 0
+        write_transcript(world.transcripts, "s1")
+        lonely = write_transcript(world.transcripts, "s2")
+
+        delivery = world.start_session(session_id="s2", source="fork", transcript_path=str(lonely))
+
+        assert delivery.message is not None
+        assert "parent" in delivery.message
+        assert "not found" in delivery.message
+        (shown,) = [
+            n for n in world.records("s2")[0]["notices"] if n["kind"] == "fork-parent-missing"
+        ]
+        assert shown["shown"] is True
+        assert world.start_delegate(session_id="s2").context == CORE
+
+    def test_a_fork_whose_parent_is_found_draws_no_such_notice(self, world):
+        declare_strict(world)
+        assert world.toggle("flag strict", session_id="s1").returncode == 0
+
+        delivery = fork_session(world)
+
+        assert delivery.message is None
+        assert [
+            n for n in world.records("s2")[0]["notices"] if n["kind"] == "fork-parent-missing"
+        ] == []
+
+
 class TestDeliveryRunsOnPython314OrLater:
     def test_the_launcher_refuses_python_3_13_with_a_message_to_the_person_and_exit_zero(
         self, tmp_path

@@ -21,7 +21,7 @@ from rulesets.check.findings import (
     RulesetSubject,
     Subject,
 )
-from rulesets.source.condition import ConditionError, fact_tests, parse_condition
+from rulesets.source.condition import ConditionError, parse_condition
 from rulesets.source.expansion import (
     Conflict,
     Expander,
@@ -47,6 +47,7 @@ from rulesets.source.manifest import (
     WrongRulesetShape,
 )
 from rulesets.source.reference import EntryForm
+from rulesets.source.undeclared import undeclared_names
 
 _KEY_SHAPES: dict[ManifestKey, str] = {
     "models": "must be a list of model names",
@@ -186,17 +187,9 @@ def _condition_errors(manifest: Manifest) -> Iterator[CheckError]:
                 f"the condition `{item.condition}` is invalid: {error.reason}",
             )
             continue
-        tests = fact_tests(condition)
-        undeclared = dict.fromkeys(
-            test.value
-            for test in tests
-            if test.fact == "model" and test.value not in manifest.models
-        )
-        unflagged = dict.fromkeys(
-            test.value for test in tests if test.fact == "flag" and test.value not in manifest.flags
-        )
-        if unflagged:
-            names = ", ".join(f"`{name}`" for name in unflagged)
+        undeclared = undeclared_names(condition, manifest)
+        if undeclared.flags:
+            names = ", ".join(f"`{name}`" for name in undeclared.flags)
             yield CheckError(
                 "unknown-flag",
                 subject,
@@ -204,14 +197,14 @@ def _condition_errors(manifest: Manifest) -> Iterator[CheckError]:
                 item.line,
                 f"the condition `{item.condition}` names {names}, which `flags` does not declare",
             )
-        if undeclared:
-            names = ", ".join(f"`{name}`" for name in undeclared)
+        if undeclared.models:
+            names = ", ".join(f"`{name}`" for name in undeclared.models)
             yield CheckError(
                 "unknown-model",
                 subject,
                 manifest.path,
                 item.line,
-                f"the condition names {names}, which `models` does not declare",
+                f"the condition `{item.condition}` names {names}, which `models` does not declare",
             )
 
 

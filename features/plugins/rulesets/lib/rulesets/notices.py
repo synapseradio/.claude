@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from rulesets.facts.environment import flag_is_set
+from rulesets.source.undeclared import Undeclared
 
 HOST_MANAGED_VARIABLE = "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST"
 
@@ -12,6 +13,7 @@ type NoticeKind = Literal[
     "agent-absent",
     "block-skipped",
     "fork-inherits",
+    "fork-parent-missing",
     "launch-flag-undeclared",
     "model-missing",
     "model-unclaimed",
@@ -28,6 +30,7 @@ type NoticeKind = Literal[
 SHOWN: frozenset[NoticeKind] = frozenset(
     {
         "block-skipped",
+        "fork-parent-missing",
         "launch-flag-undeclared",
         "model-missing",
         "model-unclaimed",
@@ -72,13 +75,15 @@ def flag_notice(name: str) -> Notice:
     )
 
 
-def block_skipped_notice(condition: str, models: tuple[str, ...]) -> Notice:
-    """The notice for a block whose condition names models the manifest does not declare."""
+def block_skipped_notice(condition: str, undeclared: Undeclared) -> Notice:
+    """The notice for a block whose condition names models or flags the manifest does not declare."""
 
-    names = ", ".join(f"`{name}`" for name in models)
+    reasons = [
+        *(f"`{name}` is not a declared model" for name in undeclared.models),
+        *(f"`{name}` is not a declared flag" for name in undeclared.flags),
+    ]
     return Notice(
-        "block-skipped",
-        f"the block keyed `{condition}` is skipped: {names} is not a declared model",
+        "block-skipped", f"the block keyed `{condition}` is skipped: {'; '.join(reasons)}"
     )
 
 
@@ -109,6 +114,13 @@ def absent_tools_notice(agent: str | None) -> Notice:
     return Notice(
         "tools-absent",
         f"the tools fact is absent: no definition file registers its agent type `{agent}`",
+    )
+
+
+def fork_parent_missing_notice() -> Notice:
+    return Notice(
+        "fork-parent-missing",
+        "the parent of this forked session was not found: it starts with empty session state",
     )
 
 

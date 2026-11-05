@@ -45,9 +45,10 @@ def main() -> int:
     slot = ordering.slot_dir(locations.state, raw)
     ordering.register(slot, part)
     if part == 1:
-        if isinstance(request, SessionStart):
-            on_session_start(request, locations)
-        output = deliver_first(request, locations, os.environ, slot)
+        lifecycle_notices = (
+            on_session_start(request, locations) if isinstance(request, SessionStart) else ()
+        )
+        output = deliver_first(request, locations, os.environ, slot, lifecycle_notices)
     else:
         output = deliver_later(slot, part)
     sys.stdout.write(hook_output(request.event, output))

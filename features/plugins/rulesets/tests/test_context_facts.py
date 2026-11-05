@@ -44,7 +44,10 @@ def pin_agent_model(world, agent, model):
 
     path = world.config / "agents" / f"{agent}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(f"---\nname: {agent}\nmodel: {model}\n---\nbody\n", encoding="utf-8")
+    path.write_text(
+        f"---\nname: {agent}\ndescription: a test agent\nmodel: {model}\n---\nbody\n",
+        encoding="utf-8",
+    )
 
 
 def received(delivery, stems):
@@ -112,6 +115,27 @@ class TestFactKindsAndTheirRanks:
         delivery = world.start_delegate("critic")
 
         assert received(delivery, ["security-pass"]) == ["security-pass"]
+
+    @pytest.mark.parametrize("test", ["kind delegate", "tools Bash"])
+    def test_a_kind_or_tools_block_stands_above_model_and_below_flag(self, world, test):
+        stems = ["alpha", "beta"]
+        for stem in stems:
+            world.rule(stem)
+        world.manifest(
+            "models: ['haiku']\n"
+            "flags: ['strict']\n"
+            "defaults: []\n"
+            "when:\n"
+            "  - flag strict: ['beta']\n"
+            f"  - {test}: ['alpha', '-beta']\n"
+            "  - model haiku: ['-alpha']\n"
+        )
+        define_agent(world, "critic", "model: haiku\ntools: Bash")
+        world.environment["RULESETS_FLAGS"] = "strict"
+
+        delivery = world.start_delegate("critic")
+
+        assert received(delivery, stems) == stems
 
 
 class TestEachFactKindHasADefinedValue:
@@ -216,7 +240,8 @@ class TestAConditionNamingAnUndeclaredModelOrFlagIsSkippedWithANotice:
         delivery = world.start_session(model="claude-haiku-4-5")
 
         assert "error" in report
-        assert "hiaku" in report
+        assert "`model hiaku`" in report
+        assert "`hiaku`" in report
         assert received(delivery, ["voice", "tone"]) == ["voice"]
         assert delivery.message is not None
         assert "hiaku" in delivery.message
@@ -226,6 +251,18 @@ class TestAConditionNamingAnUndeclaredModelOrFlagIsSkippedWithANotice:
     def test_an_agent_nobody_declares_is_no_check_error(self, world):
         world.rule("voice")
         world.manifest("when:\n  - agent eval-runner: ['voice']\n")
+
+        assert check(world.rulesets).errors == ()
+
+    def test_a_tool_and_a_session_identifier_nobody_declares_are_no_check_error(self, world):
+        world.rule("voice")
+        world.manifest(
+            "defaults: []\n"
+            "when:\n"
+            "  - tools Bash: ['voice']\n"
+            "  - session abc123: ['voice']\n"
+            "  - not tools Edit and session xyz789: ['voice']\n"
+        )
 
         assert check(world.rulesets).errors == ()
 
@@ -500,6 +537,15 @@ class TestAHostManagedProviderDrawsAnUnshownNoticeForADisregardedVariable:
         assert shown_notices(record) == []
         assert delivery.message is None
 
+    def test_an_anthropic_model_with_no_host_variable_draws_no_notice(self, world):
+        model_world(world, ANTHROPIC_MODEL="claude-opus-5-5")
+
+        delivery = world.start_session(model=None)
+
+        (record,) = world.records()
+        assert [n for n in record["notices"] if n["kind"] == "provider-variable"] == []
+        assert delivery.message is None
+
 
 class TestTheAgentFactComesFromTheHarnessesAgentType:
     def test_a_delegates_agent_fact_follows_its_start_payload(self, world):
@@ -546,6 +592,17 @@ class TestAPlainMainSessionCarriesNoAgentFact:
         assert absent["shown"] is False
         assert "agent fact is absent" in absent["subject"]
 
+    def test_a_manifest_that_tests_no_agent_draws_no_absence_notice(self, world):
+        world.rule("voice")
+        world.manifest(
+            "defaults: ['voice']\nflags: ['strict']\nwhen:\n  - flag strict: ['voice']\n"
+        )
+
+        world.start_session()
+
+        (record,) = world.records()
+        assert [n for n in record["notices"] if n["kind"] == "agent-absent"] == []
+
 
 class TestATestOverAnAbsentFactEvaluatesUnknown:
     def test_a_negation_over_an_absent_fact_stays_unknown_and_the_block_does_not_apply(self, world):
@@ -588,7 +645,9 @@ def define_agent(world, name, front):
 
     path = world.config / "agents" / f"{name}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(f"---\nname: {name}\n{front}\n---\nbody\n", encoding="utf-8")
+    path.write_text(
+        f"---\nname: {name}\ndescription: a test agent\n{front}\n---\nbody\n", encoding="utf-8"
+    )
 
 
 def tools_of(world, name):
@@ -653,6 +712,15 @@ class TestAContextWithNoAgentDefinitionHasNoToolsFact:
         (absent,) = [n for n in record["notices"] if n["kind"] == "tools-absent"]
         assert absent["shown"] is False
         assert "no definition file registers its agent type" in absent["subject"]
+
+    def test_a_manifest_that_tests_no_tools_draws_no_absence_notice(self, world):
+        world.rule("voice")
+        world.manifest("defaults: ['voice']\nwhen:\n  - agent critic: ['voice']\n")
+
+        world.start_delegate("critic")
+
+        (record,) = world.records()
+        assert [n for n in record["notices"] if n["kind"] == "tools-absent"] == []
 
     def test_the_tools_test_over_an_absent_fact_and_its_negation_are_unknown(self):
         assert truth_of_tools("tools Bash", ABSENT) == "UNKNOWN"
@@ -911,7 +979,8 @@ class TestAProjectDefinitionWinsOverTheHomeOne:
         agents = project / ".claude" / "agents"
         agents.mkdir(parents=True)
         (agents / "scout.md").write_text(
-            "---\nname: scout\nmodel: haiku\ntools: Read\n---\nbody\n", encoding="utf-8"
+            "---\nname: scout\ndescription: a test agent\nmodel: haiku\ntools: Read\n---\nbody\n",
+            encoding="utf-8",
         )
 
         delivery = world.start_delegate("scout", cwd=str(project))
@@ -991,6 +1060,22 @@ class TestAForkTakesTheParentsIdentifierUnderTheForceVariable:
         )
 
         assert resolution.fact == model_fact.Claimed("opus", OPUS_IDENTIFIER, "fork-parent")
+
+
+class TestAForksRecordNamesTheParentsIdentifierUnderTheForceVariable:
+    def test_the_record_names_the_parents_identifier_and_the_fork_receives_no_rule_text(
+        self, world
+    ):
+        model_world(world, **{FORCE: "1", DEFAULT_VARIABLE: HAIKU_IDENTIFIER})
+        parent_runs(world, OPUS_IDENTIFIER)
+
+        delivery = world.start_delegate("fork")
+
+        assert delivery.context == ""
+        (record,) = delegate_records(world)
+        assert record["kind"] == "fork"
+        assert model_of(record) == (OPUS_IDENTIFIER, "fork-parent")
+        assert record["model"]["name"] == "opus"
 
 
 class TestTheCoordinatorLeverGivesADelegateTheParentsModelFact:
@@ -1129,6 +1214,38 @@ class TestAFlagNobodyDeclares:
         assert "error" in report
         assert "flag stirct" in report
         assert "`stirct`" in report
+
+    def test_delivery_skips_the_block_with_a_shown_notice_and_delivers_the_rest(self, world):
+        world.rule("voice")
+        world.rule("tone")
+        world.manifest(
+            "flags: ['strict']\ndefaults: ['tone']\nwhen:\n  - not flag stirct: ['voice']\n"
+        )
+
+        delivery = world.start_session()
+
+        assert received(delivery, ["voice", "tone"]) == ["tone"]
+        assert delivery.message is not None
+        assert "`not flag stirct`" in delivery.message
+        assert "`stirct`" in delivery.message
+        (record,) = world.records()
+        assert record["withheld"] == []
+        (skipped,) = [n for n in record["notices"] if n["kind"] == "block-skipped"]
+        assert skipped["shown"] is True
+
+    def test_a_flag_a_toggle_sets_without_a_declaration_gives_its_block_to_no_delegate(self, world):
+        world.rule("voice")
+        world.rule("tone")
+        world.manifest("flags: ['strict']\ndefaults: ['tone']\nwhen:\n  - flag ghost: ['voice']\n")
+        world.toggle_flags({"ghost": "set"})
+
+        delivery = world.start_delegate()
+
+        assert received(delivery, ["voice", "tone"]) == ["tone"]
+        (record,) = world.records()
+        assert [n["kind"] for n in record["notices"] if n["kind"] == "block-skipped"] == [
+            "block-skipped"
+        ]
 
 
 class TestALaunchFlagNobodyDeclares:

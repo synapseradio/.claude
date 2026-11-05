@@ -48,11 +48,29 @@ class Scene:
         path.write_text(f"---\n{front}\n---\nbody\n", encoding="utf-8")
         return path
 
+    @staticmethod
+    def registered(filename, front):
+        """The frontmatter lines with the `name` and `description` the harness requires of a file.
+
+        A line the caller wrote stands; the file stem names an agent that names none.
+        """
+
+        lines = front.splitlines()
+        if not any(line.startswith("name:") for line in lines):
+            lines.insert(0, f"name: {pathlib.PurePath(filename).stem}")
+        if not any(line.startswith("description:") for line in lines):
+            lines.append("description: a test agent")
+        return "\n".join(lines)
+
     def user_agent(self, filename, front):
-        return self.define(self.config / "agents", filename, front)
+        return self.define(self.config / "agents", filename, self.registered(filename, front))
 
     def project_agent(self, filename, front, *, under=None):
-        return self.define((under or self.project) / ".claude" / "agents", filename, front)
+        return self.define(
+            (under or self.project) / ".claude" / "agents",
+            filename,
+            self.registered(filename, front),
+        )
 
     def install_plugin(self, key="kit@market"):
         install = self.config.parent / "installs" / key

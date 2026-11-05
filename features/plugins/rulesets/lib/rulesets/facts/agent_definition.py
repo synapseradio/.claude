@@ -36,30 +36,37 @@ def find_definition(
     A plugin-scoped type, `plugin:name` or `plugin:subfolder:name`, reads that plugin's
     `agents/` directory. Any other type takes the first definition found in the project
     directories from `cwd` up to the repository root, then in `config_dir/agents`.
-    Scopes follow https://code.claude.com/docs/en/sub-agents.md#choose-the-subagent-scope.
+    Scopes follow https://code.claude.com/docs/en/sub-agents.md#choose-the-subagent-scope;
+    which files register follows
+    https://code.claude.com/docs/en/sub-agents.md#subagent-files-claude-code-skips.
     """
 
     if ":" in agent_type:
         plugin, *subfolders, name = agent_type.split(":")
         for install in _plugin_install_paths(plugin, config_dir):
             directory = install.joinpath("agents", *subfolders)
-            definition = _named_definition(list(directory.glob("*.md")), name)
+            definition = _named_definition(list(directory.glob("*.md")), name, in_plugin=True)
             if definition is not None:
                 return definition
         return None
     directories = [*(_project_agent_dirs(cwd) if cwd else []), config_dir / "agents"]
     for directory in directories:
-        definition = _named_definition(list(directory.rglob("*.md")), agent_type)
+        definition = _named_definition(list(directory.rglob("*.md")), agent_type, in_plugin=False)
         if definition is not None:
             return definition
     return None
 
 
-def _frontmatter(path: pathlib.Path) -> Frontmatter:
+_MAX_NAME_LENGTH = 256
+
+
+def _frontmatter(path: pathlib.Path) -> Frontmatter | None:
+    """The frontmatter of a file, `{}` where it has none, None where it cannot be read or parsed."""
+
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
-        return {}
+        return None
     split = split_frontmatter(text)
     if split is None:
         return {}
@@ -67,20 +74,45 @@ def _frontmatter(path: pathlib.Path) -> Frontmatter:
     try:
         front = yaml.safe_load(block)
     except yaml.YAMLError:
-        return {}
+        return None
     return front if isinstance(front, dict) else {}
 
 
-def _named_definition(paths: list[pathlib.Path], name: str) -> Definition | None:
-    """The first definition registered as `name`.
+def _registered_name(
+    path: pathlib.Path, front: Frontmatter | None, *, in_plugin: bool
+) -> str | None:
+    """The name a file registers under, or None where the harness skips the file.
 
-    A definition registers under its `name` field, or under its filename where it has none.
+    A project, user, or managed file registers under its `name` alone, and only when the name
+    is valid and a `description` accompanies it. A plugin file registers under its `name`, or
+    under its filename where it has none or its frontmatter does not parse.
     """
+
+    if in_plugin:
+        name = (front or {}).get("name")
+        return name if isinstance(name, str) and name else path.stem
+    if front is None:
+        return None
+    name = front.get("name")
+    if not isinstance(name, str) or not name:
+        return None
+    if name.startswith("-") or ":" in name or len(name) > _MAX_NAME_LENGTH:
+        return None
+    description = front.get("description")
+    if not isinstance(description, str) or not description.strip():
+        return None
+    return name
+
+
+def _named_definition(
+    paths: list[pathlib.Path], name: str, *, in_plugin: bool
+) -> Definition | None:
+    """The first definition the harness registers as `name`."""
 
     for path in sorted(paths):
         front = _frontmatter(path)
-        if (front.get("name") or path.stem) == name:
-            return Definition(path, front)
+        if _registered_name(path, front, in_plugin=in_plugin) == name:
+            return Definition(path, front or {})
     return None
 
 
