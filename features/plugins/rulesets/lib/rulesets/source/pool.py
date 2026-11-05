@@ -15,25 +15,16 @@ from collections.abc import Mapping
 import yaml
 
 from rulesets.documents import split_frontmatter
+from rulesets.source.marker import Marker, read_marker
 from rulesets.source.text_file import UnreadableFile, read_text_file
 
 _POOL_DIRECTORY = "rules"
 REFERENCES_DIRECTORY = "references"
-_RENDER_DIRECTORY = "-render"
-
-_MARKER = re.compile(r"<!-- rule: (?P<rule>[^\s@]+)(?: variant: (?P<variant>\S+))? -->")
+RENDER_DIRECTORY = "-render"
 
 _REFERENCE_CITATION = re.compile(
     rf"`(?P<path>~/[^`\s]+|/[^`\s/]+/[^`\s]+|{REFERENCES_DIRECTORY}/[^`\s]+)`"
 )
-
-
-@dataclasses.dataclass(frozen=True)
-class Marker:
-    """What a body's first line says it is: a rule's default form, or one of its variants."""
-
-    rule: str
-    variant: str | None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -133,13 +124,6 @@ def _line_of(text: str, index: int) -> int:
     return text.count("\n", 0, index) + 1
 
 
-def _parse_marker(line: str) -> Marker | None:
-    found = _MARKER.fullmatch(line.rstrip())
-    if found is None:
-        return None
-    return Marker(rule=found["rule"], variant=found["variant"])
-
-
 def _frontmatter(text: str) -> Frontmatter | None:
     split = split_frontmatter(text)
     if split is None:
@@ -172,7 +156,7 @@ def _read_file(path: pathlib.Path, rule: str, variant: str | None) -> PoolFile:
     except UnreadableFile as failure:
         return PoolFile(path, rule, variant, "", None, None, (), 0, failure.cause)
     first_line, newline, _ = text.partition("\n")
-    marker = _parse_marker(first_line)
+    marker = read_marker(first_line)
     return PoolFile(
         path=path,
         rule=rule,
@@ -198,7 +182,7 @@ def read_pool(root: pathlib.Path) -> Pool:
         entry
         for entry in (sorted(root.iterdir()) if root.is_dir() else ())
         if entry.is_dir()
-        and entry.name not in (_POOL_DIRECTORY, REFERENCES_DIRECTORY, _RENDER_DIRECTORY)
+        and entry.name not in (_POOL_DIRECTORY, REFERENCES_DIRECTORY, RENDER_DIRECTORY)
     ]
     defaults: dict[str, PoolFile] = {}
     variants: dict[str, dict[str, PoolFile]] = {}

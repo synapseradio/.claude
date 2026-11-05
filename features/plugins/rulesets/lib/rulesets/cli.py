@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Command line for the rulesets engine: `check`, `explain`, `toggle`, `delivery-check`, `load-check`, and `deliveries`.
+"""Command line for the rulesets engine: `check`, `explain`, `eject`, `render`, `toggle`, `delivery-check`, `load-check`, and `deliveries`.
 
 This module parses arguments, prints, and sets the exit status. Every finding comes from
 `rulesets.check.run`, and every line's wording from `rulesets.check.report_format`. An explanation comes from `rulesets.explain`. A toggle's
 change comes from `rulesets.session.toggle`, a delivery difference from
-`rulesets.audit.delivery_check`, a still auto-loading file from `rulesets.audit.load_check`, and a
-delivery line from `rulesets.audit.deliveries`.
+`rulesets.audit.delivery_check`, a still auto-loading file from `rulesets.audit.load_check`, a
+delivery line from `rulesets.audit.deliveries`, ejected files from `rulesets.eject`, and a render
+from `rulesets.render`.
 """
 
 import argparse
@@ -20,9 +21,14 @@ from rulesets.audit.delivery_check import delivery_check
 from rulesets.audit.load_check import load_check
 from rulesets.check.report_format import report_lines
 from rulesets.check.run import check
+from rulesets.compose.composition import compose
+from rulesets.eject import eject
 from rulesets.explain import UnknownRule, explain, format_explanation
 from rulesets.facts.named_context import named_context
 from rulesets.locations import Locations
+from rulesets.render.context_render import render_context
+from rulesets.render.tree import render_tree
+from rulesets.render.tree_writer import Fresh, Stale, check_tree, write_tree
 from rulesets.session.state import Band, SessionState, read_state, remove_state, write_state
 from rulesets.session.toggle import (
     Clear,
@@ -33,7 +39,8 @@ from rulesets.session.toggle import (
     UnsetFlag,
     apply_toggle,
 )
-from rulesets.source.directory import Present, read_directory
+from rulesets.source.directory import Present, RulesetsDirectory, read_directory
+from rulesets.source.pool import RENDER_DIRECTORY
 
 _USAGE_ERROR = 2
 
@@ -92,6 +99,35 @@ def _build_parser() -> argparse.ArgumentParser:
         "deliveries", help="print one line for each delivery that reached a context"
     )
     listing.add_argument("--session", required=True, help="the session whose deliveries are listed")
+    ejecting = commands.add_parser(
+        "eject", help="write the base context as one plain file per rule"
+    )
+    ejecting.add_argument("--out", required=True, type=pathlib.Path, help="the output directory")
+    ejecting.add_argument(
+        "--root", type=pathlib.Path, help="the rulesets directory; the configured one by default"
+    )
+    rendering = commands.add_parser(
+        "render",
+        help="write the composed text one named context receives to --out, or, with no --out, "
+        "the render tree",
+    )
+    mode = rendering.add_mutually_exclusive_group()
+    mode.add_argument("--out", type=pathlib.Path, help="the file one context's render goes to")
+    mode.add_argument(
+        "--check",
+        action="store_true",
+        help="write nothing; exit 1 where the render tree on disk differs from what render writes",
+    )
+    rendering.add_argument("--model", help="the model identifier or declared name of the context")
+    rendering.add_argument("--agent", help="the agent type of the context")
+    rendering.add_argument(
+        "--kind", choices=["session", "delegate", "fork"], help="the context kind"
+    )
+    rendering.add_argument("--tools", action="append", default=[], help="a tool the context holds")
+    rendering.add_argument("--flag", action="append", default=[], help="a flag the context holds")
+    rendering.add_argument(
+        "--root", type=pathlib.Path, help="the rulesets directory; the configured one by default"
+    )
     toggling = commands.add_parser(
         "toggle", help="change what the delegates this session starts from now on receive"
     )
@@ -157,6 +193,57 @@ def _explain(arguments: argparse.Namespace) -> int:
             return 0
 
 
+def _existing_root(root: pathlib.Path | None) -> pathlib.Path | None:
+    """The rulesets directory `root` names, or the configured one; None, after saying so, where none stands."""
+
+    chosen = root or Locations.from_environment(os.environ).rulesets
+    if chosen.is_dir():
+        return chosen
+    print(f"cli.py: no rulesets directory at {chosen}", file=sys.stderr)
+    return None
+
+
+def _eject(arguments: argparse.Namespace) -> int:
+    root = _existing_root(arguments.root)
+    if root is None:
+        return _USAGE_ERROR
+    for line in eject(read_directory(root), arguments.out).lines():
+        print(line)
+    return 0
+
+
+def _render_tree(directory: RulesetsDirectory, check_only: bool) -> int:
+    folder = directory.root / RENDER_DIRECTORY
+    tree = render_tree(directory)
+    if not check_only:
+        write_tree(folder, tree)
+        return 0
+    match check_tree(folder, tree):
+        case Stale(differing):
+            for name in differing:
+                print(f"{folder / name}: differs from what render writes")
+            return 1
+        case Fresh():
+            return 0
+
+
+def _render(arguments: argparse.Namespace) -> int:
+    root = _existing_root(arguments.root)
+    if root is None:
+        return _USAGE_ERROR
+    directory = read_directory(root)
+    if arguments.out is None:
+        return _render_tree(directory, arguments.check)
+    manifest = directory.manifest.manifest if isinstance(directory.manifest, Present) else None
+    facts = named_context(
+        arguments.model, arguments.agent, arguments.kind, arguments.tools, arguments.flag, manifest
+    )
+    composition = compose(directory, facts, SessionState())
+    text = render_context(composition, directory.pool)
+    arguments.out.write_bytes(text.encode("utf-8"))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     arguments = parser.parse_args(argv)
@@ -171,6 +258,10 @@ def main(argv: list[str] | None = None) -> int:
         return status
     if arguments.command == "explain":
         return _explain(arguments)
+    if arguments.command == "eject":
+        return _eject(arguments)
+    if arguments.command == "render":
+        return _render(arguments)
     if arguments.command == "delivery-check":
         locations = Locations.from_environment(os.environ)
         root = arguments.root or locations.rulesets

@@ -308,6 +308,35 @@ class TestOneRulesetsDirectorySitsAtAFixedPathAtUserScope:
         assert {p: p.read_bytes() for p in harness_rules.rglob("*") if p.is_file()} == before
         assert sorted(p.name for p in harness_rules.iterdir()) == ["testing.md"]
 
+    def test_rule_files_another_plugin_placed_in_the_personal_rules_folder_stay_uncomposed_and_unchanged(
+        self, world, tmp_path
+    ):
+        world.rule("user-rule")
+        world.manifest(MODELS + "defaults: ['*']\n")
+        shipped = world.config / "rules"
+        shipped.mkdir()
+        (shipped / "shipped-rule.md").write_bytes(b"shipped by a plugin\r\n\xc3\xa9")
+        (shipped / "second-rule.md").write_text("second\n", encoding="utf-8")
+        before = {p: p.read_bytes() for p in shipped.rglob("*") if p.is_file()}
+        context = tmp_path / "context.md"
+
+        session = world.start_session()
+        delegate = world.start_delegate("critic")
+        report = check(world.rulesets)
+        assert main(["render", "--root", str(world.rulesets), "--out", str(context)]) == 0
+        assert main(["render", "--root", str(world.rulesets)]) == 0
+
+        assert [session.context, delegate.context] == ["text of user-rule\n"] * 2
+        assert report.errors == ()
+        assert (
+            context.read_text(encoding="utf-8") == "<!-- rule: user-rule -->\ntext of user-rule\n"
+        )
+        rendered = [p.read_bytes() for p in (world.rulesets / "-render").iterdir()]
+        assert rendered
+        assert not any(b"shipped" in text or b"second" in text for text in rendered)
+        assert {p: p.read_bytes() for p in shipped.rglob("*") if p.is_file()} == before
+        assert sorted(p.name for p in shipped.iterdir()) == ["second-rule.md", "shipped-rule.md"]
+
 
 class TestTheDirectoryAndSessionStateStandInTwoBands:
     def test_the_toggle_all_overrides_a_blocks_exclude_for_a_haiku_delegate(self, world):
