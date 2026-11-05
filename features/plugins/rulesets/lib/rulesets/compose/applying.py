@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Sequence
 
+from rulesets.compose.origin import BlockOrigin, DefaultsOrigin, Origin, SessionBandOrigin
 from rulesets.compose.precedence import PositionBand
 from rulesets.facts.context import Facts
 from rulesets.facts.kinds import Rank, block_rank
@@ -20,6 +21,7 @@ class AppliedList:
     band: PositionBand
     rank: Rank
     references: Sequence[Reference]
+    origin: Origin
 
 
 @dataclasses.dataclass(frozen=True)
@@ -67,6 +69,7 @@ def applying_lists(
                     PositionBand.DIRECTORY,
                     Rank.NONE,
                     manifest.defaults.references if manifest.defaults else (),
+                    DefaultsOrigin(),
                 )
             ]
             for item in manifest.items:
@@ -78,15 +81,26 @@ def applying_lists(
                     continue
                 if evaluate(condition, facts) is Truth.TRUE:
                     applied.append(
-                        AppliedList(PositionBand.DIRECTORY, block_rank(condition), item.references)
+                        AppliedList(
+                            PositionBand.DIRECTORY,
+                            block_rank(condition),
+                            item.references,
+                            BlockOrigin(item.condition),
+                        )
                     )
         case _:
-            applied = [AppliedList(PositionBand.DIRECTORY, Rank.NONE, (_SPREAD_ALL,))]
+            applied = [
+                AppliedList(PositionBand.DIRECTORY, Rank.NONE, (_SPREAD_ALL,), DefaultsOrigin())
+            ]
     match state.band:
         case Band.ALL:
-            applied.append(AppliedList(PositionBand.SESSION, Rank.NONE, (_SPREAD_ALL,)))
+            applied.append(
+                AppliedList(PositionBand.SESSION, Rank.NONE, (_SPREAD_ALL,), SessionBandOrigin())
+            )
         case Band.NONE:
-            applied.append(AppliedList(PositionBand.SESSION, Rank.NONE, (_REMOVE_ALL,)))
+            applied.append(
+                AppliedList(PositionBand.SESSION, Rank.NONE, (_REMOVE_ALL,), SessionBandOrigin())
+            )
         case None:
             pass
     return tuple(applied)

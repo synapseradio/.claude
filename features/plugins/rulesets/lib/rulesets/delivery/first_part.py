@@ -102,7 +102,7 @@ def deliver_first(
             session_id=request.session_id,
             agent_id=request.agent_id if isinstance(request, SubagentStart) else None,
             scope=scope,
-            kind=resolved.facts.kind,
+            kind=resolved.kind,
             time_ns=time.time_ns(),
             agent=agent_line(resolved.facts.agent, absent_agent_notice().subject),
             model=model,

@@ -51,15 +51,27 @@ class Composition:
     skipped_blocks: tuple[SkippedBlock, ...] = ()
 
 
-def compose(directory: RulesetsDirectory, facts: Facts, state: SessionState) -> Composition:
-    """Compose the rules `facts` receives from the directory, with the session band in `state`."""
-
+def _expander(directory: RulesetsDirectory) -> Expander:
     match directory.manifest:
         case Present(manifest):
             lists = manifest.spreadable()
         case _:
             lists = {}
-    expander = Expander(lists, directory.pool.variants_by_rule())
+    return Expander(lists, directory.pool.variants_by_rule())
+
+
+def context_statements(
+    directory: RulesetsDirectory, facts: Facts, state: SessionState
+) -> tuple[Statement, ...]:
+    """Every statement the applying lists of a context make, about every rule."""
+
+    return statements(applying_lists(directory, facts, state), _expander(directory))
+
+
+def compose(directory: RulesetsDirectory, facts: Facts, state: SessionState) -> Composition:
+    """Compose the rules `facts` receives from the directory, with the session band in `state`."""
+
+    expander = _expander(directory)
     applied = applying_lists(directory, facts, state)
     made = statements(applied, expander)
     barred = withheld(directory.pool)

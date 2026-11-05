@@ -49,12 +49,12 @@ class Facts:
 
     `model` is the declared name that claimed the context's model identifier,
     UNCLAIMED where no name claimed it, and ABSENT where the identifier is missing.
-    `agent`, `tools`, and `session` are ABSENT where the context carries no such fact.
+    `agent`, `kind`, `tools`, and `session` are ABSENT where the context carries no such fact.
     """
 
     model: str | NoClaim | Absent
     agent: str | Absent
-    kind: Kind
+    kind: Kind | Absent
     flags: frozenset[str]
     session: str | Absent = ABSENT
     tools: ListedTools | AllToolsBut | Absent = ABSENT

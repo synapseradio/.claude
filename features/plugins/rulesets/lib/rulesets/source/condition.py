@@ -207,7 +207,7 @@ def evaluate(condition: Condition, facts: Facts) -> Truth:
             case FactTest("agent", name):
                 return _known_equal(facts.agent, name)
             case FactTest("kind", name):
-                return Truth.of(facts.kind == name)
+                return _known_equal(facts.kind, name)
             case FactTest("tools", name):
                 match facts.tools:
                     case Absent():

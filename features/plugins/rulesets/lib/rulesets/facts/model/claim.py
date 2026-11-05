@@ -26,13 +26,13 @@ def claim_model(identifier: object, source: IdentifierSource, models: Iterable[s
         case _:
             return Missing(NotAString(identifier, source))
 
-    name = _claiming_name(identifier, frozenset(models))
+    name = claiming_name(identifier, frozenset(models))
     if name is None:
         return Unclaimed(identifier, source)
     return Claimed(name, identifier, source)
 
 
-def _claiming_name(identifier: str, names: frozenset[str]) -> str | None:
+def claiming_name(identifier: str, names: frozenset[str]) -> str | None:
     """The longest declared name that claims `identifier`, or None."""
 
     if identifier in names:

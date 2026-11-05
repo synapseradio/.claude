@@ -8,6 +8,7 @@ from __future__ import annotations
 import dataclasses
 import enum
 
+from rulesets.compose.origin import Origin
 from rulesets.facts.kinds import Rank
 from rulesets.source.reference import Reference, RuleTarget
 
@@ -68,14 +69,21 @@ class Statement:
     says: Says
     position: Position
     source: Reference
+    origin: Origin
 
 
+@dataclasses.dataclass(frozen=True)
 class Included:
-    pass
+    """The rule is on; `winner` is the add that decided it."""
+
+    winner: Statement
 
 
+@dataclasses.dataclass(frozen=True)
 class Excluded:
-    pass
+    """The rule is off; `winner` is the remove that decided it."""
+
+    winner: Statement
 
 
 class Unreached:
@@ -85,18 +93,29 @@ class Unreached:
 type Inclusion = Included | Excluded | Unreached
 
 
+def _by_strength(statement: Statement) -> tuple[Position, bool]:
+    return statement.position, isinstance(statement.says, Removes)
+
+
+def inclusion_statements(statements: tuple[Statement, ...]) -> tuple[Statement, ...]:
+    """The adds and removes about a rule, from the weakest to the strongest, ties in written order."""
+
+    return tuple(
+        sorted(
+            (s for s in statements if isinstance(s.says, Adds | Removes)),
+            key=_by_strength,
+        )
+    )
+
+
 def inclusion(statements: tuple[Statement, ...]) -> Inclusion:
     """The highest position decides, and an exclude beats an include at one position."""
 
-    deciding = [
-        (statement.position, isinstance(statement.says, Removes))
-        for statement in statements
-        if isinstance(statement.says, Adds | Removes)
-    ]
+    deciding = inclusion_statements(statements)
     if not deciding:
         return Unreached()
-    _, excludes = max(deciding)
-    return Excluded() if excludes else Included()
+    winner = deciding[-1]
+    return Excluded(winner) if isinstance(winner.says, Removes) else Included(winner)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -110,10 +129,12 @@ class VariantConflict:
 
 @dataclasses.dataclass(frozen=True)
 class VariantOutcome:
-    """The variant a rule takes (None: the default form), and the conflict delivery fell back from."""
+    """The variant a rule takes (None: the default form), the add that set it, and the conflict
+    delivery fell back from."""
 
     variant: str | None
     conflict: VariantConflict | None
+    winner: Statement | None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -177,5 +198,5 @@ def variant(statements: tuple[Statement, ...]) -> VariantOutcome:
         if len(layer.variants) > 1:
             found = found or _conflict(statements[0].rule, layer)
         elif layer.variants:
-            return VariantOutcome(next(iter(layer.variants)), found)
-    return VariantOutcome(None, found)
+            return VariantOutcome(next(iter(layer.variants)), found, layer.sets[-1])
+    return VariantOutcome(None, found, None)

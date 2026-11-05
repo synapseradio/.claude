@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Command line for the rulesets engine: `check`, `toggle`, `delivery-check`, `load-check`, and `deliveries`.
+"""Command line for the rulesets engine: `check`, `explain`, `toggle`, `delivery-check`, `load-check`, and `deliveries`.
 
 This module parses arguments, prints, and sets the exit status. Every finding comes from
-`rulesets.check.run`, and every line's wording from `rulesets.check.report_format`. A toggle's
+`rulesets.check.run`, and every line's wording from `rulesets.check.report_format`. An explanation comes from `rulesets.explain`. A toggle's
 change comes from `rulesets.session.toggle`, a delivery difference from
 `rulesets.audit.delivery_check`, a still auto-loading file from `rulesets.audit.load_check`, and a
 delivery line from `rulesets.audit.deliveries`.
@@ -20,6 +20,8 @@ from rulesets.audit.delivery_check import delivery_check
 from rulesets.audit.load_check import load_check
 from rulesets.check.report_format import report_lines
 from rulesets.check.run import check
+from rulesets.explain import UnknownRule, explain, format_explanation
+from rulesets.facts.named_context import named_context
 from rulesets.locations import Locations
 from rulesets.session.state import Band, SessionState, read_state, remove_state, write_state
 from rulesets.session.toggle import (
@@ -54,6 +56,20 @@ def _build_parser() -> argparse.ArgumentParser:
         help="print every error and warning of a rulesets directory; exit 1 only on an error",
     )
     checking.add_argument("--root", required=True, type=pathlib.Path, help="the rulesets directory")
+    explaining = commands.add_parser(
+        "explain", help="print which manifest lines decided one rule in one named context"
+    )
+    explaining.add_argument("rule", help="the rule to trace")
+    explaining.add_argument("--model", help="the model identifier or declared name of the context")
+    explaining.add_argument("--agent", help="the agent type of the context")
+    explaining.add_argument(
+        "--kind", choices=["session", "delegate", "fork"], help="the context kind"
+    )
+    explaining.add_argument("--tools", action="append", default=[], help="a tool the context holds")
+    explaining.add_argument("--flag", action="append", default=[], help="a flag the context holds")
+    explaining.add_argument(
+        "--root", type=pathlib.Path, help="the rulesets directory; the configured one by default"
+    )
     auditing = commands.add_parser(
         "delivery-check",
         help="recompose each counted delivery of a session and print one line per difference",
@@ -124,6 +140,23 @@ def _toggle(session: str, action: ToggleAction) -> int:
     return 0
 
 
+def _explain(arguments: argparse.Namespace) -> int:
+    root = arguments.root or Locations.from_environment(os.environ).rulesets
+    directory = read_directory(root)
+    manifest = directory.manifest.manifest if isinstance(directory.manifest, Present) else None
+    facts = named_context(
+        arguments.model, arguments.agent, arguments.kind, arguments.tools, arguments.flag, manifest
+    )
+    match explain(directory, arguments.rule, facts):
+        case UnknownRule(rule):
+            print(f"cli.py: the pool holds no rule `{rule}`", file=sys.stderr)
+            return 1
+        case explanation:
+            for line in format_explanation(explanation):
+                print(line)
+            return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     arguments = parser.parse_args(argv)
@@ -136,6 +169,8 @@ def main(argv: list[str] | None = None) -> int:
             effect = _EFFECTS[arguments.action].format(name=arguments.name)
             print(f"Delegates started from now on {effect}.")
         return status
+    if arguments.command == "explain":
+        return _explain(arguments)
     if arguments.command == "delivery-check":
         locations = Locations.from_environment(os.environ)
         root = arguments.root or locations.rulesets

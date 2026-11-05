@@ -10,7 +10,7 @@ from rulesets.delivery.request import ModelSwitch, SessionStart, SubagentStart
 from rulesets.facts.absence_notices import absent_fact_notices
 from rulesets.facts.agent_definition import Definition, find_definition
 from rulesets.facts.agent_fact import agent_fact
-from rulesets.facts.context import ABSENT, UNCLAIMED, Absent, Facts, NoClaim
+from rulesets.facts.context import ABSENT, UNCLAIMED, Absent, Facts, Kind, NoClaim
 from rulesets.facts.flags import FlagFact, delegate_flags, launch_flags, session_flags
 from rulesets.facts.model.delegate import resolve_delegate_model
 from rulesets.facts.model.fact import Claimed, Missing, ModelFact, Unclaimed
@@ -32,6 +32,7 @@ class ResolvedContext:
     notices: tuple[Notice, ...]
     flags: tuple[FlagFact, ...]
     tools_source: pathlib.Path | None
+    kind: Kind
 
 
 def resolve_context(
@@ -77,7 +78,7 @@ def resolve_context(
         tools,
     )
     return ResolvedContext(
-        facts, resolution.fact, tuple(notices), flags, definition.path if definition else None
+        facts, resolution.fact, tuple(notices), flags, definition.path if definition else None, kind
     )
 
 

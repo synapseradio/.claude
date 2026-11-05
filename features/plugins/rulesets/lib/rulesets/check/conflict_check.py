@@ -8,6 +8,7 @@ import pathlib
 
 from rulesets.check.findings import CheckError, ReferencesSubject, ReferenceSubject
 from rulesets.compose.applying import AppliedList
+from rulesets.compose.origin import BlockOrigin
 from rulesets.compose.precedence import (
     Adds,
     PositionBand,
@@ -85,7 +86,9 @@ def _block(item: WhenItem, expander: Expander) -> _Block | None:
         condition = parse_condition(item.condition)
     except ConditionError:
         return None
-    applied = AppliedList(PositionBand.DIRECTORY, block_rank(condition), item.references)
+    applied = AppliedList(
+        PositionBand.DIRECTORY, block_rank(condition), item.references, BlockOrigin(item.condition)
+    )
     return _Block(condition, statements((applied,), expander))
 
 

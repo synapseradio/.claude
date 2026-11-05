@@ -18,9 +18,11 @@ def statements(applied: tuple[AppliedList, ...], expander: Expander) -> tuple[St
         expansion = expander.expand(applying.references)
         for entry in expansion.entries:
             where = position(applying.band, applying.rank, entry.source)
-            made.append(Statement(entry.rule, Adds(entry.variant), where, entry.source))
+            made.append(
+                Statement(entry.rule, Adds(entry.variant), where, entry.source, applying.origin)
+            )
         for removal in expansion.removals:
             where = position(applying.band, applying.rank, removal.source)
             says = Removes() if removal.variant is None else Strikes(removal.variant)
-            made.append(Statement(removal.rule, says, where, removal.source))
+            made.append(Statement(removal.rule, says, where, removal.source, applying.origin))
     return tuple(made)

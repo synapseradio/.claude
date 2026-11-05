@@ -50,7 +50,7 @@ def _describe_subject(subject: Subject) -> str:
             named = [
                 *([f"model {facts.model}"] if isinstance(facts.model, str) else []),
                 *([f"agent {facts.agent}"] if isinstance(facts.agent, str) else []),
-                f"kind {facts.kind}",
+                *([f"kind {facts.kind}"] if isinstance(facts.kind, str) else []),
                 *(f"flag {flag}" for flag in sorted(facts.flags)),
             ]
             return "context " + ", ".join(named)
