@@ -191,7 +191,24 @@ class World:
     ) -> subprocess.CompletedProcess[str]:
         """The `delivery-check` subcommand, run through the launcher as the skill runs it."""
 
-        arguments = ["delivery-check", "--session", session_id]
+        return self._audit_command("delivery-check", session_id, root)
+
+    def load_check(
+        self, session_id: str = "s1", root: pathlib.Path | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        """The `load-check` subcommand, run through the launcher."""
+
+        return self._audit_command("load-check", session_id, root)
+
+    def deliveries(self, session_id: str = "s1") -> subprocess.CompletedProcess[str]:
+        """The `deliveries` subcommand, run through the launcher."""
+
+        return self._audit_command("deliveries", session_id, None)
+
+    def _audit_command(
+        self, subcommand: str, session_id: str, root: pathlib.Path | None
+    ) -> subprocess.CompletedProcess[str]:
+        arguments = [subcommand, "--session", session_id]
         if root is not None:
             arguments += ["--root", str(root)]
         return subprocess.run(
@@ -201,6 +218,54 @@ class World:
             env=self._environ(),
             check=False,
         )
+
+    @property
+    def project(self) -> pathlib.Path:
+        """The project directory beside the configuration directory."""
+
+        return self.config.parent / "project"
+
+    def load_records(self, session_id: str = "s1") -> list[dict]:
+        path = self.record_files(session_id) / "loads.jsonl"
+        if not path.is_file():
+            return []
+        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+
+    def run_load_hook(
+        self, stdin: str, environment: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        """The InstructionsLoaded entry, fed `stdin` as the harness feeds it."""
+
+        env = {**self._environ(), **(environment or {})}
+        return subprocess.run(
+            ["bash", "-c", self._command("InstructionsLoaded", 'record-load.py"')],
+            input=stdin,
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+        )
+
+    def load(
+        self,
+        file_path: pathlib.Path | str,
+        load_reason: str = "session_start",
+        session_id: str = "s1",
+        **extra,
+    ) -> subprocess.CompletedProcess[str]:
+        """The harness loading an instruction file, as the InstructionsLoaded payload shows it."""
+
+        payload = {
+            "session_id": session_id,
+            "transcript_path": str(self.transcripts / f"{session_id}.jsonl"),
+            "cwd": str(self.project),
+            "hook_event_name": "InstructionsLoaded",
+            "file_path": str(file_path),
+            "memory_type": "Project",
+            "load_reason": load_reason,
+            **extra,
+        }
+        return self.run_load_hook(json.dumps(payload))
 
     def end_session(self, session_id: str = "s1") -> None:
         """The SessionEnd hook entry, fed the payload on stdin."""

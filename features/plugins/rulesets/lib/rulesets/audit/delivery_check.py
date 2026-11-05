@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import dataclasses
 import pathlib
-from collections.abc import Callable, Mapping
 
 from rulesets.audit import log
 from rulesets.audit.counted import counted
@@ -17,7 +16,6 @@ from rulesets.audit.delivery_record import (
     digest_of_text,
 )
 from rulesets.audit.emitted_record import EmittedRecord
-from rulesets.audit.json_fields import UnreadableRecord
 from rulesets.compose.composition import Composition, compose
 from rulesets.delivery.parts import MAX_PARTS, pack_parts
 from rulesets.delivery.rule_bodies import bodies_of
@@ -71,26 +69,12 @@ def delivery_check(
 
 def _deliveries(locations: Locations, session_id: str) -> tuple[DeliveryRecord, ...]:
     path = log.session_dir(locations, session_id) / log.DELIVERIES_FILE
-    return tuple(_parsed(DeliveryRecord.from_json, log.read(path)))
+    return tuple(log.read_as(path, DeliveryRecord.from_json))
 
 
 def _emitted(locations: Locations, session_id: str) -> tuple[EmittedRecord, ...]:
     files = sorted(log.session_dir(locations, session_id).glob(log.EMITTED_PATTERN))
-    return tuple(r for file in files for r in _parsed(EmittedRecord.from_json, log.read(file)))
-
-
-def _parsed[Record](
-    parse: Callable[[Mapping[str, object]], Record], documents: list[dict[str, object]]
-) -> list[Record]:
-    """The records `parse` reads from the documents; one it cannot read is not a record of this kind."""
-
-    records: list[Record] = []
-    for document in documents:
-        try:
-            records.append(parse(document))
-        except UnreadableRecord:
-            continue
-    return records
+    return tuple(r for file in files for r in log.read_as(file, EmittedRecord.from_json))
 
 
 def _facts_of(record: DeliveryRecord) -> Facts:

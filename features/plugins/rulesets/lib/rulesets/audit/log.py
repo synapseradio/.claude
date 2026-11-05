@@ -5,11 +5,14 @@ from __future__ import annotations
 import json
 import pathlib
 import shutil
+from collections.abc import Callable, Mapping
 
 from rulesets import spawn_log
+from rulesets.audit.json_fields import UnreadableRecord
 from rulesets.locations import Locations
 
 DELIVERIES_FILE = "deliveries.jsonl"
+LOADS_FILE = "loads.jsonl"
 EMITTED_PATTERN = "emitted-*.jsonl"
 
 
@@ -49,6 +52,20 @@ def read(path: pathlib.Path) -> list[dict[str, object]]:
         if isinstance(parsed, dict):
             found.append(parsed)
     return found
+
+
+def read_as[Record](
+    path: pathlib.Path, parse: Callable[[Mapping[str, object]], Record]
+) -> list[Record]:
+    """The records `parse` reads from a file's lines; a line it cannot read is not a record of this kind."""
+
+    records: list[Record] = []
+    for document in read(path):
+        try:
+            records.append(parse(document))
+        except UnreadableRecord:
+            continue
+    return records
 
 
 def prune(locations: Locations, older_than: float) -> tuple[str, ...]:

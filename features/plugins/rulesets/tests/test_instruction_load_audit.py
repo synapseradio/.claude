@@ -17,7 +17,7 @@ import shutil
 import sys
 
 import pytest
-from delivery_world import DECLARED, HAIKU, OPUS, World
+from delivery_world import DECLARED, HAIKU, HOOKS_JSON, OPUS, World
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
@@ -89,8 +89,42 @@ class TestCheckingOneSessionAmongMany:
         assert (with_a.stdout, with_a.returncode) == (without_a.stdout, without_a.returncode)
         assert with_a.returncode != 0
 
+    def test_a_corrupt_record_in_another_sessions_loads_changes_neither_output_nor_status_of_the_load_check(
+        self, world
+    ):
+        world.rule("sorting")
+        a_path = world.project / "a" / "sorting.md"
+        b_path = world.project / "b" / "sorting.md"
+        world.load(a_path, session_id="A")
+        world.load(b_path, session_id="B")
+        with (world.record_files("A") / "loads.jsonl").open("a", encoding="utf-8") as handle:
+            handle.write("{this is not a record\n")
+
+        with_a = world.load_check("B")
+        shutil.rmtree(world.record_files("A"))
+        without_a = world.load_check("B")
+
+        assert lines_of(with_a) == [f"still auto-loading: {b_path} (reason session_start)"]
+        assert (with_a.stdout, with_a.returncode) == (without_a.stdout, without_a.returncode)
+        assert with_a.returncode != 0
+
 
 class TestPruningASessionsRecords:
+    def test_removing_a_sessions_directory_leaves_the_other_sessions_load_check_unchanged(
+        self, world
+    ):
+        world.rule("sorting")
+        b_path = world.project / "b" / "sorting.md"
+        world.load(world.project / "a" / "sorting.md", session_id="A")
+        world.load(b_path, session_id="B")
+        before = world.load_check("B")
+
+        shutil.rmtree(world.record_files("A"))
+        after = world.load_check("B")
+
+        assert lines_of(before) == [f"still auto-loading: {b_path} (reason session_start)"]
+        assert (after.stdout, after.returncode) == (before.stdout, before.returncode)
+
     def test_removing_a_sessions_directory_leaves_the_other_sessions_check_unchanged(self, world):
         declare_core_and_sorting(world)
         world.start_session(session_id="A")
@@ -592,3 +626,273 @@ class TestTheDeliveryCheckConfirmsEveryLaterPart:
         result = world.delivery_check()
 
         assert (result.stdout, result.returncode) == ("", 0)
+
+
+def still_loading(path, reason):
+    return f"still auto-loading: {path} (reason {reason})"
+
+
+def tree_snapshot(*roots):
+    """Every file under the roots with its bytes, and every directory, for comparing before and after."""
+
+    return {
+        path: None if path.is_dir() else path.read_bytes()
+        for root in roots
+        for path in sorted(root.rglob("*"))
+    }
+
+
+class TestTheInstructionsLoadedHookRecordsWhatTheHarnessLoaded:
+    def test_the_hook_is_wired_on_instructions_loaded_with_one_entry_and_no_matcher(self):
+        groups = json.loads(HOOKS_JSON.read_text(encoding="utf-8"))["hooks"]["InstructionsLoaded"]
+
+        assert [("matcher" in group, len(group["hooks"])) for group in groups] == [(False, 1)]
+
+    def test_the_hook_records_the_loaded_file_and_the_reason_for_its_session_and_prints_nothing(
+        self, world
+    ):
+        loaded = world.project / "CLAUDE.md"
+
+        result = world.load(loaded, "nested_traversal", session_id="s7", trigger_file_path="x.ts")
+
+        assert (result.returncode, result.stdout) == (0, "")
+        assert [
+            (r["session_id"], r["file_path"], r["load_reason"]) for r in world.load_records("s7")
+        ] == [("s7", str(loaded), "nested_traversal")]
+        assert world.load_records("s1") == []
+
+    @pytest.mark.parametrize(
+        "stdin",
+        [
+            "not json",
+            "[]",
+            "{}",
+            '{"session_id": "s1"}',
+            '{"session_id": "s1", "file_path": 5, "load_reason": "session_start"}',
+            '{"session_id": "s1", "file_path": "/a/CLAUDE.md"}',
+            '{"file_path": "/a/CLAUDE.md", "load_reason": "session_start"}',
+        ],
+    )
+    def test_a_payload_the_hook_cannot_read_exits_zero_prints_nothing_and_records_nothing(
+        self, world, stdin
+    ):
+        result = world.run_load_hook(stdin)
+
+        assert (result.returncode, result.stdout) == (0, "")
+        assert not (world.config / ".tmp").exists()
+
+    def test_a_state_directory_that_cannot_be_written_exits_zero_and_prints_nothing(
+        self, world, tmp_path
+    ):
+        not_a_directory = tmp_path / "file"
+        not_a_directory.write_text("", encoding="utf-8")
+        world.environment["CLAUDE_CONFIG_DIR"] = str(not_a_directory)
+
+        result = world.load(world.project / "CLAUDE.md")
+
+        assert (result.returncode, result.stdout) == (0, "")
+
+
+class TestTheLoadCheckConfirmsNoPoolRuleAutoLoads:
+    def test_a_session_start_record_naming_a_pool_rules_file_is_reported_and_the_check_fails(
+        self, world
+    ):
+        world.rule("core-rules")
+        world.rule("sorting")
+        loaded = world.config / "rules" / "sorting.md"
+
+        world.load(loaded, "session_start")
+        result = world.load_check()
+
+        assert lines_of(result) == [still_loading(loaded, "session_start")]
+        assert result.returncode != 0
+
+    def test_a_same_named_file_in_a_projects_rules_directory_is_reported_on_its_stem_alone(
+        self, world
+    ):
+        world.rule("sorting")
+        loaded = world.project / ".claude" / "rules" / "sorting.md"
+
+        world.load(loaded, "path_glob_match", globs=["src/**"], trigger_file_path="src/a.ts")
+        result = world.load_check()
+
+        assert lines_of(result) == [still_loading(loaded, "path_glob_match")]
+        assert result.returncode != 0
+
+    def test_a_pool_rule_imported_into_claude_md_is_reported_with_its_include_reason(self, world):
+        world.rule("sorting")
+        loaded = world.project / "docs" / "sorting.md"
+
+        world.load(loaded, "include", parent_file_path=str(world.project / "CLAUDE.md"))
+        result = world.load_check()
+
+        assert lines_of(result) == [still_loading(loaded, "include")]
+        assert result.returncode != 0
+
+    def test_each_record_naming_a_pool_rule_is_reported_in_file_order(self, world):
+        world.rule("sorting")
+        world.rule("voice")
+        first = world.project / "a" / "voice.md"
+        second = world.project / "b" / "sorting.md"
+        world.load(first, "session_start")
+        world.load(second, "compact")
+
+        result = world.load_check()
+
+        assert lines_of(result) == [
+            still_loading(first, "session_start"),
+            still_loading(second, "compact"),
+        ]
+
+    def test_a_reported_file_stays_at_its_path_with_its_content_and_nothing_else_moves(self, world):
+        world.rule("sorting")
+        reported = world.project / ".claude" / "rules" / "sorting.md"
+        reported.parent.mkdir(parents=True)
+        reported.write_text("local copy of sorting\n", encoding="utf-8")
+        world.load(reported, "session_start")
+        before = tree_snapshot(world.config, world.project)
+
+        result = world.load_check()
+
+        assert lines_of(result) == [still_loading(reported, "session_start")]
+        assert reported.read_text(encoding="utf-8") == "local copy of sorting\n"
+        assert tree_snapshot(world.config, world.project) == before
+
+
+class TestTheLoadCheckTakesRuleNamesFromThePool:
+    def test_a_manifest_that_is_not_valid_yaml_leaves_the_check_naming_the_path(self, world):
+        world.rule("sorting")
+        world.manifest("models: ['opus'\ndefaults: [\n")
+        loaded = world.project / ".claude" / "rules" / "sorting.md"
+        world.load(loaded, "session_start")
+
+        result = world.load_check()
+
+        assert lines_of(result) == [still_loading(loaded, "session_start")]
+        assert result.returncode != 0
+
+    def test_a_rule_with_variants_is_named_once_under_its_rule_name(self, world):
+        from rulesets.audit.load_check import load_check
+
+        world.rule("voice")
+        world.rule("voice@terse")
+        loaded = world.project / "voice.md"
+        world.load(loaded, "session_start")
+
+        result = world.load_check()
+        findings = load_check(Locations(world.config), "s1", world.rulesets)
+
+        assert lines_of(result) == [still_loading(loaded, "session_start")]
+        assert [finding.rule for finding in findings] == ["voice"]
+
+    def test_an_empty_pool_names_no_rule_and_the_check_passes(self, world):
+        world.load(world.project / "sorting.md", "session_start")
+
+        result = world.load_check()
+
+        assert (result.stdout, result.returncode) == ("", 0)
+
+
+class TestTheLoadCheckExpectsClaudeMdAndFilesThatNameNoPoolRule:
+    def test_claude_md_files_in_several_directories_pass_whatever_their_reason(self, world):
+        world.rule("sorting")
+        world.load(world.config / "CLAUDE.md", "session_start", memory_type="User")
+        world.load(world.project / "CLAUDE.md", "session_start")
+        world.load(world.project / "sub" / "CLAUDE.md", "nested_traversal")
+        world.load(world.project / "docs" / "CLAUDE.md", "include")
+
+        result = world.load_check()
+
+        assert (result.stdout, result.returncode) == ("", 0)
+
+    def test_claude_md_passes_even_where_the_pool_holds_a_rule_of_that_name(self, world):
+        world.rule("CLAUDE")
+        world.load(world.project / "CLAUDE.md", "session_start")
+
+        result = world.load_check()
+
+        assert (result.stdout, result.returncode) == ("", 0)
+
+    def test_a_path_scoped_rule_loaded_lazily_passes_when_its_stem_names_no_pool_rule(self, world):
+        world.rule("sorting")
+        world.load(world.project / ".claude" / "rules" / "api-style.md", "path_glob_match")
+
+        result = world.load_check()
+
+        assert (result.stdout, result.returncode) == ("", 0)
+
+    def test_only_a_file_whose_whole_stem_is_a_rule_name_is_reported(self, world):
+        world.rule("sorting")
+        world.rule("core-rules")
+        exact = world.project / "x" / "sorting.md"
+        for near in (
+            "x/resorting.md",
+            "x/sorting-notes.md",
+            "x/sort.md",
+            "x/core-rules-v2.md",
+            "x/sorting/CLAUDE.md",
+            "x/sorting@terse.md",
+        ):
+            world.load(world.project / near, "session_start")
+        world.load(exact, "session_start")
+
+        result = world.load_check()
+
+        assert lines_of(result) == [still_loading(exact, "session_start")]
+
+
+class TestDeliveriesListsWhatReachedEachContext:
+    def test_a_delegate_line_holds_scope_model_source_rule_count_flags_and_delegate(self, world):
+        stems = [f"rule-{number:02d}" for number in range(1, 13)]
+        for stem in stems:
+            world.rule(stem)
+        world.manifest(DECLARED + "flags: ['voice-terse']\ndefaults: " + json.dumps(stems) + "\n")
+        world.start_session(model=OPUS)
+        world.toggle_flags({"voice-terse": "set"})
+        world.spawn("critic", model="haiku")
+        world.start_delegate("critic", agent_id="a1")
+
+        result = world.deliveries()
+
+        assert lines_of(result) == [
+            "session\topus\tharness-reported\t12\t-",
+            "delegate\thaiku\tper-spawn\t12\tvoice-terse\ta1",
+        ]
+        assert result.returncode == 0
+
+    def test_three_switches_before_the_next_request_print_one_line_for_the_last(self, world):
+        world.rule("core-rules")
+        for stem in ("opus-rules", "sonnet-rules", "haiku-a", "haiku-b"):
+            world.rule(stem)
+        world.manifest(
+            "models: ['opus', 'sonnet', 'haiku']\ndefaults: ['core-rules']\n"
+            "when:\n  - model opus: ['opus-rules']\n  - model sonnet: ['sonnet-rules']\n"
+            "  - model haiku: ['haiku-a', 'haiku-b']\n"
+        )
+        world.start_session(model=OPUS)
+        world.switch_model(SONNET, from_model=OPUS, prompt_id="p1")
+        world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
+        world.switch_model(HAIKU, from_model=OPUS, prompt_id="p1")
+
+        result = world.deliveries()
+
+        last_source = world.records()[-1]["model"]["source"]
+        assert lines_of(result) == [
+            "session\topus\tharness-reported\t2\t-",
+            f"switch\thaiku\t{last_source}\t3\t-",
+        ]
+
+    def test_a_session_without_records_prints_nothing_and_exits_zero(self, world):
+        result = world.deliveries("never-started")
+
+        assert (result.stdout, result.returncode) == ("", 0)
+
+    def test_a_forks_record_names_no_rules_delivered_and_is_not_listed(self, world):
+        world.rule("core-rules")
+        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.start_session(model=OPUS)
+        world.start_delegate("fork", agent_id="f1")
+
+        result = world.deliveries()
+
+        assert lines_of(result) == ["session\topus\tharness-reported\t1\t-"]

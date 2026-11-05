@@ -613,6 +613,35 @@ class TestAPreToolUseHookRecordsTheModelACallerNamesForOneSpawn:
         (record,) = delegate_records(world)
         assert (record["model"]["name"], record["model"]["source"]) == ("haiku", "per-spawn")
 
+    def test_the_recording_hooks_and_the_delegate_start_alter_no_prompt_and_the_hooks_print_no_rule_text(
+        self, world
+    ):
+        world.rule("core-rules")
+        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.start_session(model=OPUS)
+
+        spawned = world.spawn("critic", model="opus")
+        loaded = world.load(world.config / "CLAUDE.md", "session_start")
+        delivery = world.start_delegate("critic")
+
+        assert (spawned.stdout, loaded.stdout) == ("", "")
+        assert (spawned.returncode, loaded.returncode) == (0, 0)
+        (spawn,) = [
+            json.loads(line)
+            for line in (world.record_files() / "spawns.jsonl").read_text("utf-8").splitlines()
+        ]
+        assert (spawn["model"], spawn["agent_type"]) == ("opus", "critic")
+        assert [(r["file_path"], r["load_reason"]) for r in world.load_records()] == [
+            (str(world.config / "CLAUDE.md"), "session_start")
+        ]
+        injected = [
+            set(json.loads(text)["hookSpecificOutput"])
+            for text in delivery.outputs.values()
+            if text.strip()
+        ]
+        assert injected == [{"hookEventName", "additionalContext"}]
+        assert delivery.context == "text of core-rules\n"
+
     def test_a_spawn_that_names_no_model_leaves_the_delegate_on_its_parents_model(self, world):
         world.rule("core-rules")
         world.manifest(DECLARED + "defaults: ['core-rules']\n")

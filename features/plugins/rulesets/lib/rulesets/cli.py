@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Command line for the rulesets engine: `check`, `toggle`, and `delivery-check`.
+"""Command line for the rulesets engine: `check`, `toggle`, `delivery-check`, `load-check`, and `deliveries`.
 
 This module parses arguments, prints, and sets the exit status. Every finding comes from
 `rulesets.check.run`, and every line's wording from `rulesets.check.report_format`. A toggle's
-change comes from `rulesets.session.toggle`, and a delivery difference from
-`rulesets.audit.delivery_check`.
+change comes from `rulesets.session.toggle`, a delivery difference from
+`rulesets.audit.delivery_check`, a still auto-loading file from `rulesets.audit.load_check`, and a
+delivery line from `rulesets.audit.deliveries`.
 """
 
 import argparse
@@ -14,7 +15,9 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
+from rulesets.audit.deliveries import deliveries
 from rulesets.audit.delivery_check import delivery_check
+from rulesets.audit.load_check import load_check
 from rulesets.check.report_format import report_lines
 from rulesets.check.run import check
 from rulesets.locations import Locations
@@ -61,6 +64,18 @@ def _build_parser() -> argparse.ArgumentParser:
     auditing.add_argument(
         "--root", type=pathlib.Path, help="the rulesets directory; the configured one by default"
     )
+    loading = commands.add_parser(
+        "load-check",
+        help="print each file the harness loaded that is named for a rule of the pool",
+    )
+    loading.add_argument("--session", required=True, help="the session whose loads are checked")
+    loading.add_argument(
+        "--root", type=pathlib.Path, help="the rulesets directory; the configured one by default"
+    )
+    listing = commands.add_parser(
+        "deliveries", help="print one line for each delivery that reached a context"
+    )
+    listing.add_argument("--session", required=True, help="the session whose deliveries are listed")
     toggling = commands.add_parser(
         "toggle", help="change what the delegates this session starts from now on receive"
     )
@@ -125,6 +140,17 @@ def main(argv: list[str] | None = None) -> int:
         for difference in differences:
             print(difference.line())
         return 1 if differences else 0
+    if arguments.command == "load-check":
+        locations = Locations.from_environment(os.environ)
+        root = arguments.root or locations.rulesets
+        findings = load_check(locations, arguments.session, root)
+        for finding in findings:
+            print(finding.line())
+        return 1 if findings else 0
+    if arguments.command == "deliveries":
+        for context in deliveries(Locations.from_environment(os.environ), arguments.session):
+            print(context.line())
+        return 0
     if not arguments.root.is_dir():
         print(f"cli.py: no rulesets directory at {arguments.root}", file=sys.stderr)
         return _USAGE_ERROR
