@@ -1,5 +1,3 @@
-<!-- rule: writing-code -->
-
 ## writing-code
 
 For all source code you write or modify, optimize for code that does what its tests assert, each part distinct and its purpose plain.

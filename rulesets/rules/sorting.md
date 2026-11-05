@@ -1,5 +1,3 @@
-<!-- rule: sorting -->
-
 ## sorting
 
 For everything you hold as a turn opens, optimize for work at the point of greatest insight, followed by leverage.

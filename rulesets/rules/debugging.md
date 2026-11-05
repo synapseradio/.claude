@@ -1,5 +1,3 @@
-<!-- rule: debugging -->
-
 ## debugging
 
 For every problem you debug, optimize for a repair that follows a hypothesis a test decided.

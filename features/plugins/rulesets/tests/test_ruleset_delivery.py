@@ -24,6 +24,7 @@ from delivery_world import (
     OPUS,
     Delivery,
     World,
+    delivered,
     matcher_admits,
     select_commands,
 )
@@ -221,17 +222,43 @@ class TestAForkedSessionAndAForkSubagentReceiveNothingAndLeaveNoRecord:
 
 
 class TestDeliveredTextIsRuleTextOnly:
-    def test_a_part_holds_the_rule_bodies_sorted_by_name_and_no_other_line(self, world):
+    def test_a_part_holds_each_rules_marker_and_body_sorted_by_name_and_no_other_line(self, world):
         world.rule("sorting", "Sort what you hold.\n")
         world.rule("core-rules", "Hold every rule as mandatory.\n")
         world.manifest(DECLARED + "defaults: ['sorting', 'core-rules']\n")
 
         delivery = world.start_session()
 
-        assert delivery.context.splitlines() == [
+        assert delivery.received.splitlines() == [
+            "<!-- rule: core-rules -->",
+            "",
             "Hold every rule as mandatory.",
+            "<!-- rule: sorting -->",
+            "",
             "Sort what you hold.",
         ]
+
+    def test_a_variant_arrives_under_its_rules_marker_which_names_no_variant(self, world):
+        world.rule("voice", "default voice\n")
+        world.rule("voice@terse", "terse voice\n")
+        world.manifest(DECLARED + "defaults: ['voice']\nwhen:\n  - agent critic: ['voice@terse']\n")
+
+        delivery = world.start_delegate("critic")
+
+        assert delivery.received == "<!-- rule: voice -->\n\nterse voice\n"
+
+    def test_markers_count_toward_the_part_budget(self, world):
+        world.rule("a-rule", "a" * 4489 + "\n")
+        world.rule("b-rule", "b" * 4489 + "\n")
+        world.manifest(DECLARED + "defaults: ['*']\n")
+
+        delivery = world.start_session()
+
+        assert {part: text[:21] for part, text in delivery.received_parts.items()} == {
+            1: "<!-- rule: a-rule -->",
+            2: "<!-- rule: b-rule -->",
+        }
+        assert all(len(text) <= 9000 for text in delivery.received_parts.values())
 
 
 def unreadable(path):
@@ -1325,7 +1352,7 @@ class TestTheFailureNoticeNamesACommandThatRunsTheDeliveryAgain:
 
         assert rerun.returncode == 0, rerun.stderr
         assert json.loads(rerun.stdout)["hookSpecificOutput"]["additionalContext"] == (
-            "text of voice\n"
+            delivered("voice", "text of voice\n")
         )
 
     def test_the_command_names_a_payload_file_under_the_state_directory(self, world):
@@ -1418,7 +1445,7 @@ class TestTermsOfDelivery:
         body = (world.rulesets / "rules" / "voice@terse.md").read_bytes()
         assert body == b"terse voice", "the variant file ends without a newline"
         assert (line["rule"], line["variant"]) == ("voice", "terse")
-        assert delivery.context.encode() == body
+        assert delivery.received.encode() == b"<!-- rule: voice -->\n\n" + body
         assert line["digest"] == hashlib.sha256(body).hexdigest()
 
 
@@ -1668,41 +1695,48 @@ class TestASessionReceivesAllItsRulesAtEveryStart:
     def test_a_ruleset_over_9000_characters_divides_into_whole_sorted_parts_one_entry_each(
         self, world
     ):
-        # The sizes give a different split under a budget of 8,999, 9,000, and 9,001, and under
-        # `<` against `<=`: b joins a only at 9,001, and c joins b at 9,000 exactly.
-        bodies = {"a-rule": "a" * 4500, "b-rule": "b" * 4501, "c-rule": "c" * 4499}
+        # Each marker adds 23 characters. The delivered sizes, 4,500, 4,501, and 4,499, give a
+        # different split under a budget of 8,999, 9,000, and 9,001, and under `<` against `<=`:
+        # b joins a only at 9,001, and c joins b at 9,000 exactly.
+        bodies = {"a-rule": "a" * 4477, "b-rule": "b" * 4478, "c-rule": "c" * 4476}
         for name, text in bodies.items():
             world.rule(name, text)
         world.manifest(DECLARED + "defaults: ['c-rule', 'a-rule', 'b-rule']\n")
 
         delivery = world.start_session()
 
-        assert delivery.part_texts == {
-            1: bodies["a-rule"],
-            2: bodies["b-rule"] + bodies["c-rule"],
+        assert delivery.received_parts == {
+            1: delivered("a-rule", bodies["a-rule"]),
+            2: delivered("b-rule", bodies["b-rule"]) + delivered("c-rule", bodies["c-rule"]),
         }
-        assert all(len(text) <= 9000 for text in delivery.part_texts.values())
+        assert all(len(text) <= 9000 for text in delivery.received_parts.values())
         assert [delivery.outputs[part].strip() for part in range(3, 11)] == [""] * 8
 
     def test_two_bodies_totalling_exactly_9000_characters_share_a_part(self, world):
-        bodies = {"a-rule": "a" * 4500, "b-rule": "b" * 4500, "c-rule": "c" * 10}
+        bodies = {"a-rule": "a" * 4477, "b-rule": "b" * 4477, "c-rule": "c" * 10}
         for name, text in bodies.items():
             world.rule(name, text)
         world.manifest(DECLARED + "defaults: ['*']\n")
 
         delivery = world.start_session()
 
-        assert delivery.part_texts == {1: "a" * 4500 + "b" * 4500, 2: "c" * 10}
+        assert delivery.received_parts == {
+            1: delivered("a-rule", "a" * 4477) + delivered("b-rule", "b" * 4477),
+            2: delivered("c-rule", "c" * 10),
+        }
 
     def test_a_body_that_would_take_a_part_to_9001_characters_opens_the_next_part(self, world):
-        bodies = {"a-rule": "a" * 4500, "b-rule": "b" * 4501, "c-rule": "c" * 10}
+        bodies = {"a-rule": "a" * 4477, "b-rule": "b" * 4478, "c-rule": "c" * 10}
         for name, text in bodies.items():
             world.rule(name, text)
         world.manifest(DECLARED + "defaults: ['*']\n")
 
         delivery = world.start_session()
 
-        assert delivery.part_texts == {1: "a" * 4500, 2: "b" * 4501 + "c" * 10}
+        assert delivery.received_parts == {
+            1: delivered("a-rule", "a" * 4477),
+            2: delivered("b-rule", "b" * 4478) + delivered("c-rule", "c" * 10),
+        }
 
 
 OTHER_OPUS = "claude-opus-5-6"

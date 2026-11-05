@@ -41,8 +41,7 @@ def deliver_replay(
     if not isinstance(stored, Delivering):
         return None
     write_plan(slot, Delivering(generation, stored.parts, stored.model))
-    first = "".join(body.text for body in stored.parts[0].bodies) if stored.parts else None
-    return PartOutput(first)
+    return PartOutput(stored.parts[0].text if stored.parts else None)
 
 
 def _path(locations: Locations, request: SubagentStart) -> pathlib.Path | None:

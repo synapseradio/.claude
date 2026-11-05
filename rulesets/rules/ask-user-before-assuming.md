@@ -1,5 +1,3 @@
-<!-- rule: ask-user-before-assuming -->
-
 ## ask-user-before-assuming
 
 For every premise, optimize for work that rests on what the user said they want, with a question asked wherever their intent is missing.

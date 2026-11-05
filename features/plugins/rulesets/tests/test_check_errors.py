@@ -794,13 +794,15 @@ class TestABodyLongerThanThePartBudget:
         assert error.file == root / "rules" / "voice.md"
         assert check(root).warnings == ()
 
-    def test_a_body_of_exactly_nine_thousand_characters_is_no_error(self, tmp_path):
-        root = build(tmp_path, bodies={"voice": "x" * 9_000})
+    def test_a_body_that_with_its_marker_is_exactly_nine_thousand_characters_is_no_error(
+        self, tmp_path
+    ):
+        root = build(tmp_path, bodies={"voice": "x" * 8_978})
 
         assert errors_of(root) == []
 
     def test_a_body_one_character_longer_is_an_error(self, tmp_path):
-        root = build(tmp_path, bodies={"voice": "x" * 9_001})
+        root = build(tmp_path, bodies={"voice": "x" * 8_979})
 
         assert [kind for kind, _, _ in errors_of(root)] == ["oversize-body"]
 

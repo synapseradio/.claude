@@ -1,5 +1,3 @@
-<!-- rule: structural-search -->
-
 ## structural-search
 
 For every code search that turns on syntax, a construct, a call form, a declaration form, or a nesting relation, every ast-grep rule you write, test, or debug, and every source file you are about to read whole, optimize for a search whose result means what it says.

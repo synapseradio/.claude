@@ -1,5 +1,3 @@
-<!-- rule: spawn-decision -->
-
 ## spawn-decision
 
 For every step of work a delegate could take, optimize for a step done by the cheapest tier able to take it, with your own context kept for the conversation.

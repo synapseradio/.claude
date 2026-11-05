@@ -1,5 +1,3 @@
-<!-- rule: writing-plans -->
-
 ## writing-plans
 
 For every plan file you write and every exit from plan mode, optimize for a plan an agent carries to its target outcomes holding only the file.

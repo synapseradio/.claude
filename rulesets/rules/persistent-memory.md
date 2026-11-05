@@ -1,5 +1,3 @@
-<!-- rule: persistent-memory -->
-
 ## persistent-memory
 
 For every fact the user asks you to remember, and every fact you identify as worth keeping across sessions, optimize for a fact the next session's search finds.

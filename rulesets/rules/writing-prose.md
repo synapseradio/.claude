@@ -1,5 +1,3 @@
-<!-- rule: writing-prose -->
-
 ## writing-prose
 
 For all natural language you write or improve, in code too, optimize for prose that brings the cold reader to their destination.

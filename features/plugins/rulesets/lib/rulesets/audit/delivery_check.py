@@ -166,7 +166,7 @@ def _part_differences(
                 Difference(record.writer, f"part {number} emitted under a different model fact")
             )
         now = next((p for p in composed if p.index == number), None)
-        text = "".join(body.text for body in now.bodies) if now else None
+        text = now.text if now else None
         if text is None or digest_of_text(text) != last.digest:
             found.append(
                 Difference(

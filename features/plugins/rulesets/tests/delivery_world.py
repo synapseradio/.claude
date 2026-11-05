@@ -66,16 +66,36 @@ def matched_value(event: str, payload: dict) -> str:
     return value if isinstance(value, str) else ""
 
 
+def delivered(rule: str, body: str) -> str:
+    """A rule's body as a context receives it: the rule's marker, a blank line, then the body."""
+
+    return f"<!-- rule: {rule} -->\n\n{body}"
+
+
+_MARKER_AND_BLANK = re.compile(r"^<!-- rule: \S+ -->\n\n", re.MULTILINE)
+
+
+def without_markers(text: str) -> str:
+    """`text` less the marker and blank line delivery writes before each rule's body."""
+
+    return _MARKER_AND_BLANK.sub("", text)
+
+
 class Delivery:
-    """What one event's hook entries printed: the agent's context and the person's message."""
+    """What one event's hook entries printed: the agent's context and the person's message.
+
+    `context` and `part_texts` hold the rule text alone, less the markers; `received` and
+    `received_parts` hold the exact bytes.
+    """
 
     def __init__(self, outputs: dict[int, str]):
         self.outputs = outputs
         parsed = {part: json.loads(text) for part, text in outputs.items() if text.strip()}
-        self.context = "".join(
+        self.received = "".join(
             parsed[part].get("hookSpecificOutput", {}).get("additionalContext", "")
             for part in sorted(parsed)
         )
+        self.context = without_markers(self.received)
         self.messages = [
             parsed[part]["systemMessage"]
             for part in sorted(parsed)
@@ -89,7 +109,13 @@ class Delivery:
 
     @property
     def part_texts(self) -> dict[int, str]:
-        """The agent's context from each part that sent any, by part number."""
+        """The rule text from each part that sent any, less the markers, by part number."""
+
+        return {part: without_markers(text) for part, text in self.received_parts.items()}
+
+    @property
+    def received_parts(self) -> dict[int, str]:
+        """The agent's context from each part that sent any, exactly, by part number."""
 
         found = {part: json.loads(text) for part, text in self.outputs.items() if text.strip()}
         return {

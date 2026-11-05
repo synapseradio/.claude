@@ -1,5 +1,3 @@
-<!-- rule: writing-prose -->
-
 ## writing-prose
 
 In every piece of natural language you write, optimize for output that can be audited for accuracy, relevance, and proximity to truth.

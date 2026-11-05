@@ -1,5 +1,3 @@
-<!-- rule: claims -->
-
 ## claims
 
 For every claim a reader may act on or check, optimize for a claim an external auditor can, and will, critique, trace, and verify.

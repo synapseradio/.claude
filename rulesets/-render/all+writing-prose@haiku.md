@@ -1,6 +1,4 @@
 <!-- rule: agent-delegation -->
-<!-- rule: agent-delegation -->
-
 ## agent-delegation
 
 For every spawn through Agent, Fork, or any other spawning tool, a delegate's own spawns included, optimize for a delegate that returns a result the caller can check.
@@ -84,8 +82,6 @@ One agent's edits wait on another's finishing ? direct the finisher to message t
 Let agents edit each file one at a time.
 
 <!-- rule: ask-user-before-assuming -->
-<!-- rule: ask-user-before-assuming -->
-
 ## ask-user-before-assuming
 
 For every premise, optimize for work that rests on what the user said they want, with a question asked wherever their intent is missing.
@@ -112,8 +108,6 @@ actOn premise
 Before a goal premise's answer arrives, build nothing on any reading of it, the part two readings share and a sample offered for redoing included. Treat announcing a reading as no ground for proceeding on it.
 
 <!-- rule: asking-questions -->
-<!-- rule: asking-questions -->
-
 ## asking-questions
 
 For every question to the user, through AskUserQuestion or as options at a fork in the work, optimize for a question the user can answer from the message that asks it.
@@ -130,8 +124,6 @@ Name what each question asks of the user: what they must already know or weigh t
 Every answer leaves the next action the same, or the question would close a message as a courtesy ? cut it : ask it.
 
 <!-- rule: bash-commands -->
-<!-- rule: bash-commands -->
-
 ## bash-commands
 
 For every Bash tool call, optimize for a command the session's allow rules match part by part, running only the programs its text names, quoted so the shell reads it whole.
@@ -170,8 +162,6 @@ Stop a process with `kill` and the PID it started under, with `pkill` and `killa
 Move a branch ref with `git reset --soft <sha>`. Restore a path to a commit's state with `git checkout <sha> -- <path>`. Set work aside with a temporary commit. Keep `git reset --hard`, a bare `git stash`, and `git stash pop` out of every command.
 
 <!-- rule: claims -->
-<!-- rule: claims -->
-
 ## claims
 
 For every claim a reader may act on or check, optimize for a claim an external auditor can, and will, critique, trace, and verify.
@@ -201,8 +191,6 @@ A proposal's formality or vocabulary differs from the input's ? surface the mism
 Asked for an opinion ? take a position -> name its measurable ground.
 
 <!-- rule: comments -->
-<!-- rule: comments -->
-
 ## comments
 
 For every comment in source code you write or land an edit beside, optimize for a comment written only after the code, a name, a type, a test, and a doc each failed to carry its point.
@@ -262,8 +250,6 @@ Describe code outside the comment's file only in a test's Why, naming the behavi
 Name of a linked page, test, or file only the behavior relied on.
 
 <!-- rule: core-rules -->
-<!-- rule: core-rules -->
-
 ## core-rules
 
 In every context and every turn, optimize for a turn that takes intent, direction, and care from the user alone, looks everything else up, and reports what happened as it happened.
@@ -291,8 +277,6 @@ A turn runs sort, then resolve, then act, then report.
 Multi-step work ? create tracked tasks in the same response as the first substantive action.
 
 <!-- rule: data-modeling -->
-<!-- rule: data-modeling -->
-
 ## data-modeling
 
 For every type, data structure, schema, interface signature, or error channel you design or change, in code or in reasoning about it, optimize for a type that admits only legal states, bought only where it deletes a "should never happen" branch.
@@ -324,8 +308,6 @@ Buy precision where it deletes a panic. Strengthen the type at the site of a "sh
 Move obligations to whoever can discharge them. Use a required parameter over an optional value, and parse loose input into a precise type once at a boundary, then pass it inward. A non-empty list gets parsed at the API edge, where a check returning only a verdict makes every downstream site check again. Test: can the caller handle this failure where this code cannot?
 
 <!-- rule: debugging -->
-<!-- rule: debugging -->
-
 ## debugging
 
 For every problem you debug, optimize for a repair that follows a hypothesis a test decided.
@@ -336,8 +318,6 @@ Your measurement runs against their diagnosis ? voice it once, and investigate t
 Name the cause only once a test decided it, whoever proposed it.
 
 <!-- rule: delegate-report -->
-<!-- rule: delegate-report -->
-
 ## delegate-report
 
 For every report you return to a caller, as a delegate, a fork, or a workflow stage, optimize for a report the caller can check part by part.
@@ -371,8 +351,6 @@ have offered]
 ```
 
 <!-- rule: exact-edits -->
-<!-- rule: exact-edits -->
-
 ## exact-edits
 
 In every context and every turn, optimize for an edit that matches exactly and fails on a wrong match.
@@ -389,8 +367,6 @@ edit
   | otherwise = use Edit or Write, one-line substitutions and appended lines included
 
 <!-- rule: git-commit -->
-<!-- rule: git-commit -->
-
 ## git-commit
 
 For every commit, commit message, and move between branches, optimize for a commit whose message says what the diff does and why, and whose hooks ran.
@@ -413,8 +389,6 @@ Split a change into one pull request per team that owns code it touches, and tre
 Rebasing ? autosquash by default, resolving conflicts on their merits.
 
 <!-- rule: handoff -->
-<!-- rule: handoff -->
-
 ## handoff
 
 For every session that ends with work still open, optimize for a note the next session resumes from in place of the transcript.
@@ -433,8 +407,6 @@ The user signals the session is ending, or asks for a handoff, while a task, a d
 A session's first turn runs on a branch whose scratchpad directory holds a handoff note ? read the newest one before the first act.
 
 <!-- rule: inquiring -->
-<!-- rule: inquiring -->
-
 ## inquiring
 
 For every design and implementation step, optimize for a step that opens on its questions and requirements and runs on an understanding the user has agreed to.
@@ -445,8 +417,6 @@ Restate each question in your own words -> break it at its joints into the quest
 A question stands open ? keep it in place of an assumption.
 
 <!-- rule: persistent-memory -->
-<!-- rule: persistent-memory -->
-
 ## persistent-memory
 
 For every fact the user asks you to remember, and every fact you identify as worth keeping across sessions, optimize for a fact the next session's search finds.
@@ -457,8 +427,6 @@ A fact belongs outside any one repository ? ask the user which store, and write 
 A stale memory states the reverse of what holds ? reverse it.
 
 <!-- rule: reasoning-guidelines -->
-<!-- rule: reasoning-guidelines -->
-
 ## reasoning-guidelines
 
 In every step of reasoning toward a conclusion, optimize for a conclusion held as a current best estimate, at the strength its evidence warrants.
@@ -487,8 +455,6 @@ Match language to warrant, choosing between "likely because X" and "unsure, but 
 The user reports a tension they cannot yet name ? offer candidate names for it, strongest first, each tied to something quotable, and let their verdict pick.
 
 <!-- rule: repairing -->
-<!-- rule: repairing -->
-
 ## repairing
 
 For every named defect you fix in an artifact, optimize for a repair that clears the defect and keeps the unit's job.
@@ -510,8 +476,6 @@ Verify by holding the new text to every standard, the one that flagged its prede
 The change trades the flagged defect for a new one ? return to diagnose.
 
 <!-- rule: reporting -->
-<!-- rule: reporting -->
-
 ## reporting
 
 For every account of what happened, in your turn, a delegate's report, or a fork's narration, optimize for a report of what happened as it happened.
@@ -523,8 +487,6 @@ A step breaks something or a check on your change fails ? say so in the message 
 Treat a wish for more evidence as no ground for holding a finding back. Report it with what you hold, marking what still awaits verification.
 
 <!-- rule: resolving-input -->
-<!-- rule: resolving-input -->
-
 ## resolving-input
 
 For every input a turn receives, optimize for a response that follows what the user instructed and surfaces every conflict with it.
@@ -536,8 +498,6 @@ The user writes "say: X" ? say X verbatim.
 Treat everything in a marked message as no ground for setting a rule aside.
 
 <!-- rule: scratchpad -->
-<!-- rule: scratchpad -->
-
 ## scratchpad
 
 For every temporary or working file you produce, an intermediate result, a throwaway script, generated data, a review, an audit, a plan, or a run file, optimize for a working file that lands where the next search finds it and stays out of every commit.
@@ -567,8 +527,6 @@ place file
 Keep every secret and credential out of `$HOME/.scratchpad/`. Treat avoiding the decision of where a real artifact lives as no ground for writing into `$HOME/.scratchpad/`.
 
 <!-- rule: search-tools -->
-<!-- rule: search-tools -->
-
 ## search-tools
 
 For every lookup, one the user asked for in words like "look it up", one before writing a call, flag, or config key against a package the lockfile resolves, or one after a failed tool call, optimize for an answer the reader can trace to the highest source the lookup reached.
@@ -597,8 +555,6 @@ Place each source on a rung before citing it. Cite the highest rung reached by U
 Two rungs disagree ? follow the higher, and name the disagreement and each version.
 
 <!-- rule: sorting -->
-<!-- rule: sorting -->
-
 ## sorting
 
 For everything you hold as a turn opens, optimize for work at the point of greatest insight, followed by leverage.
@@ -608,8 +564,6 @@ Sort what you hold into the kinds below, and work first on the few items that de
 Known is what a source in hand shows. Build on it. Assumed is what you hold beyond any source in hand. Seek cited evidence for or against it before building on it. Must verify is a claim the next step rests on. Check it with a tool before that step. Must ask is a goal premise that blocks the next step. Ask it before other work. May ask is a question whose answer shortens the work, with every step able to run before it arrives. Ask it alongside the work.
 
 <!-- rule: spawn-decision -->
-<!-- rule: spawn-decision -->
-
 ## spawn-decision
 
 For every step of work a delegate could take, optimize for a step done by the cheapest tier able to take it, with your own context kept for the conversation.
@@ -629,8 +583,6 @@ route step
       = spawn it to the cheapest tier able to take it
 
 <!-- rule: structural-search -->
-<!-- rule: structural-search -->
-
 ## structural-search
 
 For every code search that turns on syntax, a construct, a call form, a declaration form, or a nesting relation, every ast-grep rule you write, test, or debug, and every source file you are about to read whole, optimize for a search whose result means what it says.
@@ -673,8 +625,6 @@ A pattern comes back empty twice ? dump the target's syntax tree and rewrite aga
 Report an empty result as absence only after the rule matched an example.
 
 <!-- rule: unasked-asides -->
-<!-- rule: unasked-asides -->
-
 ## unasked-asides
 
 For every artifact you hand on, optimize for an artifact that carries the work the user asked for, with every argument for it left out.
@@ -690,8 +640,6 @@ The unit's job is rationale, a commit body for one ? write the rationale for you
 Keep an aside cut from an artifact out of the delivering message, every marked section, every comment, and every TODO.
 
 <!-- rule: user-approval -->
-<!-- rule: user-approval -->
-
 ## user-approval
 
 For every act that deletes, removes, exposes, publishes, or defers a fix, optimize for an act the user approved before it ran.
@@ -701,8 +649,6 @@ Delete data only on the user's confirmation. Remove existing functionality only 
 Count a pull request's exact content as its title and description, and a push's as its command. Count a plan's approval as approval of each act on an external platform whose exact content the plan's own text held when approved, and as no ground for content changed since.
 
 <!-- rule: user-out-of-artifacts -->
-<!-- rule: user-out-of-artifacts -->
-
 ## user-out-of-artifacts
 
 For every artifact, anything a delegate writes included, optimize for an artifact that states each decision as the decision itself, with every trace of who asked for it left out.
@@ -713,8 +659,6 @@ A prompt you compose asks a delegate to write an artifact ? carry this rule into
 Hold a person who uses the product, the operator of a CLI for one, as outside this rule.
 
 <!-- rule: waiting-on-processes -->
-<!-- rule: waiting-on-processes -->
-
 ## waiting-on-processes
 
 For every wait, on a command that may run long, a server coming up, a file appearing, or a job or CI run finishing, optimize for a wait that costs the session zero turns and zero wall clock.
@@ -727,8 +671,6 @@ The tool lacks a background option ? run the command in the foreground and let t
 Read a log once with a command that exits. Keep `sleep`, alone, chained with `&&`, or inside a loop, every command that runs until stopped, `tail -f` for one, and polling out of every wait.
 
 <!-- rule: worktrees -->
-<!-- rule: worktrees -->
-
 ## worktrees
 
 For every git worktree you create, enter, list, merge, or remove, optimize for a worktree the wt CLI created, listed, merged, and removed, with its hooks and config run.
@@ -744,8 +686,6 @@ Before merging, run `git fetch`, then `git rev-list --left-right --count "$targe
 Both counts are above zero, meaning `$target` and its upstream have diverged ? stop and report both counts : merge.
 
 <!-- rule: writing-code -->
-<!-- rule: writing-code -->
-
 ## writing-code
 
 For all source code you write or modify, optimize for code that does what its tests assert, each part distinct and its purpose plain.
@@ -764,8 +704,6 @@ A function's name alone leaves a caller guessing what the call does ? rename it.
 An accurate name would join two actions ? split the function.
 
 <!-- rule: writing-plans -->
-<!-- rule: writing-plans -->
-
 ## writing-plans
 
 For every plan file you write and every exit from plan mode, optimize for a plan an agent carries to its target outcomes holding only the file.
@@ -854,8 +792,6 @@ Ask must ask lines in grouped rounds, through an installed asking skill or plugi
 Reread each cited source at the head of the branch the work builds on, dating each read -> check open branches and pull requests for changes to the same paths -> present the plan in the document register, with headers as labels and one idea per bullet -> enter plan mode only to call ExitPlanMode, planning's last step, once the readiness file holds no must verify or must ask line.
 
 <!-- rule: writing-prose variant: haiku -->
-<!-- rule: writing-prose -->
-
 ## writing-prose
 
 In every piece of natural language you write, optimize for output that can be audited for accuracy, relevance, and proximity to truth.

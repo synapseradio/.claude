@@ -1,5 +1,3 @@
-<!-- rule: inquiring -->
-
 ## inquiring
 
 For every design and implementation step, optimize for a step that opens on its questions and requirements and runs on an understanding the user has agreed to.

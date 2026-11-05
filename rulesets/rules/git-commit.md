@@ -1,5 +1,3 @@
-<!-- rule: git-commit -->
-
 ## git-commit
 
 For every commit, commit message, and move between branches, optimize for a commit whose message says what the diff does and why, and whose hooks ran.

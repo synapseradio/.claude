@@ -1,5 +1,3 @@
-<!-- rule: unasked-asides -->
-
 ## unasked-asides
 
 For every artifact you hand on, optimize for an artifact that carries the work the user asked for, with every argument for it left out.

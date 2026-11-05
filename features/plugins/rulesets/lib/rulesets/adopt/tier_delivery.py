@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Collection
 
+from rulesets.adopt.opening_marker import under_delivery_marker
 from rulesets.adopt.rules_folder import RulesFolder
 from rulesets.adopt.source import Source
 from rulesets.adopt.tier_corpus import Tier, TierCorpus, delivered_stems
@@ -35,12 +36,17 @@ def source_rules(
 ) -> dict[str, DeliveredText]:
     """The bytes of each rule the source delivers on `identifier`, less the stems an agent excludes.
 
-    A rules folder delivers every file to every context and knows no exclusions.
+    A rules folder delivers every file to every context and knows no exclusions; its files carry
+    no marker, so they stand under the marker delivery would write. A tier corpus's files are
+    delivered as they are, marker included.
     """
 
     match source:
         case RulesFolder(rules):
-            return {stem: DeliveredText(path.read_bytes(), None) for stem, path in rules.items()}
+            return {
+                stem: DeliveredText(under_delivery_marker(stem, path.read_bytes()), None)
+                for stem, path in rules.items()
+            }
         case TierCorpus(default=default):
             tier = tier_for(source, identifier)
             stems = delivered_stems(tier.entry, default) if tier else tuple(sorted(default))

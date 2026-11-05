@@ -1,5 +1,3 @@
-<!-- rule: search-tools -->
-
 ## search-tools
 
 For every lookup, one the user asked for in words like "look it up", one before writing a call, flag, or config key against a package the lockfile resolves, or one after a failed tool call, optimize for an answer the reader can trace to the highest source the lookup reached.

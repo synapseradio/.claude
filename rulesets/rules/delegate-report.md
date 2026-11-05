@@ -1,5 +1,3 @@
-<!-- rule: delegate-report -->
-
 ## delegate-report
 
 For every report you return to a caller, as a delegate, a fork, or a workflow stage, optimize for a report the caller can check part by part.

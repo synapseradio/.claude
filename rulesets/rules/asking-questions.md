@@ -1,5 +1,3 @@
-<!-- rule: asking-questions -->
-
 ## asking-questions
 
 For every question to the user, through AskUserQuestion or as options at a fork in the work, optimize for a question the user can answer from the message that asks it.

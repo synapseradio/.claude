@@ -1,5 +1,3 @@
-<!-- rule: worktrees -->
-
 ## worktrees
 
 For every git worktree you create, enter, list, merge, or remove, optimize for a worktree the wt CLI created, listed, merged, and removed, with its hooks and config run.

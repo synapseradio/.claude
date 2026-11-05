@@ -1,5 +1,3 @@
-<!-- rule: spawn-decision -->
-
 ## spawn-decision
 
 For every read, scan, or other gathering of information a delegate could take, optimize for a step done by a fresh haiku, with its output kept out of your own context.

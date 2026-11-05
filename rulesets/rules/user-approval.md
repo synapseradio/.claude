@@ -1,5 +1,3 @@
-<!-- rule: user-approval -->
-
 ## user-approval
 
 For every act that deletes, removes, exposes, publishes, or defers a fix, optimize for an act the user approved before it ran.

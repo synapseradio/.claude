@@ -8,7 +8,8 @@ from collections.abc import Collection
 
 from rulesets.adopt.agent_exclusions import exclusion_blocks, read_definitions
 from rulesets.adopt.manifest_text import manifest_text
-from rulesets.adopt.mapping import map_source
+from rulesets.adopt.mapping import map_source, rule_of
+from rulesets.adopt.opening_marker import without_own_marker
 from rulesets.adopt.skipped import Skipped
 from rulesets.adopt.source import read_source
 from rulesets.adopt.tier_corpus import SourceError, TierCorpus
@@ -70,7 +71,9 @@ def adopt(
 
     (out / _POOL_FOLDER).mkdir(parents=True)
     for name, path in adopted.pool.items():
-        (out / _POOL_FOLDER / name).write_bytes(path.read_bytes())
+        (out / _POOL_FOLDER / name).write_bytes(
+            without_own_marker(rule_of(name), path.read_bytes())
+        )
     (out / MANIFEST_FILE).write_text(manifest_text(adopted.models, blocks), encoding="utf-8")
     write_tree(out / RENDER_DIRECTORY, render_tree(read_directory(out)))
 

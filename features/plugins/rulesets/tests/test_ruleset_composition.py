@@ -599,6 +599,17 @@ class TestABodyLongerThanThePartBudgetIsACheckError:
         assert [w["rule"] for w in record["withheld"]] == ["big"]
         assert [rule["rule"] for rule in record["rules"]] == ["alpha", "zeta"]
 
+    def test_a_body_that_fits_only_without_its_marker_draws_an_oversize_error(self, tmp_path):
+        world = World(tmp_path)
+        world.rule("a-rule", "x" * 8990)
+        world.manifest(DECLARED + "defaults: ['*']\n")
+
+        (error,) = check(world.rulesets).errors
+        delivery = world.start_session()
+
+        assert (error.kind, error.subject) == ("oversize-body", RuleSubject("a-rule"))
+        assert delivery.context == ""
+
 
 class TestCheckWarnsAboutPartCountAndReferences:
     def test_a_context_whose_rules_need_more_parts_than_a_delivery_carries_draws_a_warning_naming_it(

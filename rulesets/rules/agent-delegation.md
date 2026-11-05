@@ -1,5 +1,3 @@
-<!-- rule: agent-delegation -->
-
 ## agent-delegation
 
 For every spawn through Agent, Fork, or any other spawning tool, a delegate's own spawns included, optimize for a delegate that returns a result the caller can check.

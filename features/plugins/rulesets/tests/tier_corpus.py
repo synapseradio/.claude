@@ -41,11 +41,16 @@ class Corpus:
         (self.root / name).write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
 
     def body(self, tier: str, stem: str, text: str | None = None) -> str:
-        """Write `<tier>/<stem>.md` and return its text."""
+        """Write `<tier>/<stem>.md` under its rule's marker and a blank line, and return its text."""
 
         written = f"{stem} as {tier} writes it\n" if text is None else text
-        (self.root / tier / f"{stem}.md").write_text(written, encoding="utf-8")
+        self.raw(tier, stem, f"<!-- rule: {stem} -->\n\n{written}")
         return written
+
+    def raw(self, tier: str, stem: str, content: str) -> None:
+        """Write `<tier>/<stem>.md` as given."""
+
+        (self.root / tier / f"{stem}.md").write_text(content, encoding="utf-8")
 
 
 def define_agent(config: pathlib.Path, name: str, excluded: list[str]) -> pathlib.Path:

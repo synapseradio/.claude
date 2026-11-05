@@ -1,5 +1,3 @@
-<!-- rule: resolving-input -->
-
 ## resolving-input
 
 For every input a turn receives, optimize for a response that follows what the user instructed and surfaces every conflict with it.

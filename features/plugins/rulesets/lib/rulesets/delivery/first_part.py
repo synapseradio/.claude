@@ -133,8 +133,7 @@ def deliver_first(
     if isinstance(request, SubagentStart):
         store_delivery(locations, request, plan)
     write_plan(slot, plan)
-    first = "".join(body.text for body in parts[0].bodies) if parts else None
-    return PartOutput(first, message)
+    return PartOutput(parts[0].text if parts else None, message)
 
 
 def _switch_line(request: SessionStart | ModelSwitch | SubagentStart) -> SwitchLine | None:

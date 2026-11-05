@@ -5,6 +5,7 @@ from __future__ import annotations
 from rulesets.check.findings import CheckError, CheckWarning, DirectorySubject, RuleSubject
 from rulesets.part_budget import PART_BUDGET
 from rulesets.source.condition import FACTS
+from rulesets.source.marker import delivered
 from rulesets.source.pool import REFERENCES_DIRECTORY, Citation, Pool, PoolFile
 
 # A frontmatter key scopes a rule file when it is the harness's path scope, the manifest's
@@ -48,14 +49,16 @@ def pool_errors(pool: Pool) -> tuple[CheckError, ...]:
                         "so whether it holds a condition is unknown",
                     )
                 )
-            if len(file.text) > PART_BUDGET:
+            with_marker = len(delivered(rule.name, file.text))
+            if with_marker > PART_BUDGET:
                 errors.append(
                     CheckError(
                         "oversize-body",
                         subject,
                         file.path,
                         None,
-                        f"`{file.path.name}` is {len(file.text)} characters, past the "
+                        f"`{file.path.name}` is {len(file.text)} characters, "
+                        f"{with_marker} with its marker, past the "
                         f"{PART_BUDGET}-character part budget",
                     )
                 )

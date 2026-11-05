@@ -1,5 +1,3 @@
-<!-- rule: repairing -->
-
 ## repairing
 
 For every named defect you fix in an artifact, optimize for a repair that clears the defect and keeps the unit's job.

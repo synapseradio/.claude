@@ -1,5 +1,3 @@
-<!-- rule: data-modeling -->
-
 ## data-modeling
 
 For every type, data structure, schema, interface signature, or error channel you design or change, in code or in reasoning about it, optimize for a type that admits only legal states, bought only where it deletes a "should never happen" branch.

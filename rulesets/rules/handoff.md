@@ -1,5 +1,3 @@
-<!-- rule: handoff -->
-
 ## handoff
 
 For every session that ends with work still open, optimize for a note the next session resumes from in place of the transcript.

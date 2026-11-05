@@ -18,6 +18,7 @@ import sys
 
 import pytest
 from delivery_world import Delivery, World
+from delivery_world import delivered as under_marker
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -793,11 +794,13 @@ class TestRulesArriveSortedByName:
             world.rule(rule, text)
         world.manifest(MODELS + "defaults: ['*']\n")
         first_part = (
-            "no final newline"
-            "line one\r\nline two\r\n"
-            "caf\u00e9 \u2014 na\u00efve \u65e5\u672c\n" + "d" * 4000 + "\n" + "e" * 4000 + "\n"
+            under_marker("aa-no-final-newline", "no final newline")
+            + under_marker("bb-crlf", "line one\r\nline two\r\n")
+            + under_marker("cc-non-ascii", "caf\u00e9 \u2014 na\u00efve \u65e5\u672c\n")
+            + under_marker("dd-large", "d" * 4000 + "\n")
+            + under_marker("ee-large", "e" * 4000 + "\n")
         )
-        second_part = "f" * 4000 + "\n"
+        second_part = under_marker("ff-large", "f" * 4000 + "\n")
 
         started = world.start_session()
         compacted = world.start_session(source="compact")

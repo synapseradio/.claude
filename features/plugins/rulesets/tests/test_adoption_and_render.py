@@ -835,6 +835,34 @@ class TestAdoptMapsTheFilesOfATierCorpusToThePool:
         assert result.returncode == 0, result.stderr
         assert (out / "rules" / "core-rules.md").read_bytes() == text.encode()
 
+    def test_a_source_files_own_marker_and_the_blank_line_after_it_stay_out_of_the_pool(
+        self, tmp_path
+    ):
+        corpus = Corpus(tmp_path)
+        marker = "<!-- rule: core-rules -->\n\n"
+        corpus.raw("default", "core-rules", marker + "default text\n")
+        corpus.raw("haiku", "core-rules", marker + "haiku text\n")
+        out = tmp_path / "adopted"
+
+        result = adopt(corpus.root, out)
+
+        assert result.returncode == 0, result.stderr
+        assert (out / "rules" / "core-rules.md").read_bytes() == b"default text\n"
+        assert (out / "rules" / "core-rules@haiku.md").read_bytes() == b"haiku text\n"
+
+    def test_an_opening_line_that_is_not_the_files_own_marker_stays_and_the_context_differs(
+        self, tmp_path
+    ):
+        corpus = Corpus(tmp_path)
+        corpus.raw("default", "voice", "<!-- rule: sorting -->\nvoice text\n")
+        out = tmp_path / "adopted"
+
+        result = adopt(corpus.root, out)
+
+        assert (out / "rules" / "voice.md").read_bytes() == b"<!-- rule: sorting -->\nvoice text\n"
+        assert result.returncode != 0
+        assert any("voice" in line for line in different_lines(result))
+
     def test_a_tiers_own_text_becomes_a_variant_that_the_models_block_adds(self, tmp_path):
         corpus = Corpus(tmp_path)
         default_text = corpus.body("default", "writing-prose")
@@ -996,6 +1024,27 @@ class TestAdoptProvesEveryContextsTextUnchanged:
                     and not (model == "sonnet" and stem == "agent-delegation")
                 }
                 assert delivered_to(out, tmp_path, model, agent) == expected, (model, agent)
+
+    def test_a_corpus_whose_files_carry_their_markers_is_reported_equal(self, tmp_path):
+        corpus = Corpus(tmp_path)
+        corpus.raw("default", "core-rules", "<!-- rule: core-rules -->\n\ncore text\n")
+        corpus.raw("haiku", "core-rules", "<!-- rule: core-rules -->\n\nhaiku core text\n")
+        out = tmp_path / "adopted"
+
+        result = adopt(corpus.root, out)
+
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert different_lines(result) == []
+
+    def test_a_corpus_file_with_no_marker_is_reported_different(self, tmp_path):
+        corpus = Corpus(tmp_path)
+        corpus.raw("default", "core-rules", "core text\n")
+        out = tmp_path / "adopted"
+
+        result = adopt(corpus.root, out)
+
+        assert result.returncode != 0
+        assert any("core-rules" in line for line in different_lines(result))
 
     def test_a_context_delivering_rules_in_another_sequence_is_reported_equal(self, tmp_path):
         corpus = Corpus(tmp_path, order=["writing-code", "core-rules"])

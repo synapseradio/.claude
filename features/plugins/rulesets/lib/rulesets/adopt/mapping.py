@@ -32,7 +32,13 @@ class AdoptedDirectory:
     skipped: tuple[Skipped, ...]
 
     def rule_names(self) -> frozenset[str]:
-        return frozenset(name.removesuffix(".md").partition("@")[0] for name in self.pool)
+        return frozenset(rule_of(name) for name in self.pool)
+
+
+def rule_of(pool_file_name: str) -> str:
+    """The rule a pool file belongs to: its name without `.md` and without any `@variant`."""
+
+    return pool_file_name.removesuffix(".md").partition("@")[0]
 
 
 def model_name(tier: str) -> str:

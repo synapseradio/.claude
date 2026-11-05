@@ -1,4 +1,4 @@
-"""The rule marker comment: written before a rule's text in a render, and read from a line."""
+"""The rule marker comment: written before a rule's text in a render and in a delivery, and read from a line."""
 
 from __future__ import annotations
 
@@ -31,3 +31,9 @@ def read_marker(line: str) -> Marker | None:
     if found is None:
         return None
     return Marker(rule=found["rule"], variant=found["variant"])
+
+
+def delivered(rule: str, text: str) -> str:
+    """A rule's text as delivery puts it into a context: the rule's marker, a blank line, the text."""
+
+    return f"{marker(rule, None)}\n\n{text}"

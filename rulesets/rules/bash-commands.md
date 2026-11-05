@@ -1,5 +1,3 @@
-<!-- rule: bash-commands -->
-
 ## bash-commands
 
 For every Bash tool call, optimize for a command the session's allow rules match part by part, running only the programs its text names, quoted so the shell reads it whole.

@@ -1,5 +1,3 @@
-<!-- rule: waiting-on-processes -->
-
 ## waiting-on-processes
 
 For every wait, on a command that may run long, a server coming up, a file appearing, or a job or CI run finishing, optimize for a wait that costs the session zero turns and zero wall clock.

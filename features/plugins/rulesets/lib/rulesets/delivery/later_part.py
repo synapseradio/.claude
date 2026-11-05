@@ -27,7 +27,7 @@ def deliver_later(
         return PartOutput()
     for planned in plan.parts:
         if planned.index == part:
-            text = "".join(body.text for body in planned.bodies)
+            text = planned.text
             record = EmittedRecord(
                 session_id=request.session_id,
                 agent_id=request.agent_id if isinstance(request, SubagentStart) else None,

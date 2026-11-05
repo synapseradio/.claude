@@ -1,5 +1,3 @@
-<!-- rule: user-out-of-artifacts -->
-
 ## user-out-of-artifacts
 
 For every artifact, anything a delegate writes included, optimize for an artifact that states each decision as the decision itself, with every trace of who asked for it left out.

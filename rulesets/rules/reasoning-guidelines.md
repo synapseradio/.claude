@@ -1,5 +1,3 @@
-<!-- rule: reasoning-guidelines -->
-
 ## reasoning-guidelines
 
 In every step of reasoning toward a conclusion, optimize for a conclusion held as a current best estimate, at the strength its evidence warrants.

@@ -1,5 +1,3 @@
-<!-- rule: comments -->
-
 ## comments
 
 For every comment in source code you write or land an edit beside, optimize for a comment written only after the code, a name, a type, a test, and a doc each failed to carry its point.

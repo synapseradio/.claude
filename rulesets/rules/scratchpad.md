@@ -1,5 +1,3 @@
-<!-- rule: scratchpad -->
-
 ## scratchpad
 
 For every temporary or working file you produce, an intermediate result, a throwaway script, generated data, a review, an audit, a plan, or a run file, optimize for a working file that lands where the next search finds it and stays out of every commit.

@@ -1,5 +1,3 @@
-<!-- rule: reporting -->
-
 ## reporting
 
 For every account of what happened, in your turn, a delegate's report, or a fork's narration, optimize for a report of what happened as it happened.
