@@ -64,10 +64,10 @@ Right after the run ends, and before writing your report, call `mcp__hindsight-b
 - `document_id`: the title, `thinkies:<name>: <subject in a few words> (<YYYY-MM-DDTHH:MMZ>)`, the time from `date -u +%FT%H:%MZ`, with ` (paused)` added at the end of a paused run. The time keeps each run under its own document id.
 - `content`: `Output of the thinkies:<name> skill.`, a line naming the subject and any record file path, then the full output, unshortened. Replace each token, key, or password in it with `[redacted]`.
 - `context`: `thinkies output from thinkies:<name>`.
-- `tags`: `source:thinkies`, `skill:thinkies:<name>`, and `repo:<repo>` where the request names a repository or files inside one, `repo:none` otherwise. Take `<repo>` as the name of the directory holding the path `git -C <path> rev-parse --path-format=absolute --git-common-dir` prints, run on that repository's path, so every worktree of one repository gives one name.
+- `tags`: `source:thinkies`, `skill:thinkies:<name>`, and `repo:<repo>`, the repository of your working directory, or `repo:none` where the working directory sits outside every git repository. Take `<repo>` as the name of the directory holding the path `git rev-parse --path-format=absolute --git-common-dir` prints from your working directory, so every worktree of one repository gives one name.
 - `timestamp`: the same UTC time, in full ISO 8601.
 
-Where the tags name a repository, make the same call a second time with `bank_id` set to `coding-agent::<repo>` and every other parameter unchanged, so recall from that repository's bank finds the run too.
+Where the tag is `repo:<repo>` and not `repo:none`, make the same call a second time with `bank_id` set to `coding-agent::<repo>` and every other parameter unchanged, so recall from that repository's bank finds the run too.
 
 The tool rejects the content for its size ? split it at section boundaries and retain each part, with ` (part <n> of <m>)` added to the document id.
 A call returns any other error ? quote the error in your report. Where the `global` call failed, put the full output in the report in place of the summary, so the caller holds it.
