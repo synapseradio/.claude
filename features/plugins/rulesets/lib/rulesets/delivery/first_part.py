@@ -13,6 +13,7 @@ from rulesets.audit.delivery_record import (
     ModelLine,
     ReportedValue,
     RuleLine,
+    SwitchLine,
     ToolsLine,
     WithheldLine,
     digest_of,
@@ -21,7 +22,7 @@ from rulesets.compose.composition import Composition, compose
 from rulesets.delivery.hook_output import MESSAGE_SHOWN, PartOutput
 from rulesets.delivery.parts import MAX_PARTS, pack_parts
 from rulesets.delivery.plan import Plan, write_plan
-from rulesets.delivery.request import ForkStart, SessionStart, SubagentStart
+from rulesets.delivery.request import ForkStart, ModelSwitch, SessionStart, SubagentStart
 from rulesets.delivery.rule_bodies import bodies_of
 from rulesets.facts.context import AllToolsBut, Facts, ListedTools
 from rulesets.facts.model.delegate import resolve_fork_model
@@ -70,21 +71,21 @@ from rulesets.source.scaffold import (
 
 
 def deliver_first(
-    request: SessionStart | SubagentStart | ForkStart,
+    request: SessionStart | ModelSwitch | SubagentStart | ForkStart,
     locations: Locations,
     environ: Mapping[str, str],
     slot: pathlib.Path,
-    lifecycle_notices: tuple[Notice, ...] = (),
+    prior_notices: tuple[Notice, ...] = (),
 ) -> PartOutput:
     """Compose the context's rules once, write the plan, append the record, and emit part 1.
 
-    `lifecycle_notices` are the notices the session's start already drew.
+    `prior_notices` are the notices the session's start or switch already drew.
     """
 
     match request:
         case ForkStart():
             return _deliver_fork(request, locations, slot)
-        case SessionStart():
+        case SessionStart() | ModelSwitch():
             state, scope = SessionState(), "session"
         case SubagentStart():
             state, scope = read_state(locations, request.session_id), "delegate"
@@ -92,7 +93,7 @@ def deliver_first(
     scaffolded = scaffold(locations.rulesets)
     directory = read_directory(locations.rulesets)
     resolved = resolve_context(request, directory, locations, environ)
-    if isinstance(request, SessionStart):
+    if isinstance(request, SessionStart | ModelSwitch):
         write_model_record(request.session_id, _identifier_of(resolved.model), locations.state)
     composition = compose(directory, resolved.facts, state)
     bodies = bodies_of(composition, directory.pool)
@@ -102,7 +103,7 @@ def deliver_first(
     write_plan(slot, Plan(parts))
 
     notices = (
-        *lifecycle_notices,
+        *prior_notices,
         *_directory_notices(scaffolded, directory, locations.rulesets),
         *resolved.notices,
         *_composition_notices(composition),
@@ -127,10 +128,17 @@ def deliver_first(
             left_out=left_out,
             notices=notices,
             message_sent=message is not None,
+            switch=_switch_line(request),
         ).to_json(),
     )
     first = "".join(body.text for body in parts[0].bodies) if parts else None
     return PartOutput(first, message)
+
+
+def _switch_line(request: SessionStart | ModelSwitch | SubagentStart) -> SwitchLine | None:
+    if isinstance(request, ModelSwitch):
+        return SwitchLine(request.from_model, request.to_model, request.prompt_id)
+    return None
 
 
 def _deliver_fork(request: ForkStart, locations: Locations, slot: pathlib.Path) -> PartOutput:

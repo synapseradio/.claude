@@ -68,6 +68,15 @@ class FlagLine:
 
 
 @dataclasses.dataclass(frozen=True)
+class SwitchLine:
+    """The model switch a delivery answered, with the prompt it ran under where the harness named one."""
+
+    from_model: str | None
+    to_model: str
+    prompt_id: str | None
+
+
+@dataclasses.dataclass(frozen=True)
 class DeliveryRecord:
     """What one delivery composed and sent. `message_sent` says whether the person was shown a message."""
 
@@ -84,6 +93,7 @@ class DeliveryRecord:
     left_out: tuple[str, ...]
     notices: tuple[Notice, ...]
     message_sent: bool
+    switch: SwitchLine | None = None
 
     def to_json(self) -> dict[str, object]:
         document = dataclasses.asdict(self)

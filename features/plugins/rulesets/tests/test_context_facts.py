@@ -1453,3 +1453,30 @@ class TestTheHarnessReportsAnUnclaimedIdentifier:
 
         assert resolution.fact == model_fact.Unclaimed("glm-5", "harness-reported")
         assert environment.reads.isdisjoint({"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_MODEL"})
+
+
+class TestAModelSwitchsTargetIsTheNextDeliverysIdentifier:
+    def test_a_switch_to_an_identifier_no_name_claims_delivers_it_unclaimed_and_a_shown_notice_names_it(
+        self, world
+    ):
+        world.rule("core-rules")
+        world.rule("opus-rules")
+        world.manifest(
+            DECLARED + "defaults: ['core-rules']\nwhen:\n  - model opus: ['opus-rules']\n"
+        )
+        world.start_session()
+
+        delivery = world.switch_model("glm-5", from_model="claude-opus-5-5", prompt_id="p1")
+
+        (_, record) = world.records()
+        assert record["model"] == {
+            "state": "unclaimed",
+            "name": None,
+            "identifier": "glm-5",
+            "source": "switch-target",
+            "not_a_string": None,
+        }
+        (unclaimed,) = [n for n in record["notices"] if n["kind"] == "model-unclaimed"]
+        assert unclaimed["shown"] is True
+        assert "glm-5" in unclaimed["subject"]
+        assert "glm-5" in delivery.message

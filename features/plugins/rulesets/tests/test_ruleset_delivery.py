@@ -888,3 +888,204 @@ class TestTermsOfDelivery:
         assert (line["rule"], line["variant"]) == ("voice", "terse")
         assert delivery.context == body
         assert line["digest"] == hashlib.sha256(delivery.context.encode()).hexdigest()
+
+
+SONNET = "claude-sonnet-5-5"
+HAIKU = "claude-haiku-4-5"
+TIERS = "models: ['opus', 'sonnet', 'haiku']\n"
+
+
+def declare_tiers(world, *keyed):
+    """A pool whose `core-rules` every context receives, and a `<tier>-rules` for each tier in `keyed`."""
+
+    world.rule("core-rules")
+    blocks = ""
+    for tier in keyed:
+        world.rule(f"{tier}-rules")
+        blocks += f"  - model {tier}: ['{tier}-rules']\n"
+    when = f"when:\n{blocks}" if blocks else ""
+    world.manifest(TIERS + "defaults: ['core-rules']\n" + when)
+
+
+def switch_records(world):
+    return [r for r in world.records() if r.get("switch") is not None]
+
+
+def counted_models(world):
+    """The identifiers of the records the readers count, in file order."""
+
+    from rulesets.audit.counted import counted
+
+    return [r["model"]["identifier"] for r in counted(world.records())]
+
+
+class TestAMidSessionModelChangeDeliversTheNewRulesAndStatesItsLimit:
+    def test_a_switch_to_a_differently_composed_model_delivers_its_rules_and_notes_the_earlier_ones_remain(
+        self, world
+    ):
+        declare_tiers(world, "sonnet", "opus")
+        world.start_session(model=SONNET)
+
+        delivery = world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
+
+        assert delivery.targets == {"PostModelSwitch"}
+        assert delivery.context == "text of core-rules\ntext of opus-rules\n"
+        model = world.model_record()
+        assert model is not None
+        assert model["identifier"] == OPUS
+        (record,) = switch_records(world)
+        (remaining,) = [n for n in record["notices"] if n["kind"] == "earlier-rules-remain"]
+        assert remaining["shown"] is False
+        assert "remain" in remaining["subject"]
+        assert delivery.message is None
+
+    def test_a_switch_from_an_unclaimed_identifier_delivers_the_rules_composed_for_opus(
+        self, world
+    ):
+        declare_tiers(world, "opus")
+        world.start_session(model="glm-5")
+
+        delivery = world.switch_model(OPUS, from_model="glm-5", prompt_id="p1")
+
+        assert delivery.context == "text of core-rules\ntext of opus-rules\n"
+        model = world.model_record()
+        assert model is not None
+        assert model["identifier"] == OPUS
+
+
+class TestASwitchThatChangesNoRuleDeliversNothing:
+    def test_a_switch_between_models_that_compose_alike_delivers_nothing_and_writes_the_model_record(
+        self, world
+    ):
+        declare_tiers(world, "opus")
+        world.start_session(model=SONNET)
+
+        delivery = world.switch_model(HAIKU, from_model=SONNET, prompt_id="p1")
+
+        assert [out for out in delivery.outputs.values() if out] == []
+        assert len(world.records()) == 1, "only the session start left a delivery record"
+        model = world.model_record()
+        assert model is not None
+        assert model["identifier"] == HAIKU
+
+    def test_a_delegate_after_a_switch_that_composes_alike_reads_the_new_model_as_its_parents(
+        self, world
+    ):
+        declare_tiers(world, "haiku")
+        world.start_session(model=SONNET)
+        world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
+
+        world.start_delegate("critic")
+
+        (record,) = delegate_records(world)
+        assert (record["model"]["identifier"], record["model"]["source"]) == (
+            OPUS,
+            "parent-record",
+        )
+
+
+def declare_session_pool(world):
+    """A pool of `core-rules`, `sorting`, and `voice`, and a composition reaching the first two."""
+
+    world.rule("core-rules", "Hold every rule as mandatory.\n")
+    world.rule("sorting", "Sort what you hold.\n")
+    world.rule("voice", "Speak plainly.\n")
+    world.manifest(DECLARED + "defaults: ['core-rules', 'sorting']\n")
+
+
+WHOLE_COMPOSITION = "Hold every rule as mandatory.\nSort what you hold.\n"
+
+
+class TestASessionReceivesAllItsRulesAtEveryStart:
+    def test_a_new_session_receives_the_bodies_its_composition_reaches_and_no_other(self, world):
+        declare_session_pool(world)
+
+        delivery = world.start_session(source="startup")
+
+        assert delivery.context == WHOLE_COMPOSITION
+
+    def test_a_compacted_session_receives_every_body_its_composition_yields(self, world):
+        declare_session_pool(world)
+        world.start_session(source="startup")
+
+        delivery = world.start_session(source="compact")
+
+        assert delivery.context == WHOLE_COMPOSITION
+
+    def test_a_cleared_session_receives_every_body_its_composition_yields(self, world):
+        declare_session_pool(world)
+        world.start_session(source="startup")
+
+        delivery = world.start_session(source="clear")
+
+        assert delivery.context == WHOLE_COMPOSITION
+
+    def test_a_resumed_session_is_composed_for_the_model_its_record_names(self, world):
+        declare_tiers(world, "opus")
+        world.start_session(model=OPUS)
+
+        delivery = world.start_session(model=None, source="resume")
+
+        assert delivery.context == "text of core-rules\ntext of opus-rules\n"
+
+    def test_a_forked_session_is_composed_for_the_model_its_start_reports(self, world):
+        declare_tiers(world, "opus")
+        world.start_session(session_id="s1", model=SONNET)
+
+        delivery = fork_session(world)
+
+        assert delivery.context == "text of core-rules\ntext of opus-rules\n"
+
+    def test_a_ruleset_over_9000_characters_divides_into_whole_sorted_parts_one_entry_each(
+        self, world
+    ):
+        bodies = {name: f"{name} " + "x" * 3990 + "\n" for name in ("a-rule", "b-rule", "c-rule")}
+        for name, text in bodies.items():
+            world.rule(name, text)
+        world.manifest(DECLARED + "defaults: ['c-rule', 'a-rule', 'b-rule']\n")
+
+        delivery = world.start_session()
+
+        parts = {
+            part: json.loads(out)["hookSpecificOutput"]["additionalContext"]
+            for part, out in delivery.outputs.items()
+            if out.strip()
+        }
+        assert parts == {
+            1: bodies["a-rule"] + bodies["b-rule"],
+            2: bodies["c-rule"],
+        }
+        assert [delivery.outputs[part].strip() for part in range(3, 11)] == [""] * 8
+
+
+class TestOnlyTheLastOfSeveralRapidSwitchesCountsAsDelivered:
+    def test_two_switches_before_the_next_request_count_only_the_last(self, world):
+        declare_tiers(world, "sonnet", "haiku")
+        world.start_session(model=OPUS)
+
+        world.switch_model(SONNET, from_model=OPUS, prompt_id="p1")
+        world.switch_model(HAIKU, from_model=SONNET, prompt_id="p1")
+
+        assert [r["model"]["identifier"] for r in switch_records(world)] == [SONNET, HAIKU]
+        assert counted_models(world) == [OPUS, HAIKU]
+        model = world.model_record()
+        assert model is not None
+        assert model["identifier"] == HAIKU
+
+    def test_a_switch_a_request_then_another_switch_count_both(self, world):
+        declare_tiers(world, "sonnet", "haiku")
+        world.start_session(model=OPUS)
+
+        world.switch_model(SONNET, from_model=OPUS, prompt_id="p1")
+        world.switch_model(HAIKU, from_model=SONNET, prompt_id="p2")
+
+        assert counted_models(world) == [OPUS, SONNET, HAIKU]
+
+    def test_a_switch_payload_with_no_prompt_id_counts_as_delivered(self, world):
+        declare_tiers(world, "sonnet", "haiku")
+        world.start_session(model=OPUS)
+
+        world.switch_model(SONNET, from_model=OPUS)
+        world.switch_model(HAIKU, from_model=SONNET)
+
+        assert counted_models(world) == [OPUS, SONNET, HAIKU]

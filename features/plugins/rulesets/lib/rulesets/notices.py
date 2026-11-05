@@ -14,6 +14,7 @@ type NoticeKind = Literal[
     "block-skipped",
     "delivery-failure",
     "directory-scaffolded",
+    "earlier-rules-remain",
     "fork-inherits",
     "fork-parent-missing",
     "launch-flag-undeclared",
@@ -133,6 +134,13 @@ def fork_parent_missing_notice() -> Notice:
     return Notice(
         "fork-parent-missing",
         "the parent of this forked session was not found: it starts with empty session state",
+    )
+
+
+def earlier_rules_remain_notice() -> Notice:
+    return Notice(
+        "earlier-rules-remain",
+        "the rules delivered before this switch remain in the conversation above",
     )
 
 

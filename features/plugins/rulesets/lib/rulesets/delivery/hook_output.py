@@ -8,7 +8,11 @@ from collections.abc import Mapping
 
 # A SubagentStart message lands in the subagent's own transcript and reaches no one else, so
 # that event sends none (observed on Claude Code 2.1.318).
-MESSAGE_SHOWN: Mapping[str, bool] = {"SessionStart": True, "SubagentStart": False}
+MESSAGE_SHOWN: Mapping[str, bool] = {
+    "SessionStart": True,
+    "SubagentStart": False,
+    "PostModelSwitch": True,
+}
 
 
 @dataclasses.dataclass(frozen=True)

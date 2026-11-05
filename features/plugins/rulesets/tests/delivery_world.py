@@ -220,6 +220,26 @@ class World:
             payload["model"] = model
         return self.run_event("SessionStart", payload)
 
+    def switch_model(
+        self,
+        to_model: str,
+        from_model: str | None,
+        prompt_id: str | None = None,
+        session_id: str = "s1",
+    ) -> Delivery:
+        """The PostModelSwitch entries, fed a payload shaped as the harness shapes it."""
+
+        payload = {
+            "session_id": session_id,
+            "from_model": from_model,
+            "to_model": to_model,
+            "requested_model": "opus",
+            "source": "command",
+            "prompt_id": prompt_id,
+        }
+        named = {field: value for field, value in payload.items() if value is not None}
+        return self.run_event("PostModelSwitch", named)
+
     def start_delegate(
         self, agent_type: str = "critic", session_id: str = "s1", agent_id: str = "a1", **extra
     ) -> Delivery:

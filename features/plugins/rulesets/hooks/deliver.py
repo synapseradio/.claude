@@ -19,11 +19,13 @@ from rulesets.delivery.hook_output import hook_output
 from rulesets.delivery.later_part import deliver_later
 from rulesets.delivery.request import (
     HookRequest,
+    ModelSwitch,
     SessionEnd,
     SessionStart,
     Unreadable,
     parse_request,
 )
+from rulesets.delivery.switch import deliver_switch
 from rulesets.locations import Locations
 from rulesets.session.lifecycle import on_session_end, on_session_start
 
@@ -70,6 +72,8 @@ def _output(request: HookRequest, ending: bool, part: int, raw: str, locations: 
     slot = ordering.slot_dir(locations.state, raw)
     ordering.register(slot, part)
     if part == 1:
+        if isinstance(request, ModelSwitch):
+            return hook_output(request.event, deliver_switch(request, locations, os.environ, slot))
         lifecycle_notices = (
             on_session_start(request, locations) if isinstance(request, SessionStart) else ()
         )

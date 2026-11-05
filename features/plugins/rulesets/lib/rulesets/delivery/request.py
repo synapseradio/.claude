@@ -39,6 +39,30 @@ class SessionStart:
 
 
 @dataclasses.dataclass(frozen=True)
+class ModelSwitch:
+    """The main session's model changing to `to_model` from `from_model`, when the harness names it."""
+
+    session_id: str
+    from_model: str | None
+    to_model: str
+    prompt_id: str | None
+    payload: Mapping[str, object]
+
+    event = "PostModelSwitch"
+
+    @property
+    def agent(self) -> str | None:
+        """The agent the session launched under with `--agent`, if any."""
+
+        return _text(self.payload.get("agent_type"))
+
+    def origin(self) -> ModelSwitch:
+        """The switch read as if the session had stayed on `from_model`; absent where none is named."""
+
+        return dataclasses.replace(self, to_model=self.from_model) if self.from_model else self
+
+
+@dataclasses.dataclass(frozen=True)
 class SubagentStart:
     """A delegate starting."""
 
@@ -74,7 +98,7 @@ class Unreadable:
     reason: str
 
 
-type DeliveryRequest = SessionStart | SubagentStart | ForkStart | Unreadable
+type DeliveryRequest = SessionStart | ModelSwitch | SubagentStart | ForkStart | Unreadable
 type HookRequest = DeliveryRequest | SessionEnd
 
 
@@ -95,6 +119,17 @@ def parse_request(payload: object) -> HookRequest:
             if agent_type == FORK_AGENT_TYPE:
                 return ForkStart(session_id, agent_id)
             return SubagentStart(session_id, agent_id, agent_type, payload)
+        case "PostModelSwitch":
+            to_model = _text(payload.get("to_model"))
+            if to_model is None:
+                return Unreadable("the switch names no target model")
+            return ModelSwitch(
+                session_id,
+                _text(payload.get("from_model")),
+                to_model,
+                _text(payload.get("prompt_id")),
+                payload,
+            )
         case "SessionEnd":
             return SessionEnd(session_id)
         case event:
