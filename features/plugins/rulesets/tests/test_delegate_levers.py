@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""The levers that reroute a delegate's model fact, and the host-managed provider notice.
+"""The levers that reroute a delegate's model fact, and the host-managed provider.
 
 Serves the person who runs delegates under a forced or inherited model, and the engineer
 who builds their facts. Two force levers (`CLAUDE_CODE_SUBAGENT_MODEL_FORCE` and
 `CLAUDE_CODE_COORDINATOR_FORCE_WORKER_INHERIT_MODEL`) override the caller's and the
-definition's models; the built-in Explore and Plan agents skip the default variable;
-Explore under a Fable parent lists the `opus` alias on a direct connection; and a
-host-managed provider raises a notice in every kind of resolution.
+definition's models for every agent type alike; the built-in Explore and Plan agents follow
+the same order as any other type; and a host-managed provider draws no notice of its own.
 
 Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_delegate_levers.py`.
 """
@@ -28,14 +27,6 @@ SUBAGENT_FORCE = "CLAUDE_CODE_SUBAGENT_MODEL_FORCE"
 COORDINATOR_FORCE = "CLAUDE_CODE_COORDINATOR_FORCE_WORKER_INHERIT_MODEL"
 LEVERS = (SUBAGENT_FORCE, COORDINATOR_FORCE)
 HOST_MANAGED = "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST"
-PROVIDER_NOTICE = [("provider-variable", HOST_MANAGED)]
-PROVIDER_VARIABLES = (
-    "CLAUDE_CODE_USE_BEDROCK",
-    "CLAUDE_CODE_USE_MANTLE",
-    "CLAUDE_CODE_USE_VERTEX",
-    "CLAUDE_CODE_USE_FOUNDRY",
-    "CLAUDE_CODE_USE_ANTHROPIC_AWS",
-)
 FABLE = "claude-fable-5"
 
 
@@ -136,16 +127,14 @@ class TestTheSubagentForceVariableOverridesTheCallerAndTheDefinition:
 
         assert fact == model_fact.Unclaimed("claude-nova-1", forced(SUBAGENT_FORCE))
 
-    def test_a_default_variable_alias_resolves_through_its_profile_variable(self, scene):
+    def test_a_default_variable_alias_is_claimed_as_reported(self, scene):
         env = {
             SUBAGENT_FORCE: "1",
             DEFAULT_VARIABLE: "haiku",
             "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5",
         }
 
-        assert scene.fact(env=env) == model_fact.Claimed(
-            "haiku", "claude-haiku-5", forced(SUBAGENT_FORCE)
-        )
+        assert scene.fact(env=env) == model_fact.Claimed("haiku", "haiku", forced(SUBAGENT_FORCE))
 
     def test_the_callers_spawn_records_are_never_joined(self, scene):
         scene.parent_runs(OPUS)
@@ -204,177 +193,6 @@ class TestTheCoordinatorLeverGivesTheDelegateTheParentsModel:
         assert fact == model_fact.Claimed("fable", FABLE, forced(COORDINATOR_FORCE))
 
 
-class TestExploreAndPlanSkipTheDefaultVariable:
-    @pytest.mark.parametrize("agent_type", ["Explore", "Plan"])
-    def test_the_caller_names_a_model(self, scene, agent_type):
-        scene.parent_runs(OPUS)
-        scene.caller_names("haiku", agent_type=agent_type)
-
-        fact = scene.fact(agent_type, env={DEFAULT_VARIABLE: SONNET})
-
-        assert fact == model_fact.Claimed("haiku", "haiku", "per-spawn")
-
-    @pytest.mark.parametrize("agent_type", ["Explore", "Plan"])
-    def test_the_default_variable_is_skipped_for_the_parents_model(self, scene, agent_type):
-        scene.parent_runs(OPUS)
-
-        fact = scene.fact(agent_type, env={DEFAULT_VARIABLE: SONNET})
-
-        assert fact == model_fact.Claimed("opus", OPUS, "parent-record")
-
-    @pytest.mark.parametrize("agent_type", ["Explore", "Plan"])
-    def test_the_engine_never_reads_the_default_variable_for_them(
-        self, scene, read_spy, agent_type
-    ):
-        scene.parent_runs(OPUS)
-        env = read_spy({DEFAULT_VARIABLE: SONNET})
-
-        scene.resolve(agent_type, env=env)
-
-        assert DEFAULT_VARIABLE not in env.reads
-
-    @pytest.mark.parametrize("agent_type", ["Explore", "Plan"])
-    def test_with_no_parent_record_the_model_is_missing(self, scene, agent_type):
-        assert scene.fact(agent_type, env={DEFAULT_VARIABLE: SONNET}) == model_fact.Missing()
-
-    def test_a_definition_registered_as_explore_makes_it_an_ordinary_agent(self, scene):
-        scene.parent_runs(OPUS)
-        scene.user_agent("explore.md", "name: Explore")
-
-        fact = scene.fact("Explore", env={DEFAULT_VARIABLE: SONNET})
-
-        assert fact == model_fact.Claimed("sonnet", SONNET, "subagent-default-variable")
-
-    def test_a_definition_registered_as_explore_pins_its_model(self, scene):
-        scene.user_agent("explore.md", "name: Explore\nmodel: haiku")
-
-        assert scene.fact("Explore") == model_fact.Claimed("haiku", "haiku", "definition-pin")
-
-    def test_a_plugin_scoped_agent_of_the_same_name_is_ordinary(self, scene):
-        scene.parent_runs(OPUS)
-
-        fact = scene.fact("kit:Explore", env={DEFAULT_VARIABLE: SONNET})
-
-        assert fact == model_fact.Claimed("sonnet", SONNET, "subagent-default-variable")
-
-
-class TestExploreUnderAFableParentListsTheOpusAlias:
-    def test_on_a_direct_connection(self, scene):
-        scene.parent_runs(FABLE)
-
-        assert scene.fact("Explore") == model_fact.Claimed("opus", "opus", "built-in-pin")
-
-    def test_the_alias_resolves_through_its_profile_variable(self, scene):
-        scene.parent_runs(FABLE)
-
-        fact = scene.fact("Explore", env={"ANTHROPIC_DEFAULT_OPUS_MODEL": OPUS})
-
-        assert fact == model_fact.Claimed("opus", OPUS, "built-in-pin")
-
-    def test_the_alias_is_an_identifier_that_only_a_declared_name_claims(self, scene):
-        scene.parent_runs(FABLE)
-
-        fact = scene.fact("Explore", models=["fable"])
-
-        assert fact == model_fact.Unclaimed("opus", "built-in-pin")
-
-    @pytest.mark.parametrize("variable", PROVIDER_VARIABLES)
-    def test_each_provider_variable_keeps_the_parents_model(self, scene, variable):
-        scene.parent_runs(FABLE)
-
-        fact = scene.fact("Explore", env={variable: "1"})
-
-        assert fact == model_fact.Claimed("fable", FABLE, "parent-record")
-
-    @pytest.mark.parametrize("variable", PROVIDER_VARIABLES)
-    def test_a_provider_variable_holding_a_false_word_does_not_count(self, scene, variable):
-        scene.parent_runs(FABLE)
-
-        fact = scene.fact("Explore", env={variable: "0"})
-
-        assert fact == model_fact.Claimed("opus", "opus", "built-in-pin")
-
-    def test_a_gateway_session_that_sets_no_provider_variable_gets_the_alias(self, scene):
-        scene.parent_runs(FABLE)
-
-        fact = scene.fact("Explore", env={"ANTHROPIC_BASE_URL": "https://gateway.example"})
-
-        assert fact == model_fact.Claimed("opus", "opus", "built-in-pin")
-
-    @pytest.mark.parametrize("identifier", ["claude-fable", "claude-fable-5", "claude-fable[1m]"])
-    def test_every_identifier_opening_on_the_prefix_at_a_boundary(self, scene, identifier):
-        scene.parent_runs(identifier)
-
-        assert scene.fact("Explore").source == "built-in-pin"
-
-    @pytest.mark.parametrize("identifier", ["claude-fablex", "fable", "claude-opus-5-5"])
-    def test_an_identifier_not_opening_on_the_prefix_keeps_the_parents_model(
-        self, scene, identifier
-    ):
-        scene.parent_runs(identifier)
-
-        assert scene.fact("Explore").source == "parent-record"
-
-    def test_plan_under_a_fable_parent_keeps_the_parents_model(self, scene):
-        scene.parent_runs(FABLE)
-
-        assert scene.fact("Plan") == model_fact.Claimed("fable", FABLE, "parent-record")
-
-    def test_the_caller_outranks_the_listed_model(self, scene):
-        scene.parent_runs(FABLE)
-        scene.caller_names("haiku", agent_type="Explore")
-
-        assert scene.fact("Explore") == model_fact.Claimed("haiku", "haiku", "per-spawn")
-
-
-class TestExploreAndPlanUnderTheSubagentForceVariable:
-    def test_explore_takes_the_default_variable(self, scene):
-        scene.parent_runs(OPUS)
-
-        fact = scene.fact("Explore", env={SUBAGENT_FORCE: "1", DEFAULT_VARIABLE: HAIKU})
-
-        assert fact == model_fact.Claimed("haiku", HAIKU, forced(SUBAGENT_FORCE))
-
-    def test_explore_with_no_default_variable_takes_the_parents_model(self, scene):
-        scene.parent_runs(OPUS)
-
-        fact = scene.fact("Explore", env={SUBAGENT_FORCE: "1"})
-
-        assert fact == model_fact.Claimed("opus", OPUS, forced(SUBAGENT_FORCE))
-
-    def test_explore_with_no_default_variable_under_a_fable_parent_takes_its_listed_model(
-        self, scene
-    ):
-        scene.parent_runs(FABLE)
-
-        fact = scene.fact("Explore", env={SUBAGENT_FORCE: "1"})
-
-        assert fact == model_fact.Claimed("opus", "opus", "built-in-pin")
-
-    def test_plan_with_no_default_variable_under_a_fable_parent_takes_the_parents_model(
-        self, scene
-    ):
-        scene.parent_runs(FABLE)
-
-        fact = scene.fact("Plan", env={SUBAGENT_FORCE: "1"})
-
-        assert fact == model_fact.Claimed("fable", FABLE, forced(SUBAGENT_FORCE))
-
-    def test_a_default_variable_naming_inherit_leaves_explore_its_listed_model(self, scene):
-        scene.parent_runs(FABLE)
-
-        fact = scene.fact("Explore", env={SUBAGENT_FORCE: "1", DEFAULT_VARIABLE: "inherit"})
-
-        assert fact == model_fact.Claimed("opus", "opus", "built-in-pin")
-
-    def test_the_default_variable_outranks_explores_listed_model(self, scene):
-        scene.parent_runs(FABLE)
-
-        fact = scene.fact("Explore", env={SUBAGENT_FORCE: "1", DEFAULT_VARIABLE: SONNET})
-
-        assert fact == model_fact.Claimed("sonnet", SONNET, forced(SUBAGENT_FORCE))
-
-
 class TestSkillsRunningInSubagents:
     def test_with_no_force_lever_the_four_sources_decide(self, scene):
         scene.parent_runs(OPUS)
@@ -397,57 +215,30 @@ class TestSkillsRunningInSubagents:
         assert fact == model_fact.Claimed("haiku", HAIKU, forced(SUBAGENT_FORCE))
 
 
-class TestAHostManagedProviderDrawsAProviderVariableNotice:
-    def test_a_session_resolves_its_alias_and_carries_the_notice(self, tmp_path):
-        env = {HOST_MANAGED: "1", "ANTHROPIC_DEFAULT_OPUS_MODEL": OPUS}
-
+class TestAHostManagedProviderDrawsNoNoticeOfItsOwn:
+    def test_a_session_resolves_its_reported_model_with_no_notice(self, tmp_path):
         resolution = session_model.resolve_session_model(
-            {"model": "opus", "session_id": "s1"}, MODELS, env, tmp_path
+            {"model": OPUS, "session_id": "s1"}, MODELS, {HOST_MANAGED: "1"}, tmp_path
         )
 
         assert resolution.fact == model_fact.Claimed("opus", OPUS, "harness-reported")
-        assert [(n.kind, n.subject) for n in resolution.notices] == PROVIDER_NOTICE
+        assert resolution.notices == ()
 
-    def test_a_switch_carries_the_notice(self):
-        resolution = session_model.resolve_switch_model(
-            {"to_model": OPUS}, MODELS, {HOST_MANAGED: "1"}
-        )
-
-        assert resolution.fact == model_fact.Claimed("opus", OPUS, "switch-target")
-        assert [(n.kind, n.subject) for n in resolution.notices] == PROVIDER_NOTICE
-
-    def test_a_delegate_carries_the_notice(self, scene):
+    def test_a_delegate_resolves_with_no_notice(self, scene):
         scene.parent_runs(OPUS)
 
         resolution = scene.resolve(env={HOST_MANAGED: "1"})
 
         assert resolution.fact == model_fact.Claimed("opus", OPUS, "parent-record")
-        assert [(n.kind, n.subject) for n in resolution.notices] == PROVIDER_NOTICE
+        assert resolution.notices == ()
 
-    def test_the_notice_sits_beside_a_per_spawn_notice(self, scene):
+    def test_a_delegate_keeps_the_per_spawn_notice_alone(self, scene):
         scene.caller_names("opus")
         scene.caller_names("haiku")
 
         resolution = scene.resolve(env={HOST_MANAGED: "1"})
 
-        assert sorted(n.kind for n in resolution.notices) == [
-            "per-spawn-ambiguous",
-            "provider-variable",
-        ]
-
-    def test_the_notice_changes_no_fact(self, scene):
-        scene.parent_runs(OPUS)
-
-        assert scene.resolve(env={HOST_MANAGED: "1"}).fact == scene.resolve().fact
-
-    @pytest.mark.parametrize("value", ["", "0", "false", "False"])
-    def test_a_variable_that_is_not_set_draws_no_notice(self, scene, value):
-        assert scene.resolve(env={HOST_MANAGED: value}).notices == ()
-
-    def test_a_session_without_the_variable_draws_no_notice(self, tmp_path):
-        resolution = session_model.resolve_session_model({"model": OPUS}, MODELS, {}, tmp_path)
-
-        assert resolution.notices == ()
+        assert [n.kind for n in resolution.notices] == ["per-spawn-ambiguous"]
 
 
 class TestTheModelFactsSourceNamesWhatDecidedIt:

@@ -93,13 +93,13 @@ class TestASessionsModelFactComesFromHarnessThenEnvironmentThenRecord:
 
         assert model_fact.claimed_name(fact) == "haiku"
 
-    def test_an_alias_in_a_variable_resolves_through_its_profile_variable(self, state):
+    def test_an_alias_in_a_variable_is_claimed_as_reported(self, state):
         env = {"ANTHROPIC_MODEL": "haiku", "ANTHROPIC_DEFAULT_HAIKU_MODEL": HAIKU}
 
         fact = session_fact({"session_id": "s1"}, env, state_dir=state)
 
         assert fact == model_fact.Claimed(
-            "haiku", HAIKU, model_fact.FromVariable("ANTHROPIC_MODEL", "haiku")
+            "haiku", "haiku", model_fact.FromVariable("ANTHROPIC_MODEL", "haiku")
         )
 
     def test_only_the_record_names_a_model(self, state):
@@ -185,33 +185,29 @@ class TestASwitchTakesItsTarget:
     def test_the_target_is_the_identifier_for_the_delivery_that_follows(self):
         payload = {"hook_event_name": "PostModelSwitch", "to_model": "claude-nova-1"}
 
-        fact = session_model.resolve_switch_model(payload, MODELS, {}).fact
+        fact = session_model.resolve_switch_model(payload, MODELS).fact
 
         assert fact == model_fact.Unclaimed("claude-nova-1", "switch-target")
 
     def test_a_declared_target_is_claimed(self):
-        fact = session_model.resolve_switch_model({"to_model": OPUS}, MODELS, {}).fact
+        fact = session_model.resolve_switch_model({"to_model": OPUS}, MODELS).fact
 
         assert fact == model_fact.Claimed("opus", OPUS, "switch-target")
 
-    def test_the_target_stands_over_the_harness_model_and_the_environment(self, read_spy):
+    def test_the_target_stands_over_the_harness_model(self):
         payload = {"to_model": HAIKU, "model": OPUS, "from_model": OPUS}
-        env = read_spy({"ANTHROPIC_MODEL": OPUS})
 
-        fact = session_model.resolve_switch_model(payload, MODELS, env).fact
+        fact = session_model.resolve_switch_model(payload, MODELS).fact
 
         assert model_fact.claimed_name(fact) == "haiku"
-        assert not env.reads & {"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_MODEL"}
 
     def test_a_non_string_target_leaves_the_model_missing(self):
-        fact = session_model.resolve_switch_model(
-            {"to_model": 7}, MODELS, {"ANTHROPIC_MODEL": OPUS}
-        ).fact
+        fact = session_model.resolve_switch_model({"to_model": 7}, MODELS).fact
 
         assert fact == model_fact.Missing(model_fact.NotAString(7, "switch-target"))
 
     def test_a_switch_naming_no_target_leaves_the_model_missing(self):
-        assert session_model.resolve_switch_model({}, MODELS, {}).fact == model_fact.Missing()
+        assert session_model.resolve_switch_model({}, MODELS).fact == model_fact.Missing()
 
 
 class TestAnUnclaimedOrMissingIdentifierMakesEveryModelTestFalse:
@@ -253,7 +249,6 @@ class TestTheEngineReadsNoVariableThatNamesASeparateMechanismsModel:
         env = read_spy({name: HAIKU for name in SEPARATE_MECHANISM_VARIABLES})
 
         session_fact(payload, env, state_dir=state)
-        session_model.resolve_switch_model({"to_model": OPUS}, MODELS, env)
 
         assert not env.reads & set(SEPARATE_MECHANISM_VARIABLES)
 

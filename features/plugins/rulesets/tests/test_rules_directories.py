@@ -10,6 +10,7 @@ named facts or runs the hook entries that `hooks/hooks.json` wires, as the harne
 Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_rules_directories.py`.
 """
 
+import ast
 import json
 import pathlib
 import re
@@ -815,6 +816,39 @@ class TestTheEnginesCodeNamesNoContent:
                     kept.environment["RULESETS_FLAGS"] = names["flag"]
                 texts.append(kept.start_session(identifier, session_id=session_id).context)
             assert texts == expected
+
+    def test_no_string_literal_in_the_engines_code_names_content_outside_the_closed_list(self):
+        # The closed list: the prefix `claude-`, the reserved rulesets, and the pins the harness
+        # gives its built-in agents. A model family word or a built-in agent name may stand only
+        # as one of those pins.
+        pins = {"claude-code-guide": "haiku", "statusline-setup": "sonnet"}
+        allowed_literals = set(pins) | set(pins.values()) | {"claude-"}
+        model_family_words = {"opus", "sonnet", "haiku", "fable"}
+        built_in_agent_names = {"explore", "plan"}
+        identifier_shape = re.compile(r"claude-[\w\[\]-]+")
+
+        def names_content(literal: str) -> bool:
+            words = set(re.findall(r"[a-z0-9]+", literal.lower()))
+            return bool(
+                words & model_family_words
+                or words & {"explore"}
+                or literal.strip().lower() in built_in_agent_names
+                or identifier_shape.fullmatch(literal)
+            )
+
+        sources = sorted((PLUGIN_ROOT / "lib" / "rulesets").rglob("*.py"))
+        offenders = [
+            f"{source.relative_to(PLUGIN_ROOT)}:{node.lineno}: {node.value[:60]!r}"
+            for source in sources
+            for node in ast.walk(ast.parse(source.read_text(encoding="utf-8")))
+            if isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and node.value not in allowed_literals
+            and names_content(node.value)
+        ]
+
+        assert sources
+        assert offenders == []
 
     def test_a_built_in_agent_takes_its_harness_pin_as_the_model_fact_when_the_manifest_declares_the_pinned_name(
         self, scene

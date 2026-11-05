@@ -25,8 +25,8 @@ DECLARED = ["opus", "sonnet", "haiku", "fable", "opus-4-8", "opus-4-8[1m]"]
 WITHOUT_1M = [name for name in DECLARED if name != "opus-4-8[1m]"]
 
 
-def claim(identifier, models, env=None):
-    return model_claim.claim_model(identifier, "harness-reported", models, env or {})
+def claim(identifier, models):
+    return model_claim.claim_model(identifier, "harness-reported", models)
 
 
 class TestTheIdentifierTable:
@@ -108,66 +108,13 @@ class TestTheManifestHoldsEveryName:
         for identifier in ("claude-opus-5-5", "opus", "claude-haiku-4-5"):
             assert isinstance(claim(identifier, []), model_fact.Unclaimed)
 
-    def test_the_provider_behind_the_identifier_changes_nothing(self):
-        env = {"CLAUDE_CODE_USE_BEDROCK": "1", "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST": "1"}
 
-        assert claim("claude-opus-5-5", ["opus"], env) == claim("claude-opus-5-5", ["opus"])
+class TestAnAliasIsClaimedAsReported:
+    def test_an_alias_equal_to_a_declared_name_takes_that_name_and_keeps_its_text(self):
+        assert claim("haiku", ["haiku"]) == model_fact.Claimed("haiku", "haiku", "harness-reported")
 
-
-class TestAnAliasResolvesThroughItsProfileVariable:
-    def test_an_alias_with_its_profile_variable_takes_the_variable_text(self):
-        env = {"ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5"}
-
-        assert claim("haiku", ["haiku"], env) == model_fact.Claimed(
-            "haiku", "claude-haiku-5", "harness-reported"
-        )
-
-    def test_an_alias_with_no_profile_variable_runs_the_claim_on_its_own_text(self):
-        assert claim("haiku", ["haiku"], {}) == model_fact.Claimed(
-            "haiku", "haiku", "harness-reported"
-        )
-
-    def test_an_empty_profile_variable_counts_as_unset(self):
-        env = {"ANTHROPIC_DEFAULT_HAIKU_MODEL": ""}
-
-        assert claim("haiku", ["haiku"], env) == model_fact.Claimed(
-            "haiku", "haiku", "harness-reported"
-        )
-
-    def test_the_claim_runs_on_the_variable_text_and_a_vendor_text_stays_unclaimed(self):
-        env = {"ANTHROPIC_DEFAULT_OPUS_MODEL": "vendor-opus-large"}
-
-        assert claim("opus", ["opus"], env) == model_fact.Unclaimed(
-            "vendor-opus-large", "harness-reported"
-        )
-
-    def test_each_alias_reads_the_variable_of_its_own_name(self):
-        env = {
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5",
-            "ANTHROPIC_DEFAULT_FABLE_MODEL": "claude-fable-2",
-        }
-        models = ["opus", "sonnet", "haiku", "fable"]
-
-        resolved = {alias: claim(alias, models, env).identifier for alias in models}
-
-        assert resolved == {
-            "opus": "claude-opus-5-5",
-            "sonnet": "claude-sonnet-5",
-            "haiku": "claude-haiku-5",
-            "fable": "claude-fable-2",
-        }
-
-    def test_an_identifier_that_is_no_alias_reads_no_profile_variable(self):
-        env = {"ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5"}
-
-        assert claim("claude-sonnet-5", ["opus", "sonnet"], env).identifier == "claude-sonnet-5"
-
-    def test_a_declared_name_beyond_the_four_aliases_reads_no_profile_variable(self):
-        env = {"ANTHROPIC_DEFAULT_NOVA_MODEL": "claude-nova-9"}
-
-        assert claim("nova", ["nova"], env).identifier == "nova"
+    def test_an_alias_no_declared_name_equals_stays_unclaimed_with_its_text(self):
+        assert claim("haiku", ["opus"]) == model_fact.Unclaimed("haiku", "harness-reported")
 
 
 class TestAnIdentifierThatIsNotAString:
@@ -183,7 +130,7 @@ class TestAnIdentifierThatIsNotAString:
         assert model_fact.claimed_name(outcome) is None
 
     def test_missing_names_the_source_of_the_offending_value(self):
-        outcome = model_claim.claim_model(12345, "switch-target", DECLARED, {})
+        outcome = model_claim.claim_model(12345, "switch-target", DECLARED)
 
         assert outcome.source == "switch-target"
 

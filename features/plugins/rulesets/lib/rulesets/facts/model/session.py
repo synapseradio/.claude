@@ -7,7 +7,7 @@ from typing import get_args
 from rulesets.facts.model.claim import claim_model
 from rulesets.facts.model.fact import FromVariable, ModelFact, ModelResolution, SessionVariable
 from rulesets.facts.model.record import read_model_record
-from rulesets.notices import disregarded_variable_notices, provider_notices
+from rulesets.notices import disregarded_variable_notices
 
 SESSION_VARIABLES: tuple[SessionVariable, ...] = get_args(SessionVariable.__value__)
 
@@ -25,10 +25,9 @@ def resolve_session_model(
     """
 
     fact = _session_fact(payload, models, env, state_dir)
-    notices = provider_notices(env)
     if isinstance(fact.source, FromVariable):
-        notices += disregarded_variable_notices(env, fact.source.name)
-    return ModelResolution(fact, notices)
+        return ModelResolution(fact, disregarded_variable_notices(env, fact.source.name))
+    return ModelResolution(fact, ())
 
 
 def _session_fact(
@@ -40,12 +39,12 @@ def _session_fact(
     # SessionStart input may carry the model: https://code.claude.com/docs/en/hooks.md
     reported = payload.get("model")
     if reported not in (None, ""):
-        return claim_model(reported, "harness-reported", models, env)
+        return claim_model(reported, "harness-reported", models)
 
     for variable in SESSION_VARIABLES:
         value = env.get(variable)
         if value:
-            return claim_model(value, FromVariable(variable, value), models, env)
+            return claim_model(value, FromVariable(variable, value), models)
 
     session_id = payload.get("session_id")
     recorded = (
@@ -53,15 +52,13 @@ def _session_fact(
         if isinstance(session_id, str) and session_id
         else None
     )
-    return claim_model(recorded, "session-record", models, env)
+    return claim_model(recorded, "session-record", models)
 
 
 def resolve_switch_model(
     payload: Mapping[str, object],
     models: Iterable[str],
-    env: Mapping[str, str],
 ) -> ModelResolution:
     """The model fact for the delivery that follows a model switch: the switch's target."""
 
-    fact = claim_model(payload.get("to_model"), "switch-target", models, env)
-    return ModelResolution(fact, provider_notices(env))
+    return ModelResolution(claim_model(payload.get("to_model"), "switch-target", models), ())

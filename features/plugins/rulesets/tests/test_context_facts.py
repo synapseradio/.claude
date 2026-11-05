@@ -11,6 +11,7 @@ identifiers and evaluate conditions in memory.
 Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_context_facts.py`.
 """
 
+import json
 import pathlib
 import sys
 
@@ -28,6 +29,7 @@ from rulesets.facts.agent_definition import definition_front  # noqa: E402
 from rulesets.facts.context import ABSENT, UNCLAIMED, AllToolsBut, Facts, ListedTools  # noqa: E402
 from rulesets.facts.model import claim as model_claim  # noqa: E402
 from rulesets.facts.model import fact as model_fact  # noqa: E402
+from rulesets.facts.model import record as model_record  # noqa: E402
 from rulesets.facts.model import session as session_model  # noqa: E402
 from rulesets.facts.tools_fact import tools_fact  # noqa: E402
 from rulesets.source.condition import evaluate, parse_condition  # noqa: E402
@@ -53,7 +55,7 @@ def received(delivery, stems):
 
 
 def claim(identifier, models):
-    return model_claim.claim_model(identifier, "harness-reported", models, {})
+    return model_claim.claim_model(identifier, "harness-reported", models)
 
 
 def truth(text, *, model="missing", agent=None, flags=()):
@@ -357,11 +359,11 @@ class TestDeliveryCompletesWhenTheModelIsUnclaimedOrMissing:
         assert record["model"]["state"] == "missing"
 
 
-def alias_world(world, **variables):
-    """A world declaring the four profile aliases, with the profile variables set."""
+def model_world(world, **variables):
+    """A world declaring `opus`, `sonnet`, and `haiku`, with the given variables set."""
 
     world.rule("voice")
-    world.manifest("models: ['opus', 'sonnet', 'haiku', 'fable']\ndefaults: ['voice']\n")
+    world.manifest("models: ['opus', 'sonnet', 'haiku']\ndefaults: ['voice']\n")
     world.environment.update(variables)
 
 
@@ -372,55 +374,43 @@ def caller_names(world, model, agent_type="critic"):
     spawn_log.append_spawn("s1", "p1", agent_type, model, state)
 
 
+def parent_runs(world, identifier):
+    """The parent session's recorded identifier, as the session hook leaves it for delegates."""
+
+    model_record.write_model_record("s1", identifier, world.config / ".tmp" / "rulesets-engine")
+
+
 def shown_notices(record):
     return [n for n in record["notices"] if n["shown"]]
 
 
-class TestModelAliasesResolveThroughTheProfileVariables:
-    def test_an_alias_takes_the_identifier_its_profile_variable_holds(self, scene):
-        scene.caller_names("haiku")
+def delegate_records(world):
+    return [record for record in world.records() if record["scope"] == "delegate"]
 
-        fact = scene.fact(env={"ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5"})
 
-        assert fact == model_fact.Claimed("haiku", "claude-haiku-5", "per-spawn")
+def model_of(record):
+    """The identifier and the source a delegate record names for its model."""
 
-    def test_an_alias_with_no_profile_variable_keeps_its_text(self, scene):
-        scene.caller_names("haiku")
+    return record["model"]["identifier"], record["model"]["source"]
 
-        fact = scene.fact(env={})
 
-        assert fact == model_fact.Claimed("haiku", "haiku", "per-spawn")
+FORCE = "CLAUDE_CODE_SUBAGENT_MODEL_FORCE"
+DEFAULT_VARIABLE = "CLAUDE_CODE_SUBAGENT_MODEL"
+OPUS_IDENTIFIER = "claude-opus-5-5"
+SONNET_IDENTIFIER = "claude-sonnet-5"
+HAIKU_IDENTIFIER = "claude-haiku-4-5"
 
-    def test_a_profile_variable_naming_a_non_claude_model_is_unclaimed_and_draws_a_shown_notice(
-        self, world
-    ):
-        alias_world(world, ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5")
-        caller_names(world, "opus")
+
+class TestTheEngineClaimsAModelIdentifierAsReportedAndResolvesNoAlias:
+    def test_an_alias_whose_mapping_variable_is_set_is_claimed_as_reported(self, world):
+        model_world(world, ANTHROPIC_DEFAULT_HAIKU_MODEL="claude-haiku-5")
+        caller_names(world, "haiku")
 
         world.start_delegate("critic")
 
-        (record,) = world.records()
-        assert record["model"]["state"] == "unclaimed"
-        assert record["model"]["identifier"] == "glm-5"
-        (notice,) = shown_notices(record)
-        assert notice["kind"] == "model-unclaimed"
-        assert "glm-5" in notice["subject"]
-
-
-class TestEachAliasNamesItsProfileVariable:
-    def test_the_fable_alias_reads_the_fable_variable_and_no_other(self, scene):
-        scene.caller_names("fable")
-
-        fact = scene.fact(
-            env={
-                "ANTHROPIC_DEFAULT_FABLE_MODEL": "claude-fable-5-1",
-                "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5",
-                "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5",
-                "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5",
-            }
-        )
-
-        assert fact == model_fact.Claimed("fable", "claude-fable-5-1", "per-spawn")
+        (record,) = delegate_records(world)
+        assert record["model"]["identifier"] == "haiku"
+        assert record["model"]["name"] == "haiku"
 
 
 class TestTheEngineReadsNoModelVariableMeantForASeparateMechanism:
@@ -442,27 +432,8 @@ class TestTheEngineReadsNoModelVariableMeantForASeparateMechanism:
 
 
 class TestAHostManagedProviderDrawsAnUnshownNoticeForADisregardedVariable:
-    def test_a_host_managed_alias_variable_still_resolves_with_an_unshown_notice(self, world):
-        alias_world(
-            world,
-            CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST="1",
-            ANTHROPIC_DEFAULT_OPUS_MODEL="claude-opus-5-5",
-        )
-        caller_names(world, "opus")
-
-        world.start_delegate("critic")
-
-        (record,) = world.records()
-        assert record["model"]["identifier"] == "claude-opus-5-5"
-        assert record["model"]["name"] == "opus"
-        assert {
-            "kind": "provider-variable",
-            "subject": "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST",
-            "shown": False,
-        } in record["notices"]
-
     def test_an_inherited_anthropic_model_draws_only_an_unshown_notice(self, world):
-        alias_world(
+        model_world(
             world,
             CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST="1",
             ANTHROPIC_MODEL="claude-opus-5-5",
@@ -651,3 +622,113 @@ class TestTheToolsFactIgnoresABackgroundSubagentsNarrowerToolSet:
         delivery = world.start_delegate("critic", run_in_background=True, tools=["Read"])
 
         assert received(delivery, ["voice", "tone"]) == ["tone"]
+
+
+class TestTheCallersModelIsReadFromTheAgentToolHooksRecord:
+    def test_two_agent_types_under_one_prompt_each_read_their_own_per_spawn_model(self, world):
+        model_world(world)
+        caller_names(world, "haiku", "critic")
+        caller_names(world, "opus", "scout")
+
+        world.start_delegate("critic", agent_id="a1")
+        world.start_delegate("scout", agent_id="a2")
+
+        by_agent = {record["agent"]: model_of(record) for record in delegate_records(world)}
+        assert by_agent == {"critic": ("haiku", "per-spawn"), "scout": ("opus", "per-spawn")}
+
+
+class TestSeveralMatchingPerSpawnRecordsNamingDifferentModels:
+    def test_two_same_type_spawns_under_one_prompt_naming_one_model_give_that_model_with_no_notice(
+        self, world
+    ):
+        model_world(world)
+        caller_names(world, "haiku")
+        caller_names(world, "haiku")
+
+        world.start_delegate("critic", agent_id="a1")
+        world.start_delegate("critic", agent_id="a2")
+
+        records = delegate_records(world)
+        assert [model_of(record) for record in records] == [("haiku", "per-spawn")] * 2
+        assert [
+            n for record in records for n in record["notices"] if n["kind"] == "per-spawn-ambiguous"
+        ] == []
+
+
+class TestAPluginScopedAgentTypeReadsItsPluginsAgentsDirectory:
+    def test_a_plugin_agent_reads_its_plugins_definition(self, world):
+        world.rule("voice")
+        world.manifest("models: ['haiku']\ndefaults: []\nwhen:\n  - tools Read: ['voice']\n")
+        install = world.config.parent / "installs" / "p@market"
+        (install / "agents").mkdir(parents=True)
+        (install / "agents" / "scout.md").write_text(
+            "---\nname: scout\nmodel: haiku\ntools: Read\n---\nbody\n", encoding="utf-8"
+        )
+        (world.config / "plugins").mkdir()
+        (world.config / "plugins" / "installed_plugins.json").write_text(
+            json.dumps({"version": 2, "plugins": {"p@market": [{"installPath": str(install)}]}}),
+            encoding="utf-8",
+        )
+
+        delivery = world.start_delegate("p:scout")
+
+        (record,) = delegate_records(world)
+        assert model_of(record) == ("haiku", "definition-pin")
+        assert received(delivery, ["voice"]) == ["voice"]
+
+
+class TestAPerSpawnModelOutranksABuiltInAgentsPin:
+    def test_a_per_spawn_model_outranks_a_built_in_agents_harness_pin(self, world):
+        model_world(world)
+        caller_names(world, "opus", "claude-code-guide")
+
+        world.start_delegate("claude-code-guide")
+
+        (record,) = delegate_records(world)
+        assert model_of(record) == ("opus", "per-spawn")
+
+    def test_a_per_spawn_model_outranks_the_default_variable_for_an_agent_the_engine_holds_no_pin_for(
+        self, world
+    ):
+        model_world(world, **{DEFAULT_VARIABLE: SONNET_IDENTIFIER})
+        caller_names(world, "haiku", "general-purpose")
+
+        world.start_delegate("general-purpose")
+
+        (record,) = delegate_records(world)
+        assert model_of(record) == ("haiku", "per-spawn")
+
+
+class TestTheSubagentForceVariableOutranksEveryAgentTypesPins:
+    def test_a_pinned_built_in_agent_under_the_force_variable_alone_takes_the_parents_identifier(
+        self, world
+    ):
+        model_world(world, **{FORCE: "1"})
+        parent_runs(world, OPUS_IDENTIFIER)
+
+        world.start_delegate("claude-code-guide")
+
+        (record,) = delegate_records(world)
+        assert model_of(record) == (OPUS_IDENTIFIER, FORCE)
+
+    def test_an_agent_the_engine_holds_no_pin_for_takes_the_default_variable_under_both_variables(
+        self, world
+    ):
+        model_world(world, **{FORCE: "1", DEFAULT_VARIABLE: HAIKU_IDENTIFIER})
+        parent_runs(world, OPUS_IDENTIFIER)
+
+        world.start_delegate("general-purpose")
+
+        (record,) = delegate_records(world)
+        assert record["model"]["identifier"] == HAIKU_IDENTIFIER
+
+
+class TestAnEnvironmentVariableCountsAsSetUnlessEmptyOrFalse:
+    def test_a_force_variable_holding_zero_has_no_effect(self, world):
+        model_world(world, **{FORCE: "0", DEFAULT_VARIABLE: SONNET_IDENTIFIER})
+        caller_names(world, "haiku")
+
+        world.start_delegate("critic")
+
+        (record,) = delegate_records(world)
+        assert model_of(record) == ("haiku", "per-spawn")

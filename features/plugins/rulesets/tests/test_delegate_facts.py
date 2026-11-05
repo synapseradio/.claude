@@ -106,19 +106,19 @@ class TestADelegatesModelFactComesFromFourSourcesInOrder:
 
         assert scene.fact() == model_fact.Unclaimed("claude-nova-1", "parent-record")
 
-    def test_a_caller_alias_resolves_through_its_profile_variable(self, scene):
+    def test_a_caller_alias_is_claimed_as_reported(self, scene):
         scene.caller_names("haiku")
 
         fact = scene.fact(env={"ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5"})
 
-        assert fact == model_fact.Claimed("haiku", "claude-haiku-5", "per-spawn")
+        assert fact == model_fact.Claimed("haiku", "haiku", "per-spawn")
 
-    def test_a_definition_alias_resolves_through_its_profile_variable(self, scene):
+    def test_a_definition_alias_is_claimed_as_reported(self, scene):
         scene.user_agent("scout.md", "name: scout\nmodel: sonnet")
 
         fact = scene.fact("scout", env={"ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-6"})
 
-        assert fact == model_fact.Claimed("sonnet", "claude-sonnet-6", "definition-pin")
+        assert fact == model_fact.Claimed("sonnet", "sonnet", "definition-pin")
 
     def test_a_caller_model_that_is_not_a_string_yields_to_the_next_source(self, scene):
         scene.caller_names(5, agent_type="scout")
@@ -411,12 +411,12 @@ class TestAPinOfInheritAndTheHarnessBuiltInPins:
 
         assert fact == model_fact.Unclaimed("haiku", "built-in-pin")
 
-    def test_a_built_in_pin_resolves_through_its_profile_variable(self, scene):
+    def test_a_built_in_pin_is_claimed_as_reported(self, scene):
         fact = scene.fact(
             "claude-code-guide", env={"ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5"}
         )
 
-        assert fact == model_fact.Claimed("haiku", "claude-haiku-5", "built-in-pin")
+        assert fact == model_fact.Claimed("haiku", "haiku", "built-in-pin")
 
     def test_the_built_in_pin_is_read_ahead_of_the_default_variable(self, scene):
         fact = scene.fact("claude-code-guide", env={DEFAULT_VARIABLE: SONNET})
