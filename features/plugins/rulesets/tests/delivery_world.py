@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 HOOKS_JSON = PLUGIN_ROOT / "hooks" / "hooks.json"
+TOGGLE_SKILL = PLUGIN_ROOT / "skills" / "toggle" / "SKILL.md"
 
 OPUS = "claude-opus-5-5"
 HAIKU = "claude-haiku-4-5"
@@ -68,6 +69,15 @@ class World:
         lines = ["flags:", *(f"  {flag}: {setting}" for flag, setting in settings.items())]
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+    def state_file(self, session_id: str = "s1") -> pathlib.Path:
+        return self.config / ".tmp" / "rulesets-engine" / "session" / f"{session_id}.yaml"
+
+    @property
+    def transcripts(self) -> pathlib.Path:
+        """The project directory the harness keeps every transcript of one project in."""
+
+        return self.config / "projects" / "-work-project"
+
     def record_files(self, session_id: str = "s1") -> pathlib.Path:
         return self.config / ".tmp" / "rulesets-engine" / "audit" / session_id
 
@@ -86,16 +96,48 @@ class World:
             **self.environment,
         }
 
-    def _command(self, event: str, part: int) -> str:
+    def _command(self, event: str, last_argument: str) -> str:
         groups = json.loads(HOOKS_JSON.read_text(encoding="utf-8"))["hooks"][event]
         commands = [hook["command"] for group in groups for hook in group["hooks"]]
-        return next(c for c in commands if c.endswith(f"--part {part}"))
+        return next(c for c in commands if c.endswith(last_argument))
+
+    def toggle(self, arguments: str, session_id: str = "s1") -> subprocess.CompletedProcess[str]:
+        """The command the toggle skill injects, with the placeholders filled as the harness fills them."""
+
+        assert TOGGLE_SKILL.is_file(), "the plugin ships skills/toggle/SKILL.md"
+        lines = TOGGLE_SKILL.read_text(encoding="utf-8").splitlines()
+        command = next(line[2:-1] for line in lines if line.startswith("!`") and line.endswith("`"))
+        filled = command.replace("${CLAUDE_SESSION_ID}", session_id).replace(
+            "$ARGUMENTS", arguments
+        )
+        return subprocess.run(
+            ["bash", "-c", filled],
+            capture_output=True,
+            text=True,
+            env=self._environ(),
+            check=False,
+        )
+
+    def end_session(self, session_id: str = "s1") -> None:
+        """The SessionEnd hook entry, fed the payload on stdin."""
+
+        done = subprocess.run(
+            ["bash", "-c", self._command("SessionEnd", "--end")],
+            input=json.dumps(
+                {"session_id": session_id, "hook_event_name": "SessionEnd", "reason": "other"}
+            ),
+            capture_output=True,
+            text=True,
+            env=self._environ(),
+            check=False,
+        )
+        assert done.returncode == 0, done.stderr
 
     def run_part(self, event: str, payload: dict, part: int) -> str:
         """The stdout of one hook entry of an event, fed the payload on stdin."""
 
         done = subprocess.run(
-            ["bash", "-c", self._command(event, part)],
+            ["bash", "-c", self._command(event, f"--part {part}")],
             input=json.dumps({**payload, "hook_event_name": event}),
             capture_output=True,
             text=True,

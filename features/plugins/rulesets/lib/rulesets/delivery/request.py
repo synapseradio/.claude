@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import pathlib
 from collections.abc import Mapping
 
 FORK_AGENT_TYPE = "fork"
@@ -22,6 +23,19 @@ class SessionStart:
         """The agent the session launched under with `--agent`, if any."""
 
         return _text(self.payload.get("agent_type"))
+
+    @property
+    def source(self) -> str | None:
+        """What started the session: `startup`, `resume`, `clear`, `compact`, or `fork`."""
+
+        return _text(self.payload.get("source"))
+
+    @property
+    def transcript_path(self) -> pathlib.Path | None:
+        """Where the harness keeps this session's transcript."""
+
+        path = _text(self.payload.get("transcript_path"))
+        return None if path is None else pathlib.Path(path).expanduser()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -47,14 +61,24 @@ class ForkStart:
 
 
 @dataclasses.dataclass(frozen=True)
+class SessionEnd:
+    """The main session ending."""
+
+    session_id: str
+
+    event = "SessionEnd"
+
+
+@dataclasses.dataclass(frozen=True)
 class Unreadable:
     reason: str
 
 
 type DeliveryRequest = SessionStart | SubagentStart | ForkStart | Unreadable
+type HookRequest = DeliveryRequest | SessionEnd
 
 
-def parse_request(payload: object) -> DeliveryRequest:
+def parse_request(payload: object) -> HookRequest:
     """The request a hook payload makes, or why the payload is no request."""
 
     if not isinstance(payload, dict):
@@ -71,6 +95,8 @@ def parse_request(payload: object) -> DeliveryRequest:
             if agent_type == FORK_AGENT_TYPE:
                 return ForkStart(session_id, agent_id)
             return SubagentStart(session_id, agent_id, agent_type, payload)
+        case "SessionEnd":
+            return SessionEnd(session_id)
         case event:
             return Unreadable(f"no delivery answers the event {event!r}")
 

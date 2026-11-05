@@ -6,7 +6,7 @@
           {
             "type": "command",
             "timeout": 5,
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 1"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" --announce \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 1"
           },
           {
             "type": "command",
@@ -108,6 +108,17 @@
             "type": "command",
             "timeout": 5,
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 10"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 5,
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --end"
           }
         ]
       }

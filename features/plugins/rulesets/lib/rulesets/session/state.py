@@ -60,3 +60,16 @@ def write_state(locations: Locations, session_id: str, state: SessionState) -> N
     temporary = path.with_suffix(".tmp")
     temporary.write_text(yaml.safe_dump(document), encoding="utf-8")
     temporary.replace(path)
+
+
+def remove_state(locations: Locations, session_id: str) -> None:
+    """Remove the session's state file; a session with none stays as it is."""
+
+    _path(locations, session_id).unlink(missing_ok=True)
+
+
+def copy_state(locations: Locations, from_id: str, to_id: str) -> None:
+    """Give `to_id` the state `from_id` holds now; a source with none leaves `to_id` as it is."""
+
+    if _path(locations, from_id).is_file():
+        write_state(locations, to_id, read_state(locations, from_id))

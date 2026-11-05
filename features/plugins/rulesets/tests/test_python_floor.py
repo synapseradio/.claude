@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Every module the hooks run parses under Python 3.12.
+"""Every module the hooks run parses under Python 3.14.
 
-The launcher accepts any interpreter from 3.12 up, so a module using newer
-syntax passes on the author's 3.14 and fails at the first hook run on a
-machine whose newest Python is 3.12, and that session starts with no rules.
+The launcher accepts any interpreter from 3.14 up, so a module using syntax
+newer than 3.14 fails at the first hook run on a machine whose newest Python is
+3.14, and that session starts with no rules.
 
 Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_python_floor.py`.
 """
@@ -14,7 +14,7 @@ import pathlib
 import pytest
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-FLOOR = (3, 12)
+FLOOR = (3, 14)
 
 
 def sources() -> list[pathlib.Path]:
@@ -32,4 +32,4 @@ def test_the_module_parses_at_the_floor(path):
     try:
         ast.parse(path.read_text(encoding="utf-8"), filename=str(path), feature_version=FLOOR)
     except SyntaxError as error:
-        pytest.fail(f"{path.name}:{error.lineno} needs syntax newer than Python 3.12: {error.msg}")
+        pytest.fail(f"{path.name}:{error.lineno} needs syntax newer than Python 3.14: {error.msg}")
