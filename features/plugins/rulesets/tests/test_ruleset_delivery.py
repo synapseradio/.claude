@@ -13,6 +13,8 @@ import json
 import pathlib
 import shutil
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 import yaml
@@ -425,6 +427,20 @@ class TestTheActionClearRemovesTheSessionsState:
         assert not world.state_file().exists()
         assert world.start_delegate().context == CORE
 
+    def test_clear_removes_a_state_file_no_toggle_could_read_and_the_next_delegate_gets_the_manifests_rules(
+        self, world
+    ):
+        world.rule("core-rules")
+        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.state_file().parent.mkdir(parents=True)
+        world.state_file().write_text("band: sideways\n", encoding="utf-8")
+
+        cleared = world.toggle("clear")
+
+        assert cleared.returncode == 0, cleared.stderr
+        assert not world.state_file().exists()
+        assert world.start_delegate().context == CORE
+
 
 class TestSessionStateEndsAtAClearAndAtTheSessionsEnd:
     def test_a_cleared_session_ends_its_toggles(self, world):
@@ -476,6 +492,67 @@ class TestAForkedSessionStartsWithACopyOfItsParentsSessionState:
 
         assert world.start_delegate(session_id="s1").context == CORE + SECURITY
         assert world.start_delegate(session_id="s2").context == CORE
+
+
+def sibling_pool(world):
+    declare_strict(world)
+    assert world.toggle("flag strict", session_id="s1").returncode == 0
+
+
+def fork_again(world, fork, parent="s1"):
+    """The SessionStart of `fork`, a further fork of `parent` whose transcript is the newest in the project."""
+
+    transcript = write_transcript(
+        world.transcripts, fork, fork_of=world.transcripts / f"{parent}.jsonl"
+    )
+    return world.start_session(session_id=fork, source="fork", transcript_path=str(transcript))
+
+
+class TestSiblingForksTakeTheirCommonParent:
+    def test_a_second_fork_inherits_the_parents_state_and_not_its_siblings(self, world):
+        sibling_pool(world)
+        fork_session(world, fork="s2")
+        assert world.toggle("unflag strict", session_id="s2").returncode == 0
+
+        delivery = fork_again(world, "s3")
+
+        assert delivery.message is None
+        assert world.start_delegate(session_id="s3").context == CORE + SECURITY
+        assert world.start_delegate(session_id="s2").context == CORE
+
+    def test_a_third_fork_still_finds_the_parent_beside_two_siblings(self, world):
+        sibling_pool(world)
+        fork_session(world, fork="s2")
+        fork_again(world, "s3")
+        assert world.toggle("unflag strict", session_id="s3").returncode == 0
+
+        fork_again(world, "s4")
+
+        assert world.start_delegate(session_id="s4").context == CORE + SECURITY
+
+    def test_a_parent_that_went_on_after_an_earlier_fork_is_found_by_a_later_one(self, world):
+        sibling_pool(world)
+        fork_session(world, fork="s2")
+        parent = world.transcripts / "s1.jsonl"
+        with parent.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps({"type": "user", "uuid": "later-1", "sessionId": "s1"}) + "\n")
+
+        fork_again(world, "s3")
+
+        assert world.start_delegate(session_id="s3").context == CORE + SECURITY
+
+    def test_two_transcripts_that_hold_the_same_copied_entries_leave_the_parent_unfound(
+        self, world
+    ):
+        sibling_pool(world)
+        fork_session(world, fork="s2")
+        parent = world.transcripts / "s1.jsonl"
+        (world.transcripts / "twin.jsonl").write_bytes(parent.read_bytes())
+
+        delivery = fork_again(world, "s3")
+
+        assert "not found" in delivery.message
+        assert world.start_delegate(session_id="s3").context == CORE
 
 
 class TestAForkedSessionWhoseParentIsNotFound:
@@ -693,6 +770,28 @@ class TestTheActionNoneLeavesANoticeThatTheContextReceivedNothing:
         assert "fail" not in notice.lower()
 
 
+NOT_UTF_8 = b'{"session_id": "s1", "source": "\xff\xfe"}'
+
+
+class TestEveryHookExitsZeroOnAPayloadThatIsNotUtf8:
+    @pytest.mark.parametrize(
+        ("event", "last_argument"),
+        [
+            ("SessionStart", "--part 1"),
+            ("SessionStart", "--part 2"),
+            ("SubagentStart", "--part 1"),
+            ("PostModelSwitch", "--part 1"),
+            ("SessionEnd", "--end"),
+            ("PreToolUse", 'record-spawn.py"'),
+            ("InstructionsLoaded", 'record-load.py"'),
+        ],
+    )
+    def test_the_hook_exits_zero_and_prints_nothing(self, world, event, last_argument):
+        result = world.run_hook_bytes(event, last_argument, NOT_UTF_8)
+
+        assert (result.returncode, result.stdout) == (0, b"")
+
+
 class TestASessionsModelFactIsRecordedAndReadBack:
     def test_a_session_whose_start_reports_no_identifier_records_that_none_was_available(
         self, world
@@ -903,20 +1002,239 @@ class TestADeliveryFailureKeepsTheSessionRunning:
         assert "--part 1" in delivery.message
 
 
+THREE_PARTS = ("a-rule", "b-rule", "c-rule")
+
+
+def three_part_pool(world, mark="OLD"):
+    """Rules whose bodies each fill most of a part, so that a delivery needs three parts."""
+
+    for name in THREE_PARTS:
+        world.rule(name, f"{name} {mark} " + "x" * 5980 + "\n")
+    world.manifest(DECLARED + "defaults: ['a-rule', 'b-rule', 'c-rule']\n")
+
+
+def block_audit(world):
+    """Put a file where the audit directory belongs, so no record can be appended."""
+
+    audit = world.config / ".tmp" / "rulesets-engine" / "audit"
+    audit.parent.mkdir(parents=True, exist_ok=True)
+    audit.write_text("not a directory", encoding="utf-8")
+
+
+def jam_delivery_records(world, session_id="s1"):
+    """Put a directory where the session's delivery records belong, so only that append fails."""
+
+    (world.record_files(session_id) / "deliveries.jsonl").mkdir(parents=True)
+
+
+def rerun_command_of(message):
+    return message.split("run it again with: ", 1)[1]
+
+
+class TestAFailureAfterThePlanIsWrittenDeliversNoPartAtAll:
+    def test_when_the_first_part_cannot_append_its_record_no_later_part_delivers_text(self, world):
+        three_part_pool(world)
+        jam_delivery_records(world)
+        payload = {"session_id": "s1", "source": "startup", "model": OPUS}
+
+        delivery = world.run_event("SessionStart", payload)
+
+        assert delivery.context == ""
+        assert [part for part, out in delivery.outputs.items() if "additionalContext" in out] == []
+        assert len(delivery.messages) == 1
+
+    def test_a_delivery_that_succeeds_again_after_a_failure_delivers_every_part(self, world):
+        three_part_pool(world)
+        jam_delivery_records(world)
+        payload = {"session_id": "s1", "source": "startup", "model": OPUS}
+        world.run_event("SessionStart", payload)
+        (world.record_files() / "deliveries.jsonl").rmdir()
+
+        delivery = world.run_event("SessionStart", payload)
+
+        assert sorted(delivery.part_texts) == [1, 2, 3]
+
+
+class TestAFailedDeliveryWritesItsRecord:
+    def test_a_main_session_failure_leaves_one_record_carrying_the_failure_notice(self, world):
+        world.rule("voice")
+        world.manifest(DECLARED + "defaults: ['voice']\n")
+        (world.rulesets / "rules").chmod(0o000)
+        try:
+            delivery = world.start_session()
+        finally:
+            (world.rulesets / "rules").chmod(0o700)
+
+        (record,) = world.records()
+        assert [n["kind"] for n in record["notices"]] == ["delivery-failure"]
+        assert record["notices"][0]["subject"] == delivery.message
+        assert (record["scope"], record["kind"], record["message_sent"]) == (
+            "session",
+            "session",
+            True,
+        )
+        assert record["rules"] == []
+        assert not (world.record_files() / "failures.jsonl").exists()
+
+    def test_where_no_record_can_be_written_stderr_carries_the_failure_alone(self, world):
+        world.rule("voice")
+        world.manifest(DECLARED + "defaults: ['voice']\n")
+        block_audit(world)
+        payload = {"session_id": "s1", "source": "startup", "model": OPUS}
+
+        failed = world.run_part_process("SessionStart", payload, 1)
+
+        assert failed.returncode == 0
+        assert "delivery failed" in failed.stderr
+        assert "audit" in failed.stderr
+        assert world.records() == []
+
+    def test_a_delegate_failure_leaves_a_record_that_states_no_message_was_shown(self, world):
+        world.rule("voice")
+        world.manifest(DECLARED + "defaults: ['voice']\n")
+        (world.rulesets / "rules").chmod(0o000)
+        try:
+            delivery = world.start_delegate("critic")
+        finally:
+            (world.rulesets / "rules").chmod(0o700)
+
+        (record,) = world.records()
+        assert [n["kind"] for n in record["notices"]] == ["delivery-failure"]
+        assert (record["scope"], record["agent_id"], record["message_sent"]) == (
+            "delegate",
+            "a1",
+            False,
+        )
+        assert delivery.outputs[1] == ""
+
+    def test_a_failed_delivery_counts_as_nothing_delivered(self, world):
+        world.rule("voice")
+        world.manifest(DECLARED + "defaults: ['voice']\n")
+        (world.rulesets / "rules").chmod(0o000)
+        try:
+            world.start_session()
+        finally:
+            (world.rulesets / "rules").chmod(0o700)
+
+        listed = world.deliveries()
+        checked = world.delivery_check()
+
+        assert (listed.stdout, listed.returncode) == ("", 0)
+        assert (checked.stdout, checked.returncode) == ("", 0)
+
+
+class TestTheFailureNoticeNamesACommandThatRunsTheDeliveryAgain:
+    def fail_once(self, world):
+        world.rule("voice")
+        world.manifest(DECLARED + "defaults: ['voice']\n")
+        (world.rulesets / "rules").chmod(0o000)
+        try:
+            return world.start_session()
+        finally:
+            (world.rulesets / "rules").chmod(0o700)
+
+    def test_the_command_reproduces_the_delivery_once_the_cause_is_gone(self, world):
+        failed = self.fail_once(world)
+
+        rerun = world.run_shell(rerun_command_of(failed.message))
+
+        assert rerun.returncode == 0, rerun.stderr
+        assert json.loads(rerun.stdout)["hookSpecificOutput"]["additionalContext"] == (
+            "text of voice\n"
+        )
+
+    def test_the_command_names_a_payload_file_under_the_state_directory(self, world):
+        failed = self.fail_once(world)
+
+        command = rerun_command_of(failed.message)
+
+        (payload,) = (world.config / ".tmp" / "rulesets-engine" / "payloads").iterdir()
+        assert str(payload) in command
+        assert json.loads(payload.read_text(encoding="utf-8"))["session_id"] == "s1"
+
+    def test_the_command_carries_the_payload_where_no_file_can_be_written(self, world, tmp_path):
+        not_a_directory = tmp_path / "file"
+        not_a_directory.write_text("", encoding="utf-8")
+        world.environment["CLAUDE_CONFIG_DIR"] = str(not_a_directory)
+        failed = world.start_session()
+
+        command = rerun_command_of(failed.message)
+
+        assert command.startswith("printf %s ")
+        assert '"session_id"' in command
+
+    def test_running_the_command_leaves_the_next_identical_delivery_its_own_plan(self, world):
+        three_part_pool(world)
+        payload = {"session_id": "s1", "source": "compact", "model": OPUS}
+        (world.rulesets / "rules").chmod(0o000)
+        try:
+            failed = world.run_event("SessionStart", payload)
+        finally:
+            (world.rulesets / "rules").chmod(0o700)
+        assert world.run_shell(rerun_command_of(failed.message)).returncode == 0
+        world.rule("b-rule", "b-rule NEW " + "x" * 5980 + "\n")
+
+        delivery = deliver_with_part_two_first(world, payload)
+
+        assert delivery.part_texts[2].startswith("b-rule NEW")
+
+
+def deliver_with_part_two_first(world, payload):
+    """One delivery of `payload` whose part 2 has started long before its part 1."""
+
+    outputs = {}
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        later = {
+            part: pool.submit(world.run_part, "SessionStart", payload, part) for part in (2, 3)
+        }
+        threading.Event().wait(0.5)
+        outputs[1] = world.run_part("SessionStart", payload, 1)
+        outputs.update({part: job.result() for part, job in later.items()})
+    return Delivery(outputs)
+
+
+class TestAnIdenticalPayloadDeliveredAgainMeetsOnlyItsOwnPlan:
+    def test_part_two_started_ahead_of_part_one_carries_the_text_edited_since_the_last_delivery(
+        self, world
+    ):
+        three_part_pool(world)
+        payload = {"session_id": "s1", "source": "compact", "model": OPUS}
+        first = world.run_event("SessionStart", payload)
+        world.rule("b-rule", "b-rule NEW " + "x" * 5980 + "\n")
+
+        second = deliver_with_part_two_first(world, payload)
+
+        assert first.part_texts[2].startswith("b-rule OLD")
+        assert second.part_texts[2].startswith("b-rule NEW")
+        assert "b-rule OLD" not in second.context
+
+    def test_each_of_several_concurrent_deliveries_carries_the_edit_made_before_it(self, world):
+        three_part_pool(world)
+        payload = {"session_id": "s1", "source": "compact", "model": OPUS}
+        world.run_event("SessionStart", payload)
+
+        for number in range(6):
+            mark = f"MARK{number}"
+            world.rule("b-rule", f"b-rule {mark} " + "x" * 5970 + "\n")
+            delivery = world.run_event("SessionStart", payload)
+            assert mark in delivery.part_texts[2], f"delivery {number} carried a stale part"
+
+
 class TestTermsOfDelivery:
     def test_a_delegates_record_names_the_variant_and_its_digest_of_the_text_delivered(self, world):
         world.rule("voice", "default voice\n")
-        world.rule("voice@terse", "terse voice\n")
+        world.rule("voice@terse", "terse voice")
         world.manifest(DECLARED + "defaults: ['voice']\nwhen:\n  - agent critic: ['voice@terse']\n")
 
         delivery = world.start_delegate("critic")
 
         (record,) = delegate_records(world)
         (line,) = record["rules"]
-        body = (world.rulesets / "rules" / "voice@terse.md").read_bytes().decode()
+        body = (world.rulesets / "rules" / "voice@terse.md").read_bytes()
+        assert body == b"terse voice", "the variant file ends without a newline"
         assert (line["rule"], line["variant"]) == ("voice", "terse")
-        assert delivery.context == body
-        assert line["digest"] == hashlib.sha256(delivery.context.encode()).hexdigest()
+        assert delivery.context.encode() == body
+        assert line["digest"] == hashlib.sha256(body).hexdigest()
 
 
 SONNET = "claude-sonnet-5-5"
@@ -1016,6 +1334,94 @@ class TestASwitchThatChangesNoRuleDeliversNothing:
         )
 
 
+def declare_critic_pool(world):
+    """A pool where an `opus` context adds `opus-rules` and an agent `critic` drops `writing-code`."""
+
+    for name in ("core-rules", "writing-code", "opus-rules", "security-pass"):
+        world.rule(name)
+    world.manifest(
+        TIERS
+        + "flags: ['strict']\n"
+        + "defaults: ['core-rules', 'writing-code']\n"
+        + "when:\n"
+        + "  - agent critic: ['-writing-code']\n"
+        + "  - model opus: ['opus-rules']\n"
+        + "  - flag strict: ['security-pass']\n"
+    )
+
+
+class TestASwitchKeepsTheSessionsNonModelFacts:
+    def test_a_session_launched_under_an_agent_receives_the_rules_composed_for_that_agent(
+        self, world
+    ):
+        declare_critic_pool(world)
+        world.start_session(model=SONNET, agent_type="critic")
+
+        delivery = world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
+
+        assert delivery.context == "text of core-rules\ntext of opus-rules\n"
+        (record,) = switch_records(world)
+        assert record["agent"] == {"state": "named", "name": "critic"}
+
+    def test_a_switch_between_models_that_compose_alike_under_the_agent_delivers_nothing(
+        self, world
+    ):
+        for name in ("core-rules", "opus-rules"):
+            world.rule(name)
+        world.manifest(
+            TIERS
+            + "defaults: ['core-rules']\n"
+            + "when:\n  - model opus: ['opus-rules']\n  - agent critic: ['-opus-rules']\n"
+        )
+        world.start_session(model=SONNET, agent_type="critic")
+
+        delivery = world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
+
+        assert [out for out in delivery.outputs.values() if out] == []
+        assert len(world.records()) == 1, "only the session start left a delivery record"
+
+    def test_a_session_launched_under_no_agent_receives_no_agent_rule_after_a_switch(self, world):
+        declare_critic_pool(world)
+        world.start_session(model=SONNET, agent_type="critic")
+        world.start_session(model=SONNET, source="clear")
+
+        delivery = world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
+
+        assert delivery.context == "text of core-rules\ntext of opus-rules\ntext of writing-code\n"
+
+    def test_a_launch_flag_still_holds_after_a_switch(self, world):
+        declare_critic_pool(world)
+        world.environment["RULESETS_FLAGS"] = "strict"
+        world.start_session(model=SONNET)
+
+        delivery = world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
+
+        assert delivery.context == (
+            "text of core-rules\ntext of opus-rules\ntext of security-pass\ntext of writing-code\n"
+        )
+
+    def test_a_toggle_does_not_reach_a_switch(self, world):
+        declare_critic_pool(world)
+        world.start_session(model=SONNET)
+        assert world.toggle("flag strict").returncode == 0
+        assert world.toggle("none").returncode == 0
+
+        delivery = world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
+
+        assert delivery.context == "text of core-rules\ntext of opus-rules\ntext of writing-code\n"
+
+    def test_a_switch_that_names_no_origin_model_delivers_even_where_the_rules_are_alike(
+        self, world
+    ):
+        declare_tiers(world, "opus")
+        world.start_session(model=SONNET)
+
+        delivery = world.switch_model(HAIKU, from_model=None, prompt_id="p1")
+
+        assert delivery.context == "text of core-rules\n"
+        assert len(switch_records(world)) == 1
+
+
 def declare_session_pool(world):
     """A pool of `core-rules`, `sorting`, and `voice`, and a composition reaching the first two."""
 
@@ -1078,16 +1484,32 @@ class TestASessionReceivesAllItsRulesAtEveryStart:
 
         delivery = world.start_session()
 
-        parts = {
-            part: json.loads(out)["hookSpecificOutput"]["additionalContext"]
-            for part, out in delivery.outputs.items()
-            if out.strip()
-        }
-        assert parts == {
+        assert delivery.part_texts == {
             1: bodies["a-rule"] + bodies["b-rule"],
             2: bodies["c-rule"],
         }
+        assert all(len(text) <= 9000 for text in delivery.part_texts.values())
         assert [delivery.outputs[part].strip() for part in range(3, 11)] == [""] * 8
+
+    def test_two_bodies_totalling_exactly_9000_characters_share_a_part(self, world):
+        bodies = {"a-rule": "a" * 4500, "b-rule": "b" * 4500, "c-rule": "c" * 10}
+        for name, text in bodies.items():
+            world.rule(name, text)
+        world.manifest(DECLARED + "defaults: ['*']\n")
+
+        delivery = world.start_session()
+
+        assert delivery.part_texts == {1: "a" * 4500 + "b" * 4500, 2: "c" * 10}
+
+    def test_a_body_that_would_take_a_part_to_9001_characters_opens_the_next_part(self, world):
+        bodies = {"a-rule": "a" * 4500, "b-rule": "b" * 4501, "c-rule": "c" * 10}
+        for name, text in bodies.items():
+            world.rule(name, text)
+        world.manifest(DECLARED + "defaults: ['*']\n")
+
+        delivery = world.start_session()
+
+        assert delivery.part_texts == {1: "a" * 4500, 2: "b" * 4501 + "c" * 10}
 
 
 class TestOnlyTheLastOfSeveralRapidSwitchesCountsAsDelivered:

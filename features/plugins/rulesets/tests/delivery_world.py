@@ -41,6 +41,17 @@ class Delivery:
         }
 
     @property
+    def part_texts(self) -> dict[int, str]:
+        """The agent's context from each part that sent any, by part number."""
+
+        found = {part: json.loads(text) for part, text in self.outputs.items() if text.strip()}
+        return {
+            part: output["hookSpecificOutput"]["additionalContext"]
+            for part, output in found.items()
+            if "hookSpecificOutput" in output
+        }
+
+    @property
     def message(self) -> str | None:
         return "\n".join(self.messages) if self.messages else None
 
@@ -282,10 +293,12 @@ class World:
         )
         assert done.returncode == 0, done.stderr
 
-    def run_part(self, event: str, payload: dict, part: int) -> str:
-        """The stdout of one hook entry of an event, fed the payload on stdin."""
+    def run_part_process(
+        self, event: str, payload: dict, part: int
+    ) -> subprocess.CompletedProcess[str]:
+        """One hook entry of an event, fed the payload on stdin, with its exit status and stderr."""
 
-        done = subprocess.run(
+        return subprocess.run(
             ["bash", "-c", self._command(event, f"--part {part}")],
             input=json.dumps({**payload, "hook_event_name": event}),
             capture_output=True,
@@ -293,8 +306,37 @@ class World:
             env=self._environ(),
             check=False,
         )
+
+    def run_part(self, event: str, payload: dict, part: int) -> str:
+        """The stdout of one hook entry of an event, fed the payload on stdin."""
+
+        done = self.run_part_process(event, payload, part)
         assert done.returncode == 0, done.stderr
         return done.stdout
+
+    def run_shell(self, command: str) -> subprocess.CompletedProcess[str]:
+        """A shell command, run with the environment the hooks run in."""
+
+        return subprocess.run(
+            ["bash", "-c", command],
+            capture_output=True,
+            text=True,
+            env=self._environ(),
+            check=False,
+        )
+
+    def run_hook_bytes(
+        self, event: str, last_argument: str, stdin: bytes
+    ) -> subprocess.CompletedProcess[bytes]:
+        """One hook entry of an event, fed raw bytes on stdin."""
+
+        return subprocess.run(
+            ["bash", "-c", self._command(event, last_argument)],
+            input=stdin,
+            capture_output=True,
+            env=self._environ(),
+            check=False,
+        )
 
     def run_event(self, event: str, payload: dict, parts: range = range(1, 11)) -> Delivery:
         """Every entry of the event at once, as the harness runs them."""

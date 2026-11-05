@@ -1,6 +1,6 @@
 """The notices a delivery draws, typed by kind, and which kinds the person is shown."""
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Literal
 
@@ -71,12 +71,16 @@ def disregarded_variable_notices(env: Mapping[str, str], variable: str) -> tuple
     return ()
 
 
-def variant_conflict_notice(rule: str, variant: str | None) -> Notice:
-    """The notice for a rule whose sets conflicted, naming the variant delivered."""
+def variant_conflict_notice(
+    rule: str, statements: Iterable[tuple[str, int]], variant: str | None
+) -> Notice:
+    """The notice for a rule whose sets conflicted: each statement with its manifest line, and the variant delivered."""
 
     delivered = "its default form" if variant is None else f"variant `{variant}`"
+    stated = ", ".join(f"`{text}` at manifest line {line}" for text, line in statements)
     return Notice(
-        "variant-conflict", f"rule `{rule}` sets conflicting variants; delivered at {delivered}"
+        "variant-conflict",
+        f"rule `{rule}` sets conflicting variants ({stated}); delivered at {delivered}",
     )
 
 

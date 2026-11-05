@@ -789,6 +789,34 @@ class TestAManifestThatCannotParseBecauseOfAnUnquotedEntry:
         assert "quoted string" not in error.message
 
 
+class TestABodyLongerThanThePartBudget:
+    def test_a_body_of_twelve_thousand_characters_is_an_error_naming_its_rule_and_file(
+        self, tmp_path
+    ):
+        root = build(tmp_path, bodies={"voice": "x" * 12_000})
+
+        (error,) = check(root).errors
+        assert (error.kind, error.subject) == ("oversize-body", RuleSubject("voice"))
+        assert error.file == root / "rules" / "voice.md"
+        assert check(root).warnings == ()
+
+    def test_a_body_of_exactly_nine_thousand_characters_is_no_error(self, tmp_path):
+        root = build(tmp_path, bodies={"voice": "x" * 9_000})
+
+        assert errors_of(root) == []
+
+    def test_a_body_one_character_longer_is_an_error(self, tmp_path):
+        root = build(tmp_path, bodies={"voice": "x" * 9_001})
+
+        assert [kind for kind, _, _ in errors_of(root)] == ["oversize-body"]
+
+    def test_an_oversize_variant_names_its_own_file(self, tmp_path):
+        root = build(tmp_path, stems=["voice"], bodies={"voice@long": "x" * 9_500})
+
+        (error,) = check(root).errors
+        assert error.file == root / "rules" / "voice@long.md"
+
+
 class TestOneRunReportsEveryError:
     def test_a_cycle_an_unknown_fact_and_a_missing_rule_are_all_reported(self, tmp_path):
         root = build(

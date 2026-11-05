@@ -105,6 +105,9 @@ def _action(action: str, name: str | None) -> ToggleAction | None:
 
 def _toggle(session: str, action: ToggleAction) -> int:
     locations = Locations.from_environment(os.environ)
+    if isinstance(action, Clear):
+        remove_state(locations, session)
+        return 0
     match read_directory(locations.rulesets).manifest:
         case Present(manifest):
             declared = manifest.flags

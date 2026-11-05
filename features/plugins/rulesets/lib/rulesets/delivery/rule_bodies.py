@@ -8,7 +8,7 @@ from rulesets.source.pool import Pool
 
 
 def bodies_of(composition: Composition, pool: Pool) -> tuple[Body, ...]:
-    """The body of each composed rule at its variant, in composition order."""
+    """The body of each composed rule at its variant, in composition order, as the file reads."""
 
     found: list[Body] = []
     for delivered in composition.rules:
@@ -16,6 +16,5 @@ def bodies_of(composition: Composition, pool: Pool) -> tuple[Body, ...]:
         file = rule.variants[delivered.variant] if delivered.variant else rule.default
         if file is None:
             continue
-        text = file.text if file.text.endswith("\n") or not file.text else file.text + "\n"
-        found.append(Body(delivered.rule, text))
+        found.append(Body(delivered.rule, file.text))
     return tuple(found)

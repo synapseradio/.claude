@@ -122,6 +122,7 @@ type ErrorKind = Literal[
     "frontmatter-unparsable",
     "variant-without-default",
     "unreadable-file",
+    "oversize-body",
     "unquoted-entry",
 ]
 
@@ -130,7 +131,6 @@ type WarningKind = Literal[
     "cross-reference",
     "stray-directory",
     "marker-for-another-rule",
-    "oversize-body",
     "dangling-reference",
     "external-reference",
     "too-many-parts",

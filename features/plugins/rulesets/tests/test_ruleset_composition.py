@@ -20,13 +20,16 @@ PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
 from rulesets import spawn_log  # noqa: E402
-from rulesets.check.findings import ContextSubject, ReferencesSubject, ReferenceSubject  # noqa: E402
+from rulesets.check.findings import (  # noqa: E402
+    ContextSubject,
+    ReferencesSubject,
+    ReferenceSubject,
+    RuleSubject,
+)
 from rulesets.check.report_format import finding_line  # noqa: E402
 from rulesets.check.run import check  # noqa: E402
 from rulesets.cli import main  # noqa: E402
 from rulesets.compose.composition import compose  # noqa: E402  (path must be set before this import)
-from rulesets.delivery.parts import pack_parts  # noqa: E402
-from rulesets.delivery.rule_bodies import bodies_of  # noqa: E402
 from rulesets.facts.context import ABSENT, UNCLAIMED, Facts  # noqa: E402
 from rulesets.locations import Locations  # noqa: E402
 from rulesets.session.state import Band, SessionState, read_state, write_state  # noqa: E402
@@ -397,8 +400,10 @@ class TestTwoVariantsSetAtOnePositionAreAConflict:
         assert delivery.context == "text of voice@calm\n"
         (notice,) = notice_entries(world, "variant-conflict")
         assert notice["shown"]
-        assert "voice" in notice["subject"]
-        assert "calm" in notice["subject"]
+        assert "rule `voice`" in notice["subject"]
+        assert "`voice@terse` at manifest line 5" in notice["subject"]
+        assert "`voice@warm` at manifest line 6" in notice["subject"]
+        assert "delivered at variant `calm`" in notice["subject"]
         assert notice["subject"] in delivery.message
 
     def test_delivery_with_no_lower_variant_gives_the_default_form_keeps_the_rule_on_and_draws_a_notice(
@@ -422,8 +427,10 @@ class TestTwoVariantsSetAtOnePositionAreAConflict:
         assert delivery.context == "text of voice\n"
         (notice,) = notice_entries(world, "variant-conflict")
         assert notice["shown"]
-        assert "voice" in notice["subject"]
-        assert "default form" in notice["subject"]
+        assert "rule `voice`" in notice["subject"]
+        assert "`voice@terse` at manifest line 5" in notice["subject"]
+        assert "`voice@warm` at manifest line 6" in notice["subject"]
+        assert "delivered at its default form" in notice["subject"]
         assert notice["subject"] in delivery.message
 
     def test_two_sets_naming_the_same_variant_are_no_conflict(self, tmp_path):
@@ -564,33 +571,40 @@ class TestCheckWarnsAboutTheLayoutOfTheRulesetsDirectory:
         assert main(["check", "--root", str(root)]) == 0
 
 
-class TestCheckWarnsAboutBodySizeAndReferences:
-    def test_a_body_past_the_part_budget_draws_an_oversize_warning_and_is_carried_alone(
+class TestABodyLongerThanThePartBudgetIsACheckError:
+    def test_a_body_of_twelve_thousand_characters_draws_an_oversize_error_and_the_context_receives_none_of_it(
         self, tmp_path
     ):
-        root = build(
-            tmp_path,
-            "defaults: ['*']\n",
-            {"alpha": None, "big": "x" * 12000 + "\n", "zeta": None},
+        world = World(tmp_path)
+        world.rule("alpha")
+        world.rule("big", "x" * 12000)
+        world.rule("zeta")
+        world.manifest(DECLARED + "defaults: ['*']\n")
+        root = world.rulesets
+
+        (error,) = check(root).errors
+        delivery = world.start_session()
+
+        assert (error.kind, error.subject, error.file) == (
+            "oversize-body",
+            RuleSubject("big"),
+            root / "rules" / "big.md",
         )
+        assert main(["check", "--root", str(root)]) == 1
+        assert delivery.context == "text of alpha\ntext of zeta\n"
+        assert "x" * 100 not in delivery.context
+        assert "`big`" in delivery.message
+        assert "12000" in delivery.message
+        (record,) = world.records()
+        assert [w["rule"] for w in record["withheld"]] == ["big"]
+        assert [rule["rule"] for rule in record["rules"]] == ["alpha", "zeta"]
 
-        (warning,) = check(root).warnings
-        directory = read_directory(root)
-        composition = compose(directory, context(), SessionState())
-        parts = pack_parts(bodies_of(composition, directory.pool))
 
-        assert (warning.kind, warning.file) == ("oversize-body", root / "rules" / "big.md")
-        assert main(["check", "--root", str(root)]) == 0
-        assert [[body.rule for body in part.bodies] for part in parts] == [
-            ["alpha"],
-            ["big"],
-            ["zeta"],
-        ]
-
+class TestCheckWarnsAboutPartCountAndReferences:
     def test_a_context_whose_rules_need_more_parts_than_a_delivery_carries_draws_a_warning_naming_it(
         self, tmp_path
     ):
-        stems = {f"rule-{number:02d}": "y" * 9500 + "\n" for number in range(11)}
+        stems = {f"rule-{number:02d}": "y" * 5000 + "\n" for number in range(11)}
         root = build(
             tmp_path,
             "models: ['opus', 'haiku']\n"
@@ -611,7 +625,7 @@ class TestCheckWarnsAboutBodySizeAndReferences:
         assert main(["check", "--root", str(root)]) == 0
 
     def test_a_context_on_a_model_no_declared_name_claims_draws_a_warning_naming_it(self, tmp_path):
-        stems = {f"rule-{number:02d}": "y" * 9500 + "\n" for number in range(11)}
+        stems = {f"rule-{number:02d}": "y" * 5000 + "\n" for number in range(11)}
         root = build(
             tmp_path,
             "models: ['opus']\ndefaults: ['*']\nwhen:\n  - model opus: ['-*']\n",
@@ -628,7 +642,7 @@ class TestCheckWarnsAboutBodySizeAndReferences:
     def test_a_directory_with_no_manifest_draws_the_warning_for_the_every_rule_context(
         self, tmp_path
     ):
-        stems = {f"rule-{number:02d}": "y" * 9500 + "\n" for number in range(11)}
+        stems = {f"rule-{number:02d}": "y" * 5000 + "\n" for number in range(11)}
         root = build(tmp_path, "", stems)
         (root / "manifest.yaml").unlink()
 
@@ -642,7 +656,7 @@ class TestCheckWarnsAboutBodySizeAndReferences:
     def test_a_directory_with_an_unparsable_manifest_draws_the_warning_for_the_every_rule_context(
         self, tmp_path
     ):
-        stems = {f"rule-{number:02d}": "y" * 9500 + "\n" for number in range(11)}
+        stems = {f"rule-{number:02d}": "y" * 5000 + "\n" for number in range(11)}
         root = build(tmp_path, "defaults: [unclosed\n", stems)
 
         report = check(root)

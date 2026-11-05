@@ -1,4 +1,4 @@
-"""The first part of a delivery: resolve facts, compose, plan, record, and emit part 1."""
+"""The first part of a delivery: resolve facts, compose, record, plan, and emit part 1."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ from collections.abc import Mapping
 
 from rulesets.audit import log
 from rulesets.audit.delivery_record import (
-    AbsentLine,
     ConflictLine,
     DeliveryRecord,
     FlagLine,
@@ -24,70 +23,47 @@ from rulesets.audit.delivery_record import (
     digest_of,
     tools_line,
 )
-from rulesets.compose.composition import Composition, compose
-from rulesets.delivery.hook_output import MESSAGE_SHOWN, PartOutput
+from rulesets.compose.composition import compose
+from rulesets.delivery.delivery_notices import composition_notices, directory_notices, shown_message
+from rulesets.delivery.hook_output import PartOutput
 from rulesets.delivery.parts import MAX_PARTS, pack_parts
-from rulesets.delivery.plan import Plan, clear_plan, write_plan
-from rulesets.delivery.request import ForkStart, ModelSwitch, SessionStart, SubagentStart
+from rulesets.delivery.plan import Delivering, write_plan
+from rulesets.delivery.request import ModelSwitch, SessionStart, SubagentStart
 from rulesets.delivery.rule_bodies import bodies_of
 from rulesets.facts.context import Absent, Facts
-from rulesets.facts.model.delegate import resolve_fork_model
 from rulesets.facts.model.fact import Claimed, Missing, ModelFact, Unclaimed
 from rulesets.facts.model.record import write_model_record
 from rulesets.facts.resolve_context import resolve_context
 from rulesets.locations import Locations
 from rulesets.notices import (
-    SHOWN,
     Notice,
     absent_agent_notice,
     absent_tools_notice,
-    block_skipped_notice,
-    fork_notice,
     left_out_notice,
-    manifest_missing_notice,
-    manifest_unparsable_notice,
     nothing_received_notice,
-    reference_notice,
-    scaffold_failed_notice,
-    scaffolded_notice,
-    variant_conflict_notice,
-    withheld_notice,
 )
 from rulesets.session.state import SessionState, read_state, state_path
-from rulesets.source.directory import (
-    Missing as ManifestMissing,
-)
-from rulesets.source.directory import (
-    Present,
-    RulesetsDirectory,
-    Unparsable,
-    read_directory,
-)
+from rulesets.source.directory import read_directory
 from rulesets.source.manifest import MANIFEST_FILE
-from rulesets.source.scaffold import (
-    AlreadyPresent,
-    Scaffolded,
-    ScaffoldFailed,
-    scaffold,
-)
+from rulesets.source.scaffold import scaffold
 
 
 def deliver_first(
-    request: SessionStart | ModelSwitch | SubagentStart | ForkStart,
+    request: SessionStart | ModelSwitch | SubagentStart,
     locations: Locations,
     environ: Mapping[str, str],
     slot: pathlib.Path,
+    generation: str,
     prior_notices: tuple[Notice, ...] = (),
 ) -> PartOutput:
-    """Compose the context's rules once, write the plan, append the record, and emit part 1.
+    """Compose the context's rules once, append the record, write the plan, and emit part 1.
 
-    `prior_notices` are the notices the session's start or switch already drew.
+    `prior_notices` are the notices the session's start or switch already drew. The plan is
+    written last, so a delivery that fails earlier leaves no plan for a later part to emit.
     """
 
     scope: Scope
     match request:
-        case ForkStart():
-            return _deliver_fork(request, locations, slot)
         case SessionStart():
             state, scope, state_read = SessionState(), "session", None
         case ModelSwitch():
@@ -107,17 +83,16 @@ def deliver_first(
     parts, past_last = packed[:MAX_PARTS], packed[MAX_PARTS:]
     left_out = tuple(body.rule for part in past_last for body in part.bodies)
     model = ModelLine.of(resolved.model)
-    write_plan(slot, Plan(parts, model))
 
     notices = (
         *prior_notices,
-        *_directory_notices(scaffolded, directory, locations.rulesets),
+        *directory_notices(scaffolded, directory, locations.rulesets),
         *resolved.notices,
-        *_composition_notices(composition),
+        *composition_notices(composition),
         *(left_out_notice(rule) for rule in left_out),
         *((nothing_received_notice(),) if not parts else ()),
     )
-    message = _message(request.event, notices)
+    message = shown_message(request.event, notices)
     digests = {body.rule: digest_of(body) for body in bodies}
     manifest_file = directory.root / MANIFEST_FILE
     log.append(
@@ -153,6 +128,7 @@ def deliver_first(
             switch=_switch_line(request),
         ).to_json(),
     )
+    write_plan(slot, Delivering(generation, parts, model))
     first = "".join(body.text for body in parts[0].bodies) if parts else None
     return PartOutput(first, message)
 
@@ -163,87 +139,12 @@ def _switch_line(request: SessionStart | ModelSwitch | SubagentStart) -> SwitchL
     return None
 
 
-def _deliver_fork(request: ForkStart, locations: Locations, slot: pathlib.Path) -> PartOutput:
-    """A fork inherits its parent's rules, so it receives none; its record names why and the parent's model."""
-
-    clear_plan(slot)
-    directory = read_directory(locations.rulesets)
-    models = directory.manifest.manifest.models if isinstance(directory.manifest, Present) else ()
-    fact = resolve_fork_model(request.session_id, models, locations.state)
-    log.append(
-        log.session_dir(locations, request.session_id) / log.DELIVERIES_FILE,
-        DeliveryRecord(
-            session_id=request.session_id,
-            agent_id=request.agent_id,
-            scope="delegate",
-            kind="fork",
-            time_ns=time.time_ns(),
-            agent=AbsentLine(fork_notice().subject),
-            model=ModelLine.of(fact),
-            tools=AbsentLine(fork_notice().subject),
-            flags=(),
-            session_state=None,
-            part_count=0,
-            rules=(),
-            withheld=(),
-            skipped_references=(),
-            skipped_blocks=(),
-            conflicts=(),
-            left_out=(),
-            notices=(fork_notice(),),
-            message_sent=False,
-        ).to_json(),
-    )
-    return PartOutput()
-
-
-def _directory_notices(
-    scaffolded: Scaffolded | AlreadyPresent | ScaffoldFailed,
-    directory: RulesetsDirectory,
-    root: pathlib.Path,
-) -> tuple[Notice, ...]:
-    """What the directory's state says: a scaffold's outcome, or why a manifest is not read."""
-
-    match scaffolded:
-        case Scaffolded():
-            return (scaffolded_notice(str(root)),)
-        case ScaffoldFailed(reason=reason):
-            return (scaffold_failed_notice(str(root), reason),)
-        case AlreadyPresent():
-            pass
-    match directory.manifest:
-        case ManifestMissing():
-            return (manifest_missing_notice(str(root / "manifest.yaml")),)
-        case Unparsable(error=error):
-            return (manifest_unparsable_notice(str(error)),)
-        case Present():
-            return ()
-
-
 def _identifier_of(fact: ModelFact) -> str | None:
     match fact:
         case Claimed(identifier=identifier) | Unclaimed(identifier=identifier):
             return identifier
         case Missing():
             return None
-
-
-def _composition_notices(composition: Composition) -> tuple[Notice, ...]:
-    return (
-        *(block_skipped_notice(b.condition, b.undeclared) for b in composition.skipped_blocks),
-        *(reference_notice(s.text, s.line, s.name) for s in composition.skipped),
-        *(withheld_notice(w.rule, w.error) for w in composition.withheld),
-        *(variant_conflict_notice(c.rule, c.variant) for c in composition.conflicts),
-    )
-
-
-def _message(event: str, notices: tuple[Notice, ...]) -> str | None:
-    """The shown notices as one message, or None where none is shown or the event shows none."""
-
-    shown = [notice.subject for notice in notices if notice.kind in SHOWN]
-    if not shown or not MESSAGE_SHOWN[event]:
-        return None
-    return "\n".join(shown)
 
 
 def _agent_name(facts: Facts) -> str | None:

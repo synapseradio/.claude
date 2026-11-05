@@ -1,4 +1,4 @@
-"""The parent session of a forked session, found by the message identifiers its transcript copied."""
+"""The parent session of a forked session, found by the leading message identifiers its transcript copied."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ class Parent:
 
 @dataclasses.dataclass(frozen=True)
 class Unknown:
-    """No other transcript in the project directory holds a message the fork copied."""
+    """No single other transcript in the project directory is the one the fork copied."""
 
 
 type ForkParent = Parent | Unknown
@@ -34,33 +34,48 @@ def _identifiers(transcript: pathlib.Path) -> list[str]:
     return found
 
 
-def _texts(directory: pathlib.Path, excluded: pathlib.Path) -> dict[pathlib.Path, str]:
-    """The text of each transcript in `directory` but `excluded`; an unreadable one holds nothing."""
+def _sequences(directory: pathlib.Path, excluded: pathlib.Path) -> dict[pathlib.Path, list[str]]:
+    """The identifiers of each transcript in `directory` but `excluded`; an unreadable one holds none."""
 
-    texts: dict[pathlib.Path, str] = {}
+    found: dict[pathlib.Path, list[str]] = {}
     for path in directory.glob("*.jsonl"):
         if path != excluded:
             try:
-                texts[path] = path.read_text(encoding="utf-8", errors="replace")
+                found[path] = _identifiers(path)
             except OSError:
                 continue
-    return texts
+    return found
+
+
+def _shared_prefix(left: list[str], right: list[str]) -> int:
+    length = 0
+    for one, other in zip(left, right, strict=False):
+        if one != other:
+            break
+        length += 1
+    return length
 
 
 def fork_parent(transcript: pathlib.Path) -> ForkParent:
-    """The newest other transcript beside `transcript` that holds the last identifier it copied.
+    """The transcript beside `transcript` that holds the longest run of entries it copied.
 
-    A fork's transcript copies its parent's message identifiers and then adds its own, so its
-    last identifier that another transcript of the project holds is the last one copied.
+    A fork's transcript starts with its parent's message identifiers in order and then adds its
+    own, so the parent shares the longest leading run with it; a sibling fork shares only the run
+    up to where the parent stood at the sibling's fork. Where several transcripts share the
+    longest run, the one that ends there is the parent, because a sibling goes on with entries of
+    its own. Where that leaves no single transcript, the parent is not known.
     """
 
     try:
         identifiers = _identifiers(transcript)
     except OSError:
         return Unknown()
-    texts = _texts(transcript.parent, transcript)
-    for identifier in reversed(identifiers):
-        holders = [path for path, text in texts.items() if identifier in text]
-        if holders:
-            return Parent(max(holders, key=lambda path: path.stat().st_mtime_ns).stem)
-    return Unknown()
+    sequences = _sequences(transcript.parent, transcript)
+    shared = {path: _shared_prefix(identifiers, sequence) for path, sequence in sequences.items()}
+    longest = max(shared.values(), default=0)
+    if longest == 0:
+        return Unknown()
+    tied = [path for path, length in shared.items() if length == longest]
+    ending_there = [path for path in tied if len(sequences[path]) == longest]
+    candidates = ending_there or tied
+    return Parent(candidates[0].stem) if len(candidates) == 1 else Unknown()

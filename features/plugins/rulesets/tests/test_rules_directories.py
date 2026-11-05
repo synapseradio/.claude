@@ -760,7 +760,7 @@ class TestRulesArriveSortedByName:
             world.rule(rule, text)
         world.manifest(MODELS + "defaults: ['*']\n")
         first_part = (
-            "no final newline\n"
+            "no final newline"
             "line one\r\nline two\r\n"
             "caf\u00e9 \u2014 na\u00efve \u65e5\u672c\n" + "d" * 4000 + "\n" + "e" * 4000 + "\n"
         )

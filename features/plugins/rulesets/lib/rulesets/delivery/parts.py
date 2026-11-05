@@ -11,7 +11,7 @@ MAX_PARTS = 10
 
 @dataclasses.dataclass(frozen=True)
 class Body:
-    """The exact text of a rule file, with a final newline added where it lacks one."""
+    """The exact text of a rule file."""
 
     rule: str
     text: str
@@ -24,7 +24,7 @@ class Part:
 
 
 def pack_parts(bodies: tuple[Body, ...]) -> tuple[Part, ...]:
-    """Fill each part in order up to the budget; a body past the budget sits alone in its part."""
+    """Fill each part in order up to the budget; no body is longer than the budget."""
 
     groups: list[list[Body]] = []
     size = 0

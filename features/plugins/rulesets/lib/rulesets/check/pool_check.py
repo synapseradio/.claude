@@ -1,4 +1,4 @@
-"""What the rule files of a pool carry: errors in their reading and frontmatter, and layout warnings."""
+"""What the rule files of a pool carry: errors in their reading, frontmatter, and size, and layout warnings."""
 
 from __future__ import annotations
 
@@ -46,6 +46,17 @@ def pool_errors(pool: Pool) -> tuple[CheckError, ...]:
                         None,
                         f"the frontmatter of rule `{rule.name}` is not valid YAML, "
                         "so whether it holds a condition is unknown",
+                    )
+                )
+            if len(file.text) > PART_BUDGET:
+                errors.append(
+                    CheckError(
+                        "oversize-body",
+                        subject,
+                        file.path,
+                        None,
+                        f"`{file.path.name}` is {len(file.text)} characters, past the "
+                        f"{PART_BUDGET}-character part budget",
                     )
                 )
             condition = next((k for k in file.frontmatter_keys if k.key in _CONDITION_KEYS), None)
@@ -96,17 +107,6 @@ def _body_warnings(pool: Pool, file: PoolFile) -> list[CheckWarning]:
                 file.path,
                 1,
                 f"`{file.path.name}` opens on a marker for another rule or another form of its own",
-            )
-        )
-    if len(file.text) > PART_BUDGET:
-        warnings.append(
-            CheckWarning(
-                "oversize-body",
-                subject,
-                file.path,
-                None,
-                f"`{file.path.name}` is {len(file.text)} characters, past the "
-                f"{PART_BUDGET}-character part budget",
             )
         )
     for citation in file.citations:

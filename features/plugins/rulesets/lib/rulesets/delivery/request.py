@@ -40,21 +40,19 @@ class SessionStart:
 
 @dataclasses.dataclass(frozen=True)
 class ModelSwitch:
-    """The main session's model changing to `to_model` from `from_model`, when the harness names it."""
+    """The main session's model changing to `to_model` from `from_model`, when the harness names it.
+
+    `agent` is the agent the session launched under, which a switch payload does not carry.
+    """
 
     session_id: str
     from_model: str | None
     to_model: str
     prompt_id: str | None
     payload: Mapping[str, object]
+    agent: str | None = None
 
     event = "PostModelSwitch"
-
-    @property
-    def agent(self) -> str | None:
-        """The agent the session launched under with `--agent`, if any."""
-
-        return _text(self.payload.get("agent_type"))
 
     def origin(self) -> ModelSwitch:
         """The switch read as if the session had stayed on `from_model`; absent where none is named."""
@@ -98,7 +96,8 @@ class Unreadable:
     reason: str
 
 
-type DeliveryRequest = SessionStart | ModelSwitch | SubagentStart | ForkStart | Unreadable
+type DeliveryStart = SessionStart | ModelSwitch | SubagentStart | ForkStart
+type DeliveryRequest = DeliveryStart | Unreadable
 type HookRequest = DeliveryRequest | SessionEnd
 
 

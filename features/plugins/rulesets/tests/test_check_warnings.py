@@ -3,7 +3,7 @@
 
 The check serves the engineer who edits rule files and a manifest: it tells them of a rule no
 list adds, a rule whose text names another rule, a directory nothing reads, a body that marks
-the wrong rule, a body too long for one part, and a citation of a file that cannot be handed
+the wrong rule, and a citation of a file that cannot be handed
 over. Each warning names its kind, subject, file, and line, and leaves the errors empty. Each
 case builds its rulesets directory under `tmp_path`.
 
@@ -353,32 +353,6 @@ class TestABodyMarkingAnotherRule:
         )
 
         assert [w.kind for w in warnings_of(root)] == ["marker-for-another-rule"]
-
-
-class TestABodyPastThePartBudget:
-    def test_a_body_of_twelve_thousand_characters_is_oversize(self, tmp_path):
-        root = build(tmp_path, bodies={"voice": "x" * 12_000})
-
-        (warning,) = warnings_of(root, "oversize-body")
-        assert warning.subject == RuleSubject("voice")
-        assert warning.file == root / "rules" / "voice.md"
-        assert check(root).errors == ()
-
-    def test_a_body_of_exactly_nine_thousand_characters_is_not(self, tmp_path):
-        root = build(tmp_path, bodies={"voice": "x" * 9_000})
-
-        assert warnings_of(root, "oversize-body") == []
-
-    def test_a_body_one_character_longer_is(self, tmp_path):
-        root = build(tmp_path, bodies={"voice": "x" * 9_001})
-
-        assert len(warnings_of(root, "oversize-body")) == 1
-
-    def test_an_oversize_variant_names_its_own_file(self, tmp_path):
-        root = build(tmp_path, stems=["voice"], bodies={"voice@long": "x" * 9_500})
-
-        (warning,) = warnings_of(root, "oversize-body")
-        assert warning.file == root / "rules" / "voice@long.md"
 
 
 class TestABodyCitingAFileTheCorpusCannotHandOver:

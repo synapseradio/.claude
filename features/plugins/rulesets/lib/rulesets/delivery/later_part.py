@@ -9,7 +9,7 @@ from rulesets.audit import log
 from rulesets.audit.delivery_record import digest_of_text
 from rulesets.audit.emitted_record import EmittedRecord
 from rulesets.delivery.hook_output import PartOutput
-from rulesets.delivery.plan import await_plan
+from rulesets.delivery.plan import Delivering, await_plan
 from rulesets.delivery.request import ForkStart, ModelSwitch, SessionStart, SubagentStart
 from rulesets.locations import Locations
 
@@ -23,7 +23,7 @@ def deliver_later(
     """The text of part `part`, which is recorded as emitted, or nothing where the plan has no such part."""
 
     plan = await_plan(slot, part)
-    if plan is None:
+    if not isinstance(plan, Delivering):
         return PartOutput()
     for planned in plan.parts:
         if planned.index == part:

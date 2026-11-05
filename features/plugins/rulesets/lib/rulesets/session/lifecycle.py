@@ -6,15 +6,18 @@ from rulesets.delivery.request import SessionEnd, SessionStart
 from rulesets.locations import Locations
 from rulesets.notices import Notice, fork_parent_missing_notice
 from rulesets.session.fork_parent import Parent, Unknown, fork_parent
+from rulesets.session.launch_agent import write_launch_agent
 from rulesets.session.state import copy_state, remove_state
 
 
 def on_session_start(request: SessionStart, locations: Locations) -> tuple[Notice, ...]:
     """A clear ends the session's state; a fork starts with a copy of its parent's.
 
-    A fork whose parent is not found starts with empty state, and the notices say so.
+    A fork whose parent is not found starts with empty state, and the notices say so. Every
+    start records the agent the session launched under, for the switches that follow.
     """
 
+    write_launch_agent(locations, request.session_id, request.agent)
     match request.source:
         case "clear":
             remove_state(locations, request.session_id)
