@@ -33,6 +33,7 @@ from rulesets.facts.model.fact import (
     ModelFact,
     Unclaimed,
 )
+from rulesets.facts.model.record import write_model_record
 from rulesets.facts.resolve_context import resolve_context
 from rulesets.locations import Locations
 from rulesets.notices import (
@@ -41,12 +42,31 @@ from rulesets.notices import (
     block_skipped_notice,
     fork_notice,
     left_out_notice,
+    manifest_missing_notice,
+    manifest_unparsable_notice,
+    nothing_received_notice,
     reference_notice,
+    scaffold_failed_notice,
+    scaffolded_notice,
     variant_conflict_notice,
     withheld_notice,
 )
 from rulesets.session.state import SessionState, read_state
-from rulesets.source.directory import Present, read_directory
+from rulesets.source.directory import (
+    Missing as ManifestMissing,
+)
+from rulesets.source.directory import (
+    Present,
+    RulesetsDirectory,
+    Unparsable,
+    read_directory,
+)
+from rulesets.source.scaffold import (
+    AlreadyPresent,
+    Scaffolded,
+    ScaffoldFailed,
+    scaffold,
+)
 
 
 def deliver_first(
@@ -69,8 +89,11 @@ def deliver_first(
         case SubagentStart():
             state, scope = read_state(locations, request.session_id), "delegate"
 
+    scaffolded = scaffold(locations.rulesets)
     directory = read_directory(locations.rulesets)
     resolved = resolve_context(request, directory, locations, environ)
+    if isinstance(request, SessionStart):
+        write_model_record(request.session_id, _identifier_of(resolved.model), locations.state)
     composition = compose(directory, resolved.facts, state)
     bodies = bodies_of(composition, directory.pool)
     packed = pack_parts(bodies)
@@ -80,9 +103,11 @@ def deliver_first(
 
     notices = (
         *lifecycle_notices,
+        *_directory_notices(scaffolded, directory, locations.rulesets),
         *resolved.notices,
         *_composition_notices(composition),
         *(left_out_notice(rule) for rule in left_out),
+        *((nothing_received_notice(),) if not parts else ()),
     )
     message = _message(request.event, notices)
     digests = {body.rule: digest_of(body) for body in bodies}
@@ -134,6 +159,37 @@ def _deliver_fork(request: ForkStart, locations: Locations, slot: pathlib.Path) 
         ).to_json(),
     )
     return PartOutput()
+
+
+def _directory_notices(
+    scaffolded: Scaffolded | AlreadyPresent | ScaffoldFailed,
+    directory: RulesetsDirectory,
+    root: pathlib.Path,
+) -> tuple[Notice, ...]:
+    """What the directory's state says: a scaffold's outcome, or why a manifest is not read."""
+
+    match scaffolded:
+        case Scaffolded():
+            return (scaffolded_notice(str(root)),)
+        case ScaffoldFailed(reason=reason):
+            return (scaffold_failed_notice(str(root), reason),)
+        case AlreadyPresent():
+            pass
+    match directory.manifest:
+        case ManifestMissing():
+            return (manifest_missing_notice(str(root / "manifest.yaml")),)
+        case Unparsable(error=error):
+            return (manifest_unparsable_notice(str(error)),)
+        case Present():
+            return ()
+
+
+def _identifier_of(fact: ModelFact) -> str | None:
+    match fact:
+        case Claimed(identifier=identifier) | Unclaimed(identifier=identifier):
+            return identifier
+        case Missing():
+            return None
 
 
 def _composition_notices(composition: Composition) -> tuple[Notice, ...]:

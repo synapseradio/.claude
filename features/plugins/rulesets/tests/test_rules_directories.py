@@ -424,7 +424,7 @@ class TestReservedRulesetsCarryFixedMeanings:
         alone = world.start_session()
 
         assert check(world.rulesets).errors == ()
-        assert alone.messages == []
+        assert "received nothing" in alone.message
         assert alone.context == ""
 
         world.manifest(MODELS + "defaults: ['voice', 'none:*']\n")

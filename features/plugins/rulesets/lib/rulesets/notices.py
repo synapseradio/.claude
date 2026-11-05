@@ -12,17 +12,23 @@ HOST_MANAGED_VARIABLE = "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST"
 type NoticeKind = Literal[
     "agent-absent",
     "block-skipped",
+    "delivery-failure",
+    "directory-scaffolded",
     "fork-inherits",
     "fork-parent-missing",
     "launch-flag-undeclared",
+    "manifest-missing",
+    "manifest-unparsable",
     "model-missing",
     "model-unclaimed",
+    "nothing-received",
     "per-spawn-ambiguous",
     "per-spawn-unreadable",
     "provider-variable",
     "reference-skipped",
     "rule-left-out",
     "rule-withheld",
+    "scaffold-failed",
     "tools-absent",
     "variant-conflict",
 ]
@@ -30,13 +36,19 @@ type NoticeKind = Literal[
 SHOWN: frozenset[NoticeKind] = frozenset(
     {
         "block-skipped",
+        "delivery-failure",
+        "directory-scaffolded",
         "fork-parent-missing",
         "launch-flag-undeclared",
+        "manifest-missing",
+        "manifest-unparsable",
         "model-missing",
         "model-unclaimed",
+        "nothing-received",
         "reference-skipped",
         "rule-left-out",
         "rule-withheld",
+        "scaffold-failed",
         "variant-conflict",
     }
 )
@@ -126,3 +138,38 @@ def fork_parent_missing_notice() -> Notice:
 
 def fork_notice() -> Notice:
     return Notice("fork-inherits", "the fork received no rules because it inherits its parent's")
+
+
+def manifest_missing_notice(path: str) -> Notice:
+    return Notice(
+        "manifest-missing",
+        f"the manifest `{path}` is missing; every rule is delivered at its default form",
+    )
+
+
+def manifest_unparsable_notice(error: str) -> Notice:
+    return Notice(
+        "manifest-unparsable",
+        f"the manifest does not parse ({error}); every rule is delivered at its default form",
+    )
+
+
+def nothing_received_notice() -> Notice:
+    return Notice("nothing-received", "the context received nothing: no rule reaches it")
+
+
+def scaffolded_notice(root: str) -> Notice:
+    return Notice(
+        "directory-scaffolded",
+        f"no rulesets directory existed; an empty one was scaffolded at `{root}`",
+    )
+
+
+def scaffold_failed_notice(root: str, reason: str) -> Notice:
+    return Notice(
+        "scaffold-failed", f"the rulesets directory could not be scaffolded at `{root}`: {reason}"
+    )
+
+
+def failure_notice(failure: str, command: str) -> Notice:
+    return Notice("delivery-failure", f"delivery failed ({failure}); run it again with: {command}")

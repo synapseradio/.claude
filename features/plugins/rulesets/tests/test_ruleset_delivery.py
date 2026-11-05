@@ -8,12 +8,15 @@ the hook entries that `hooks/hooks.json` wires for an event, as the harness runs
 Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_ruleset_delivery.py`.
 """
 
+import hashlib
 import json
 import pathlib
+import shutil
 import sys
 
 import pytest
-from delivery_world import DECLARED, Delivery, World
+import yaml
+from delivery_world import DECLARED, HOOKS_JSON, OPUS, Delivery, World
 from launcher_stubs import launch, path_of, stub
 from transcripts import write_transcript
 
@@ -190,7 +193,7 @@ class TestAnUnreadableRuleFileIsWithheld:
 class TestFactsSwitchesAndHostVariablesGoToTheRecordAlone:
     def test_an_absent_agent_fact_reaches_the_record_and_shows_no_message(self, world):
         world.rule("voice")
-        world.manifest(DECLARED + "when:\n  - agent eval-runner: ['voice']\n")
+        world.manifest(DECLARED + "defaults: ['voice']\nwhen:\n  - agent eval-runner: ['voice']\n")
 
         delivery = world.start_session()
 
@@ -573,3 +576,315 @@ class TestSessionStateRoundTripsThroughItsFile:
         assert list((tmp_path / ".tmp" / "rulesets-engine" / "session").iterdir()) == [
             tmp_path / ".tmp" / "rulesets-engine" / "session" / "s1.yaml"
         ]
+
+
+def tree_of(root):
+    """Every file under `root` with its bytes, so a later read shows any file written or changed."""
+
+    return {p.relative_to(root): p.read_bytes() for p in sorted(root.rglob("*")) if p.is_file()}
+
+
+def delegate_records(world):
+    return [r for r in world.records() if r["scope"] == "delegate"]
+
+
+class TestAPreToolUseHookRecordsTheModelACallerNamesForOneSpawn:
+    def test_the_recording_hook_is_wired_on_the_agent_tool_alone(self):
+        groups = json.loads(HOOKS_JSON.read_text(encoding="utf-8"))["hooks"]["PreToolUse"]
+
+        assert [group["matcher"] for group in groups] == ["Agent"]
+
+    def test_the_model_a_caller_names_for_a_spawn_is_the_model_its_delegate_is_composed_for(
+        self, world
+    ):
+        world.rule("core-rules")
+        world.rule("terse-rules")
+        world.manifest(
+            "models: ['opus', 'haiku']\ndefaults: ['core-rules']\n"
+            "when:\n  - model haiku: ['terse-rules']\n"
+        )
+        world.start_session(model=OPUS)
+
+        recorded = world.spawn("critic", model="haiku")
+        delivery = world.start_delegate("critic")
+
+        assert (recorded.returncode, recorded.stdout) == (0, "")
+        assert delivery.context == "text of core-rules\ntext of terse-rules\n"
+        (record,) = delegate_records(world)
+        assert (record["model"]["name"], record["model"]["source"]) == ("haiku", "per-spawn")
+
+    def test_a_spawn_that_names_no_model_leaves_the_delegate_on_its_parents_model(self, world):
+        world.rule("core-rules")
+        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.start_session(model=OPUS)
+
+        recorded = world.spawn("critic", model=None)
+        world.start_delegate("critic")
+
+        assert (recorded.returncode, recorded.stdout) == (0, "")
+        (record,) = delegate_records(world)
+        assert (record["model"]["name"], record["model"]["source"]) == ("opus", "parent-record")
+
+    @pytest.mark.parametrize(
+        "stdin",
+        ["not json", "[]", "{}", '{"session_id": "s1", "tool_input": "oops"}'],
+    )
+    def test_a_payload_the_hook_cannot_read_exits_zero_and_prints_nothing(self, world, stdin):
+        result = world.run_spawn_hook(stdin)
+
+        assert (result.returncode, result.stdout) == (0, "")
+
+    def test_a_state_directory_that_cannot_be_written_exits_zero_and_prints_nothing(
+        self, world, tmp_path
+    ):
+        not_a_directory = tmp_path / "file"
+        not_a_directory.write_text("", encoding="utf-8")
+        world.environment["CLAUDE_CONFIG_DIR"] = str(not_a_directory)
+
+        result = world.spawn("critic", model="haiku")
+
+        assert (result.returncode, result.stdout) == (0, "")
+
+
+class TestTheActionNoneLeavesANoticeThatTheContextReceivedNothing:
+    def test_a_delegate_under_none_receives_no_rule_and_a_shown_notice_says_it_received_nothing(
+        self, world
+    ):
+        world.rule("core-rules")
+        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.start_session(model=OPUS)
+        assert world.toggle("none").returncode == 0
+
+        delivery = world.start_delegate()
+
+        assert delivery.context == ""
+        (record,) = delegate_records(world)
+        (notice,) = [n["subject"] for n in record["notices"] if n["shown"]]
+        assert "received nothing" in notice
+        assert "fail" not in notice.lower()
+
+
+class TestASessionsModelFactIsRecordedAndReadBack:
+    def test_a_session_whose_start_reports_no_identifier_records_that_none_was_available(
+        self, world
+    ):
+        world.rule("voice")
+        world.manifest(DECLARED + "defaults: ['voice']\n")
+
+        world.start_session(model=None)
+
+        record = world.model_record()
+        assert record is not None
+        assert record["identifier"] is None
+        assert "no model identifier was available" in json.dumps(record)
+
+    def test_a_session_that_starts_on_an_identifier_records_it_for_a_later_start_to_read(
+        self, world
+    ):
+        world.rule("voice")
+        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.start_session(model=OPUS)
+
+        world.start_session(model=None, source="resume")
+
+        (_, resumed) = world.records()
+        assert (resumed["model"]["identifier"], resumed["model"]["source"]) == (
+            OPUS,
+            "session-record",
+        )
+
+
+class TestADeliverysFirstPartAloneWritesTheSessionsModelRecord:
+    def test_the_first_part_writes_the_record_and_no_later_part_writes_it_again(self, world):
+        for name in ("a-rule", "b-rule", "c-rule"):
+            world.rule(name, f"{name} " + "x" * 5990 + "\n")
+        world.manifest(DECLARED + "defaults: ['a-rule', 'b-rule', 'c-rule']\n")
+        payload = {"session_id": "s1", "source": "startup", "model": OPUS}
+
+        first = world.run_part("SessionStart", payload, 1)
+        record = world.model_record()
+        path = world.config / ".tmp" / "rulesets-engine" / "models" / "s1.json"
+        path.unlink()
+        later = [world.run_part("SessionStart", payload, part) for part in (2, 3)]
+
+        assert first
+        assert all(later), "the rules span three parts"
+        assert record is not None
+        assert record["identifier"] == OPUS
+        assert not path.exists()
+
+
+def declare_voice_scene(world):
+    """A pool whose `core-rules` every context receives, and a haiku or sonnet delegate adds a rule."""
+
+    world.rule("core-rules")
+    world.rule("haiku-rules")
+    world.rule("sonnet-rules")
+    world.manifest(
+        "models: ['opus', 'sonnet', 'haiku']\ndefaults: ['core-rules']\n"
+        "when:\n  - model haiku: ['haiku-rules']\n  - model sonnet: ['sonnet-rules']\n"
+    )
+
+
+class TestADelegateReceivesAllItsRulesAtItsStart:
+    def test_a_delegate_spawned_after_a_rule_edit_receives_the_edit_and_the_earlier_one_keeps_its_text(
+        self, world
+    ):
+        world.rule("voice", "old voice\n")
+        world.manifest(DECLARED + "defaults: ['voice']\n")
+
+        before = world.start_delegate(agent_id="a1")
+        world.rule("voice", "edited voice\n")
+        after = world.start_delegate(agent_id="a2")
+
+        assert before.context == "old voice\n"
+        assert after.context == "edited voice\n"
+
+    def test_delegates_on_different_models_each_receive_the_composition_of_their_own_facts(
+        self, world
+    ):
+        declare_voice_scene(world)
+        world.user_agent("quick", "haiku")
+        world.user_agent("careful", "sonnet")
+        world.start_session(model=OPUS)
+
+        quick = world.start_delegate("quick", agent_id="a1")
+        careful = world.start_delegate("careful", agent_id="a2")
+        quick_again = world.start_delegate("quick", agent_id="a3")
+
+        assert quick.context == "text of core-rules\ntext of haiku-rules\n"
+        assert careful.context == "text of core-rules\ntext of sonnet-rules\n"
+        assert quick_again.context == quick.context
+
+
+class TestADelegatesDeliveryWritesNoSessionFile:
+    def test_a_haiku_delegate_under_an_opus_session_leaves_the_record_and_the_rulesets_untouched(
+        self, world
+    ):
+        declare_voice_scene(world)
+        world.user_agent("quick", "haiku")
+        session = world.start_session(model=OPUS)
+        record = world.model_record()
+        record_bytes = (world.config / ".tmp/rulesets-engine/models/s1.json").read_bytes()
+        rulesets = tree_of(world.rulesets)
+
+        delegate = world.start_delegate("quick")
+
+        assert session.context == "text of core-rules\n"
+        assert delegate.context == "text of core-rules\ntext of haiku-rules\n"
+        assert record is not None
+        assert record["identifier"] == OPUS
+        assert (world.config / ".tmp/rulesets-engine/models/s1.json").read_bytes() == record_bytes
+        assert tree_of(world.rulesets) == rulesets
+
+
+class TestAMissingOrUnparsableManifestDeliversEveryRuleAtItsDefault:
+    def test_a_missing_manifest_delivers_each_default_form_sorted_and_the_notice_names_the_path(
+        self, world
+    ):
+        world.rule("voice", "default voice\n")
+        world.rule("voice@terse", "terse voice\n")
+        world.rule("a-rule", "a text\n")
+
+        delivery = world.start_session()
+
+        assert delivery.context == "a text\ndefault voice\n"
+        assert str(world.rulesets / "manifest.yaml") in delivery.message
+
+    def test_an_unparsable_manifest_delivers_each_default_form_and_the_notice_names_path_and_error(
+        self, world
+    ):
+        world.rule("voice", "default voice\n")
+        world.rule("a-rule", "a text\n")
+        broken = "models: ['opus'\ndefaults: ['voice']\n"
+        world.manifest(broken)
+        with pytest.raises(yaml.YAMLError) as parsed:
+            yaml.safe_load(broken)
+
+        delivery = world.start_session()
+
+        assert delivery.context == "a text\ndefault voice\n"
+        assert str(world.rulesets / "manifest.yaml") in delivery.message
+        assert parsed.value.problem in delivery.message
+
+
+class TestACompositionThatReachesNoRuleIsNoFailure:
+    @pytest.mark.parametrize(
+        "pool",
+        [[], ["voice"]],
+        ids=["the pool holds no rule file", "no applying statement includes a rule"],
+    )
+    def test_the_session_starts_with_no_text_and_a_notice_says_the_context_received_nothing(
+        self, world, pool
+    ):
+        for name in pool:
+            world.rule(name)
+        world.manifest(DECLARED + "defaults: []\n")
+
+        delivery = world.start_session()
+
+        assert delivery.context == ""
+        assert "received nothing" in delivery.message
+        assert "fail" not in delivery.message.lower()
+
+
+class TestAMissingRulesetsDirectoryIsScaffolded:
+    def test_a_session_without_a_rulesets_directory_starts_with_an_empty_one_and_a_notice_saying_where(
+        self, world
+    ):
+        shutil.rmtree(world.rulesets)
+
+        delivery = world.start_session()
+
+        assert delivery.context == ""
+        assert str(world.rulesets) in delivery.message
+        assert list((world.rulesets / "rules").iterdir()) == []
+        declared = yaml.safe_load((world.rulesets / "manifest.yaml").read_text(encoding="utf-8"))
+        assert not any(declared.values())
+
+
+class TestADeliveryFailureKeepsTheSessionRunning:
+    def test_a_scaffold_that_cannot_write_its_parent_starts_the_session_and_says_why(self, world):
+        shutil.rmtree(world.rulesets)
+        (world.config / ".tmp" / "rulesets-engine").mkdir(parents=True)
+        world.config.chmod(0o500)
+        try:
+            delivery = world.start_session()
+        finally:
+            world.config.chmod(0o700)
+
+        assert delivery.context == ""
+        assert "Permission denied" in delivery.message
+        assert str(world.rulesets) in delivery.message
+        assert not world.rulesets.exists()
+
+    def test_a_delivery_that_raises_answers_with_a_notice_naming_the_failure_and_the_command(
+        self, world, tmp_path
+    ):
+        not_a_directory = tmp_path / "file"
+        not_a_directory.write_text("", encoding="utf-8")
+        world.environment["CLAUDE_CONFIG_DIR"] = str(not_a_directory)
+
+        delivery = world.start_session()
+
+        assert delivery.context == ""
+        assert len(delivery.messages) == 1
+        assert "not a directory" in delivery.message.lower()
+        assert "deliver.py" in delivery.message
+        assert "--part 1" in delivery.message
+
+
+class TestTermsOfDelivery:
+    def test_a_delegates_record_names_the_variant_and_its_digest_of_the_text_delivered(self, world):
+        world.rule("voice", "default voice\n")
+        world.rule("voice@terse", "terse voice\n")
+        world.manifest(DECLARED + "defaults: ['voice']\nwhen:\n  - agent critic: ['voice@terse']\n")
+
+        delivery = world.start_delegate("critic")
+
+        (record,) = delegate_records(world)
+        (line,) = record["rules"]
+        body = (world.rulesets / "rules" / "voice@terse.md").read_bytes().decode()
+        assert (line["rule"], line["variant"]) == ("voice", "terse")
+        assert delivery.context == body
+        assert line["digest"] == hashlib.sha256(delivery.context.encode()).hexdigest()

@@ -87,6 +87,66 @@ class World:
             return []
         return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
 
+    def model_record(self, session_id: str = "s1") -> dict | None:
+        """The session's model record as the engine keeps it, or None where none is written."""
+
+        path = self.config / ".tmp" / "rulesets-engine" / "models" / f"{session_id}.json"
+        return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+
+    def user_agent(self, agent_type: str, model: str) -> None:
+        """An agent definition file that pins its model."""
+
+        path = self.config / "agents" / f"{agent_type}.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            f"---\nname: {agent_type}\ndescription: a test agent\nmodel: {model}\n---\nbody\n",
+            encoding="utf-8",
+        )
+
+    def run_spawn_hook(
+        self, stdin: str, environment: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        """The PreToolUse entry wired for the `Agent` tool, fed `stdin` as the harness feeds it."""
+
+        env = {**self._environ(), **(environment or {})}
+        return subprocess.run(
+            ["bash", "-c", self._command("PreToolUse", 'record-spawn.py"')],
+            input=stdin,
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+        )
+
+    def spawn(
+        self,
+        agent_type: str,
+        model: str | None,
+        prompt_id: str = "p1",
+        session_id: str = "s1",
+    ) -> subprocess.CompletedProcess[str]:
+        """A caller spawning `agent_type`, as the PreToolUse payload of the `Agent` tool shows it."""
+
+        tool_input = {
+            "prompt": "Review the diff",
+            "description": "Review the diff",
+            "subagent_type": agent_type,
+        }
+        if model is not None:
+            tool_input["model"] = model
+        payload = {
+            "session_id": session_id,
+            "prompt_id": prompt_id,
+            "transcript_path": str(self.transcripts / f"{session_id}.jsonl"),
+            "cwd": str(self.config.parent),
+            "permission_mode": "default",
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Agent",
+            "tool_input": tool_input,
+            "tool_use_id": "toolu_01ABC123",
+        }
+        return self.run_spawn_hook(json.dumps(payload))
+
     def _environ(self) -> dict[str, str]:
         kept = {k: v for k, v in os.environ.items() if not k.startswith(_ENGINE_PREFIXES)}
         return {

@@ -112,6 +112,18 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 5,
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/record-spawn.py\""
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "hooks": [
