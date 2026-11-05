@@ -34,10 +34,10 @@ from projection import (
     _render,
     agent_source,
     apply_plan,
+    default_rules,
     parse_document,
     read_agent,
     rewrite_paths,
-    unconditional_rules,
 )
 
 PI_TOOL_NAMES = {
@@ -50,7 +50,7 @@ PI_TOOL_NAMES = {
 }
 
 
-def build_agents_markdown(claude_md: Path, rules_dir: Path) -> str:
+def build_agents_markdown(claude_md: Path, rulesets_dir: Path) -> str:
     """Assemble the always-loaded configuration into one AGENTS.md body.
 
     pi reads one context file per directory and offers no second mechanism
@@ -61,7 +61,7 @@ def build_agents_markdown(claude_md: Path, rules_dir: Path) -> str:
     sections = [parse_document(claude_md.read_text(encoding="utf-8")).body]
     sections += [
         parse_document(rule.read_text(encoding="utf-8")).body
-        for rule in unconditional_rules(rules_dir)
+        for rule in default_rules(rulesets_dir)
     ]
     return rewrite_paths("\n\n".join(section.strip("\n") for section in sections) + "\n")
 
@@ -112,7 +112,7 @@ def build_plan(targets: Targets = DEFAULT_TARGETS) -> Plan:
     files = [
         GeneratedFile(
             targets.pi_home / "AGENTS.md",
-            build_agents_markdown(targets.claude_md, targets.rules_dir),
+            build_agents_markdown(targets.claude_md, targets.rulesets_dir),
         ),
     ]
     dropped: list[tuple[str, str, str]] = []

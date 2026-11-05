@@ -5,13 +5,13 @@ writes through its plan machinery, so a change to one job reaches no other
 job's output. The jobs import this by name, since a script run by path puts
 its own directory first on `sys.path`.
 
-Reading a markdown document, resolving the paths it cites, and writing a
-generated file all live in the rulesets plugin, whose mechanism
+Reading a markdown document, resolving the paths it cites, reading the pool,
+and writing a generated file all live in the rulesets plugin, whose mechanism
 these jobs share. This module imports those inward and re-exports them under
 their own names, so a job importing `parse_document` from here still gets
 the one definition. The rule bodies themselves belong to this checkout: the
-corpus is named once, as `Targets.corpus_root`, and every job reads the
-always-on bodies through `Targets.rules_dir`.
+rulesets directory is named once, as `Targets.rulesets_dir`, and every job
+reads the always-on bodies through `default_rules`.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ HOME = Path.home()
 # was invoked from and a hook inside a worktree syncs that worktree.
 SCRIPT_ROOT = Path(__file__).resolve().parents[2]
 
-PLUGIN_ROOT = SCRIPT_ROOT / "features" / "plugins" / "model-scoped-rulesets"
+PLUGIN_ROOT = SCRIPT_ROOT / "features" / "plugins" / "rulesets"
 
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
@@ -38,18 +38,16 @@ from rulesets.documents import (  # noqa: E402  (path must be set before this im
     HOME_VAR,
     Document,
     GeneratedFile,
-    all_rules,
     home_relative,
-    ordered_rules,
     parse_document,
     refuse_uncommitted,
     restore_paths,
     rewrite_paths,
     summarize,
     uncommitted,
-    unconditional_rules,
     write_or_check,
 )
+from rulesets.source.pool import read_pool  # noqa: E402  (path must be set before this import)
 
 # Re-exported for the jobs that import these by name from this module.
 __all__ = [
@@ -63,19 +61,32 @@ __all__ = [
     "Targets",
     "Translation",
     "agent_source",
-    "all_rules",
     "apply_plan",
+    "default_rules",
     "home_relative",
-    "ordered_rules",
     "parse_document",
     "read_agent",
     "refuse_uncommitted",
     "restore_paths",
     "rewrite_paths",
     "uncommitted",
-    "unconditional_rules",
     "write_or_check",
 ]
+
+
+def default_rules(rulesets_dir: Path) -> list[Path]:
+    """The default form of each pool rule that loads every session, sorted by rule name.
+
+    A variant file, a file outside the pool, and a rule carrying frontmatter stay out. The
+    harness loads a rule carrying `paths:` only once a matching file enters play, so listing
+    it here would put its text in every prompt and a second copy in a matching one.
+    """
+
+    return [
+        rule.default.path
+        for rule in read_pool(rulesets_dir).rules.values()
+        if rule.default is not None and rule.default.frontmatter is None
+    ]
 
 
 def agent_source(agents_dir: Path, name: str) -> Path:
@@ -155,25 +166,20 @@ def _render(frontmatter: dict, body: str) -> str:
 class Targets:
     """The roots this script reads from and writes to.
 
-    `corpus_root` is the one place the rule bodies are named. It holds one
-    directory per tier and sits in this checkout, which owns them, beside
-    the manifest that composes them; a job reads the always-on bodies
-    through `rules_dir`, so moving the corpus is a change to this field's
-    default alone.
+    `rulesets_dir` is the one place the rule bodies are named. Its `rules/`
+    folder is the pool, in this checkout, which owns it; a job reads the
+    always-on bodies through `default_rules`, so moving the pool is a change
+    to this field's default alone.
     """
 
     claude_home: Path
     pi_home: Path
     opencode_home: Path
-    corpus_root: Path = SCRIPT_ROOT / "rulesets"
+    rulesets_dir: Path = SCRIPT_ROOT / "rulesets"
 
     @property
     def claude_md(self) -> Path:
         return self.claude_home / "CLAUDE.md"
-
-    @property
-    def rules_dir(self) -> Path:
-        return self.corpus_root / "default"
 
     @property
     def agents_dir(self) -> Path:

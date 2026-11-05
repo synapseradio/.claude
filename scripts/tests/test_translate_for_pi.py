@@ -21,10 +21,6 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts" / "agent-configs"))
 import projection  # noqa: E402  (path must be set before this import)
 
-# `projection` puts the plugin's library on `sys.path`, which is how the
-# renderer this scenario's render path is derived from is reached.
-from rulesets import render  # noqa: E402  (projection must be imported first)
-
 _PI_PATH = REPO_ROOT / "scripts" / "agent-configs" / "translate-for-pi.py"
 _spec = importlib.util.spec_from_file_location("translate_for_pi_test", _PI_PATH)
 assert _spec is not None and _spec.loader is not None
@@ -62,7 +58,7 @@ AGENT_SOURCE = (
 def _targets(tmp_path: pathlib.Path) -> projection.Targets:
     claude_home = tmp_path / "claude"
     _write(claude_home / "CLAUDE.md", f"{PREAMBLE}\n")
-    rules = claude_home / "rulesets" / "default"
+    rules = claude_home / "rulesets" / "rules"
     _write(rules / "alpha.md", f"{ALPHA}\n")
     _write(
         rules / "gated.md",
@@ -75,7 +71,7 @@ def _targets(tmp_path: pathlib.Path) -> projection.Targets:
         claude_home=claude_home,
         pi_home=tmp_path / "pi",
         opencode_home=tmp_path / "opencode",
-        corpus_root=claude_home / "rulesets",
+        rulesets_dir=claude_home / "rulesets",
     )
 
 
@@ -121,50 +117,11 @@ class TestBuildAgentsMarkdown:
     def test_carries_the_preamble_and_the_unconditional_rules(self, tmp_path):
         targets = _targets(tmp_path)
 
-        built = pi.build_agents_markdown(targets.claude_md, targets.rules_dir)
+        built = pi.build_agents_markdown(targets.claude_md, targets.rulesets_dir)
 
         assert "Play." in built and "Alpha holds." in built, (
             "pi reads one context file per directory, so its copy needs the preamble and every "
             "always-on rule concatenated"
-        )
-
-
-class TestRunningOneJobAlone:
-    """`config-projection` requirement: each projection job runs independently.
-
-    Scenario: Running one job (pi translation runs alone; the render,
-    opencode's outputs, and the opencode key stay untouched).
-    """
-
-    def test_pi_alone_leaves_the_render_opencode_and_the_key_untouched(self, tmp_path):
-        targets = _targets(tmp_path)
-        rendering = render.RenderTargets(
-            config_root=targets.claude_home,
-            corpus_root=targets.corpus_root,
-            order=("alpha",),
-        )
-        render_path = rendering.render_path
-        working_rules_before = "a render this job must never touch\n"
-        opencode_agents_before = "an opencode context file this job must never touch\n"
-        opencode_config_before = json.dumps({"instructions": ["untouched"]}, indent=2) + "\n"
-        _write(render_path, working_rules_before)
-        _write(targets.opencode_home / "AGENTS.md", opencode_agents_before)
-        _write(targets.opencode_config, opencode_config_before)
-
-        assert pi.main([], targets=targets) == 0
-
-        assert (targets.pi_home / "AGENTS.md").is_file(), "the pi job must write its own outputs"
-        assert (targets.pi_home / "agents" / "scout.md").is_file(), (
-            "the pi job must translate every agent definition into its own directory"
-        )
-        assert render_path.read_text(encoding="utf-8") == working_rules_before, (
-            "a job invoked alone must leave the working-rules render untouched"
-        )
-        assert (targets.opencode_home / "AGENTS.md").read_text(
-            encoding="utf-8"
-        ) == opencode_agents_before, "a job invoked alone must leave opencode's outputs untouched"
-        assert targets.opencode_config.read_text(encoding="utf-8") == opencode_config_before, (
-            "a job invoked alone must leave the opencode key untouched"
         )
 
 
@@ -248,7 +205,7 @@ class TestCheckModeReportsDrift:
         pi.main([], targets=targets)
         context_file = targets.pi_home / "AGENTS.md"
         written = context_file.read_text(encoding="utf-8")
-        _write(targets.rules_dir / "alpha.md", f"{_body('alpha', 'Alpha, edited.')}\n")
+        _write(targets.rulesets_dir / "rules" / "alpha.md", f"{_body('alpha', 'Alpha, edited.')}\n")
         capsys.readouterr()
 
         code = pi.main(["--check"], targets=targets)
@@ -328,12 +285,12 @@ class TestBuildAgentsMarkdownFromASourceTree:
             '---\npaths:\n  - "**/*.sh"\n---\n\nGated {\n  sometimes\n}\n',
         )
         _write(rules / "zeta.md", "Zeta {\n  always\n}\n")
-        return claude_md, rules
+        return claude_md, tmp_path
 
     def test_rule_carrying_paths_frontmatter_stays_out(self, tmp_path):
-        claude_md, rules = self._tree(tmp_path)
+        claude_md, rulesets = self._tree(tmp_path)
 
-        built = pi.build_agents_markdown(claude_md, rules)
+        built = pi.build_agents_markdown(claude_md, rulesets)
 
         assert "Gated {" not in built, (
             "the extension appends a path-scoped rule when a matching file is in play, so "
@@ -342,35 +299,36 @@ class TestBuildAgentsMarkdownFromASourceTree:
         assert "paths:" not in built, "no frontmatter reaches the context file"
 
     def test_rule_without_frontmatter_goes_in(self, tmp_path):
-        claude_md, rules = self._tree(tmp_path)
+        claude_md, rulesets = self._tree(tmp_path)
 
-        built = pi.build_agents_markdown(claude_md, rules)
+        built = pi.build_agents_markdown(claude_md, rulesets)
 
         assert "Alpha {\n  always\n}" in built, "a rule with no frontmatter loads every session"
         assert "Zeta {\n  always\n}" in built, "a rule with no frontmatter loads every session"
 
     def test_preamble_leads_and_rules_follow_in_filename_order(self, tmp_path):
-        claude_md, rules = self._tree(tmp_path)
+        claude_md, rulesets = self._tree(tmp_path)
 
-        built = pi.build_agents_markdown(claude_md, rules)
+        built = pi.build_agents_markdown(claude_md, rulesets)
 
         assert built.index("# Preamble") < built.index("Alpha {") < built.index("Zeta {"), (
             "CLAUDE.md leads and rules follow sorted by filename, so the output is deterministic"
         )
 
     def test_frontmatter_delimiters_do_not_reach_the_output(self, tmp_path):
-        claude_md, rules = self._tree(tmp_path)
+        claude_md, rulesets = self._tree(tmp_path)
 
-        built = pi.build_agents_markdown(claude_md, rules)
+        built = pi.build_agents_markdown(claude_md, rulesets)
 
         assert "paths:" not in built, "an excluded rule contributes none of its frontmatter either"
 
     def test_paths_in_rule_bodies_are_rewritten(self, tmp_path):
         claude_md = _write(tmp_path / "CLAUDE.md", "# Preamble\n")
-        rules = tmp_path / "rules"
+        rulesets = tmp_path
+        rules = rulesets / "rules"
         _write(rules / "alpha.md", "Alpha {\n  read `~/.claude/references/x.md`\n}\n")
 
-        built = pi.build_agents_markdown(claude_md, rules)
+        built = pi.build_agents_markdown(claude_md, rulesets)
 
         assert "`$HOME/.claude/references/x.md`" in built, (
             "a rule body reaches the generated file through the same path rewrite as the preamble"
@@ -378,11 +336,12 @@ class TestBuildAgentsMarkdownFromASourceTree:
 
     def test_sections_are_separated_by_one_blank_line(self, tmp_path):
         claude_md = _write(tmp_path / "CLAUDE.md", "# Preamble\n\n\n")
-        rules = tmp_path / "rules"
+        rulesets = tmp_path
+        rules = rulesets / "rules"
         _write(rules / "alpha.md", "Alpha {\n}\n\n\n")
         _write(rules / "zeta.md", "Zeta {\n}\n")
 
-        built = pi.build_agents_markdown(claude_md, rules)
+        built = pi.build_agents_markdown(claude_md, rulesets)
 
         assert built == "# Preamble\n\nAlpha {\n}\n\nZeta {\n}\n", (
             "trailing blank lines in a source must not vary the joint, or the output stops "

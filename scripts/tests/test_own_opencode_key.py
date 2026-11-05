@@ -45,7 +45,7 @@ ALPHA = _body("alpha", "Alpha holds.")
 def _targets(tmp_path: pathlib.Path) -> projection.Targets:
     claude_home = tmp_path / "claude"
     _write(claude_home / "CLAUDE.md", f"{PREAMBLE}\n")
-    rules = claude_home / "rulesets" / "default"
+    rules = claude_home / "rulesets" / "rules"
     _write(rules / "alpha.md", f"{ALPHA}\n")
     _write(
         rules / "gated.md",
@@ -55,7 +55,7 @@ def _targets(tmp_path: pathlib.Path) -> projection.Targets:
         claude_home=claude_home,
         pi_home=tmp_path / "pi",
         opencode_home=tmp_path / "opencode",
-        corpus_root=claude_home / "rulesets",
+        rulesets_dir=claude_home / "rulesets",
     )
 
 
@@ -63,7 +63,7 @@ class TestRuleInstructions:
     def test_names_each_unconditional_rule_under_home(self, tmp_path):
         targets = _targets(tmp_path)
 
-        listed = key_owner.rule_instructions(targets.rules_dir)
+        listed = key_owner.rule_instructions(targets.rulesets_dir)
 
         assert any(entry.endswith("alpha.md") for entry in listed), (
             "opencode reads the session-wide rules through this list, so every always-on rule "
@@ -156,7 +156,7 @@ class TestCheckModeReportsDrift:
         targets = _targets(tmp_path)
         key_owner.main([], targets=targets)
         written = targets.opencode_config.read_text(encoding="utf-8")
-        _write(targets.rules_dir / "zeta.md", f"{_body('zeta', 'Zeta holds.')}\n")
+        _write(targets.rulesets_dir / "rules" / "zeta.md", f"{_body('zeta', 'Zeta holds.')}\n")
         capsys.readouterr()
 
         code = key_owner.main(["--check"], targets=targets)

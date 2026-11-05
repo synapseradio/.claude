@@ -7,7 +7,6 @@ Every test builds its own tree under a tmp_path, so no test writes outside
 that directory or reads this checkout's own configuration.
 """
 
-import importlib.util
 import pathlib
 import re
 import subprocess
@@ -19,26 +18,6 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 sys.path.insert(0, str(REPO_ROOT / "scripts" / "agent-configs"))
 import projection  # noqa: E402  (path must be set before this import)
-
-
-def _load(name: str, filename: str):
-    path = REPO_ROOT / "scripts" / "agent-configs" / filename
-    spec = importlib.util.spec_from_file_location(name, path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-# The two jobs the "Two jobs read one source" scenario names. `projection`
-# puts the plugin's library on `sys.path`, which is how the renderer, now
-# owned by the plugin that owns the rule bodies, is reached.
-pi = _load("translate_for_pi_via_projection_test", "translate-for-pi.py")
-
-from rulesets.documents import ordered_rules  # noqa: E402
-
-from rulesets import render  # noqa: E402  (projection must be imported first)
 
 
 def _write(path: pathlib.Path, text: str) -> pathlib.Path:
@@ -75,66 +54,6 @@ def _git(repo: pathlib.Path, *args: str) -> None:
         check=True,
         capture_output=True,
     )
-
-
-class TestRulesSourceIsNamedOnce:
-    """`config-projection` requirement: one place names the rules source."""
-
-    def test_two_jobs_read_one_source(self, tmp_path):
-        claude_md = _write(tmp_path / "CLAUDE.md", f"{PREAMBLE}\n")
-        rules_dir = tmp_path / "not-called-rules"
-        _write(rules_dir / "alpha.md", f"{ALPHA}\n")
-
-        rendered = render.build_working_rules(claude_md, ordered_rules(rules_dir, ("alpha",)))
-        agents_markdown = pi.build_agents_markdown(claude_md, rules_dir)
-
-        assert "Alpha holds." in rendered, (
-            "the render must read the rule body from the directory its caller names, "
-            "which fails the moment the render names one of its own"
-        )
-        assert "Alpha holds." in agents_markdown, (
-            "pi's context file must read the same rule body from the same directory, "
-            "which fails the moment that job names a directory of its own"
-        )
-
-    def test_the_source_directory_moves(self, tmp_path):
-        tree_a = tmp_path / "a"
-        _write(tree_a / "CLAUDE.md", f"{PREAMBLE}\n")
-        _write(tree_a / "some-other-root" / "default" / "alpha.md", f"{ALPHA}\n")
-
-        tree_b = tmp_path / "b"
-        _write(tree_b / "CLAUDE.md", f"{PREAMBLE}\n")
-        _write(tree_b / "elsewhere" / "default" / "alpha.md", f"{ALPHA}\n")
-
-        targets_a = projection.Targets(
-            claude_home=tree_a,
-            pi_home=tmp_path / "pi-a",
-            opencode_home=tmp_path / "opencode-a",
-            corpus_root=tree_a / "some-other-root",
-        )
-        targets_b = projection.Targets(
-            claude_home=tree_b,
-            pi_home=tmp_path / "pi-b",
-            opencode_home=tmp_path / "opencode-b",
-            corpus_root=tree_b / "elsewhere",
-        )
-
-        rendered_a = render.build_working_rules(
-            targets_a.claude_md, ordered_rules(targets_a.rules_dir, ("alpha",))
-        )
-        rendered_b = render.build_working_rules(
-            targets_b.claude_md, ordered_rules(targets_b.rules_dir, ("alpha",))
-        )
-        assert rendered_a == rendered_b, (
-            "moving the named directory to a different path holding the same bodies "
-            "must not change the render by one byte"
-        )
-
-        agents_a = pi.build_agents_markdown(targets_a.claude_md, targets_a.rules_dir)
-        agents_b = pi.build_agents_markdown(targets_b.claude_md, targets_b.rules_dir)
-        assert agents_a == agents_b, (
-            "moving the named directory must not change pi's context file by one byte either"
-        )
 
 
 class TestRefusesToOverwriteUncommittedWork:
@@ -375,8 +294,8 @@ class TestDefaultTargets:
             "syncs that worktree and needs no argument naming it"
         )
 
-    def test_the_corpus_resolves_under_the_checkout_that_owns_it(self):
-        assert projection.DEFAULT_TARGETS.rules_dir == REPO_ROOT / "rulesets" / "default", (
+    def test_the_rulesets_directory_resolves_under_the_checkout_that_owns_it(self):
+        assert projection.DEFAULT_TARGETS.rulesets_dir == REPO_ROOT / "rulesets", (
             "every job reads the always-on bodies through this one property, so a job naming "
             "a rules directory of its own would read a corpus the others do not"
         )

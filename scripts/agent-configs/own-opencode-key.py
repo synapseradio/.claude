@@ -21,19 +21,19 @@ from projection import (
     Plan,
     Targets,
     apply_plan,
+    default_rules,
     home_relative,
-    unconditional_rules,
 )
 
 
-def rule_instructions(rules_dir: Path) -> list[str]:
+def rule_instructions(rulesets_dir: Path) -> list[str]:
     """The `instructions` entries opencode reads the session-wide rules from.
 
-    Each names its canonical path under `~/.claude/rulesets/default/`, so an
+    Each names its canonical path under `~/.claude/rulesets/rules/`, so an
     edit to a rule reaches opencode with no run of this job.
     """
 
-    return [home_relative(rule) for rule in unconditional_rules(rules_dir)]
+    return [home_relative(rule) for rule in default_rules(rulesets_dir)]
 
 
 def build_plan(targets: Targets = DEFAULT_TARGETS) -> Plan:
@@ -41,7 +41,7 @@ def build_plan(targets: Targets = DEFAULT_TARGETS) -> Plan:
         GeneratedKey(
             targets.opencode_config,
             "instructions",
-            rule_instructions(targets.rules_dir),
+            rule_instructions(targets.rulesets_dir),
             after="$schema",
         ),
     )

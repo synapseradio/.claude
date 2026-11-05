@@ -41,9 +41,9 @@ pre-push:
     # Ungated by glob: enabling a plugin stales a generated file while
     # changing nothing under version control. The translation jobs write the
     # live configs outside this repository, so they run on main alone, then
-    # check what they wrote. The render only checks, and the reverse
-    # direction stays out: its targets are hand-edited. set -e carries a
-    # failure out to the gate, which reads the last line's status.
+    # check what they wrote. The pool check and the render tree check only
+    # read. set -e carries a failure out to the gate, which reads the last
+    # line's status.
     # https://github.com/evilmartians/lefthook/blob/master/docs/configuration/run.md
     - name: sync-agent-configs
       only:
@@ -56,10 +56,10 @@ pre-push:
         python3.14 scripts/agent-configs/translate-for-pi.py --check
         python3.14 scripts/agent-configs/translate-for-opencode.py --check
         python3.14 scripts/agent-configs/own-opencode-key.py --check
-        python3.14 features/plugins/model-scoped-rulesets/lib/rulesets/resolve.py check --root rulesets
-        python3.14 features/plugins/model-scoped-rulesets/lib/rulesets/resolve.py render --check \
-          --root rulesets --config-root . || {
-          echo "A render under rulesets/renders/ no longer matches its tier's bodies."
+        python3.14 features/plugins/rulesets/lib/rulesets/cli.py check --root rulesets
+        python3.14 features/plugins/rulesets/lib/rulesets/cli.py render --check \
+          --root rulesets || {
+          echo "A render under rulesets/-render/ no longer matches the pool."
           echo "The check named each one above."
           echo "Run the same command without --check,"
           echo "commit the renders it writes, then push again."
