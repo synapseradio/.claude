@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Command line for the rulesets engine: `check`, `explain`, `eject`, `render`, `split`, `toggle`, `delivery-check`, `load-check`, and `deliveries`.
+"""Command line for the rulesets engine: `check`, `explain`, `adopt`, `compare`, `eject`, `render`, `split`, `toggle`, `delivery-check`, `load-check`, and `deliveries`.
 
 This module parses arguments, prints, and sets the exit status. Every finding comes from
 `rulesets.check.run`, and every line's wording from `rulesets.check.report_format`. An explanation comes from `rulesets.explain`. A toggle's
@@ -16,11 +16,14 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
+from rulesets.adopt.run import Adopted, Refused, adopt
+from rulesets.adopt.tier_corpus import SourceError
 from rulesets.audit.deliveries import deliveries
 from rulesets.audit.delivery_check import delivery_check
 from rulesets.audit.load_check import load_check
 from rulesets.check.report_format import report_lines
 from rulesets.check.run import check
+from rulesets.compare.run import compare
 from rulesets.compose.composition import compose
 from rulesets.eject import eject
 from rulesets.explain import UnknownRule, explain, format_explanation
@@ -100,6 +103,28 @@ def _build_parser() -> argparse.ArgumentParser:
         "deliveries", help="print one line for each delivery that reached a context"
     )
     listing.add_argument("--session", required=True, help="the session whose deliveries are listed")
+    adopting = commands.add_parser(
+        "adopt",
+        help="map a tier corpus or rules folder to a rulesets directory and prove no context changes",
+    )
+    adopting.add_argument(
+        "--from", dest="source", required=True, type=pathlib.Path, help="the corpus or folder"
+    )
+    adopting.add_argument(
+        "--out", required=True, type=pathlib.Path, help="the empty output directory"
+    )
+    comparing = commands.add_parser(
+        "compare", help="compare what a source delivers with what a rulesets directory delivers"
+    )
+    comparing.add_argument("source", type=pathlib.Path, help="the tier corpus or rules folder")
+    comparing.add_argument("directory", type=pathlib.Path, help="the rulesets directory")
+    for adoption_command in (adopting, comparing):
+        adoption_command.add_argument(
+            "--expect",
+            action="append",
+            default=[],
+            help="a model identifier whose differences are expected; it joins the matrix",
+        )
     ejecting = commands.add_parser(
         "eject", help="write the base context as one plain file per rule"
     )
@@ -201,6 +226,35 @@ def _explain(arguments: argparse.Namespace) -> int:
             return 0
 
 
+def _adopt(arguments: argparse.Namespace) -> int:
+    locations = Locations.from_environment(os.environ)
+    match adopt(arguments.source, arguments.out, arguments.expect, locations):
+        case Refused(reason):
+            print(f"cli.py: {reason}", file=sys.stderr)
+            return _USAGE_ERROR
+        case Adopted(skipped, comparison):
+            for item in skipped:
+                print(item.line())
+            for line in comparison.lines():
+                print(line)
+            return 1 if comparison.failed else 0
+
+
+def _compare(arguments: argparse.Namespace) -> int:
+    if not arguments.directory.is_dir():
+        print(f"cli.py: no rulesets directory at {arguments.directory}", file=sys.stderr)
+        return _USAGE_ERROR
+    locations = Locations.from_environment(os.environ)
+    try:
+        report = compare(arguments.source, arguments.directory, arguments.expect, locations)
+    except SourceError as failure:
+        print(f"cli.py: {failure}", file=sys.stderr)
+        return _USAGE_ERROR
+    for line in report.lines():
+        print(line)
+    return 1 if report.failed else 0
+
+
 def _existing_root(root: pathlib.Path | None) -> pathlib.Path | None:
     """The rulesets directory `root` names, or the configured one; None, after saying so, where none stands."""
 
@@ -280,6 +334,10 @@ def main(argv: list[str] | None = None) -> int:
         return status
     if arguments.command == "explain":
         return _explain(arguments)
+    if arguments.command == "adopt":
+        return _adopt(arguments)
+    if arguments.command == "compare":
+        return _compare(arguments)
     if arguments.command == "eject":
         return _eject(arguments)
     if arguments.command == "render":
