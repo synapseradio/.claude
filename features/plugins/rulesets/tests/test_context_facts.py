@@ -27,7 +27,6 @@ from rulesets.check.run import check  # noqa: E402
 from rulesets.facts.agent_definition import definition_front  # noqa: E402
 from rulesets.facts.context import ABSENT, UNCLAIMED, AllToolsBut, Facts, ListedTools  # noqa: E402
 from rulesets.facts.model import claim as model_claim  # noqa: E402
-from rulesets.facts.model import delegate as delegate_model  # noqa: E402
 from rulesets.facts.model import fact as model_fact  # noqa: E402
 from rulesets.facts.model import session as session_model  # noqa: E402
 from rulesets.facts.tools_fact import tools_fact  # noqa: E402
@@ -1043,40 +1042,6 @@ class TestTheForceVariableAndADefaultModelAreBothSet:
 
         (record,) = delegate_records(world)
         assert model_of(record) == (OPUS_IDENTIFIER, FORCE)
-
-
-class TestAForkTakesTheParentsIdentifierUnderTheForceVariable:
-    def test_a_fork_ignores_the_forced_model(self, tmp_path):
-        record = tmp_path / "models" / "s1.json"
-        record.parent.mkdir(parents=True)
-        record.write_text(json.dumps({"identifier": OPUS_IDENTIFIER}), encoding="utf-8")
-        start = {"session_id": "s1", "agent_id": "a1", "agent_type": "fork"}
-
-        resolution = delegate_model.resolve_delegate_model(
-            start,
-            ["opus", "sonnet", "haiku"],
-            {FORCE: "1", DEFAULT_VARIABLE: HAIKU_IDENTIFIER},
-            tmp_path,
-            tmp_path / "config",
-        )
-
-        assert resolution.fact == model_fact.Claimed("opus", OPUS_IDENTIFIER, "fork-parent")
-
-
-class TestAForksRecordNamesTheParentsIdentifierUnderTheForceVariable:
-    def test_the_record_names_the_parents_identifier_and_the_fork_receives_no_rule_text(
-        self, world
-    ):
-        model_world(world, **{FORCE: "1", DEFAULT_VARIABLE: HAIKU_IDENTIFIER})
-        parent_runs(world, OPUS_IDENTIFIER)
-
-        delivery = world.start_delegate("fork")
-
-        assert delivery.context == ""
-        (record,) = delegate_records(world)
-        assert record["kind"] == "fork"
-        assert model_of(record) == (OPUS_IDENTIFIER, "fork-parent")
-        assert record["model"]["name"] == "opus"
 
 
 class TestTheCoordinatorLeverGivesADelegateTheParentsModelFact:

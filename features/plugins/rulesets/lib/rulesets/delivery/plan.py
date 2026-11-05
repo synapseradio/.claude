@@ -26,7 +26,7 @@ class Delivering:
 
 @dataclasses.dataclass(frozen=True)
 class Silent:
-    """A delivery whose later parts send nothing: a fork, a switch that changes no rule, a failure."""
+    """A delivery whose later parts send nothing: a switch that changes no rule, a failure."""
 
     generation: str
 

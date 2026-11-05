@@ -59,8 +59,8 @@ def deliver_first(
 ) -> PartOutput:
     """Compose the context's rules once, append the record, write the plan, and emit part 1.
 
-    `prior_notices` are the notices the session's start or switch already drew. The plan is
-    written last, so a delivery that fails earlier leaves no plan for a later part to emit.
+    `prior_notices` are the notices a model switch already drew. The plan is written last, so a
+    delivery that fails earlier leaves no plan for a later part to emit.
     """
 
     scope: Scope

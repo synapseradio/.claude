@@ -15,8 +15,6 @@ type NoticeKind = Literal[
     "delivery-failure",
     "directory-scaffolded",
     "earlier-rules-remain",
-    "fork-inherits",
-    "fork-parent-missing",
     "launch-flag-undeclared",
     "manifest-missing",
     "manifest-unparsable",
@@ -39,7 +37,6 @@ SHOWN: frozenset[NoticeKind] = frozenset(
         "block-skipped",
         "delivery-failure",
         "directory-scaffolded",
-        "fork-parent-missing",
         "launch-flag-undeclared",
         "manifest-missing",
         "manifest-unparsable",
@@ -134,22 +131,11 @@ def absent_tools_notice(agent: str | None) -> Notice:
     )
 
 
-def fork_parent_missing_notice() -> Notice:
-    return Notice(
-        "fork-parent-missing",
-        "the parent of this forked session was not found: it starts with empty session state",
-    )
-
-
 def earlier_rules_remain_notice() -> Notice:
     return Notice(
         "earlier-rules-remain",
         "the rules delivered before this switch remain in the conversation above",
     )
-
-
-def fork_notice() -> Notice:
-    return Notice("fork-inherits", "the fork received no rules because it inherits its parent's")
 
 
 def manifest_missing_notice(path: str) -> Notice:

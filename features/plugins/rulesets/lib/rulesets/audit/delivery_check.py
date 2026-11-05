@@ -50,8 +50,7 @@ def delivery_check(
     """The differences between each counted delivery of the session and its recomposition now.
 
     The recomposition reads the manifest and pool under `root` as they stand, with the facts,
-    flags, and session state the delivery's record names. A fork's record names no rules and
-    is not recomposed.
+    flags, and session state the delivery's record names.
     """
 
     directory = read_directory(root)
@@ -59,8 +58,6 @@ def delivery_check(
     emitted = _emitted(locations, session_id)
     found: list[Difference] = []
     for record in counted(records):
-        if record.kind == "fork":
-            continue
         composition = compose(directory, _facts_of(record), _state_of(record))
         found.extend(_rule_differences(record, composition))
         found.extend(_part_differences(record, composition, directory, records, emitted))

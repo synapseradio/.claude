@@ -41,7 +41,6 @@ type IdentifierSource = (
         "built-in-pin",
         "subagent-default-variable",
         "parent-record",
-        "fork-parent",
     ]
     | FromVariable
     | FromForceLever

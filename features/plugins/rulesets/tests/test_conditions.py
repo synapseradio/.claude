@@ -63,7 +63,6 @@ class TestEachFactTestNamesAFactAndAValue:
             ("agent eval-runner", FactTest("agent", "eval-runner")),
             ("kind session", FactTest("kind", "session")),
             ("kind delegate", FactTest("kind", "delegate")),
-            ("kind fork", FactTest("kind", "fork")),
             ("flag voice-terse", FactTest("flag", "voice-terse")),
         ],
     )
@@ -87,8 +86,6 @@ class TestEachFactTestNamesAFactAndAValue:
     def test_a_kind_test_matches_the_context_kind(self):
         assert holds("kind delegate", kind="delegate") is True
         assert holds("kind delegate", kind="session") is False
-        assert holds("kind fork", kind="fork") is True
-        assert holds("kind session", kind="fork") is False
 
     def test_a_model_test_matches_the_claimed_model_name(self):
         assert holds("model haiku", model="haiku") is True
@@ -259,7 +256,7 @@ class TestAConditionTestsFactsOnly:
         for fact in ("model", "agent", "kind", "flag"):
             assert fact in str(failure.value)
 
-    def test_a_kind_other_than_session_delegate_or_fork_is_an_error_naming_it(self):
+    def test_a_kind_other_than_session_or_delegate_is_an_error_naming_it(self):
         with pytest.raises(ConditionError) as failure:
             parse_condition("kind subagent")
 
@@ -318,13 +315,15 @@ class TestTextThatIsNoConditionIsAnError:
 
 class TestFactTestsListWhatACheckMustVerify:
     def test_every_test_in_the_condition_comes_back_in_reading_order(self):
-        parsed = parse_condition("agent critic and not (model haiku or flag strict) or kind fork")
+        parsed = parse_condition(
+            "agent critic and not (model haiku or flag strict) or kind delegate"
+        )
 
         assert fact_tests(parsed) == (
             AGENT_CRITIC,
             MODEL_HAIKU,
             FLAG_STRICT,
-            FactTest("kind", "fork"),
+            FactTest("kind", "delegate"),
         )
 
     def test_a_single_test_lists_itself(self):

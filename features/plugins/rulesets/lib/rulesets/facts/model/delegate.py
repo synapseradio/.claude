@@ -4,14 +4,12 @@ import pathlib
 from collections.abc import Iterable, Mapping
 from typing import assert_never
 
-from rulesets.delivery.request import FORK_AGENT_TYPE
 from rulesets.facts.model.agent import AgentModel, Inherit, Pin, agent_model
 from rulesets.facts.model.claim import claim_model
 from rulesets.facts.model.fact import (
     ForceLever,
     FromForceLever,
     IdentifierSource,
-    ModelFact,
     ModelResolution,
     NotAString,
 )
@@ -21,15 +19,6 @@ from rulesets.facts.model.spawn import spawn_model
 from rulesets.notices import Notice
 
 type Candidate = tuple[object, IdentifierSource]
-
-
-def resolve_fork_model(
-    session_id: str | None, models: Iterable[str], state_dir: pathlib.Path
-) -> ModelFact:
-    """A fork's model fact: the parent's recorded identifier, whatever any lever says."""
-
-    parent = read_model_record(session_id, state_dir) if session_id else None
-    return claim_model(parent, "fork-parent", models)
 
 
 def resolve_delegate_model(
@@ -52,14 +41,12 @@ def resolve_delegate_model(
 
     A force lever ignores the caller's model and the agent's pin: the coordinator lever
     gives the parent's identifier, the subagent lever the default variable's or, where it is
-    empty, the parent's. A fork takes the parent's identifier under every lever.
+    empty, the parent's.
     """
 
     session_id = _text(payload.get("session_id"))
     agent_type = _text(payload.get("agent_type"))
     cwd = _text(payload.get("cwd"))
-    if agent_type == FORK_AGENT_TYPE:
-        return ModelResolution(resolve_fork_model(session_id, models, state_dir))
 
     parent = read_model_record(session_id, state_dir) if session_id else None
     notices: list[Notice] = []

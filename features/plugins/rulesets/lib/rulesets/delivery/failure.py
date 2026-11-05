@@ -21,7 +21,6 @@ from rulesets.audit.delivery_record import (
 from rulesets.delivery.hook_output import MESSAGE_SHOWN, PartOutput, hook_output
 from rulesets.delivery.request import (
     DeliveryStart,
-    ForkStart,
     ModelSwitch,
     SessionEnd,
     SessionStart,
@@ -104,11 +103,9 @@ def _failed_record(
             scope, kind = "switch", "session"
         case SubagentStart():
             scope, kind = "delegate", "delegate"
-        case ForkStart():
-            scope, kind = "delegate", "fork"
     return failed_record(
         session_id=request.session_id,
-        agent_id=request.agent_id if isinstance(request, SubagentStart | ForkStart) else None,
+        agent_id=request.agent_id if isinstance(request, SubagentStart) else None,
         scope=scope,
         kind=kind,
         notice=notice,

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Literal
 
-type Kind = Literal["session", "delegate", "fork"]
+type Kind = Literal["session", "delegate"]
 
 
 class Absent(Enum):

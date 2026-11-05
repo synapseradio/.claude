@@ -204,7 +204,7 @@ class TestAConditionThatTestsMoreThanFacts:
     def test_a_correct_condition_is_no_error(self, tmp_path):
         root = build(
             tmp_path,
-            "models: ['haiku']\nwhen:\n  - (agent a or kind fork) and not model haiku: ['voice']\n",
+            "models: ['haiku']\nwhen:\n  - (agent a or kind delegate) and not model haiku: ['voice']\n",
             stems=["voice"],
         )
 

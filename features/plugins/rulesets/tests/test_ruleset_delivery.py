@@ -28,7 +28,6 @@ from delivery_world import (
     select_commands,
 )
 from launcher_stubs import launch, path_of, stub
-from transcripts import write_transcript
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
@@ -167,38 +166,58 @@ class TestEveryDeliveryEntryRunsWhateverStartsTheContext:
         assert [c for c in world.commands_for("SessionEnd", reason) if c.endswith("--end")]
 
 
-class TestAForkSubagentReceivesNoRulesDelivery:
-    def test_a_fork_starting_under_a_parent_that_received_rules_gets_no_rule_text(self, world):
+def engine_files(world):
+    """Every file the engine keeps under the configuration directory, with its bytes."""
+
+    root = world.config / ".tmp" / "rulesets-engine"
+    return {path: path.read_bytes() for path in sorted(root.rglob("*")) if path.is_file()}
+
+
+class TestAForkedSessionAndAForkSubagentReceiveNothingAndLeaveNoRecord:
+    def test_a_forked_session_start_delivers_nothing_and_leaves_no_record(self, world):
         world.rule("core-rules")
         world.rule("sorting")
         world.manifest(DECLARED + "defaults: ['core-rules', 'sorting']\n")
         assert world.start_session().context == "text of core-rules\ntext of sorting\n"
+        transcript = world.transcripts / "s2.jsonl"
+        transcript.parent.mkdir(parents=True, exist_ok=True)
+        transcript.write_text("{}\n", encoding="utf-8")
+        before = engine_files(world)
+        payload = {"session_id": "s2", "source": "fork", "model": OPUS}
+        payload["transcript_path"] = str(transcript)
 
-        delivery = world.start_delegate("fork")
+        delivery = world.run_event("SessionStart", payload)
+        first_part = world.run_part_process("SessionStart", payload, 1)
 
         assert delivery.context == ""
+        assert delivery.message is None
         assert set(delivery.outputs.values()) == {""}
+        assert (first_part.returncode, first_part.stdout, first_part.stderr) == (0, "", "")
+        assert engine_files(world) == before
+        assert world.records("s2") == []
+        assert world.model_record("s2") is None
+        assert not world.state_file("s2").exists()
 
-    def test_the_record_of_a_forks_start_says_it_inherits_its_parents_rules_and_shows_no_message(
-        self, world
-    ):
+    def test_a_fork_subagent_start_delivers_nothing_and_leaves_no_record(self, world):
         world.rule("core-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
-        world.start_session()
+        world.rule("sorting")
+        world.manifest(DECLARED + "defaults: ['core-rules', 'sorting']\n")
+        assert world.start_session().context == "text of core-rules\ntext of sorting\n"
+        before = engine_files(world)
 
         delivery = world.start_delegate("fork")
+        first_part = world.run_part_process(
+            "SubagentStart",
+            {"session_id": "s1", "agent_id": "a2", "agent_type": "fork", "prompt_id": "p1"},
+            1,
+        )
 
-        (record,) = [r for r in world.records() if r["agent_id"] == "a1"]
-        assert record["kind"] == "fork"
-        assert (record["model"]["identifier"], record["model"]["source"]) == (OPUS, "fork-parent")
-        assert record["rules"] == []
-        inherited = [
-            n for r in world.records() for n in r["notices"] if n["kind"] == "fork-inherits"
-        ]
-        assert [(n["subject"], n["shown"]) for n in inherited] == [
-            ("the fork received no rules because it inherits its parent's", False)
-        ]
+        assert delivery.context == ""
         assert delivery.message is None
+        assert set(delivery.outputs.values()) == {""}
+        assert (first_part.returncode, first_part.stdout, first_part.stderr) == (0, "", "")
+        assert engine_files(world) == before
+        assert [r for r in world.records() if r["agent_id"] in ("a1", "a2")] == []
 
 
 class TestDeliveredTextIsRuleTextOnly:
@@ -382,19 +401,6 @@ def declare_strict(world):
         + "defaults: ['core-rules']\n"
         + "when:\n  - flag strict: ['security-pass']\n"
     )
-
-
-def fork_session(world, parent="s1", fork="s2"):
-    """The fork's SessionStart, over transcripts shaped as the harness writes them.
-
-    The project directory also holds an unrelated session's transcript, written after the
-    parent's, so that the newest file there is not the parent's.
-    """
-
-    parent_transcript = write_transcript(world.transcripts, parent)
-    write_transcript(world.transcripts, "unrelated")
-    transcript = write_transcript(world.transcripts, fork, fork_of=parent_transcript)
-    return world.start_session(session_id=fork, source="fork", transcript_path=str(transcript))
 
 
 class TestAToggleReachesOnlyDelegateDeliveriesThatBeginAfterIt:
@@ -600,121 +606,6 @@ class TestCompactionKeepsSessionState:
         world.start_session(source="compact")
 
         assert world.start_delegate().context == CORE + SECURITY
-
-
-class TestAForkedSessionStartsWithACopyOfItsParentsSessionState:
-    def test_a_fork_inherits_the_toggles_while_the_parents_later_toggle_stays_its_own(self, world):
-        declare_strict(world)
-        assert world.toggle("flag strict", session_id="s1").returncode == 0
-        fork_session(world)
-
-        assert world.toggle("unflag strict", session_id="s1").returncode == 0
-
-        assert world.start_delegate(session_id="s2").context == CORE + SECURITY
-        assert world.start_delegate(session_id="s1").context == CORE
-
-    def test_a_toggle_in_the_fork_leaves_the_parents_state_unchanged(self, world):
-        declare_strict(world)
-        assert world.toggle("flag strict", session_id="s1").returncode == 0
-        fork_session(world)
-
-        assert world.toggle("unflag strict", session_id="s2").returncode == 0
-
-        assert world.start_delegate(session_id="s1").context == CORE + SECURITY
-        assert world.start_delegate(session_id="s2").context == CORE
-
-
-def sibling_pool(world):
-    declare_strict(world)
-    assert world.toggle("flag strict", session_id="s1").returncode == 0
-
-
-def fork_again(world, fork, parent="s1"):
-    """The SessionStart of `fork`, a further fork of `parent` whose transcript is the newest in the project."""
-
-    transcript = write_transcript(
-        world.transcripts, fork, fork_of=world.transcripts / f"{parent}.jsonl"
-    )
-    return world.start_session(session_id=fork, source="fork", transcript_path=str(transcript))
-
-
-class TestSiblingForksTakeTheirCommonParent:
-    def test_a_second_fork_inherits_the_parents_state_and_not_its_siblings(self, world):
-        sibling_pool(world)
-        fork_session(world, fork="s2")
-        assert world.toggle("unflag strict", session_id="s2").returncode == 0
-
-        delivery = fork_again(world, "s3")
-
-        assert delivery.message is None
-        assert world.start_delegate(session_id="s3").context == CORE + SECURITY
-        assert world.start_delegate(session_id="s2").context == CORE
-
-    def test_a_third_fork_still_finds_the_parent_beside_two_siblings(self, world):
-        sibling_pool(world)
-        fork_session(world, fork="s2")
-        fork_again(world, "s3")
-        assert world.toggle("unflag strict", session_id="s3").returncode == 0
-
-        fork_again(world, "s4")
-
-        assert world.start_delegate(session_id="s4").context == CORE + SECURITY
-
-    def test_a_parent_that_went_on_after_an_earlier_fork_is_found_by_a_later_one(self, world):
-        sibling_pool(world)
-        fork_session(world, fork="s2")
-        parent = world.transcripts / "s1.jsonl"
-        with parent.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps({"type": "user", "uuid": "later-1", "sessionId": "s1"}) + "\n")
-
-        fork_again(world, "s3")
-
-        assert world.start_delegate(session_id="s3").context == CORE + SECURITY
-
-    def test_two_transcripts_that_hold_the_same_copied_entries_leave_the_parent_unfound(
-        self, world
-    ):
-        sibling_pool(world)
-        fork_session(world, fork="s2")
-        parent = world.transcripts / "s1.jsonl"
-        (world.transcripts / "twin.jsonl").write_bytes(parent.read_bytes())
-
-        delivery = fork_again(world, "s3")
-
-        assert "not found" in delivery.message
-        assert world.start_delegate(session_id="s3").context == CORE
-
-
-class TestAForkedSessionWhoseParentIsNotFound:
-    def test_it_starts_with_empty_state_and_a_shown_notice_says_its_parents_state_was_not_found(
-        self, world
-    ):
-        declare_strict(world)
-        assert world.toggle("flag strict", session_id="s1").returncode == 0
-        write_transcript(world.transcripts, "s1")
-        lonely = write_transcript(world.transcripts, "s2")
-
-        delivery = world.start_session(session_id="s2", source="fork", transcript_path=str(lonely))
-
-        assert delivery.message is not None
-        assert "parent" in delivery.message
-        assert "not found" in delivery.message
-        (shown,) = [
-            n for n in world.records("s2")[0]["notices"] if n["kind"] == "fork-parent-missing"
-        ]
-        assert shown["shown"] is True
-        assert world.start_delegate(session_id="s2").context == CORE
-
-    def test_a_fork_whose_parent_is_found_draws_no_such_notice(self, world):
-        declare_strict(world)
-        assert world.toggle("flag strict", session_id="s1").returncode == 0
-
-        delivery = fork_session(world)
-
-        assert delivery.message is None
-        assert [
-            n for n in world.records("s2")[0]["notices"] if n["kind"] == "fork-parent-missing"
-        ] == []
 
 
 class TestDeliveryRunsOnPython314OrLater:
@@ -1771,14 +1662,6 @@ class TestASessionReceivesAllItsRulesAtEveryStart:
         world.start_session(model=OPUS)
 
         delivery = world.start_session(model=None, source="resume")
-
-        assert delivery.context == "text of core-rules\ntext of opus-rules\n"
-
-    def test_a_forked_session_is_composed_for_the_model_its_start_reports(self, world):
-        declare_tiers(world, "opus")
-        world.start_session(session_id="s1", model=SONNET)
-
-        delivery = fork_session(world)
 
         assert delivery.context == "text of core-rules\ntext of opus-rules\n"
 

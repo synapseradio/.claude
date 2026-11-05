@@ -10,12 +10,12 @@ from rulesets.audit.delivery_record import digest_of_text
 from rulesets.audit.emitted_record import EmittedRecord
 from rulesets.delivery.hook_output import PartOutput
 from rulesets.delivery.plan import Delivering, await_plan
-from rulesets.delivery.request import ForkStart, ModelSwitch, SessionStart, SubagentStart
+from rulesets.delivery.request import ModelSwitch, SessionStart, SubagentStart
 from rulesets.locations import Locations
 
 
 def deliver_later(
-    request: SessionStart | ModelSwitch | SubagentStart | ForkStart,
+    request: SessionStart | ModelSwitch | SubagentStart,
     locations: Locations,
     slot: pathlib.Path,
     part: int,
@@ -30,9 +30,7 @@ def deliver_later(
             text = "".join(body.text for body in planned.bodies)
             record = EmittedRecord(
                 session_id=request.session_id,
-                agent_id=request.agent_id
-                if isinstance(request, SubagentStart | ForkStart)
-                else None,
+                agent_id=request.agent_id if isinstance(request, SubagentStart) else None,
                 time_ns=time.time_ns(),
                 part=part,
                 part_count=len(plan.parts),

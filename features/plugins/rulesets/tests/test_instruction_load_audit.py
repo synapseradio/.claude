@@ -257,7 +257,6 @@ class TestARecordReadBackIsTheRecordWritten:
         world.switch_model(OPUS, from_model="claude-nova-1", prompt_id="p1")
         world.toggle_flags({"strict": "set"})
         world.start_delegate("critic")
-        world.start_delegate("fork", agent_id="a2")
         world.start_session(model=None, session_id="s2")
 
         written = [r for sid in ("s1", "s2") for r in world.records(sid)]
@@ -322,18 +321,6 @@ class TestADeliveryRecordNamesEachFactWithItsSource:
         (record,) = delegate_records(world)
         assert record["tools"]["state"] == "absent"
         assert "no definition file registers its agent type `critic`" in record["tools"]["reason"]
-
-    def test_a_forks_record_names_why_its_agent_and_tools_facts_are_absent(self, world):
-        world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
-        world.start_session()
-
-        world.start_delegate("fork")
-
-        (record,) = delegate_records(world)
-        assert record["agent"]["state"] == "absent"
-        assert record["tools"]["state"] == "absent"
-        assert "inherits its parent's" in record["agent"]["reason"]
 
 
 class TestTwoSessionsLaunchedAlikeDifferByOneFlag:
@@ -886,13 +873,3 @@ class TestDeliveriesListsWhatReachedEachContext:
         result = world.deliveries("never-started")
 
         assert (result.stdout, result.returncode) == ("", 0)
-
-    def test_a_forks_record_names_no_rules_delivered_and_is_not_listed(self, world):
-        world.rule("core-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
-        world.start_session(model=OPUS)
-        world.start_delegate("fork", agent_id="f1")
-
-        result = world.deliveries()
-
-        assert lines_of(result) == ["session\topus\tharness-reported\t1\t-"]

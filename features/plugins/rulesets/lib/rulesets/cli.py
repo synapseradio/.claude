@@ -73,9 +73,7 @@ def _build_parser() -> argparse.ArgumentParser:
     explaining.add_argument("rule", help="the rule to trace")
     explaining.add_argument("--model", help="the model identifier or declared name of the context")
     explaining.add_argument("--agent", help="the agent type of the context")
-    explaining.add_argument(
-        "--kind", choices=["session", "delegate", "fork"], help="the context kind"
-    )
+    explaining.add_argument("--kind", choices=["session", "delegate"], help="the context kind")
     explaining.add_argument("--tools", action="append", default=[], help="a tool the context holds")
     explaining.add_argument("--flag", action="append", default=[], help="a flag the context holds")
     explaining.add_argument(
@@ -146,9 +144,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     rendering.add_argument("--model", help="the model identifier or declared name of the context")
     rendering.add_argument("--agent", help="the agent type of the context")
-    rendering.add_argument(
-        "--kind", choices=["session", "delegate", "fork"], help="the context kind"
-    )
+    rendering.add_argument("--kind", choices=["session", "delegate"], help="the context kind")
     rendering.add_argument("--tools", action="append", default=[], help="a tool the context holds")
     rendering.add_argument("--flag", action="append", default=[], help="a flag the context holds")
     rendering.add_argument(

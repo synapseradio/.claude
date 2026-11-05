@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import dataclasses
-import pathlib
 from collections.abc import Mapping
 
-FORK_AGENT_TYPE = "fork"
+FORK = "fork"
 
 
 @dataclasses.dataclass(frozen=True)
 class SessionStart:
-    """The main session starting, resuming, clearing, forking, or compacting."""
+    """The main session starting, resuming, clearing, or compacting."""
 
     session_id: str
     payload: Mapping[str, object]
@@ -26,16 +25,9 @@ class SessionStart:
 
     @property
     def source(self) -> str | None:
-        """What started the session: `startup`, `resume`, `clear`, `compact`, or `fork`."""
+        """What started the session: `startup`, `resume`, `clear`, or `compact`."""
 
         return _text(self.payload.get("source"))
-
-    @property
-    def transcript_path(self) -> pathlib.Path | None:
-        """Where the harness keeps this session's transcript."""
-
-        path = _text(self.payload.get("transcript_path"))
-        return None if path is None else pathlib.Path(path).expanduser()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -73,13 +65,8 @@ class SubagentStart:
 
 
 @dataclasses.dataclass(frozen=True)
-class ForkStart:
-    """A fork subagent starting; it inherits its parent's conversation."""
-
-    session_id: str
-    agent_id: str | None
-
-    event = "SubagentStart"
+class Forked:
+    """A forked session or a fork subagent starting; its conversation already holds the rules."""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -100,9 +87,9 @@ class Unreadable:
     event: str | None = None
 
 
-type DeliveryStart = SessionStart | ModelSwitch | SubagentStart | ForkStart
+type DeliveryStart = SessionStart | ModelSwitch | SubagentStart
 type DeliveryRequest = DeliveryStart | Unreadable
-type HookRequest = DeliveryRequest | SessionEnd
+type HookRequest = DeliveryRequest | SessionEnd | Forked
 
 
 def parse_request(payload: object) -> HookRequest:
@@ -112,6 +99,8 @@ def parse_request(payload: object) -> HookRequest:
         return Unreadable("the payload is not a JSON object")
     session_id = _text(payload.get("session_id"))
     event_name = _text(payload.get("hook_event_name"))
+    if _is_fork(event_name, payload):
+        return Forked()
     if session_id is None:
         return Unreadable("the payload names no session", event=event_name)
     match event_name:
@@ -120,8 +109,6 @@ def parse_request(payload: object) -> HookRequest:
         case "SubagentStart":
             agent_type = _text(payload.get("agent_type"))
             agent_id = _text(payload.get("agent_id"))
-            if agent_type == FORK_AGENT_TYPE:
-                return ForkStart(session_id, agent_id)
             return SubagentStart(session_id, agent_id, agent_type, payload)
         case "PostModelSwitch":
             to_model = _text(payload.get("to_model"))
@@ -138,6 +125,16 @@ def parse_request(payload: object) -> HookRequest:
             return SessionEnd(session_id)
         case event:
             return Unreadable(f"no delivery answers the event {event!r}", session_id, event)
+
+
+def _is_fork(event_name: str | None, payload: dict) -> bool:
+    match event_name:
+        case "SessionStart":
+            return _text(payload.get("source")) == FORK
+        case "SubagentStart":
+            return _text(payload.get("agent_type")) == FORK
+        case _:
+            return False
 
 
 def _text(value: object) -> str | None:

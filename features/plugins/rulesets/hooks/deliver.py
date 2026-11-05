@@ -17,14 +17,13 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "lib"))
 from rulesets import ordering
 from rulesets.delivery.failure import run_guarded
 from rulesets.delivery.first_part import deliver_first
-from rulesets.delivery.fork import deliver_fork
 from rulesets.delivery.hook_output import PartOutput, hook_output
 from rulesets.delivery.later_part import deliver_later
 from rulesets.delivery.plan import Silent, new_generation, write_plan
 from rulesets.delivery.replay import deliver_replay
 from rulesets.delivery.request import (
     DeliveryStart,
-    ForkStart,
+    Forked,
     ModelSwitch,
     SessionEnd,
     SessionStart,
@@ -53,6 +52,8 @@ def main() -> int:
         request = parse_request(json.loads(raw))
     except UnicodeDecodeError, json.JSONDecodeError:
         raw, request = "", Unreadable("the payload is not UTF-8 JSON")
+    if isinstance(request, Forked):
+        return 0
     locations = Locations.from_environment(os.environ)
     if isinstance(request, Unreadable):
         if arguments.end or arguments.part == 1:
@@ -109,13 +110,11 @@ def _first_part(
     request: DeliveryStart, locations: Locations, slot: pathlib.Path, generation: str
 ) -> PartOutput:
     match request:
-        case ForkStart():
-            return deliver_fork(request, locations, slot, generation)
         case ModelSwitch():
             return deliver_switch(request, locations, os.environ, slot, generation)
         case SessionStart():
-            notices = on_session_start(request, locations)
-            return deliver_first(request, locations, os.environ, slot, generation, notices)
+            on_session_start(request, locations)
+            return deliver_first(request, locations, os.environ, slot, generation)
         case SubagentStart():
             replayed = deliver_replay(request, locations, slot, generation)
             if replayed is not None:

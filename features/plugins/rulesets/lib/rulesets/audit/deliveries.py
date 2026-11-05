@@ -37,13 +37,11 @@ class ContextLine:
 
 
 def deliveries(locations: Locations, session_id: str) -> tuple[ContextLine, ...]:
-    """The session's counted deliveries in file order, a fork's start left out for it delivers nothing."""
+    """The session's counted deliveries in file order."""
 
     path = log.session_dir(locations, session_id) / log.DELIVERIES_FILE
     return tuple(
-        _context_line(record)
-        for record in counted(log.read_as(path, DeliveryRecord.from_json))
-        if record.kind != "fork"
+        _context_line(record) for record in counted(log.read_as(path, DeliveryRecord.from_json))
     )
 
 

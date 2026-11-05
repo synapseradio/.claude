@@ -1,6 +1,6 @@
 """Parse a `when` item's condition into a tree of fact tests, and evaluate it over a context.
 
-A condition tests facts with `model <name>`, `agent <name>`, `kind session|delegate|fork`,
+A condition tests facts with `model <name>`, `agent <name>`, `kind session|delegate`,
 `tools <Tool>`, `flag <name>`, and `session <id>`, and combines the tests with `and`, `or`,
 `not`, and parentheses. `not` binds tighter than `and`, and `and` tighter than `or`. A run of one operator groups to the left.
 """
@@ -128,9 +128,7 @@ class _Reader:
             raise ConditionError(f"`{token}` needs a name, found {found}")
         self._take()
         if token == "kind" and value not in _KINDS:
-            raise ConditionError(
-                f"`kind {value}` is no kind; kind tests session, delegate, or fork"
-            )
+            raise ConditionError(f"`kind {value}` is no kind; kind tests session or delegate")
         return FactTest(token, value)
 
 

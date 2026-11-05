@@ -29,10 +29,10 @@ from rulesets.notices import SHOWN, Notice, NoticeKind
 from rulesets.session.state import Band, FlagSetting, SessionState
 
 type Scope = Literal["session", "delegate", "switch"]
-type RecordKind = Literal["session", "delegate", "fork"]
+type RecordKind = Literal["session", "delegate"]
 
 SCOPES: tuple[Scope, ...] = ("session", "delegate", "switch")
-KINDS: tuple[RecordKind, ...] = ("session", "delegate", "fork")
+KINDS: tuple[RecordKind, ...] = ("session", "delegate")
 NOTICE_KINDS: tuple[NoticeKind, ...] = get_args(NoticeKind.__value__)
 
 

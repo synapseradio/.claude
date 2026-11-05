@@ -68,10 +68,3 @@ def remove_state(locations: Locations, session_id: str) -> None:
     """Remove the session's state file; a session with none stays as it is."""
 
     state_path(locations, session_id).unlink(missing_ok=True)
-
-
-def copy_state(locations: Locations, from_id: str, to_id: str) -> None:
-    """Give `to_id` the state `from_id` holds now; a source with none leaves `to_id` as it is."""
-
-    if state_path(locations, from_id).is_file():
-        write_state(locations, to_id, read_state(locations, from_id))
