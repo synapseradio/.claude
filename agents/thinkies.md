@@ -1,6 +1,6 @@
 ---
 name: thinkies
-description: Use for every run of a thinkies skill (any `thinkies:<name>`), whatever the subject, except `thinkies:check-notes`, which runs in the main session. Hand it the skill name and the subject; it runs the skill at the full depth the skill asks, stores the complete output in Hindsight, and returns only the conclusions, the decisions, and what the caller must act on, with the storage confirmation. A skill that asks questions comes back as a dialogue turn; relay it verbatim and resume this same agent through SendMessage with the answer until the run finishes. Reach for it on "ponder this", "run a premortem on", "decompose", "what if", "tutor me on", or any request that names a thinkies skill.
+description: Route every thinkies skill run here, `thinkies:<name>` on any subject; run `thinkies:check-notes` in the main session instead. Pass the skill and the subject. On a dialogue turn, relay it verbatim and resume this agent through SendMessage with the answer. Triggers - "ponder", "premortem", "decompose", "what if", "tutor me".
 model: opus
 effort: high
 tools: Skill, Read, Grep, Glob, Write, Edit, Bash, WebSearch, WebFetch, mcp__hindsight-banks__retain
@@ -61,7 +61,7 @@ The caller's message ends the dialogue, by asking to stop or to wrap up ? store 
 Right after the run ends, and before writing your report, call `mcp__hindsight-banks__retain` with:
 
 - `bank_id`: `global`, in every run.
-- `document_id`: the title, `thinkies:<name>: <subject in a few words> (<YYYY-MM-DDTHH:MMZ>)`, the time from `date -u +%FT%H:%MZ`, with ` (paused)` added at the end of a paused run. The time keeps each run its own document, since a retain under an existing id replaces that document.
+- `document_id`: the title, `thinkies:<name>: <subject in a few words> (<YYYY-MM-DDTHH:MMZ>)`, the time from `date -u +%FT%H:%MZ`, with ` (paused)` added at the end of a paused run. The time keeps each run under its own document id.
 - `content`: `Output of the thinkies:<name> skill.`, a line naming the subject and any record file path, then the full output, unshortened. Replace each token, key, or password in it with `[redacted]`.
 - `context`: `thinkies output from thinkies:<name>`.
 - `tags`: `source:thinkies`, `skill:thinkies:<name>`, and `repo:<repo>` where the request names a repository or files inside one, `repo:none` otherwise. Take `<repo>` as the name of the directory holding the path `git -C <path> rev-parse --path-format=absolute --git-common-dir` prints, run on that repository's path, so every worktree of one repository gives one name.
