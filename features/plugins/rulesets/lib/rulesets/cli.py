@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Command line for the rulesets engine: `check`, `explain`, `eject`, `render`, `toggle`, `delivery-check`, `load-check`, and `deliveries`.
+"""Command line for the rulesets engine: `check`, `explain`, `eject`, `render`, `split`, `toggle`, `delivery-check`, `load-check`, and `deliveries`.
 
 This module parses arguments, prints, and sets the exit status. Every finding comes from
 `rulesets.check.run`, and every line's wording from `rulesets.check.report_format`. An explanation comes from `rulesets.explain`. A toggle's
@@ -27,6 +27,7 @@ from rulesets.explain import UnknownRule, explain, format_explanation
 from rulesets.facts.named_context import named_context
 from rulesets.locations import Locations
 from rulesets.render.context_render import render_context
+from rulesets.render.split import MalformedRender, SplitReport, split
 from rulesets.render.tree import render_tree
 from rulesets.render.tree_writer import Fresh, Stale, check_tree, write_tree
 from rulesets.session.state import Band, SessionState, read_state, remove_state, write_state
@@ -126,6 +127,13 @@ def _build_parser() -> argparse.ArgumentParser:
     rendering.add_argument("--tools", action="append", default=[], help="a tool the context holds")
     rendering.add_argument("--flag", action="append", default=[], help="a flag the context holds")
     rendering.add_argument(
+        "--root", type=pathlib.Path, help="the rulesets directory; the configured one by default"
+    )
+    splitting = commands.add_parser(
+        "split", help="write each section of an edited render back to the rule file it came from"
+    )
+    splitting.add_argument("file", type=pathlib.Path, help="the rendered file")
+    splitting.add_argument(
         "--root", type=pathlib.Path, help="the rulesets directory; the configured one by default"
     )
     toggling = commands.add_parser(
@@ -244,6 +252,20 @@ def _render(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _split(arguments: argparse.Namespace) -> int:
+    root = _existing_root(arguments.root)
+    if root is None:
+        return _USAGE_ERROR
+    match split(arguments.file, root):
+        case MalformedRender(reason):
+            print(f"cli.py: {arguments.file}: {reason}", file=sys.stderr)
+            return 1
+        case SplitReport(written):
+            for path in written:
+                print(f"wrote {path}")
+            return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     arguments = parser.parse_args(argv)
@@ -262,6 +284,8 @@ def main(argv: list[str] | None = None) -> int:
         return _eject(arguments)
     if arguments.command == "render":
         return _render(arguments)
+    if arguments.command == "split":
+        return _split(arguments)
     if arguments.command == "delivery-check":
         locations = Locations.from_environment(os.environ)
         root = arguments.root or locations.rulesets
