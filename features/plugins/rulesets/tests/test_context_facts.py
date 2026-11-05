@@ -732,3 +732,249 @@ class TestAnEnvironmentVariableCountsAsSetUnlessEmptyOrFalse:
 
         (record,) = delegate_records(world)
         assert model_of(record) == ("haiku", "per-spawn")
+
+
+def flag_names(record):
+    """The names of the flags a delivery record lists."""
+
+    return sorted(flag["name"] for flag in record["flags"])
+
+
+class TestAnUnsetFlagTestsFalseNeverUnknown:
+    def test_a_declared_flag_not_set_gives_the_negated_block_and_the_record_lists_no_flag(
+        self, world
+    ):
+        world.rule("security-pass")
+        world.rule("voice")
+        world.manifest(
+            "flags: ['strict']\n"
+            "defaults: []\n"
+            "when:\n"
+            "  - flag strict: ['security-pass']\n"
+            "  - not flag strict: ['voice']\n"
+        )
+
+        delivery = world.start_session()
+
+        assert received(delivery, ["security-pass", "voice"]) == ["voice"]
+        (record,) = world.records()
+        assert record["flags"] == []
+
+
+class TestAFlagNobodyDeclares:
+    def test_check_reports_an_error_naming_the_condition_and_the_flag(self, world):
+        world.rule("voice")
+        world.manifest("flags: ['strict']\ndefaults: []\nwhen:\n  - flag stirct: ['voice']\n")
+
+        report = report_for(world)
+
+        assert "error" in report
+        assert "flag stirct" in report
+        assert "`stirct`" in report
+
+
+class TestALaunchFlagNobodyDeclares:
+    def test_the_flag_is_dropped_changes_no_block_and_a_shown_notice_names_it(self, world):
+        world.rule("security-pass")
+        world.manifest(
+            "flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['security-pass']\n"
+        )
+        world.environment["RULESETS_FLAGS"] = "strict"
+        control = world.start_session(session_id="control")
+        world.environment["RULESETS_FLAGS"] = "stirct,strict"
+
+        delivery = world.start_session(session_id="s1")
+
+        assert received(delivery, ["security-pass"]) == received(control, ["security-pass"])
+        assert received(delivery, ["security-pass"]) == ["security-pass"]
+        assert delivery.message is not None
+        assert "stirct" in delivery.message
+        (record,) = world.records("s1")
+        assert flag_names(record) == ["strict"]
+
+
+class TestALaunchFlagReachesTheFirstDelivery:
+    def test_a_block_keyed_on_the_flag_removes_a_rule_from_the_first_delivery(self, world):
+        world.rule("writing-code")
+        world.manifest(
+            "flags: ['without-writing-code']\n"
+            "defaults: ['writing-code']\n"
+            "when:\n"
+            "  - flag without-writing-code: ['-writing-code']\n"
+        )
+        control = world.start_session(session_id="control")
+        world.environment["RULESETS_FLAGS"] = "without-writing-code"
+
+        delivery = world.start_session(session_id="s1")
+
+        assert received(control, ["writing-code"]) == ["writing-code"]
+        assert received(delivery, ["writing-code"]) == []
+
+
+class TestTwoLaunchFlags:
+    def test_voice_terse_gives_the_terse_wording_to_session_and_delegate_and_the_record_names_it(
+        self, world
+    ):
+        for stem in ("voice", "voice@terse", "security-pass"):
+            world.rule(stem)
+        world.manifest(
+            "flags: ['voice-terse', 'strict']\n"
+            "defaults: ['voice']\n"
+            "when:\n"
+            "  - flag voice-terse: ['voice@terse']\n"
+            "  - flag strict: ['security-pass']\n"
+        )
+        world.environment["RULESETS_FLAGS"] = "voice-terse,strict"
+
+        session = world.start_session()
+        delegate = world.start_delegate("critic")
+
+        for delivery in (session, delegate):
+            assert received(delivery, ["voice@terse", "voice", "security-pass"]) == [
+                "voice@terse",
+                "security-pass",
+            ]
+        session_record = world.records()[0]
+        assert {"rule": "voice", "variant": "terse"}.items() <= session_record["rules"][1].items()
+        assert session_record["flags"] == [
+            {"name": "strict", "source": "launch"},
+            {"name": "voice-terse", "source": "launch"},
+        ]
+
+
+class TestALaunchFlagReachesADelegate:
+    def test_two_delegates_of_different_agent_types_both_hold_the_flag(self, world):
+        world.rule("security-pass")
+        world.manifest(
+            "flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['security-pass']\n"
+        )
+        world.environment["RULESETS_FLAGS"] = "strict"
+
+        world.start_session()
+        first = world.start_delegate("critic", agent_id="a1")
+        second = world.start_delegate("scout", agent_id="a2")
+
+        assert received(first, ["security-pass"]) == ["security-pass"]
+        assert received(second, ["security-pass"]) == ["security-pass"]
+
+
+class TestAToggleUnsetMidSession:
+    def test_a_later_delegate_composes_without_the_flag_and_the_earlier_record_keeps_it(
+        self, world
+    ):
+        world.rule("voice")
+        world.rule("voice@terse")
+        world.manifest(
+            "flags: ['voice-terse']\ndefaults: ['voice']\nwhen:\n  - flag voice-terse: ['voice@terse']\n"
+        )
+        world.environment["RULESETS_FLAGS"] = "voice-terse"
+        world.start_session()
+        earlier = world.start_delegate("critic", agent_id="a1")
+
+        world.toggle_flags({"voice-terse": "unset"})
+        later = world.start_delegate("critic", agent_id="a2")
+
+        assert received(earlier, ["voice@terse", "voice"]) == ["voice@terse"]
+        assert received(later, ["voice@terse", "voice"]) == ["voice"]
+        first, second = delegate_records(world)
+        assert first["flags"] == [{"name": "voice-terse", "source": "launch"}]
+        assert second["flags"] == []
+
+    def test_a_toggle_set_flag_holds_for_the_next_delegate_with_source_toggle(self, world):
+        world.rule("security-pass")
+        world.manifest(
+            "flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['security-pass']\n"
+        )
+        world.start_session()
+        world.toggle_flags({"strict": "set"})
+
+        delegate = world.start_delegate("critic")
+
+        assert received(delegate, ["security-pass"]) == ["security-pass"]
+        (record,) = delegate_records(world)
+        assert record["flags"] == [{"name": "strict", "source": "toggle"}]
+
+    def test_a_toggle_never_changes_the_main_sessions_flags(self, world):
+        world.rule("security-pass")
+        world.manifest(
+            "flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['security-pass']\n"
+        )
+        world.toggle_flags({"strict": "set"})
+
+        session = world.start_session()
+
+        assert received(session, ["security-pass"]) == []
+
+
+class TestAModelNamedForOneSpawnSetsNoFlag:
+    def test_each_delegates_flags_are_exactly_the_launch_flag(self, world):
+        world.rule("voice")
+        world.manifest("models: ['opus', 'haiku']\nflags: ['strict']\ndefaults: ['voice']\n")
+        world.environment["RULESETS_FLAGS"] = "strict"
+        caller_names(world, "haiku", "critic")
+
+        world.start_session()
+        world.start_delegate("critic", agent_id="a1")
+        world.start_delegate("scout", agent_id="a2")
+
+        named, unnamed = delegate_records(world)
+        assert model_of(named)[1] == "per-spawn"
+        assert flag_names(named) == ["strict"]
+        assert flag_names(unnamed) == ["strict"]
+
+
+SESSION_MODELS = ["opus", "sonnet", "haiku"]
+
+
+class TestTheHarnessReportsTheModel:
+    def test_the_reported_identifier_is_claimed_and_the_environment_is_not_read(
+        self, tmp_path, read_spy
+    ):
+        environment = read_spy({"ANTHROPIC_MODEL": HAIKU_IDENTIFIER})
+
+        resolution = session_model.resolve_session_model(
+            {"model": OPUS_IDENTIFIER, "session_id": "s1"}, SESSION_MODELS, environment, tmp_path
+        )
+
+        assert resolution.fact == model_fact.Claimed("opus", OPUS_IDENTIFIER, "harness-reported")
+        assert environment.reads.isdisjoint({"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_MODEL"})
+
+
+class TestBothEnvironmentVariablesAreSet:
+    def test_anthropic_model_is_read_before_anthropic_default_model(self, tmp_path):
+        environment = {
+            "ANTHROPIC_MODEL": HAIKU_IDENTIFIER,
+            "ANTHROPIC_DEFAULT_MODEL": OPUS_IDENTIFIER,
+        }
+
+        resolution = session_model.resolve_session_model(
+            {"session_id": "s1"}, SESSION_MODELS, environment, tmp_path
+        )
+
+        assert resolution.fact.identifier == HAIKU_IDENTIFIER
+        assert resolution.fact.name == "haiku"
+
+
+class TestOnlyTheRecordNamesAModel:
+    def test_the_recorded_identifier_is_taken_and_the_record_is_its_source(self, tmp_path):
+        record = tmp_path / "models" / "s1.json"
+        record.parent.mkdir(parents=True)
+        record.write_text(json.dumps({"identifier": OPUS_IDENTIFIER}), encoding="utf-8")
+
+        resolution = session_model.resolve_session_model(
+            {"session_id": "s1"}, SESSION_MODELS, {}, tmp_path
+        )
+
+        assert resolution.fact == model_fact.Claimed("opus", OPUS_IDENTIFIER, "session-record")
+
+
+class TestTheHarnessReportsAnUnclaimedIdentifier:
+    def test_it_stands_unclaimed_and_the_environment_is_not_read(self, tmp_path, read_spy):
+        environment = read_spy({"ANTHROPIC_MODEL": OPUS_IDENTIFIER})
+
+        resolution = session_model.resolve_session_model(
+            {"model": "glm-5", "session_id": "s1"}, SESSION_MODELS, environment, tmp_path
+        )
+
+        assert resolution.fact == model_fact.Unclaimed("glm-5", "harness-reported")
+        assert environment.reads.isdisjoint({"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_MODEL"})

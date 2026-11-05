@@ -8,6 +8,7 @@ from collections.abc import Mapping
 from rulesets.audit import log
 from rulesets.audit.delivery_record import (
     DeliveryRecord,
+    FlagLine,
     ModelLine,
     RuleLine,
     WithheldLine,
@@ -84,7 +85,7 @@ def deliver_first(
             kind=resolved.facts.kind,
             agent=resolved.facts.agent if isinstance(resolved.facts.agent, str) else None,
             model=_model_line(resolved.model),
-            flags=tuple(sorted(resolved.facts.flags)),
+            flags=tuple(FlagLine(f.name, f.source.value) for f in resolved.flags),
             rules=tuple(RuleLine(r.rule, r.variant, digests[r.rule]) for r in composition.rules),
             withheld=tuple(WithheldLine(w.rule, w.error) for w in composition.withheld),
             left_out=left_out,

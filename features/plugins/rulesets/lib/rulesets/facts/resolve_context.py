@@ -17,7 +17,7 @@ from rulesets.facts.context import (
     ListedTools,
     NoClaim,
 )
-from rulesets.facts.flags import launch_flags
+from rulesets.facts.flags import FlagFact, delegate_flags, launch_flags, session_flags
 from rulesets.facts.model.delegate import resolve_delegate_model
 from rulesets.facts.model.fact import Claimed, Missing, ModelFact, Unclaimed
 from rulesets.facts.model.notice import model_notice
@@ -25,6 +25,7 @@ from rulesets.facts.model.session import resolve_session_model
 from rulesets.facts.tools_fact import tools_fact
 from rulesets.locations import Locations
 from rulesets.notices import Notice, absent_agent_notice, absent_tools_notice, flag_notice
+from rulesets.session.state import read_state
 from rulesets.source.condition import ConditionError, fact_tests, parse_condition
 from rulesets.source.directory import Present, RulesetsDirectory
 from rulesets.source.manifest import Manifest
@@ -32,11 +33,12 @@ from rulesets.source.manifest import Manifest
 
 @dataclasses.dataclass(frozen=True)
 class ResolvedContext:
-    """The facts a context is composed from, the model fact behind them, and the notices raised."""
+    """The facts a context is composed from, the model fact and flags behind them, and the notices raised."""
 
     facts: Facts
     model: ModelFact
     notices: tuple[Notice, ...]
+    flags: tuple[FlagFact, ...]
 
 
 def resolve_context(
@@ -54,11 +56,13 @@ def resolve_context(
         case SessionStart():
             resolution = resolve_session_model(request.payload, models, environ, locations.state)
             kind = "session"
+            flags = session_flags(launched)
         case SubagentStart():
             resolution = resolve_delegate_model(
                 request.payload, models, environ, locations.state, locations.config
             )
             kind = "delegate"
+            flags = delegate_flags(launched, read_state(locations, request.session_id))
     notices = [*resolution.notices]
     if (notice := model_notice(resolution.fact)) is not None:
         notices.append(notice)
@@ -73,11 +77,11 @@ def resolve_context(
         _model_in_facts(resolution.fact),
         agent,
         kind,
-        launched.declared,
+        frozenset(flag.name for flag in flags),
         request.session_id,
         tools,
     )
-    return ResolvedContext(facts, resolution.fact, tuple(notices))
+    return ResolvedContext(facts, resolution.fact, tuple(notices), flags)
 
 
 def _model_in_facts(fact: ModelFact) -> str | NoClaim | Absent:

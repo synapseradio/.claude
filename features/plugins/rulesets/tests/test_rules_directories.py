@@ -327,6 +327,23 @@ class TestTheDirectoryAndSessionStateStandInTwoBands:
         assert plain.context == ""
 
 
+class TestSessionStateHoldsNoRuleFile:
+    def test_a_delegate_reads_the_edited_rule_text_and_the_flag_a_toggle_set(self, world):
+        world.rule("voice")
+        world.rule("security-pass")
+        world.manifest(
+            "flags: ['strict']\ndefaults: ['voice']\nwhen:\n  - flag strict: ['security-pass']\n"
+        )
+        world.start_session()
+        world.toggle_flags({"strict": "set"})
+        world.rule("voice", "edited text of voice\n")
+
+        delegate = world.start_delegate("critic")
+
+        assert "edited text of voice\n" in delegate.context
+        assert "text of security-pass\n" in delegate.context
+
+
 class TestARuleIsUnconditionalText:
     def test_conditional_metadata_in_a_rule_file_is_a_check_error_and_withholds_the_rule(
         self, world

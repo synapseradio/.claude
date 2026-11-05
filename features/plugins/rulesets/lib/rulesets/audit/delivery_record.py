@@ -36,6 +36,14 @@ class ModelLine:
 
 
 @dataclasses.dataclass(frozen=True)
+class FlagLine:
+    """A flag the context held, with where it came from."""
+
+    name: str
+    source: Literal["launch", "toggle"]
+
+
+@dataclasses.dataclass(frozen=True)
 class DeliveryRecord:
     """What one delivery composed and sent. `message_sent` says whether the person was shown a message."""
 
@@ -45,7 +53,7 @@ class DeliveryRecord:
     kind: str
     agent: str | None
     model: ModelLine | None
-    flags: tuple[str, ...]
+    flags: tuple[FlagLine, ...]
     rules: tuple[RuleLine, ...]
     withheld: tuple[WithheldLine, ...]
     left_out: tuple[str, ...]

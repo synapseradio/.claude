@@ -60,6 +60,14 @@ class World:
     def manifest(self, text: str) -> None:
         (self.rulesets / "manifest.yaml").write_text(text, encoding="utf-8")
 
+    def toggle_flags(self, settings: dict[str, str], session_id: str = "s1") -> None:
+        """The session state file a flag toggle leaves: each flag named `set` or `unset`."""
+
+        path = self.config / ".tmp" / "rulesets-engine" / "session" / f"{session_id}.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        lines = ["flags:", *(f"  {flag}: {setting}" for flag, setting in settings.items())]
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
     def record_files(self, session_id: str = "s1") -> pathlib.Path:
         return self.config / ".tmp" / "rulesets-engine" / "audit" / session_id
 

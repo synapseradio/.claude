@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+from collections.abc import Mapping
 
 import yaml
 
@@ -17,9 +18,17 @@ class Band(enum.Enum):
     NONE = "none"
 
 
+class FlagSetting(enum.Enum):
+    """What a toggle did to a flag: set it, or unset it over a launch flag."""
+
+    SET = "set"
+    UNSET = "unset"
+
+
 @dataclasses.dataclass(frozen=True)
 class SessionState:
     band: Band | None = None
+    flags: Mapping[str, FlagSetting] = dataclasses.field(default_factory=dict)
 
 
 def _path(locations: Locations, session_id: str):
@@ -34,7 +43,8 @@ def read_state(locations: Locations, session_id: str) -> SessionState:
         return SessionState()
     document = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     band = document.get("band")
-    return SessionState(Band(band) if band is not None else None)
+    flags = {name: FlagSetting(setting) for name, setting in (document.get("flags") or {}).items()}
+    return SessionState(Band(band) if band is not None else None, flags)
 
 
 def write_state(locations: Locations, session_id: str, state: SessionState) -> None:
@@ -42,7 +52,11 @@ def write_state(locations: Locations, session_id: str, state: SessionState) -> N
 
     path = _path(locations, session_id)
     path.parent.mkdir(parents=True, exist_ok=True)
-    document = {} if state.band is None else {"band": state.band.value}
+    document: dict[str, object] = {}
+    if state.band is not None:
+        document["band"] = state.band.value
+    if state.flags:
+        document["flags"] = {name: setting.value for name, setting in state.flags.items()}
     temporary = path.with_suffix(".tmp")
     temporary.write_text(yaml.safe_dump(document), encoding="utf-8")
     temporary.replace(path)

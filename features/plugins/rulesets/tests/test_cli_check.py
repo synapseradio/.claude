@@ -213,7 +213,7 @@ class TestTheOutwardVocabulary:
     def test_an_item_is_called_an_item_and_names_its_file_and_line(self, tmp_path):
         root = build(
             tmp_path,
-            "when:\n  - flag a: ['voice']\n  - env CI: ['voice']\n",
+            "when:\n  - flag a: ['voice']\n  - env CI: ['voice']\nflags: ['a']\n",
             stems=["voice"],
         )
 

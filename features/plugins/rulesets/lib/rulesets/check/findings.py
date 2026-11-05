@@ -115,6 +115,7 @@ type ErrorKind = Literal[
     "variant-conflict",
     "condition-invalid",
     "unknown-model",
+    "unknown-flag",
     "undeclared-reference",
     "malformed-reference",
     "rule-condition",

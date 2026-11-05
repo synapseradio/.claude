@@ -130,7 +130,7 @@ class TestOneListSettingTwoVariantsOfOneRule:
     def test_the_conflict_sits_in_an_item_list(self, tmp_path):
         root = build(
             tmp_path,
-            "when:\n  - flag a: ['voice@terse', 'voice@warm']\n",
+            "when:\n  - flag a: ['voice@terse', 'voice@warm']\nflags: ['a']\n",
             stems=["voice", "voice@terse", "voice@warm"],
         )
 
@@ -186,7 +186,7 @@ class TestAConditionThatTestsMoreThanFacts:
     def test_the_item_index_counts_every_item_written(self, tmp_path):
         root = build(
             tmp_path,
-            "when:\n  - flag ok: ['voice']\n  - just text\n  - project x: ['voice']\n",
+            "when:\n  - flag ok: ['voice']\n  - just text\n  - project x: ['voice']\nflags: ['ok']\n",
             stems=["voice"],
         )
 
@@ -200,8 +200,10 @@ class TestAConditionThatTestsMoreThanFacts:
 
         assert errors_of(root) == []
 
-    def test_a_flag_nobody_sets_is_no_error(self, tmp_path):
-        root = build(tmp_path, "when:\n  - flag stirct: ['voice']\n", stems=["voice"])
+    def test_a_declared_flag_nobody_sets_is_no_error(self, tmp_path):
+        root = build(
+            tmp_path, "flags: ['strict']\nwhen:\n  - flag strict: ['voice']\n", stems=["voice"]
+        )
 
         assert errors_of(root) == []
 
@@ -261,7 +263,11 @@ class TestAConditionNamingAModelTheManifestDoesNotDeclare:
 
 class TestAWhenItemThatIsNoOneKeyMappingToAList:
     def test_the_item_is_the_subject(self, tmp_path):
-        root = build(tmp_path, "when:\n  - flag a: ['voice']\n  - {flag b: x}\n", stems=["voice"])
+        root = build(
+            tmp_path,
+            "when:\n  - flag a: ['voice']\n  - {flag b: x}\nflags: ['a']\n",
+            stems=["voice"],
+        )
 
         assert errors_of(root) == [("item-shape", ItemSubject(1), 3)]
 
@@ -327,7 +333,7 @@ class TestAReferenceNamingWhatNothingDeclares:
     def test_an_undeclared_reference_inside_a_ruleset_and_an_item_is_found(self, tmp_path):
         root = build(
             tmp_path,
-            "rulesets:\n  code: ['ghost']\nwhen:\n  - flag a: ['spook']\n",
+            "rulesets:\n  code: ['ghost']\nwhen:\n  - flag a: ['spook']\nflags: ['a']\n",
             stems=["voice"],
         )
 
@@ -553,7 +559,7 @@ class TestATopLevelValueOfTheWrongShape:
     def test_each_of_the_four_keys_has_a_shape(self, tmp_path):
         root = build(
             tmp_path,
-            "models: opus\ndefaults: all:*\nrulesets: [code]\nwhen: {flag a: [voice]}\n",
+            "models: opus\ndefaults: all:*\nrulesets: [code]\nwhen: {flag a: [voice]}\nflags: ['a']\n",
         )
 
         assert errors_of(root) == [
@@ -711,7 +717,7 @@ class TestAListEntryThatIsNotAQuotedString:
         assert errors_of(root) == []
 
     def test_every_list_is_held_to_it(self, tmp_path):
-        manifest = "defaults: [a]\nrulesets:\n  code: [b]\nwhen:\n  - flag x: [c]\n"
+        manifest = "defaults: [a]\nrulesets:\n  code: [b]\nwhen:\n  - flag x: [c]\nflags: ['x']\n"
         root = build(tmp_path, manifest)
 
         assert errors_of(root) == [
@@ -721,7 +727,7 @@ class TestAListEntryThatIsNotAQuotedString:
         ]
 
     def test_a_when_condition_stays_unquoted_and_may_be_quoted(self, tmp_path):
-        manifest = "when:\n  - flag a: ['voice']\n  - 'flag b': ['voice']\n"
+        manifest = "when:\n  - flag a: ['voice']\n  - 'flag b': ['voice']\nflags: ['a', 'b']\n"
         root = build(tmp_path, manifest, stems=["voice"])
 
         assert errors_of(root) == []

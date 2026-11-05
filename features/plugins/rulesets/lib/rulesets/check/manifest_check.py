@@ -186,11 +186,24 @@ def _condition_errors(manifest: Manifest) -> Iterator[CheckError]:
                 f"the condition `{item.condition}` is invalid: {error.reason}",
             )
             continue
+        tests = fact_tests(condition)
         undeclared = dict.fromkeys(
             test.value
-            for test in fact_tests(condition)
+            for test in tests
             if test.fact == "model" and test.value not in manifest.models
         )
+        unflagged = dict.fromkeys(
+            test.value for test in tests if test.fact == "flag" and test.value not in manifest.flags
+        )
+        if unflagged:
+            names = ", ".join(f"`{name}`" for name in unflagged)
+            yield CheckError(
+                "unknown-flag",
+                subject,
+                manifest.path,
+                item.line,
+                f"the condition `{item.condition}` names {names}, which `flags` does not declare",
+            )
         if undeclared:
             names = ", ".join(f"`{name}`" for name in undeclared)
             yield CheckError(
