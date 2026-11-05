@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import pathlib
 from collections.abc import Mapping
 
@@ -10,7 +11,9 @@ from rulesets.audit.delivery_record import (
     DeliveryRecord,
     FlagLine,
     ModelLine,
+    ReportedValue,
     RuleLine,
+    ToolsLine,
     WithheldLine,
     digest_of,
 )
@@ -20,6 +23,7 @@ from rulesets.delivery.parts import MAX_PARTS, pack_parts
 from rulesets.delivery.plan import Plan, write_plan
 from rulesets.delivery.request import ForkStart, SessionStart, SubagentStart
 from rulesets.delivery.rule_bodies import bodies_of
+from rulesets.facts.context import AllToolsBut, Facts, ListedTools
 from rulesets.facts.model.fact import (
     Claimed,
     FromForceLever,
@@ -85,6 +89,7 @@ def deliver_first(
             kind=resolved.facts.kind,
             agent=resolved.facts.agent if isinstance(resolved.facts.agent, str) else None,
             model=_model_line(resolved.model),
+            tools=_tools_line(resolved.facts, resolved.tools_source),
             flags=tuple(FlagLine(f.name, f.source.value) for f in resolved.flags),
             rules=tuple(RuleLine(r.rule, r.variant, digests[r.rule]) for r in composition.rules),
             withheld=tuple(WithheldLine(w.rule, w.error) for w in composition.withheld),
@@ -110,6 +115,7 @@ def _deliver_fork(request: ForkStart, locations: Locations, slot: pathlib.Path) 
             kind="fork",
             agent=None,
             model=None,
+            tools=None,
             flags=(),
             rules=(),
             withheld=(),
@@ -145,14 +151,34 @@ def _model_line(fact: ModelFact) -> ModelLine:
             return ModelLine("claimed", name, identifier, _label(source))
         case Unclaimed(identifier, source):
             return ModelLine("unclaimed", None, identifier, _label(source))
-        case Missing():
+        case Missing(not_a_string=None):
             return ModelLine("missing", None, None, _label(fact.source))
+        case Missing(not_a_string=reported):
+            value = json.loads(json.dumps(reported.value, default=str))
+            return ModelLine(
+                "missing",
+                None,
+                None,
+                _label(fact.source),
+                ReportedValue(value, reported.type_name),
+            )
+
+
+def _tools_line(facts: Facts, source: pathlib.Path | None) -> ToolsLine:
+    path = None if source is None else str(source)
+    match facts.tools:
+        case ListedTools(tools=tools):
+            return ToolsLine("listed", tuple(sorted(tools)), path)
+        case AllToolsBut(removed=removed):
+            return ToolsLine("all-but", tuple(sorted(removed)), path)
+        case _:
+            return ToolsLine("absent", (), None)
 
 
 def _label(source: object) -> str:
     match source:
-        case FromVariable(name=name):
-            return name
+        case FromVariable(name=name, value=value):
+            return f"{name}={value}"
         case FromForceLever(lever=lever):
             return lever.value
         case _:

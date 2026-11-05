@@ -26,13 +26,37 @@ class WithheldLine:
 
 
 @dataclasses.dataclass(frozen=True)
+class ReportedValue:
+    """A non-string value a source reported as the model identifier, and its type."""
+
+    value: object
+    type: str
+
+
+@dataclasses.dataclass(frozen=True)
 class ModelLine:
-    """The model fact: its declared name and identifier where claimed, with the source."""
+    """The model fact: its declared name and identifier where claimed, with the source.
+
+    `not_a_string` is set where the source named a value that is not a string.
+    """
 
     state: Literal["claimed", "unclaimed", "missing"]
     name: str | None
     identifier: str | None
     source: str
+    not_a_string: ReportedValue | None = None
+
+
+@dataclasses.dataclass(frozen=True)
+class ToolsLine:
+    """The tools fact and the definition file it came from.
+
+    `tools` holds the tools a definition lists, or the tools it removes where `state` is `all-but`.
+    """
+
+    state: Literal["listed", "all-but", "absent"]
+    tools: tuple[str, ...]
+    source: str | None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -53,6 +77,7 @@ class DeliveryRecord:
     kind: str
     agent: str | None
     model: ModelLine | None
+    tools: ToolsLine | None
     flags: tuple[FlagLine, ...]
     rules: tuple[RuleLine, ...]
     withheld: tuple[WithheldLine, ...]

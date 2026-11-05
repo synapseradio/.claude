@@ -4,6 +4,7 @@ import pathlib
 from collections.abc import Iterable, Mapping
 from typing import assert_never
 
+from rulesets.delivery.request import FORK_AGENT_TYPE
 from rulesets.facts.model.agent import AgentModel, Inherit, Pin, agent_model
 from rulesets.facts.model.claim import claim_model
 from rulesets.facts.model.fact import (
@@ -11,13 +12,14 @@ from rulesets.facts.model.fact import (
     FromForceLever,
     IdentifierSource,
     ModelResolution,
+    NotAString,
 )
 from rulesets.facts.model.levers import active_lever, subagent_default
 from rulesets.facts.model.record import read_model_record
 from rulesets.facts.model.spawn import spawn_model
 from rulesets.notices import Notice
 
-type Candidate = tuple[str | None, IdentifierSource]
+type Candidate = tuple[object, IdentifierSource]
 
 
 def resolve_delegate_model(
@@ -36,9 +38,11 @@ def resolve_delegate_model(
     string yields to the next, a string no declared name claims stands, and a pin of
     `inherit` names the parent's identifier and ends the search.
 
+    A caller's model or a pin that is not a string ends the search with a missing model.
+
     A force lever ignores the caller's model and the agent's pin: the coordinator lever
     gives the parent's identifier, the subagent lever the default variable's or, where it is
-    empty, the parent's.
+    empty, the parent's. A fork takes the parent's identifier under every lever.
     """
 
     session_id = _text(payload.get("session_id"))
@@ -46,6 +50,9 @@ def resolve_delegate_model(
     cwd = _text(payload.get("cwd"))
     parent = read_model_record(session_id, state_dir) if session_id else None
     notices: list[Notice] = []
+
+    if agent_type == FORK_AGENT_TYPE:
+        return ModelResolution(claim_model(parent, "fork-parent", models))
 
     candidate: Candidate
     lever = active_lever(env)
@@ -57,7 +64,7 @@ def resolve_delegate_model(
         case None:
             spawn = spawn_model(session_id, _text(payload.get("prompt_id")), agent_type, state_dir)
             notices += spawn.notices
-            if isinstance(spawn.identifier, str):
+            if spawn.identifier is not None:
                 candidate = spawn.identifier, "per-spawn"
             else:
                 agent = agent_model(agent_type, cwd, config_dir) if agent_type else None
@@ -77,6 +84,8 @@ def _from_agent(agent: AgentModel, parent: str | None, env: Mapping[str, str]) -
             return parent, "parent-record"
         case Pin(identifier=identifier, source=source):
             return identifier, source
+        case NotAString(value=value, source=source):
+            return value, source
         case None:
             default = subagent_default(env)
             if default:

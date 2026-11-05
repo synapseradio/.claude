@@ -58,7 +58,7 @@ def read_spawns(
     prompt_id: str | None,
     agent_type: str | None,
     state: pathlib.Path,
-) -> list[str]:
+) -> list[object]:
     """The models named for spawns matching one prompt and agent type.
 
     More than one match means one prompt spawned two delegates of the same
@@ -74,7 +74,7 @@ def read_spawns(
     except OSError:
         return []
 
-    models = []
+    models: list[object] = []
     for line in lines:
         try:
             record = json.loads(line)
@@ -85,7 +85,7 @@ def read_spawns(
             and record.get("kind") == SPAWN
             and record.get("prompt_id") == prompt_id
             and record.get("agent_type") == agent_type
-            and record.get("model")
+            and record.get("model") not in (None, "")
         ):
             models.append(record["model"])
     return models

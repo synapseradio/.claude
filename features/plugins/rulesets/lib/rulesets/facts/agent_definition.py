@@ -2,6 +2,7 @@
 
 import json
 import pathlib
+from dataclasses import dataclass
 
 import yaml
 
@@ -10,10 +11,27 @@ from rulesets.documents import split_frontmatter
 Frontmatter = dict[str, object]
 
 
+@dataclass(frozen=True)
+class Definition:
+    """An agent definition file and the frontmatter it carries."""
+
+    path: pathlib.Path
+    front: Frontmatter
+
+
 def definition_front(
     agent_type: str, cwd: str | None, config_dir: pathlib.Path
 ) -> Frontmatter | None:
-    """The frontmatter of the definition `agent_type` names, or None where none is found.
+    """The frontmatter of the definition `agent_type` names, or None where none is found."""
+
+    definition = find_definition(agent_type, cwd, config_dir)
+    return definition.front if definition else None
+
+
+def find_definition(
+    agent_type: str, cwd: str | None, config_dir: pathlib.Path
+) -> Definition | None:
+    """The definition `agent_type` names, or None where none is found.
 
     A plugin-scoped type, `plugin:name` or `plugin:subfolder:name`, reads that plugin's
     `agents/` directory. Any other type takes the first definition found in the project
@@ -25,15 +43,15 @@ def definition_front(
         plugin, *subfolders, name = agent_type.split(":")
         for install in _plugin_install_paths(plugin, config_dir):
             directory = install.joinpath("agents", *subfolders)
-            front = _named_definition(list(directory.glob("*.md")), name)
-            if front is not None:
-                return front
+            definition = _named_definition(list(directory.glob("*.md")), name)
+            if definition is not None:
+                return definition
         return None
     directories = [*(_project_agent_dirs(cwd) if cwd else []), config_dir / "agents"]
     for directory in directories:
-        front = _named_definition(list(directory.rglob("*.md")), agent_type)
-        if front is not None:
-            return front
+        definition = _named_definition(list(directory.rglob("*.md")), agent_type)
+        if definition is not None:
+            return definition
     return None
 
 
@@ -53,8 +71,8 @@ def _frontmatter(path: pathlib.Path) -> Frontmatter:
     return front if isinstance(front, dict) else {}
 
 
-def _named_definition(paths: list[pathlib.Path], name: str) -> Frontmatter | None:
-    """The frontmatter of the first definition registered as `name`.
+def _named_definition(paths: list[pathlib.Path], name: str) -> Definition | None:
+    """The first definition registered as `name`.
 
     A definition registers under its `name` field, or under its filename where it has none.
     """
@@ -62,7 +80,7 @@ def _named_definition(paths: list[pathlib.Path], name: str) -> Frontmatter | Non
     for path in sorted(paths):
         front = _frontmatter(path)
         if (front.get("name") or path.stem) == name:
-            return front
+            return Definition(path, front)
     return None
 
 

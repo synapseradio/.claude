@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from rulesets.facts.agent_definition import definition_front
+from rulesets.facts.model.fact import NotAString
 
 _INHERIT = "inherit"
 
@@ -27,21 +28,24 @@ class Inherit:
     """A definition whose model is `inherit`, which runs the agent on its parent's model."""
 
 
-type AgentModel = Pin | Inherit | None
+type AgentModel = Pin | Inherit | NotAString | None
 
 
 def agent_model(agent_type: str, cwd: str | None, config_dir: pathlib.Path) -> AgentModel:
     """What fixes the model of `agent_type`, or None where nothing does.
 
-    A definition that names a string model pins it. A definition that names none hides
-    the built-in agent of the same type. A plugin-scoped type never names a built-in agent.
+    A definition that names a string model pins it, and one that names a value of another
+    type is a pin that is not a string. A definition that names none hides the built-in
+    agent of the same type. A plugin-scoped type never names a built-in agent.
     """
 
     front = definition_front(agent_type, cwd, config_dir)
     if front is not None:
         model = front.get("model")
-        if not isinstance(model, str) or not model:
+        if model is None or model == "":
             return None
+        if not isinstance(model, str):
+            return NotAString(model, "definition-pin")
         return Inherit() if model == _INHERIT else Pin(model, "definition-pin")
     if ":" in agent_type:
         return None

@@ -120,18 +120,21 @@ class TestADelegatesModelFactComesFromFourSourcesInOrder:
 
         assert fact == model_fact.Claimed("sonnet", "sonnet", "definition-pin")
 
-    def test_a_caller_model_that_is_not_a_string_yields_to_the_next_source(self, scene):
+    def test_a_caller_model_that_is_not_a_string_ends_the_search_with_a_missing_model(self, scene):
         scene.caller_names(5, agent_type="scout")
         scene.user_agent("scout.md", "name: scout\nmodel: haiku")
 
-        assert scene.fact("scout") == model_fact.Claimed("haiku", "haiku", "definition-pin")
+        assert scene.fact("scout") == model_fact.Missing(model_fact.NotAString(5, "per-spawn"))
 
-    def test_a_definition_model_that_is_not_a_string_yields_to_the_next_source(self, scene):
+    def test_a_definition_model_that_is_not_a_string_ends_the_search_with_a_missing_model(
+        self, scene
+    ):
         scene.user_agent("scout.md", "name: scout\nmodel: 123")
+        scene.parent_runs(OPUS)
 
         fact = scene.fact("scout", env={DEFAULT_VARIABLE: SONNET})
 
-        assert fact == model_fact.Claimed("sonnet", SONNET, "subagent-default-variable")
+        assert fact == model_fact.Missing(model_fact.NotAString(123, "definition-pin"))
 
     def test_an_empty_default_variable_yields_to_the_parent(self, scene):
         scene.parent_runs(OPUS)

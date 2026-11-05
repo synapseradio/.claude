@@ -3,20 +3,13 @@
 from __future__ import annotations
 
 import dataclasses
+import pathlib
 from collections.abc import Mapping
 
 from rulesets.delivery.request import SessionStart, SubagentStart
-from rulesets.facts.agent_definition import definition_front
+from rulesets.facts.agent_definition import Definition, find_definition
 from rulesets.facts.agent_fact import agent_fact
-from rulesets.facts.context import (
-    ABSENT,
-    UNCLAIMED,
-    Absent,
-    AllToolsBut,
-    Facts,
-    ListedTools,
-    NoClaim,
-)
+from rulesets.facts.context import ABSENT, UNCLAIMED, Absent, Facts, NoClaim
 from rulesets.facts.flags import FlagFact, delegate_flags, launch_flags, session_flags
 from rulesets.facts.model.delegate import resolve_delegate_model
 from rulesets.facts.model.fact import Claimed, Missing, ModelFact, Unclaimed
@@ -39,6 +32,7 @@ class ResolvedContext:
     model: ModelFact
     notices: tuple[Notice, ...]
     flags: tuple[FlagFact, ...]
+    tools_source: pathlib.Path | None
 
 
 def resolve_context(
@@ -70,7 +64,8 @@ def resolve_context(
     agent = agent_fact(request)
     if isinstance(agent, Absent) and _tests(manifest, "agent"):
         notices.append(absent_agent_notice())
-    tools = _tools_of(agent, request, locations)
+    definition = _definition_of(agent, request, locations)
+    tools = tools_fact(definition.front if definition else None)
     if isinstance(tools, Absent) and _tests(manifest, "tools"):
         notices.append(absent_tools_notice(None if isinstance(agent, Absent) else agent))
     facts = Facts(
@@ -81,7 +76,9 @@ def resolve_context(
         request.session_id,
         tools,
     )
-    return ResolvedContext(facts, resolution.fact, tuple(notices), flags)
+    return ResolvedContext(
+        facts, resolution.fact, tuple(notices), flags, definition.path if definition else None
+    )
 
 
 def _model_in_facts(fact: ModelFact) -> str | NoClaim | Absent:
@@ -94,15 +91,13 @@ def _model_in_facts(fact: ModelFact) -> str | NoClaim | Absent:
             return ABSENT
 
 
-def _tools_of(
+def _definition_of(
     agent: str | Absent, request: SessionStart | SubagentStart, locations: Locations
-) -> ListedTools | AllToolsBut | Absent:
+) -> Definition | None:
     if isinstance(agent, Absent):
-        return ABSENT
+        return None
     cwd = request.payload.get("cwd")
-    return tools_fact(
-        definition_front(agent, cwd if isinstance(cwd, str) else None, locations.config)
-    )
+    return find_definition(agent, cwd if isinstance(cwd, str) else None, locations.config)
 
 
 def _tests(manifest: Manifest | None, fact: str) -> bool:

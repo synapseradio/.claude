@@ -895,4 +895,5 @@ class TestTheEnginesCodeNamesNoContent:
             "name": None,
             "identifier": "haiku",
             "source": "built-in-pin",
+            "not_a_string": None,
         }

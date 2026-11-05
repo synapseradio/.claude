@@ -128,4 +128,5 @@ class World:
             "prompt_id": "p1",
             **extra,
         }
-        return self.run_event("SubagentStart", payload)
+        named = {field: value for field, value in payload.items() if value is not None}
+        return self.run_event("SubagentStart", named)

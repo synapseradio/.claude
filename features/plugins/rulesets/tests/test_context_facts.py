@@ -22,14 +22,13 @@ PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
-from rulesets import spawn_log  # noqa: E402
 from rulesets.check.report_format import report_lines  # noqa: E402
 from rulesets.check.run import check  # noqa: E402
 from rulesets.facts.agent_definition import definition_front  # noqa: E402
 from rulesets.facts.context import ABSENT, UNCLAIMED, AllToolsBut, Facts, ListedTools  # noqa: E402
 from rulesets.facts.model import claim as model_claim  # noqa: E402
+from rulesets.facts.model import delegate as delegate_model  # noqa: E402
 from rulesets.facts.model import fact as model_fact  # noqa: E402
-from rulesets.facts.model import record as model_record  # noqa: E402
 from rulesets.facts.model import session as session_model  # noqa: E402
 from rulesets.facts.tools_fact import tools_fact  # noqa: E402
 from rulesets.source.condition import evaluate, parse_condition  # noqa: E402
@@ -345,6 +344,41 @@ class TestAMissingModelIdentifierMakesEveryModelTestUnknown:
         assert truth("model haiku", model="missing") == "UNKNOWN"
         assert truth("not model haiku", model="missing") == "UNKNOWN"
 
+    def test_a_pin_that_is_a_list_ends_resolution_without_taking_the_default_variable(self, world):
+        model_world(world, **{DEFAULT_VARIABLE: SONNET_IDENTIFIER})
+        parent_runs(world, OPUS_IDENTIFIER)
+        define_agent(world, "critic", "model: [opus, haiku]")
+
+        world.start_delegate("critic")
+
+        (record,) = delegate_records(world)
+        assert record["model"]["state"] == "missing"
+        assert record["model"]["identifier"] is None
+        assert record["model"]["source"] == "definition-pin"
+        assert record["model"]["not_a_string"] == {"value": ["opus", "haiku"], "type": "list"}
+        (notice,) = shown_notices(record)
+        assert "no model identifier was available" in notice["subject"]
+        assert "the definition's pin is a list" in notice["subject"]
+
+    def test_a_per_spawn_model_that_is_a_number_ends_resolution_without_taking_a_later_source(
+        self, world
+    ):
+        model_world(world, **{DEFAULT_VARIABLE: SONNET_IDENTIFIER})
+        parent_runs(world, OPUS_IDENTIFIER)
+        define_agent(world, "critic", "model: haiku")
+        caller_names(world, 123, "critic")
+
+        world.start_delegate("critic")
+
+        (record,) = delegate_records(world)
+        assert record["model"]["state"] == "missing"
+        assert record["model"]["identifier"] is None
+        assert record["model"]["source"] == "per-spawn"
+        assert record["model"]["not_a_string"] == {"value": 123, "type": "int"}
+        (notice,) = shown_notices(record)
+        assert "no model identifier was available" in notice["subject"]
+        assert "the model the caller named is an int" in notice["subject"]
+
 
 class TestDeliveryCompletesWhenTheModelIsUnclaimedOrMissing:
     def test_a_block_testing_no_unknown_fact_applies_while_the_model_is_missing(self, world):
@@ -367,17 +401,32 @@ def model_world(world, **variables):
     world.environment.update(variables)
 
 
-def caller_names(world, model, agent_type="critic"):
-    """The per-spawn model the caller named, as the Agent tool hook records it."""
+def state_directory(world):
+    return world.config / ".tmp" / "rulesets-engine"
 
-    state = world.config / ".tmp" / "rulesets-engine"
-    spawn_log.append_spawn("s1", "p1", agent_type, model, state)
+
+def caller_names(world, model, agent_type="critic", prompt_id="p1"):
+    """One line of the session's spawn log, in the JSON-lines format the Agent tool hook appends."""
+
+    path = state_directory(world) / "audit" / "s1" / "spawns.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    line = {
+        "kind": "spawn",
+        "session_id": "s1",
+        "prompt_id": prompt_id,
+        "agent_type": agent_type,
+        "model": model,
+    }
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(line) + "\n")
 
 
 def parent_runs(world, identifier):
-    """The parent session's recorded identifier, as the session hook leaves it for delegates."""
+    """The parent session's model record, in the JSON format the session hook leaves."""
 
-    model_record.write_model_record("s1", identifier, world.config / ".tmp" / "rulesets-engine")
+    path = state_directory(world) / "models" / "s1.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"identifier": identifier}) + "\n", encoding="utf-8")
 
 
 def shown_notices(record):
@@ -396,6 +445,7 @@ def model_of(record):
 
 FORCE = "CLAUDE_CODE_SUBAGENT_MODEL_FORCE"
 DEFAULT_VARIABLE = "CLAUDE_CODE_SUBAGENT_MODEL"
+COORDINATOR = "CLAUDE_CODE_COORDINATOR_FORCE_WORKER_INHERIT_MODEL"
 OPUS_IDENTIFIER = "claude-opus-5-5"
 SONNET_IDENTIFIER = "claude-sonnet-5"
 HAIKU_IDENTIFIER = "claude-haiku-4-5"
@@ -732,6 +782,314 @@ class TestAnEnvironmentVariableCountsAsSetUnlessEmptyOrFalse:
 
         (record,) = delegate_records(world)
         assert model_of(record) == ("haiku", "per-spawn")
+
+
+class TestADelegatesModelFactComesFromFourSourcesInOrder:
+    def test_a_delegate_with_no_other_source_takes_the_parents_recorded_identifier(self, world):
+        model_world(world)
+        define_agent(world, "critic", "tools: Read")
+        parent_runs(world, OPUS_IDENTIFIER)
+
+        world.start_delegate("critic")
+
+        (record,) = delegate_records(world)
+        assert model_of(record) == (OPUS_IDENTIFIER, "parent-record")
+
+    def test_the_model_a_caller_names_for_one_spawn_decides_the_rules_that_spawn_receives(
+        self, world
+    ):
+        world.rule("writing-code")
+        world.manifest(
+            "models: ['sonnet', 'haiku']\n"
+            "defaults: ['writing-code']\n"
+            "when:\n"
+            "  - model haiku: ['-writing-code']\n"
+        )
+        define_agent(world, "builder", "model: sonnet")
+        caller_names(world, "haiku", "builder", prompt_id="p1")
+
+        named = world.start_delegate("builder", agent_id="a1", prompt_id="p1")
+        unnamed = world.start_delegate("builder", agent_id="a2", prompt_id="p2")
+
+        assert received(named, ["writing-code"]) == []
+        assert received(unnamed, ["writing-code"]) == ["writing-code"]
+        first, second = delegate_records(world)
+        assert model_of(first) == ("haiku", "per-spawn")
+        assert first["model"]["name"] == "haiku"
+        assert model_of(second) == ("sonnet", "definition-pin")
+        assert second["model"]["name"] == "sonnet"
+
+
+class TestTheDefaultVariableSitsBetweenThePinAndTheParent:
+    def test_a_pin_outranks_the_default_variable_which_outranks_the_parent(self, world):
+        model_world(world, **{DEFAULT_VARIABLE: SONNET_IDENTIFIER})
+        parent_runs(world, OPUS_IDENTIFIER)
+        define_agent(world, "pinned", "model: haiku")
+        define_agent(world, "plain", "tools: Read")
+
+        world.start_delegate("pinned", agent_id="a1")
+        world.start_delegate("plain", agent_id="a2")
+
+        pinned, plain = delegate_records(world)
+        assert model_of(pinned) == ("haiku", "definition-pin")
+        assert model_of(plain) == (SONNET_IDENTIFIER, "subagent-default-variable")
+
+
+class TestAParentWithNoRecordedIdentifier:
+    def test_the_delegates_model_is_missing_and_a_shown_notice_says_so(self, world):
+        model_world(world)
+        define_agent(world, "critic", "tools: Read")
+
+        world.start_delegate("critic")
+
+        (record,) = delegate_records(world)
+        assert record["model"]["state"] == "missing"
+        (notice,) = shown_notices(record)
+        assert "no model identifier was available" in notice["subject"]
+
+
+class TestTwoSpawnsOfOneTypeNamingDifferentModels:
+    def test_the_per_spawn_source_yields_with_an_unshown_notice_in_each_record(self, world):
+        model_world(world)
+        parent_runs(world, SONNET_IDENTIFIER)
+        caller_names(world, "haiku")
+        caller_names(world, "opus")
+
+        world.start_delegate("critic", agent_id="a1")
+        world.start_delegate("critic", agent_id="a2")
+
+        records = delegate_records(world)
+        assert [model_of(record) for record in records] == [
+            (SONNET_IDENTIFIER, "parent-record")
+        ] * 2
+        for record in records:
+            (ambiguous,) = [n for n in record["notices"] if n["kind"] == "per-spawn-ambiguous"]
+            assert ambiguous["shown"] is False
+
+
+class TestAStartPayloadWithoutAPromptIdentifier:
+    def test_the_per_spawn_source_yields_to_the_pin_then_the_default_variable_then_the_parent(
+        self, world
+    ):
+        model_world(world, **{DEFAULT_VARIABLE: SONNET_IDENTIFIER})
+        parent_runs(world, OPUS_IDENTIFIER)
+        define_agent(world, "pinned", "model: haiku")
+        define_agent(world, "plain", "tools: Read")
+        caller_names(world, "opus", "pinned", prompt_id=None)
+        caller_names(world, "opus", "plain", prompt_id=None)
+
+        world.start_delegate("pinned", agent_id="a1", prompt_id=None)
+        world.start_delegate("plain", agent_id="a2", prompt_id=None)
+        del world.environment[DEFAULT_VARIABLE]
+        world.start_delegate("plain", agent_id="a3", prompt_id=None)
+
+        records = delegate_records(world)
+        assert [model_of(record) for record in records] == [
+            ("haiku", "definition-pin"),
+            (SONNET_IDENTIFIER, "subagent-default-variable"),
+            (OPUS_IDENTIFIER, "parent-record"),
+        ]
+        for record in records:
+            (unreadable,) = [n for n in record["notices"] if n["kind"] == "per-spawn-unreadable"]
+            assert unreadable["shown"] is False
+
+
+class TestAProjectDefinitionWinsOverTheHomeOne:
+    def test_the_pin_and_the_tools_come_from_the_project_file(self, world):
+        for stem in ("reading", "editing"):
+            world.rule(stem)
+        world.manifest(
+            "models: ['opus', 'haiku']\n"
+            "defaults: []\n"
+            "when:\n"
+            "  - tools Read: ['reading']\n"
+            "  - tools Edit: ['editing']\n"
+        )
+        define_agent(world, "scout", "model: opus\ntools: Edit")
+        project = world.config.parent / "project"
+        (project / ".git").mkdir(parents=True)
+        agents = project / ".claude" / "agents"
+        agents.mkdir(parents=True)
+        (agents / "scout.md").write_text(
+            "---\nname: scout\nmodel: haiku\ntools: Read\n---\nbody\n", encoding="utf-8"
+        )
+
+        delivery = world.start_delegate("scout", cwd=str(project))
+
+        (record,) = delegate_records(world)
+        assert model_of(record) == ("haiku", "definition-pin")
+        assert received(delivery, ["reading", "editing"]) == ["reading"]
+
+
+class TestTheDefinitionPinsInherit:
+    def test_the_delegate_takes_the_parents_identifier_ahead_of_the_default_variable(self, world):
+        model_world(world, **{DEFAULT_VARIABLE: SONNET_IDENTIFIER})
+        parent_runs(world, OPUS_IDENTIFIER)
+        define_agent(world, "critic", "model: inherit")
+
+        world.start_delegate("critic")
+
+        (record,) = delegate_records(world)
+        assert model_of(record) == (OPUS_IDENTIFIER, "parent-record")
+
+
+class TestABuiltInAgentWithoutAFile:
+    def test_the_delegate_takes_the_harness_pin_and_the_record_names_it(self, world):
+        model_world(world)
+
+        world.start_delegate("claude-code-guide")
+
+        (record,) = delegate_records(world)
+        assert model_of(record) == ("haiku", "built-in-pin")
+
+
+class TestADefinitionFileForABuiltInType:
+    def test_a_definition_naming_no_model_hides_the_harness_pin(self, world):
+        model_world(world)
+        parent_runs(world, OPUS_IDENTIFIER)
+        define_agent(world, "statusline-setup", "tools: Read")
+
+        world.start_delegate("statusline-setup")
+
+        (record,) = delegate_records(world)
+        assert model_of(record) == (OPUS_IDENTIFIER, "parent-record")
+
+
+class TestTheForceVariableAndADefaultModelAreBothSet:
+    def test_the_default_variable_wins_over_the_definitions_pin(self, world):
+        model_world(world, **{FORCE: "1", DEFAULT_VARIABLE: HAIKU_IDENTIFIER})
+        define_agent(world, "critic", "model: opus")
+
+        world.start_delegate("critic")
+
+        (record,) = delegate_records(world)
+        assert model_of(record) == (HAIKU_IDENTIFIER, FORCE)
+
+    def test_with_no_default_variable_the_delegate_takes_the_parents_identifier(self, world):
+        model_world(world, **{FORCE: "1"})
+        parent_runs(world, OPUS_IDENTIFIER)
+
+        world.start_delegate("critic")
+
+        (record,) = delegate_records(world)
+        assert model_of(record) == (OPUS_IDENTIFIER, FORCE)
+
+
+class TestAForkTakesTheParentsIdentifierUnderTheForceVariable:
+    def test_a_fork_ignores_the_forced_model(self, tmp_path):
+        record = tmp_path / "models" / "s1.json"
+        record.parent.mkdir(parents=True)
+        record.write_text(json.dumps({"identifier": OPUS_IDENTIFIER}), encoding="utf-8")
+        start = {"session_id": "s1", "agent_id": "a1", "agent_type": "fork"}
+
+        resolution = delegate_model.resolve_delegate_model(
+            start,
+            ["opus", "sonnet", "haiku"],
+            {FORCE: "1", DEFAULT_VARIABLE: HAIKU_IDENTIFIER},
+            tmp_path,
+            tmp_path / "config",
+        )
+
+        assert resolution.fact == model_fact.Claimed("opus", OPUS_IDENTIFIER, "fork-parent")
+
+
+class TestTheCoordinatorLeverGivesADelegateTheParentsModelFact:
+    def test_it_overrides_the_callers_model_and_the_pin(self, world):
+        model_world(world, **{COORDINATOR: "1"})
+        parent_runs(world, OPUS_IDENTIFIER)
+        define_agent(world, "critic", "model: sonnet")
+        caller_names(world, "haiku", "critic", prompt_id="p1")
+
+        world.start_delegate("critic", agent_id="a1", prompt_id="p1")
+        world.start_delegate("critic", agent_id="a2", prompt_id="p2")
+
+        records = delegate_records(world)
+        assert [model_of(record) for record in records] == [(OPUS_IDENTIFIER, COORDINATOR)] * 2
+
+    def test_with_both_force_levers_set_the_delegate_takes_the_parents_identifier(self, world):
+        model_world(world, **{COORDINATOR: "1", FORCE: "1", DEFAULT_VARIABLE: HAIKU_IDENTIFIER})
+        parent_runs(world, OPUS_IDENTIFIER)
+
+        world.start_delegate("critic")
+
+        (record,) = delegate_records(world)
+        assert record["model"]["identifier"] == OPUS_IDENTIFIER
+
+
+class TestTheDeliveryRecordNamesEachFactsSource:
+    def test_a_record_names_the_identifier_its_claiming_name_the_agent_and_the_tools_source(
+        self, world
+    ):
+        model_world(world)
+        define_agent(world, "critic", "description: Reviews work")
+        caller_names(world, "opus", "critic")
+
+        world.start_delegate("critic")
+
+        (record,) = delegate_records(world)
+        assert model_of(record) == ("opus", "per-spawn")
+        assert record["model"]["name"] == "opus"
+        assert record["agent"] == "critic"
+        assert record["tools"]["state"] == "all-but"
+        assert record["tools"]["source"] == str(world.config / "agents" / "critic.md")
+
+    def test_the_delivered_text_holds_rule_text_only_and_the_record_names_the_pin(self, world):
+        model_world(world)
+        define_agent(world, "critic", "model: haiku")
+
+        delivery = world.start_delegate("critic")
+
+        assert delivery.context == "text of voice\n"
+        assert delivery.message is None
+        (record,) = delegate_records(world)
+        assert model_of(record) == ("haiku", "definition-pin")
+
+
+class TestTheRecordNamesASessionModelsSource:
+    def test_a_source_from_the_environment_names_the_variable_and_its_value(self, world):
+        model_world(world, ANTHROPIC_MODEL=OPUS_IDENTIFIER)
+
+        world.start_session(model=None)
+
+        (record,) = world.records()
+        assert record["model"]["source"] == f"ANTHROPIC_MODEL={OPUS_IDENTIFIER}"
+
+
+class TestTheRecordNamesADelegateModelsSource:
+    def test_a_source_from_a_force_lever_names_the_lever(self, world):
+        model_world(world, **{FORCE: "1", DEFAULT_VARIABLE: HAIKU_IDENTIFIER})
+
+        world.start_delegate("critic")
+
+        (record,) = delegate_records(world)
+        assert record["model"]["source"] == FORCE
+
+
+class TestTheRecordNamesTheIdentifierAndTheNameThatClaimedIt:
+    def test_an_identifier_no_declared_name_claims_is_stated_unclaimed(self, world):
+        model_world(world)
+
+        world.start_session(model="glm-5")
+
+        (record,) = world.records()
+        assert record["model"]["identifier"] == "glm-5"
+        assert record["model"]["state"] == "unclaimed"
+        assert record["model"]["name"] is None
+
+
+class TestTheRecordNamesTheAgentToolsAndFlagSources:
+    def test_a_flag_a_toggle_set_names_toggle_as_its_source(self, world):
+        world.rule("security-pass")
+        world.manifest(
+            "flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['security-pass']\n"
+        )
+        world.start_session()
+        world.toggle_flags({"strict": "set"})
+
+        world.start_delegate("critic")
+
+        (record,) = delegate_records(world)
+        assert record["flags"] == [{"name": "strict", "source": "toggle"}]
 
 
 def flag_names(record):
