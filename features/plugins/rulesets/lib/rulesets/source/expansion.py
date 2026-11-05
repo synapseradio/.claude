@@ -175,6 +175,23 @@ class Expander:
 
         return self._cycles.get(name, ())
 
+    def route_to(self, ruleset: str, rule: str) -> tuple[str, ...]:
+        """The rulesets from `ruleset` down to the one that names `rule`, `ruleset` first.
+
+        A ruleset that is reserved, undeclared, or in a cycle, or that holds no add of the rule,
+        ends the route.
+        """
+
+        if ruleset not in self._lists or ruleset in self._cycles:
+            return (ruleset,)
+        held = next(
+            (e for e in self.expand(self._lists[ruleset]).without_conflicts if e.rule == rule),
+            None,
+        )
+        if held is not None and isinstance(held.source.target, SpreadTarget):
+            return (ruleset, *self.route_to(held.source.target.ruleset, rule))
+        return (ruleset,)
+
     def _spread(self, name: str) -> tuple[tuple[str, str | None], ...]:
         if name in ("all", "rules"):
             return tuple((rule, None) for rule in self._rules)

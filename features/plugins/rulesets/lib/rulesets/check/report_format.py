@@ -16,6 +16,7 @@ from rulesets.check.findings import (
     ReferenceSubject,
     Report,
     RulePairSubject,
+    RulesetsSubject,
     RulesetSubject,
     RuleSubject,
     Subject,
@@ -32,6 +33,13 @@ def _describe_subject(subject: Subject) -> str:
             return f"rule `{name}` and rule `{other}`"
         case RulesetSubject(name):
             return f"ruleset `{name}`"
+        case RulesetsSubject(names):
+            quoted = [f"`{name}`" for name in names]
+            if len(quoted) == 1:
+                return f"ruleset {quoted[0]}"
+            if len(quoted) == 2:
+                return f"rulesets {quoted[0]} and {quoted[1]}"
+            return f"rulesets {', '.join(quoted[:-1])}, and {quoted[-1]}"
         case ItemSubject(index):
             return f"item {index + 1}"
         case KeySubject(name):

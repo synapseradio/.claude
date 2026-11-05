@@ -32,6 +32,13 @@ class RulesetSubject:
 
 
 @dataclasses.dataclass(frozen=True)
+class RulesetsSubject:
+    """The rulesets of one cycle, by name, sorted. `defaults` can be among them."""
+
+    names: tuple[str, ...]
+
+
+@dataclasses.dataclass(frozen=True)
 class ItemSubject:
     """A `when` item, by its position among the items written."""
 
@@ -93,6 +100,7 @@ type Subject = (
     RuleSubject
     | RulePairSubject
     | RulesetSubject
+    | RulesetsSubject
     | ItemSubject
     | KeySubject
     | ModelSubject

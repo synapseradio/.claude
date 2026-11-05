@@ -24,7 +24,12 @@ PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
 from rulesets import spawn_log  # noqa: E402  (path must be set before this import)
-from rulesets.check.findings import ReferenceSubject, RulesetSubject, RuleSubject  # noqa: E402
+from rulesets.check.findings import (  # noqa: E402
+    ReferenceSubject,
+    RulesetsSubject,
+    RulesetSubject,
+    RuleSubject,
+)
 from rulesets.check.report_format import report_lines  # noqa: E402
 from rulesets.check.run import check  # noqa: E402
 from rulesets.cli import main  # noqa: E402
@@ -594,7 +599,7 @@ class TestASpreadYieldsTheEntriesOfTheSpreadRuleset:
 
 
 class TestASpreadInACycleOfSpreadsReachesNoRule:
-    def test_a_two_ruleset_cycle_is_an_error_naming_both_and_neither_spread_reaches_a_rule(
+    def test_a_two_ruleset_cycle_is_one_error_naming_both_and_neither_spread_reaches_a_rule(
         self, world
     ):
         world.rule("voice")
@@ -612,10 +617,9 @@ class TestASpreadInACycleOfSpreadsReachesNoRule:
         flagged = world.start_session(session_id="s2")
 
         assert [(e.kind, e.subject) for e in report.errors] == [
-            ("ruleset-cycle", RulesetSubject("a")),
-            ("ruleset-cycle", RulesetSubject("b")),
+            ("ruleset-cycle", RulesetsSubject(("a", "b"))),
         ]
-        assert all("`a`" in e.message and "`b`" in e.message for e in report.errors)
+        assert all("cycle" in e.message for e in report.errors)
         assert [plain.context, flagged.context] == ["text of sorting\n"] * 2
 
 

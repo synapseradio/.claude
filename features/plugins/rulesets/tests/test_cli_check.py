@@ -80,7 +80,6 @@ class TestSeveralProblemsAtOnce:
         assert sorted(findings_of(result)) == [
             (f"{manifest}:1", "error", "undeclared-reference"),
             (f"{manifest}:3", "error", "ruleset-cycle"),
-            (f"{manifest}:4", "error", "ruleset-cycle"),
             (f"{manifest}:6", "error", "condition-invalid"),
         ]
 

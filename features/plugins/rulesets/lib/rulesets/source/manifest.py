@@ -83,10 +83,14 @@ class ReservedRulesetDeclared:
 
 @dataclasses.dataclass(frozen=True)
 class MalformedItem:
-    """A `when` item that is no one-key mapping from a condition to a list."""
+    """A `when` item that is no one-key mapping from a condition to a list.
+
+    `condition` is the item's one key where it has exactly one scalar key, and None otherwise.
+    """
 
     index: int
     line: int
+    condition: str | None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -202,6 +206,16 @@ def _references(node: yaml.Node, text: str) -> tuple[Reference, ...] | None:
     return tuple(_reference(element, text) for element in node.value)
 
 
+def _lone_condition(node: yaml.Node) -> str | None:
+    """The scalar key of a one-key mapping, whatever its value, else None."""
+
+    if isinstance(node, yaml.MappingNode) and len(node.value) == 1:
+        key, _ = node.value[0]
+        if isinstance(key, yaml.ScalarNode):
+            return key.value
+    return None
+
+
 def _is_item(node: yaml.Node) -> bool:
     if not isinstance(node, yaml.MappingNode) or len(node.value) != 1:
         return False
@@ -277,7 +291,7 @@ def _read_when(
     problems: list[ShapeProblem] = []
     for index, element in enumerate(value.value):
         if not _is_item(element):
-            problems.append(MalformedItem(index, _line(element)))
+            problems.append(MalformedItem(index, _line(element), _lone_condition(element)))
             continue
         condition, references_node = element.value[0]
         references = _references(references_node, text)

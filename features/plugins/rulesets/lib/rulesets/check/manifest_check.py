@@ -18,8 +18,8 @@ from rulesets.check.findings import (
     ModelSubject,
     ReferencesSubject,
     ReferenceSubject,
+    RulesetsSubject,
     RulesetSubject,
-    Subject,
 )
 from rulesets.source.condition import ConditionError, parse_condition
 from rulesets.source.expansion import (
@@ -126,13 +126,14 @@ def _shape_error(manifest: Manifest, problem: ShapeProblem) -> CheckError:
                 line,
                 f"`{ruleset}` is a reserved ruleset and cannot be declared",
             )
-        case MalformedItem(index, line):
+        case MalformedItem(index, line, condition):
+            block = f"the block `{condition}` holds no list of references; " if condition else ""
             return CheckError(
                 "item-shape",
                 ItemSubject(index),
                 manifest.path,
                 line,
-                "an item must be a one-key mapping from a condition to a list of references",
+                f"{block}an item must be a one-key mapping from a condition to a list of references",
             )
         case UnquotedModel(text, line, form):
             return CheckError(
@@ -155,22 +156,24 @@ def _shape_error(manifest: Manifest, problem: ShapeProblem) -> CheckError:
 
 
 def _cycle_errors(manifest: Manifest, expander: Expander) -> Iterator[CheckError]:
-    declarations: list[tuple[Subject, str, int]] = []
+    """One error for each cycle, at the line of the first member written."""
+
+    declared = {name: ruleset.line for name, ruleset in manifest.rulesets.items()}
     if manifest.defaults is not None:
-        declarations.append((KeySubject("defaults"), "defaults", manifest.defaults.line))
-    declarations += [
-        (RulesetSubject(name), name, ruleset.line) for name, ruleset in manifest.rulesets.items()
-    ]
-    for subject, name, line in declarations:
-        if cycle := expander.cycle_of(name):
-            members = ", ".join(f"`{member}`" for member in cycle)
-            yield CheckError(
-                "ruleset-cycle",
-                subject,
-                manifest.path,
-                line,
-                f"`{name}` spreads in a cycle with {members}; a spread of any of them reaches no rule",
-            )
+        declared = {"defaults": manifest.defaults.line, **declared}
+    reported: set[tuple[str, ...]] = set()
+    for name in declared:
+        cycle = expander.cycle_of(name)
+        if not cycle or cycle in reported:
+            continue
+        reported.add(cycle)
+        yield CheckError(
+            "ruleset-cycle",
+            RulesetsSubject(cycle),
+            manifest.path,
+            min(declared[member] for member in cycle),
+            "their spreads form a cycle; a spread of any of them reaches no rule",
+        )
 
 
 def _condition_errors(manifest: Manifest) -> Iterator[CheckError]:

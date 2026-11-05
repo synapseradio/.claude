@@ -13,14 +13,14 @@ def inclusion_warnings(
 ) -> tuple[CheckWarning, ...]:
     """One warning for each rule that no add in any list includes, by name or through a ruleset.
 
-    A rule counts as included where any list adds it, whether or not that list applies in
-    any context.
+    A rule counts as included where any list adds it, a conflicted add included, whether or
+    not that list applies in any context.
     """
 
     included = {
         entry.rule
         for references in manifest.written_lists()
-        for entry in expander.expand(references).without_conflicts
+        for entry in expander.expand(references).entries
     }
     return tuple(
         CheckWarning(

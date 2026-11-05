@@ -28,6 +28,7 @@ from rulesets.check.findings import (  # noqa: E402
     ModelSubject,
     ReferencesSubject,
     ReferenceSubject,
+    RulesetsSubject,
     RulesetSubject,
     RuleSubject,
 )
@@ -53,46 +54,39 @@ def errors_of(root):
 
 
 class TestARulesetCycle:
-    def test_each_ruleset_declaration_in_the_cycle_is_an_error(self, tmp_path):
+    def test_a_cycle_is_one_error_naming_every_ruleset_in_it_at_the_first_one_written(
+        self, tmp_path
+    ):
         root = build(
             tmp_path,
             "rulesets:\n  a: ['b:*']\n  b: ['a:*']\n  c: ['voice']\n",
             stems=["voice"],
         )
 
-        assert errors_of(root) == [
-            ("ruleset-cycle", RulesetSubject("a"), 2),
-            ("ruleset-cycle", RulesetSubject("b"), 3),
-        ]
+        assert errors_of(root) == [("ruleset-cycle", RulesetsSubject(("a", "b")), 2)]
 
     def test_a_ruleset_that_only_spreads_into_a_cycle_is_no_error(self, tmp_path):
         root = build(tmp_path, "rulesets:\n  a: ['b:*']\n  b: ['a:*']\n  c: ['a:*']\n")
 
-        assert [subject for _, subject, _ in errors_of(root)] == [
-            RulesetSubject("a"),
-            RulesetSubject("b"),
-        ]
+        assert [subject for _, subject, _ in errors_of(root)] == [RulesetsSubject(("a", "b"))]
 
     def test_a_ruleset_spreading_itself_is_a_cycle(self, tmp_path):
         root = build(tmp_path, "rulesets:\n  a: ['a:*']\n")
 
-        assert errors_of(root) == [("ruleset-cycle", RulesetSubject("a"), 2)]
+        assert errors_of(root) == [("ruleset-cycle", RulesetsSubject(("a",)), 2)]
 
-    def test_a_cycle_through_defaults_names_defaults_and_the_ruleset(self, tmp_path):
+    def test_a_cycle_through_defaults_is_one_error_at_the_first_member_written(self, tmp_path):
         root = build(tmp_path, "defaults: ['a:*']\nrulesets:\n  a: ['defaults:*']\n")
 
-        assert errors_of(root) == [
-            ("ruleset-cycle", KeySubject("defaults"), 1),
-            ("ruleset-cycle", RulesetSubject("a"), 3),
-        ]
+        assert errors_of(root) == [("ruleset-cycle", RulesetsSubject(("a", "defaults")), 1)]
 
-    def test_the_message_names_every_ruleset_in_the_cycle(self, tmp_path):
+    def test_the_message_says_the_spreads_form_a_cycle_and_reach_no_rule(self, tmp_path):
         root = build(tmp_path, "rulesets:\n  a: ['b:*']\n  b: ['a:*']\n")
 
-        message = check(root).errors[0].message
-        assert "`a`" in message
-        assert "`b`" in message
-        assert "cycle" in message
+        (error,) = check(root).errors
+        assert error.subject == RulesetsSubject(("a", "b"))
+        assert "cycle" in error.message
+        assert "reaches no rule" in error.message
 
     def test_the_error_names_the_manifest_file(self, tmp_path):
         root = build(tmp_path, "rulesets:\n  a: ['a:*']\n")
@@ -832,7 +826,6 @@ class TestOneRunReportsEveryError:
 
         assert sorted(kind for kind, _, _ in errors_of(root)) == [
             "condition-invalid",
-            "ruleset-cycle",
             "ruleset-cycle",
             "undeclared-reference",
         ]

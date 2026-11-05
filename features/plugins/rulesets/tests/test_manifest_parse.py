@@ -298,7 +298,11 @@ class TestAWrongShapeLeavesTheRestOfTheManifestStanding:
             (0, "flag a"),
             (4, "flag e"),
         ]
-        assert parsed.problems == (MalformedItem(1, 3), MalformedItem(2, 4), MalformedItem(3, 5))
+        assert parsed.problems == (
+            MalformedItem(1, 3, None),
+            MalformedItem(2, 4, None),
+            MalformedItem(3, 5, "flag d"),
+        )
 
     def test_the_manifest_keeps_the_path_it_was_read_from(self):
         parsed = manifest.parse_manifest("project: x\n", pathlib.Path("/pool/manifest.yaml"))
