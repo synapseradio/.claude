@@ -10,6 +10,7 @@ named facts or runs the hook entries that `hooks/hooks.json` wires, as the harne
 Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_rules_directories.py`.
 """
 
+import json
 import pathlib
 import re
 import sys
@@ -28,13 +29,19 @@ from rulesets.check.run import check  # noqa: E402
 from rulesets.cli import main  # noqa: E402
 from rulesets.compose.applying import applying_lists  # noqa: E402
 from rulesets.compose.composition import DeliveredRule, compose  # noqa: E402
-from rulesets.compose.precedence import Adds, Removes  # noqa: E402
+from rulesets.compose.precedence import (  # noqa: E402
+    Adds,
+    Position,
+    PositionBand,
+    Reach,
+    Removes,
+)
 from rulesets.compose.statements import statements  # noqa: E402
-from rulesets.facts.context import ABSENT, UNCLAIMED, Facts  # noqa: E402
+from rulesets.facts.context import ABSENT, Facts  # noqa: E402
+from rulesets.facts.kinds import Rank  # noqa: E402
 from rulesets.facts.model import fact as model_fact  # noqa: E402
 from rulesets.locations import Locations  # noqa: E402
 from rulesets.session.state import Band, SessionState, write_state  # noqa: E402
-from rulesets.source.condition import Truth, evaluate, parse_condition  # noqa: E402
 from rulesets.source.directory import Present, read_directory  # noqa: E402
 from rulesets.source.expansion import Expander  # noqa: E402
 from rulesets.source.pool import read_pool  # noqa: E402
@@ -185,7 +192,10 @@ class TestStatementAndPosition:
         tone = [statement for statement in made if statement.rule == "tone"]
         (include,) = [s for s in tone if isinstance(s.says, Adds)]
         (exclude,) = [s for s in tone if isinstance(s.says, Removes)]
-        assert include.position > exclude.position
+        assert include.position == Position(
+            PositionBand.DIRECTORY, Rank.FLAG, Reach.THROUGH_RULESET
+        )
+        assert exclude.position == Position(PositionBand.DIRECTORY, Rank.NONE, Reach.NAMED)
         assert {d.rule for d in compose(directory, facts, SessionState()).rules} == {
             "voice",
             "tone",
@@ -217,6 +227,10 @@ class TestThePoolHoldsEveryRuleFile:
 
         assert [e for e in report.errors if e.subject == RuleSubject("voice")] == []
         assert delivery.context == ""
+        assert delivery.messages == []
+        (record,) = world.records()
+        assert [(line["rule"], line["variant"]) for line in record["rules"]] == [("voice", None)]
+        assert record["withheld"] == []
 
 
 class TestAVariantBesideNoDefaultFormIsACheckError:
@@ -255,12 +269,16 @@ class TestTheReferencesAndRenderFoldersAreReserved:
         (root / "-render").mkdir()
         (root / "-render" / "voice.md").write_text("rendered voice\n", encoding="utf-8")
         (root / "-render" / "voice@terse.md").write_text("rendered terse\n", encoding="utf-8")
+        (root / "references").mkdir()
+        (root / "references" / "notes.md").write_text("reference notes\n", encoding="utf-8")
+        (root / "references" / "table.md").write_text("reference table\n", encoding="utf-8")
 
         pool = read_pool(root)
         report = check(root)
 
         assert list(pool.rules) == ["sorting"]
-        assert [w for w in report.warnings if w.kind == "stray-directory"] == []
+        assert report.errors == ()
+        assert report.warnings == ()
 
 
 class TestOneRulesetsDirectorySitsAtAFixedPathAtUserScope:
@@ -314,15 +332,23 @@ class TestARuleIsUnconditionalText:
     ):
         world.rule("scoped", "---\npaths: ['src/**']\n---\nscoped text\n")
         world.rule("modeled", "---\nmodel: haiku\n---\nmodeled text\n")
+        world.rule("broken", "---\npaths: [unclosed\n---\nbroken text\n")
         world.rule("plain", "plain text\n")
-        world.manifest(MODELS + "defaults: ['scoped', 'modeled', 'plain']\n")
+        world.manifest(MODELS + "defaults: ['scoped', 'modeled', 'broken', 'plain']\n")
 
         report = check(world.rulesets)
         delivery = world.start_session()
 
-        assert {e.subject for e in report.errors} == {RuleSubject("scoped"), RuleSubject("modeled")}
+        assert {e.subject for e in report.errors} == {
+            RuleSubject("scoped"),
+            RuleSubject("modeled"),
+            RuleSubject("broken"),
+        }
+        assert [e.kind for e in report.errors if e.subject == RuleSubject("broken")] == [
+            "frontmatter-unparsable"
+        ]
         assert delivery.context == "plain text\n"
-        assert sorted(withheld_rules(world)) == ["modeled", "scoped"]
+        assert sorted(withheld_rules(world)) == ["broken", "modeled", "scoped"]
 
     def test_prose_describing_when_a_rule_applies_is_delivered_as_plain_text_with_no_finding(
         self, world
@@ -377,7 +403,18 @@ class TestReservedRulesetsCarryFixedMeanings:
         world.rule("sorting")
         world.manifest(MODELS + "defaults: ['none:*']\n")
 
-        assert world.start_session().context == ""
+        alone = world.start_session()
+
+        assert check(world.rulesets).errors == ()
+        assert alone.messages == []
+        assert alone.context == ""
+
+        world.manifest(MODELS + "defaults: ['voice', 'none:*']\n")
+
+        beside_voice = world.start_session(session_id="s2")
+
+        assert beside_voice.messages == []
+        assert beside_voice.context == "text of voice\n"
 
 
 class TestTheDefaultsRulesetAppliesInEveryContextAtTheLowestPosition:
@@ -645,11 +682,16 @@ class TestExactlyOneVariantOfARuleReachesAContext:
 
         delivery = world.start_session()
 
+        report = check(world.rulesets)
+
         assert delivery.context == "the terse voice\n"
         assert delivery.message == (
             "the reference `voice@brisk` at manifest line 5 names `voice@brisk`, "
             "which is not declared; skipped"
         )
+        assert [(e.kind, e.subject, e.line) for e in report.errors] == [
+            ("undeclared-reference", ReferenceSubject("voice@brisk", 5), 5)
+        ]
 
 
 class TestAContextReceivesASetOfRulesWithNoDuplicates:
@@ -688,14 +730,36 @@ class TestRulesArriveSortedByName:
     def test_one_composed_set_yields_byte_identical_text_at_session_start_and_after_a_compaction(
         self, world
     ):
-        world.rule("writing-code", "writing text\n")
-        world.rule("core-rules", "core text\n")
-        world.manifest(MODELS + "defaults: ['writing-code', 'core-rules']\n")
+        bodies = {
+            "aa-no-final-newline": "no final newline",
+            "bb-crlf": "line one\r\nline two\r\n",
+            "cc-non-ascii": "caf\u00e9 \u2014 na\u00efve \u65e5\u672c\n",
+            "dd-large": "d" * 4000 + "\n",
+            "ee-large": "e" * 4000 + "\n",
+            "ff-large": "f" * 4000 + "\n",
+        }
+        for rule, text in bodies.items():
+            world.rule(rule, text)
+        world.manifest(MODELS + "defaults: ['*']\n")
+        first_part = (
+            "no final newline\n"
+            "line one\r\nline two\r\n"
+            "caf\u00e9 \u2014 na\u00efve \u65e5\u672c\n" + "d" * 4000 + "\n" + "e" * 4000 + "\n"
+        )
+        second_part = "f" * 4000 + "\n"
 
         started = world.start_session()
         compacted = world.start_session(source="compact")
 
-        assert started.context.encode() == b"core text\nwriting text\n"
+        def contexts(delivery):
+            return [
+                json.loads(delivery.outputs[part])["hookSpecificOutput"]["additionalContext"]
+                for part in sorted(delivery.outputs)
+                if delivery.outputs[part].strip()
+            ]
+
+        assert contexts(started) == [first_part, second_part]
+        assert [c.encode() for c in contexts(compacted)] == [c.encode() for c in contexts(started)]
         assert compacted.context.encode() == started.context.encode()
 
 
@@ -760,19 +824,24 @@ class TestTheEnginesCodeNamesNoContent:
         assert fact == model_fact.Claimed("haiku", "haiku", "built-in-pin")
         assert model_fact.claimed_name(fact) == "haiku"
 
-    def test_a_built_in_agents_pinned_identifier_stays_unclaimed_when_the_manifest_declares_no_model_names(
-        self, scene
-    ):
-        fact = scene.fact("claude-code-guide", models=[])
+        statusline = scene.fact("statusline-setup", models=["opus", "sonnet", "haiku"])
 
-        assert fact == model_fact.Unclaimed("haiku", "built-in-pin")
-        facts = Facts(
-            model=UNCLAIMED,
-            agent="claude-code-guide",
-            kind="delegate",
-            flags=frozenset(),
-        )
-        assert all(
-            evaluate(parse_condition(f"model {name}"), facts) is Truth.FALSE
-            for name in ("haiku", "opus", "sonnet")
-        )
+        assert statusline == model_fact.Claimed("sonnet", "sonnet", "built-in-pin")
+        assert model_fact.claimed_name(statusline) == "sonnet"
+
+    def test_a_built_in_agents_pinned_identifier_stays_unclaimed_when_the_manifest_declares_no_model_names(
+        self, world
+    ):
+        world.rule("voice")
+        world.manifest("defaults: []\nwhen:\n  - model haiku: ['voice']\n")
+
+        delivery = world.start_delegate("claude-code-guide")
+
+        assert delivery.context == ""
+        (record,) = world.records()
+        assert record["model"] == {
+            "state": "unclaimed",
+            "name": None,
+            "identifier": "haiku",
+            "source": "built-in-pin",
+        }

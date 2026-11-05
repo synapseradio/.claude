@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import dataclasses
 
-from rulesets.compose.applying import AppliedList, SkippedBlock, applying_lists, skipped_blocks
+from rulesets.compose.applying import SkippedBlock, applying_lists, skipped_blocks
 from rulesets.compose.precedence import Included, Statement, VariantConflict, inclusion, variant
+from rulesets.compose.skipped import SkippedReference, skipped_references
 from rulesets.compose.statements import statements
 from rulesets.compose.withheld import withheld
 from rulesets.facts.context import Facts
 from rulesets.session.state import SessionState
 from rulesets.source.directory import Present, RulesetsDirectory
-from rulesets.source.expansion import Expander, UnknownRule, UnknownRuleset, UnknownVariant
+from rulesets.source.expansion import Expander
 
 
 @dataclasses.dataclass(frozen=True)
@@ -29,15 +30,6 @@ class DeliveredConflict:
     rule: str
     variant: str | None
     conflict: VariantConflict
-
-
-@dataclasses.dataclass(frozen=True)
-class SkippedReference:
-    """A reference to an undeclared rule, variant, or ruleset, which contributed nothing."""
-
-    text: str
-    line: int
-    name: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -90,27 +82,7 @@ def compose(directory: RulesetsDirectory, facts: Facts, state: SessionState) -> 
     return Composition(
         tuple(delivered),
         tuple(met),
-        _skipped(applied, expander),
+        skipped_references(applied, expander),
         tuple(held),
         skipped_blocks(directory),
     )
-
-
-def _skipped(applied: tuple[AppliedList, ...], expander: Expander) -> tuple[SkippedReference, ...]:
-    """The references of the applying lists that name something undeclared, once each."""
-
-    found: dict[tuple[str, int], SkippedReference] = {}
-    for applying in applied:
-        for problem in expander.problems_reached(applying.references):
-            match problem:
-                case UnknownRule(reference, name) | UnknownRuleset(reference, name):
-                    pass
-                case UnknownVariant(reference, rule, variant):
-                    name = f"{rule}@{variant}"
-                case _:
-                    continue
-            found.setdefault(
-                (reference.text, reference.line),
-                SkippedReference(reference.text, reference.line, name),
-            )
-    return tuple(found.values())

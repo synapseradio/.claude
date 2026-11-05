@@ -37,6 +37,17 @@ def pool_errors(pool: Pool) -> tuple[CheckError, ...]:
         for file in rule.files():
             if file.problem is not None:
                 errors.append(CheckError("unreadable-file", subject, file.path, None, file.problem))
+            if file.frontmatter is not None and not file.frontmatter.parsed:
+                errors.append(
+                    CheckError(
+                        "frontmatter-unparsable",
+                        subject,
+                        file.path,
+                        None,
+                        f"the frontmatter of rule `{rule.name}` is not valid YAML, "
+                        "so whether it holds a condition is unknown",
+                    )
+                )
             condition = next((k for k in file.frontmatter_keys if k.key in _CONDITION_KEYS), None)
             if condition is not None:
                 errors.append(

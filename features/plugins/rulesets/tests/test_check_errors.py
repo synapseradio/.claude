@@ -434,12 +434,15 @@ class TestARuleWhoseFrontmatterCarriesACondition:
 
         assert errors_of(root) == []
 
-    def test_frontmatter_that_does_not_parse_is_no_error_and_no_warning(self, tmp_path):
+    def test_frontmatter_that_does_not_parse_is_an_error_on_the_rule_and_no_warning(self, tmp_path):
         root = build(tmp_path, bodies={"voice": "---\npaths: [unclosed\n---\ntext\n"})
 
         report = check(root)
 
-        assert (report.errors, report.warnings) == ((), ())
+        (error,) = report.errors
+        assert (error.kind, error.subject) == ("frontmatter-unparsable", RuleSubject("voice"))
+        assert error.file == root / "rules" / "voice.md"
+        assert report.warnings == ()
 
     def test_a_fence_closed_with_no_trailing_newline_still_carries_a_condition(self, tmp_path):
         root = build(tmp_path)

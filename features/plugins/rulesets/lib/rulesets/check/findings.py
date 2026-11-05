@@ -118,6 +118,7 @@ type ErrorKind = Literal[
     "undeclared-reference",
     "malformed-reference",
     "rule-condition",
+    "frontmatter-unparsable",
     "variant-without-default",
     "unreadable-file",
     "unquoted-entry",
