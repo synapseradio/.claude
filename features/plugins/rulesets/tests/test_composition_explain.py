@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Explain traces one rule through one context, so a person sees which manifest line decided it.
+"""Explain and check tell a rule author what the engine will deliver and what it will not.
 
-Serves the rule author who asks why an agent did or did not receive a rule, and in which form.
-Each case builds its rulesets directory under `tmp_path`, runs the `explain` subcommand as a
-script, as a person does, and reads the lines it prints. Expected values come from the specs and
-the fixture files, never from the engine's own composition.
+Serves the rule author who asks why an agent did or did not receive a rule, and who runs check
+before trusting a delivery. Each case builds its rulesets directory under `tmp_path`, runs the
+`explain` or `check` subcommand as a script, or a hook delivery, as a person and the harness do,
+and reads what they print or receive. Expected values come from the specs and the fixture files,
+never from the engine's own composition.
 
 Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_composition_explain.py`.
 """
@@ -13,13 +14,20 @@ import pathlib
 import re
 import subprocess
 import sys
+from typing import NamedTuple
+
+import pytest
+from delivery_world import DECLARED, World
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 CLI = PLUGIN_ROOT / "lib" / "rulesets" / "cli.py"
 
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
-from rulesets.compose.composition import compose  # noqa: E402  (path must be set before this import)
+from rulesets.check.cross_reference_check import (  # noqa: E402  (path must be set before this import)
+    cross_reference_warnings,
+)
+from rulesets.compose.composition import compose  # noqa: E402
 from rulesets.facts.context import ABSENT, Facts  # noqa: E402
 from rulesets.session.state import SessionState  # noqa: E402
 from rulesets.source.directory import read_directory  # noqa: E402
@@ -46,6 +54,49 @@ def explain(root, rule, *options):
         check=False,
         cwd=CLI.parent,
     )
+
+
+def check(root):
+    return subprocess.run(
+        [sys.executable, str(CLI), "check", "--root", str(root)],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=CLI.parent,
+    )
+
+
+class Finding(NamedTuple):
+    file: str
+    line: int | None
+    severity: str
+    kind: str
+    message: str
+
+
+_FINDING = re.compile(
+    r"(?P<file>.+?)(?::(?P<line>\d+))?: (?P<severity>error|warning) \[(?P<kind>[^\]]+)\] (?P<message>.*)"
+)
+
+
+def findings(result):
+    """Each line check printed as its file, line, severity, kind, and message."""
+
+    found = []
+    for text in result.stdout.splitlines():
+        parts = _FINDING.fullmatch(text)
+        assert parts, f"not a finding line: {text!r}"
+        line = parts["line"]
+        found.append(
+            Finding(
+                parts["file"],
+                int(line) if line else None,
+                parts["severity"],
+                parts["kind"],
+                parts["message"],
+            )
+        )
+    return found
 
 
 def attribute(result, name):
@@ -313,3 +364,325 @@ class TestExplainExitsNonZeroOnAnUnknownRule:
 
         assert result.returncode != 0
         assert "no-such-rule" in result.stderr
+
+
+class TestCheckReportsEveryErrorAndWarningInOneRun:
+    def test_a_cycle_a_bad_condition_and_a_missing_rule_are_all_reported_with_file_and_line(
+        self, tmp_path
+    ):
+        root = build(
+            tmp_path,
+            "defaults: ['ghost']\n"
+            "rulesets:\n"
+            "  a: ['b:*']\n"
+            "  b: ['a:*']\n"
+            "when:\n"
+            "  - project amboss: ['voice']\n",
+            ["voice"],
+        )
+        manifest = str(root / "manifest.yaml")
+
+        result = check(root)
+
+        assert result.returncode != 0
+        found = findings(result)
+        assert sorted((f.file, f.line, f.severity, f.kind) for f in found) == [
+            (manifest, 1, "error", "undeclared-reference"),
+            (manifest, 3, "error", "ruleset-cycle"),
+            (manifest, 4, "error", "ruleset-cycle"),
+            (manifest, 6, "error", "condition-invalid"),
+        ]
+        by_line = {f.line: f.message for f in found}
+        assert "ghost" in by_line[1]
+        assert "project" in by_line[6]
+
+    def test_warnings_alone_are_reported_with_file_and_line_and_the_exit_status_is_zero(
+        self, tmp_path
+    ):
+        root = build(
+            tmp_path,
+            "defaults: ['report-format']\n",
+            ["sorting"],
+            {"report-format": "Follow sorting before you list items\n"},
+        )
+
+        result = check(root)
+
+        assert result.returncode == 0
+        by_kind = {f.kind: f for f in findings(result)}
+        assert sorted(by_kind) == ["cross-reference", "never-included"]
+        assert {f.severity for f in by_kind.values()} == {"warning"}
+        assert by_kind["never-included"].file == str(root / "rules" / "sorting.md")
+        assert "`sorting`" in by_kind["never-included"].message
+        assert (by_kind["cross-reference"].file, by_kind["cross-reference"].line) == (
+            str(root / "rules" / "report-format.md"),
+            1,
+        )
+
+    def test_a_directory_with_no_error_and_no_warning_prints_nothing_and_exits_zero(self, tmp_path):
+        root = build(tmp_path, "defaults: ['all:*']\n", ["voice", "sorting"])
+
+        result = check(root)
+
+        assert (result.returncode, result.stdout, result.stderr) == (0, "", "")
+
+
+class TestCheckWarnsOfARuleNoAddIncludes:
+    def test_a_rule_included_only_by_a_block_keyed_on_a_flag_never_set_draws_no_warning(
+        self, tmp_path
+    ):
+        root = build(
+            tmp_path,
+            "flags: ['never-set']\nwhen:\n  - flag never-set: ['voice']\n",
+            ["voice"],
+        )
+
+        result = check(root)
+
+        assert (result.returncode, result.stdout) == (0, "")
+
+    def test_a_rule_that_defaults_removes_and_no_list_adds_draws_a_warning_naming_rule_and_file(
+        self, tmp_path
+    ):
+        root = build(tmp_path, "defaults: ['voice', '-sorting']\n", ["voice", "sorting"])
+
+        result = check(root)
+
+        assert result.returncode == 0
+        (finding,) = findings(result)
+        assert finding.severity == "warning"
+        assert finding.kind == "never-included"
+        assert finding.file == str(root / "rules" / "sorting.md")
+        assert "`sorting`" in finding.message
+
+
+class TestCheckReportsAnErrorForEachIllegalDeclarationReferenceOrCycle:
+    def test_an_unknown_top_level_key_is_an_error_naming_the_key(self, tmp_path):
+        root = build(tmp_path, "defaults: ['voice']\nproject: amboss\n", ["voice"])
+
+        result = check(root)
+
+        assert result.returncode != 0
+        (finding,) = findings(result)
+        assert (finding.file, finding.line) == (str(root / "manifest.yaml"), 2)
+        assert (finding.severity, finding.kind) == ("error", "unknown-key")
+        assert "`project`" in finding.message
+
+
+class TestCheckReportsAnErrorForEachIllegalBlock:
+    def test_a_block_whose_value_is_a_mapping_is_an_error_naming_the_block(self, tmp_path):
+        root = build(
+            tmp_path,
+            "models: ['opus']\nwhen:\n  - model opus: {rule: voice}\n",
+            ["voice"],
+        )
+
+        result = check(root)
+
+        assert result.returncode != 0
+        (finding,) = [f for f in findings(result) if f.severity == "error"]
+        assert (finding.file, finding.line) == (str(root / "manifest.yaml"), 3)
+        assert (finding.severity, finding.kind) == ("error", "item-shape")
+        assert finding.message.startswith("item 1:")
+
+
+class TestCheckReportsCrossReferenceAndLayoutWarnings:
+    def test_a_body_opening_with_a_marker_for_another_rule_is_a_misnamed_body_warning(
+        self, tmp_path
+    ):
+        root = build(
+            tmp_path,
+            "defaults: ['all:*']\n",
+            bodies={"voice": "<!-- rule: sorting -->\ntext\n"},
+        )
+
+        result = check(root)
+
+        assert result.returncode == 0
+        (finding,) = findings(result)
+        assert (finding.file, finding.line) == (str(root / "rules" / "voice.md"), 1)
+        assert (finding.severity, finding.kind) == ("warning", "marker-for-another-rule")
+
+
+class TestCheckWarnsWhereARuleNamesAnotherRule:
+    def test_one_rules_text_holding_anothers_name_warns_naming_both_and_a_self_name_draws_none(
+        self, tmp_path
+    ):
+        root = build(
+            tmp_path,
+            "defaults: ['all:*']\n",
+            ["sorting"],
+            {
+                "report-format": "Follow sorting before you list items\n",
+                "voice": "The voice rule keeps one voice\n",
+            },
+        )
+
+        result = check(root)
+
+        assert result.returncode == 0
+        (finding,) = findings(result)
+        assert (finding.severity, finding.kind) == ("warning", "cross-reference")
+        assert finding.file == str(root / "rules" / "report-format.md")
+        assert "`report-format`" in finding.message
+        assert "`sorting`" in finding.message
+
+    def test_the_warning_names_the_holder_then_the_named_rule_with_the_variant_file_and_line(
+        self, tmp_path
+    ):
+        root = build(
+            tmp_path,
+            "defaults: ['all:*']\n",
+            ["sorting", "voice"],
+            {"voice@terse": "Be terse.\nBe brief.\nPrefer sorting here.\nsorting again\n"},
+        )
+
+        result = check(root)
+
+        (finding,) = findings(result)
+        assert finding.kind == "cross-reference"
+        assert (finding.file, finding.line) == (str(root / "rules" / "voice@terse.md"), 3)
+        assert finding.message.index("`voice`") < finding.message.index("`sorting`")
+
+
+class TestCheckMatchesARuleNameAsAWholeWordCaseSensitive:
+    def test_a_name_inside_a_longer_word_or_in_another_case_draws_no_warning(self, tmp_path):
+        root = build(
+            tmp_path,
+            "defaults: ['all:*']\n",
+            ["comments", "sorting"],
+            {"notes": "uncomments the line\nsorting-rules\ncommentsection\nSorting\n"},
+        )
+
+        pool = read_directory(root).pool
+
+        assert cross_reference_warnings(pool) == ()
+
+
+@pytest.fixture
+def world(tmp_path):
+    return World(tmp_path)
+
+
+def withheld_rules(world):
+    return [w["rule"] for record in world.records() for w in record["withheld"]]
+
+
+class TestDeliveryWithholdsARuleCarryingACheckError:
+    def test_a_rule_with_a_metadata_condition_is_withheld_while_its_ruleset_siblings_deliver(
+        self, world
+    ):
+        world.rule("alpha")
+        world.rule("beta")
+        world.rule("gamma", "---\nmodel: opus\n---\ntext of gamma\n")
+        world.manifest(
+            DECLARED + "rulesets:\n  team: ['alpha', 'beta', 'gamma']\ndefaults: ['team:*']\n"
+        )
+
+        delivery = world.start_session()
+
+        assert delivery.context == "text of alpha\ntext of beta\n"
+        assert "gamma" in delivery.message
+        assert "condition" in delivery.message
+        (withheld,) = [w for r in world.records() for w in r["withheld"]]
+        assert withheld["rule"] == "gamma"
+        assert "condition" in withheld["error"]
+
+    def test_a_variant_with_no_default_form_delivers_no_text_and_a_shown_notice_names_it(
+        self, world
+    ):
+        world.rule("voice")
+        world.rule("tone@dry", "dry tone text\n")
+        world.manifest(DECLARED + "defaults: ['voice', 'tone@dry']\n")
+
+        delivery = world.start_session()
+
+        assert delivery.context == "text of voice\n"
+        assert "tone" in delivery.message
+        assert "default form" in delivery.message
+        assert withheld_rules(world) == ["tone"]
+
+
+class TestDeliverySkipsEachCycleAndBlockThatCarriesAnError:
+    def test_a_block_testing_an_env_fact_does_not_apply_while_the_other_blocks_do(self, world):
+        for stem in ("alpha", "beta", "gamma"):
+            world.rule(stem)
+        world.manifest(
+            DECLARED
+            + "defaults: ['alpha']\nwhen:\n  - env CI: ['beta']\n  - model opus: ['gamma']\n"
+        )
+
+        delivery = world.start_session()
+
+        assert delivery.context == "text of alpha\ntext of gamma\n"
+        assert withheld_rules(world) == []
+
+    def test_a_spread_of_a_ruleset_in_a_cycle_reaches_no_rule_and_other_lists_apply(self, world):
+        for stem in ("alpha", "beta"):
+            world.rule(stem)
+        world.manifest(
+            DECLARED
+            + "rulesets:\n  a: ['beta', 'b:*']\n  b: ['a:*']\n"
+            + "defaults: ['alpha']\nwhen:\n  - model opus: ['a:*']\n"
+        )
+
+        delivery = world.start_session()
+
+        assert delivery.context == "text of alpha\n"
+        assert withheld_rules(world) == []
+
+    def test_a_block_keyed_on_an_undeclared_flag_is_skipped_while_the_other_blocks_apply(
+        self, world
+    ):
+        for stem in ("alpha", "beta", "gamma"):
+            world.rule(stem)
+        world.manifest(
+            DECLARED
+            + "defaults: ['alpha']\nwhen:\n"
+            + "  - flag no-such-flag: ['beta']\n  - model opus: ['gamma']\n"
+        )
+
+        delivery = world.start_session()
+
+        assert delivery.context == "text of alpha\ntext of gamma\n"
+        assert withheld_rules(world) == []
+
+    def test_a_block_whose_value_is_a_mapping_applies_nowhere_while_the_other_blocks_apply(
+        self, world
+    ):
+        for stem in ("alpha", "beta", "gamma"):
+            world.rule(stem)
+        world.manifest(
+            DECLARED
+            + "defaults: ['alpha']\nwhen:\n"
+            + "  - model opus: {rule: beta}\n  - model opus: ['gamma']\n"
+        )
+
+        delivery = world.start_session()
+
+        assert delivery.context == "text of alpha\ntext of gamma\n"
+        assert withheld_rules(world) == []
+
+
+class TestDeliverySkipsUndeclaredReferencesReservedDeclarationsAndUnknownKeys:
+    def test_an_unknown_top_level_key_is_ignored_and_the_rule_arrives_as_without_it(self, world):
+        world.rule("sorting")
+        world.manifest(DECLARED + "project: amboss\nwhen:\n  - model opus: ['sorting']\n")
+
+        delivery = world.start_session()
+
+        assert delivery.context == "text of sorting\n"
+        assert delivery.message is None
+        assert withheld_rules(world) == []
+
+
+class TestAConflictAndAWarningWithholdNothing:
+    def test_a_rule_drawing_only_a_cross_reference_warning_is_delivered(self, world):
+        world.rule("report-format", "Follow sorting before you list items\n")
+        world.rule("sorting")
+        world.manifest(DECLARED + "defaults: ['report-format', 'sorting']\n")
+
+        delivery = world.start_session()
+
+        assert delivery.context == "Follow sorting before you list items\ntext of sorting\n"
+        assert withheld_rules(world) == []
