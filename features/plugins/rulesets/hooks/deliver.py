@@ -81,7 +81,7 @@ def _output(request: HookRequest, ending: bool, part: int, raw: str, locations: 
             request.event,
             deliver_first(request, locations, os.environ, slot, lifecycle_notices),
         )
-    return hook_output(request.event, deliver_later(slot, part))
+    return hook_output(request.event, deliver_later(request, locations, slot, part))
 
 
 if __name__ == "__main__":

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
+
+from rulesets.audit.delivery_record import DeliveryRecord
 
 
-def counted(records: Iterable[Mapping[str, object]]) -> tuple[Mapping[str, object], ...]:
+def counted(records: Iterable[DeliveryRecord]) -> tuple[DeliveryRecord, ...]:
     """The records that reached context, in file order.
 
     Switch records sharing one `prompt_id` mean no request ran between them, so only the last of
@@ -13,10 +15,9 @@ def counted(records: Iterable[Mapping[str, object]]) -> tuple[Mapping[str, objec
     """
 
     kept = list(records)
-    last_of: dict[object, int] = {}
+    last_of: dict[str, int] = {}
     for position, record in enumerate(kept):
-        prompt_id = _switch_prompt(record)
-        if prompt_id is not None:
+        if (prompt_id := _switch_prompt(record)) is not None:
             last_of[prompt_id] = position
     return tuple(
         record
@@ -25,6 +26,5 @@ def counted(records: Iterable[Mapping[str, object]]) -> tuple[Mapping[str, objec
     )
 
 
-def _switch_prompt(record: Mapping[str, object]) -> object | None:
-    switch = record.get("switch")
-    return switch.get("prompt_id") if isinstance(switch, Mapping) else None
+def _switch_prompt(record: DeliveryRecord) -> str | None:
+    return record.switch.prompt_id if record.switch else None

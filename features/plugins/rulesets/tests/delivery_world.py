@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 HOOKS_JSON = PLUGIN_ROOT / "hooks" / "hooks.json"
 TOGGLE_SKILL = PLUGIN_ROOT / "skills" / "toggle" / "SKILL.md"
+CLI = PLUGIN_ROOT / "lib" / "rulesets" / "cli.py"
 
 OPUS = "claude-opus-5-5"
 HAIKU = "claude-haiku-4-5"
@@ -86,6 +87,13 @@ class World:
         if not path.is_file():
             return []
         return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+
+    def emitted_records(self, session_id: str = "s1") -> list[dict]:
+        """The `emitted` records every later part of the session wrote, by part number."""
+
+        files = sorted(self.record_files(session_id).glob("emitted-*.jsonl"))
+        lines = [line for file in files for line in file.read_text(encoding="utf-8").splitlines()]
+        return sorted((json.loads(line) for line in lines), key=lambda record: record["part"])
 
     def model_record(self, session_id: str = "s1") -> dict | None:
         """The session's model record as the engine keeps it, or None where none is written."""
@@ -172,6 +180,22 @@ class World:
         )
         return subprocess.run(
             ["bash", "-c", filled],
+            capture_output=True,
+            text=True,
+            env=self._environ(),
+            check=False,
+        )
+
+    def delivery_check(
+        self, session_id: str = "s1", root: pathlib.Path | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        """The `delivery-check` subcommand, run through the launcher as the skill runs it."""
+
+        arguments = ["delivery-check", "--session", session_id]
+        if root is not None:
+            arguments += ["--root", str(root)]
+        return subprocess.run(
+            ["bash", str(PLUGIN_ROOT / "hooks" / "with-python.sh"), str(CLI), *arguments],
             capture_output=True,
             text=True,
             env=self._environ(),

@@ -27,6 +27,7 @@ class SkippedBlock:
     """A block whose condition names models or flags the manifest does not declare; it applies nowhere."""
 
     condition: str
+    line: int
     undeclared: Undeclared
 
 
@@ -43,7 +44,7 @@ def skipped_blocks(directory: RulesetsDirectory) -> tuple[SkippedBlock, ...]:
             continue
         undeclared = undeclared_names(condition, directory.manifest.manifest)
         if undeclared.named:
-            skipped.append(SkippedBlock(item.condition, undeclared))
+            skipped.append(SkippedBlock(item.condition, item.line, undeclared))
     return tuple(skipped)
 
 

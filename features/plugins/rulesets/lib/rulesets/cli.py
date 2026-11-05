@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Command line for the rulesets engine: `check --root <dir>` and `toggle --session <id> <action>`.
+"""Command line for the rulesets engine: `check`, `toggle`, and `delivery-check`.
 
 This module parses arguments, prints, and sets the exit status. Every finding comes from
 `rulesets.check.run`, and every line's wording from `rulesets.check.report_format`. A toggle's
-change comes from `rulesets.session.toggle`.
+change comes from `rulesets.session.toggle`, and a delivery difference from
+`rulesets.audit.delivery_check`.
 """
 
 import argparse
@@ -13,6 +14,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
+from rulesets.audit.delivery_check import delivery_check
 from rulesets.check.report_format import report_lines
 from rulesets.check.run import check
 from rulesets.locations import Locations
@@ -49,6 +51,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="print every error and warning of a rulesets directory; exit 1 only on an error",
     )
     checking.add_argument("--root", required=True, type=pathlib.Path, help="the rulesets directory")
+    auditing = commands.add_parser(
+        "delivery-check",
+        help="recompose each counted delivery of a session and print one line per difference",
+    )
+    auditing.add_argument(
+        "--session", required=True, help="the session whose deliveries are checked"
+    )
+    auditing.add_argument(
+        "--root", type=pathlib.Path, help="the rulesets directory; the configured one by default"
+    )
     toggling = commands.add_parser(
         "toggle", help="change what the delegates this session starts from now on receive"
     )
@@ -106,6 +118,13 @@ def main(argv: list[str] | None = None) -> int:
             effect = _EFFECTS[arguments.action].format(name=arguments.name)
             print(f"Delegates started from now on {effect}.")
         return status
+    if arguments.command == "delivery-check":
+        locations = Locations.from_environment(os.environ)
+        root = arguments.root or locations.rulesets
+        differences = delivery_check(locations, arguments.session, root)
+        for difference in differences:
+            print(difference.line())
+        return 1 if differences else 0
     if not arguments.root.is_dir():
         print(f"cli.py: no rulesets directory at {arguments.root}", file=sys.stderr)
         return _USAGE_ERROR

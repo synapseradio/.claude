@@ -31,14 +31,16 @@ class SessionState:
     flags: Mapping[str, FlagSetting] = dataclasses.field(default_factory=dict)
 
 
-def _path(locations: Locations, session_id: str):
+def state_path(locations: Locations, session_id: str):
+    """The file a session's state is kept in, whether or not it exists."""
+
     return locations.state / "session" / f"{session_id}.yaml"
 
 
 def read_state(locations: Locations, session_id: str) -> SessionState:
     """The state a session wrote; a missing file reads as the empty state."""
 
-    path = _path(locations, session_id)
+    path = state_path(locations, session_id)
     if not path.is_file():
         return SessionState()
     document = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -50,7 +52,7 @@ def read_state(locations: Locations, session_id: str) -> SessionState:
 def write_state(locations: Locations, session_id: str, state: SessionState) -> None:
     """Write the state by replacing the file in one step."""
 
-    path = _path(locations, session_id)
+    path = state_path(locations, session_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     document: dict[str, object] = {}
     if state.band is not None:
@@ -65,11 +67,11 @@ def write_state(locations: Locations, session_id: str, state: SessionState) -> N
 def remove_state(locations: Locations, session_id: str) -> None:
     """Remove the session's state file; a session with none stays as it is."""
 
-    _path(locations, session_id).unlink(missing_ok=True)
+    state_path(locations, session_id).unlink(missing_ok=True)
 
 
 def copy_state(locations: Locations, from_id: str, to_id: str) -> None:
     """Give `to_id` the state `from_id` holds now; a source with none leaves `to_id` as it is."""
 
-    if _path(locations, from_id).is_file():
+    if state_path(locations, from_id).is_file():
         write_state(locations, to_id, read_state(locations, from_id))

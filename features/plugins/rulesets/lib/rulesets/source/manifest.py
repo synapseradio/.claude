@@ -22,7 +22,7 @@ from rulesets.source.reference import (
 )
 from rulesets.source.text_file import UnreadableFile, read_text_file
 
-_MANIFEST_FILE = "manifest.yaml"
+MANIFEST_FILE = "manifest.yaml"
 _MISSING_MANIFEST = "defaults: ['all:*']\n"
 _QUOTE_STYLES = ("'", '"')
 _QUOTE_ADVICE = "write every list entry as a quoted string"
@@ -363,7 +363,7 @@ def read_manifest(root: pathlib.Path) -> Manifest:
     parse raises ManifestParseError.
     """
 
-    path = root / _MANIFEST_FILE
+    path = root / MANIFEST_FILE
     try:
         text = read_text_file(path) if path.is_file() else _MISSING_MANIFEST
     except UnreadableFile as failure:

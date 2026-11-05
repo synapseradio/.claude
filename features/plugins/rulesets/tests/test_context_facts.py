@@ -147,7 +147,7 @@ class TestEachFactKindHasADefinedValue:
         world.start_delegate("critic")
 
         (record,) = world.records()
-        assert (record["model"]["name"], record["agent"], record["kind"]) == (
+        assert (record["model"]["name"], record["agent"]["name"], record["kind"]) == (
             "haiku",
             "critic",
             "delegate",
@@ -574,7 +574,7 @@ class TestTheAgentFactComesFromTheHarnessesAgentType:
 
         assert received(delivery, stems) == ["voice"]
         (record,) = world.records()
-        assert record["agent"] == "critic"
+        assert record["agent"] == {"state": "named", "name": "critic"}
 
 
 class TestAPlainMainSessionCarriesNoAgentFact:
@@ -587,7 +587,8 @@ class TestAPlainMainSessionCarriesNoAgentFact:
         assert received(delivery, ["voice"]) == []
         assert truth("agent eval-runner") == "UNKNOWN"
         (record,) = world.records()
-        assert record["agent"] is None
+        assert record["agent"]["state"] == "absent"
+        assert "without `--agent`" in record["agent"]["reason"]
         (absent,) = [n for n in record["notices"] if n["kind"] == "agent-absent"]
         assert absent["shown"] is False
         assert "agent fact is absent" in absent["subject"]
@@ -751,7 +752,7 @@ class TestTheCallersModelIsReadFromTheAgentToolHooksRecord:
         world.start_delegate("critic", agent_id="a1")
         world.start_delegate("scout", agent_id="a2")
 
-        by_agent = {record["agent"]: model_of(record) for record in delegate_records(world)}
+        by_agent = {record["agent"]["name"]: model_of(record) for record in delegate_records(world)}
         assert by_agent == {"critic": ("haiku", "per-spawn"), "scout": ("opus", "per-spawn")}
 
 
@@ -1114,7 +1115,7 @@ class TestTheDeliveryRecordNamesEachFactsSource:
         (record,) = delegate_records(world)
         assert model_of(record) == ("opus", "per-spawn")
         assert record["model"]["name"] == "opus"
-        assert record["agent"] == "critic"
+        assert record["agent"] == {"state": "named", "name": "critic"}
         assert record["tools"]["state"] == "all-but"
         assert record["tools"]["source"] == str(world.config / "agents" / "critic.md")
 

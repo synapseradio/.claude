@@ -18,10 +18,16 @@ def _safe(key: str) -> str:
     return cleaned or "session"
 
 
+def audit_dir(state: pathlib.Path) -> pathlib.Path:
+    """The directory holding one directory of records for each session."""
+
+    return state / "audit"
+
+
 def session_dir(session_id: str, state: pathlib.Path) -> pathlib.Path:
     """The directory holding one session's records."""
 
-    return state / "audit" / _safe(session_id)
+    return audit_dir(state) / _safe(session_id)
 
 
 def append_spawn(

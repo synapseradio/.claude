@@ -915,8 +915,11 @@ def counted_models(world):
     """The identifiers of the records the readers count, in file order."""
 
     from rulesets.audit.counted import counted
+    from rulesets.audit.delivery_record import DeliveryRecord
 
-    return [r["model"]["identifier"] for r in counted(world.records())]
+    return [
+        r.model.identifier for r in counted(DeliveryRecord.from_json(r) for r in world.records())
+    ]
 
 
 class TestAMidSessionModelChangeDeliversTheNewRulesAndStatesItsLimit:
@@ -1089,3 +1092,6 @@ class TestOnlyTheLastOfSeveralRapidSwitchesCountsAsDelivered:
         world.switch_model(HAIKU, from_model=SONNET)
 
         assert counted_models(world) == [OPUS, SONNET, HAIKU]
+        check = world.delivery_check()
+        assert (check.stdout, check.returncode) == ("", 0)
+        assert "composed but not delivered" not in check.stdout

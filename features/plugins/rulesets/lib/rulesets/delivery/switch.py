@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from rulesets.compose.composition import compose
 from rulesets.delivery.first_part import deliver_first
 from rulesets.delivery.hook_output import PartOutput
-from rulesets.delivery.plan import Plan, write_plan
+from rulesets.delivery.plan import clear_plan
 from rulesets.delivery.request import ModelSwitch
 from rulesets.facts.model.record import write_model_record
 from rulesets.facts.resolve_context import resolve_context
@@ -31,7 +31,7 @@ def deliver_switch(
 
     if request.from_model is not None and _composes_alike(request, locations, environ):
         write_model_record(request.session_id, request.to_model, locations.state)
-        write_plan(slot, Plan(()))
+        clear_plan(slot)
         return PartOutput()
     return deliver_first(request, locations, environ, slot, (earlier_rules_remain_notice(),))
 

@@ -3,18 +3,43 @@
 from __future__ import annotations
 
 import pathlib
+import time
 
+from rulesets.audit import log
+from rulesets.audit.delivery_record import digest_of_text
+from rulesets.audit.emitted_record import EmittedRecord
 from rulesets.delivery.hook_output import PartOutput
 from rulesets.delivery.plan import await_plan
+from rulesets.delivery.request import ForkStart, ModelSwitch, SessionStart, SubagentStart
+from rulesets.locations import Locations
 
 
-def deliver_later(slot: pathlib.Path, part: int) -> PartOutput:
-    """The text of part `part`, or nothing where the plan has no such part or no plan was written."""
+def deliver_later(
+    request: SessionStart | ModelSwitch | SubagentStart | ForkStart,
+    locations: Locations,
+    slot: pathlib.Path,
+    part: int,
+) -> PartOutput:
+    """The text of part `part`, which is recorded as emitted, or nothing where the plan has no such part."""
 
     plan = await_plan(slot, part)
     if plan is None:
         return PartOutput()
     for planned in plan.parts:
         if planned.index == part:
-            return PartOutput("".join(body.text for body in planned.bodies))
+            text = "".join(body.text for body in planned.bodies)
+            record = EmittedRecord(
+                session_id=request.session_id,
+                agent_id=request.agent_id
+                if isinstance(request, SubagentStart | ForkStart)
+                else None,
+                time_ns=time.time_ns(),
+                part=part,
+                part_count=len(plan.parts),
+                model=plan.model,
+                rules=tuple(body.rule for body in planned.bodies),
+                digest=digest_of_text(text),
+            )
+            log.append(log.emitted_file(locations, request.session_id, part), record.to_json())
+            return PartOutput(text)
     return PartOutput()
