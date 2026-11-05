@@ -1,8 +1,8 @@
 """Parse a `when` item's condition into a tree of fact tests, and evaluate it over a context.
 
 A condition tests facts with `model <name>`, `agent <name>`, `kind session|delegate|fork`,
-`flag <name>`, and `session <id>`, and combines the tests with `and`, `or`, `not`, and parentheses. `not` binds
-tighter than `and`, and `and` tighter than `or`. A run of one operator groups to the left.
+`tools <Tool>`, `flag <name>`, and `session <id>`, and combines the tests with `and`, `or`,
+`not`, and parentheses. `not` binds tighter than `and`, and `and` tighter than `or`. A run of one operator groups to the left.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from typing import Literal, assert_never, get_args
 
 from rulesets.facts.context import Absent, Facts, Kind, NoClaim
 
-type Fact = Literal["model", "agent", "kind", "flag", "session"]
+type Fact = Literal["model", "agent", "kind", "tools", "flag", "session"]
 
 FACTS: tuple[str, ...] = get_args(Fact.__value__)
 _KINDS: tuple[str, ...] = get_args(Kind.__value__)
@@ -208,6 +208,12 @@ def evaluate(condition: Condition, facts: Facts) -> Truth:
                 return _known_equal(facts.agent, name)
             case FactTest("kind", name):
                 return Truth.of(facts.kind == name)
+            case FactTest("tools", name):
+                match facts.tools:
+                    case Absent():
+                        return Truth.UNKNOWN
+                    case held:
+                        return Truth.of(held.holds(name))
             case FactTest("flag", name):
                 return Truth.of(name in facts.flags)
             case FactTest("session", name):

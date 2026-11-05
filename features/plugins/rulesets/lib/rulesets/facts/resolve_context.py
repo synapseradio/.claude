@@ -6,14 +6,25 @@ import dataclasses
 from collections.abc import Mapping
 
 from rulesets.delivery.request import SessionStart, SubagentStart
-from rulesets.facts.context import ABSENT, UNCLAIMED, Absent, Facts, NoClaim
+from rulesets.facts.agent_definition import definition_front
+from rulesets.facts.agent_fact import agent_fact
+from rulesets.facts.context import (
+    ABSENT,
+    UNCLAIMED,
+    Absent,
+    AllToolsBut,
+    Facts,
+    ListedTools,
+    NoClaim,
+)
 from rulesets.facts.flags import launch_flags
 from rulesets.facts.model.delegate import resolve_delegate_model
 from rulesets.facts.model.fact import Claimed, Missing, ModelFact, Unclaimed
 from rulesets.facts.model.notice import model_notice
 from rulesets.facts.model.session import resolve_session_model
+from rulesets.facts.tools_fact import tools_fact
 from rulesets.locations import Locations
-from rulesets.notices import Notice, absent_agent_notice, flag_notice
+from rulesets.notices import Notice, absent_agent_notice, absent_tools_notice, flag_notice
 from rulesets.source.condition import ConditionError, fact_tests, parse_condition
 from rulesets.source.directory import Present, RulesetsDirectory
 from rulesets.source.manifest import Manifest
@@ -42,24 +53,29 @@ def resolve_context(
     match request:
         case SessionStart():
             resolution = resolve_session_model(request.payload, models, environ, locations.state)
-            agent, kind = request.agent, "session"
+            kind = "session"
         case SubagentStart():
             resolution = resolve_delegate_model(
                 request.payload, models, environ, locations.state, locations.config
             )
-            agent, kind = request.agent_type, "delegate"
+            kind = "delegate"
     notices = [*resolution.notices]
     if (notice := model_notice(resolution.fact)) is not None:
         notices.append(notice)
     notices.extend(flag_notice(name) for name in launched.undeclared)
-    if agent is None and _tests_agent(manifest):
+    agent = agent_fact(request)
+    if isinstance(agent, Absent) and _tests(manifest, "agent"):
         notices.append(absent_agent_notice())
+    tools = _tools_of(agent, request, locations)
+    if isinstance(tools, Absent) and _tests(manifest, "tools"):
+        notices.append(absent_tools_notice(None if isinstance(agent, Absent) else agent))
     facts = Facts(
         _model_in_facts(resolution.fact),
-        ABSENT if agent is None else agent,
+        agent,
         kind,
         launched.declared,
         request.session_id,
+        tools,
     )
     return ResolvedContext(facts, resolution.fact, tuple(notices))
 
@@ -74,7 +90,18 @@ def _model_in_facts(fact: ModelFact) -> str | NoClaim | Absent:
             return ABSENT
 
 
-def _tests_agent(manifest: Manifest | None) -> bool:
+def _tools_of(
+    agent: str | Absent, request: SessionStart | SubagentStart, locations: Locations
+) -> ListedTools | AllToolsBut | Absent:
+    if isinstance(agent, Absent):
+        return ABSENT
+    cwd = request.payload.get("cwd")
+    return tools_fact(
+        definition_front(agent, cwd if isinstance(cwd, str) else None, locations.config)
+    )
+
+
+def _tests(manifest: Manifest | None, fact: str) -> bool:
     if manifest is None:
         return False
     for item in manifest.items:
@@ -82,6 +109,6 @@ def _tests_agent(manifest: Manifest | None) -> bool:
             tests = fact_tests(parse_condition(item.condition))
         except ConditionError:
             continue
-        if any(test.fact == "agent" for test in tests):
+        if any(test.fact == fact for test in tests):
             return True
     return False

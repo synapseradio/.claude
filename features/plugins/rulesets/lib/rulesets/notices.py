@@ -21,6 +21,7 @@ type NoticeKind = Literal[
     "reference-skipped",
     "rule-left-out",
     "rule-withheld",
+    "tools-absent",
     "variant-conflict",
 ]
 
@@ -55,6 +56,14 @@ def provider_notices(env: Mapping[str, str]) -> tuple[Notice, ...]:
 
     if flag_is_set(env, HOST_MANAGED_VARIABLE):
         return (Notice("provider-variable", HOST_MANAGED_VARIABLE),)
+    return ()
+
+
+def disregarded_variable_notices(env: Mapping[str, str], variable: str) -> tuple[Notice, ...]:
+    """The notice naming `variable` as set, where a host-managed provider may have disregarded it."""
+
+    if flag_is_set(env, HOST_MANAGED_VARIABLE):
+        return (Notice("provider-variable", variable),)
     return ()
 
 
@@ -104,6 +113,15 @@ def withheld_notice(rule: str, error: str) -> Notice:
 
 def absent_agent_notice() -> Notice:
     return Notice("agent-absent", "the agent fact is absent: the session started without `--agent`")
+
+
+def absent_tools_notice(agent: str | None) -> Notice:
+    if agent is None:
+        return Notice("tools-absent", "the tools fact is absent: the context has no agent type")
+    return Notice(
+        "tools-absent",
+        f"the tools fact is absent: no definition file registers its agent type `{agent}`",
+    )
 
 
 def fork_notice() -> Notice:

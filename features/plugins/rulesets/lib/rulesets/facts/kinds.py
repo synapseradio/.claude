@@ -19,6 +19,7 @@ _FACT_RANKS: dict[str, Rank] = {
     "model": Rank.MODEL,
     "agent": Rank.AGENT_KIND_TOOLS,
     "kind": Rank.AGENT_KIND_TOOLS,
+    "tools": Rank.AGENT_KIND_TOOLS,
     "flag": Rank.FLAG,
     "session": Rank.SESSION,
 }

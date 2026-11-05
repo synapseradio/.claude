@@ -21,11 +21,15 @@ PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
+from rulesets import spawn_log  # noqa: E402
 from rulesets.check.report_format import report_lines  # noqa: E402
 from rulesets.check.run import check  # noqa: E402
-from rulesets.facts.context import ABSENT, UNCLAIMED, Facts  # noqa: E402
+from rulesets.facts.agent_definition import definition_front  # noqa: E402
+from rulesets.facts.context import ABSENT, UNCLAIMED, AllToolsBut, Facts, ListedTools  # noqa: E402
 from rulesets.facts.model import claim as model_claim  # noqa: E402
 from rulesets.facts.model import fact as model_fact  # noqa: E402
+from rulesets.facts.model import session as session_model  # noqa: E402
+from rulesets.facts.tools_fact import tools_fact  # noqa: E402
 from rulesets.source.condition import evaluate, parse_condition  # noqa: E402
 
 
@@ -351,3 +355,299 @@ class TestDeliveryCompletesWhenTheModelIsUnclaimedOrMissing:
         assert received(delivery, ["voice"]) == ["voice"]
         (record,) = world.records()
         assert record["model"]["state"] == "missing"
+
+
+def alias_world(world, **variables):
+    """A world declaring the four profile aliases, with the profile variables set."""
+
+    world.rule("voice")
+    world.manifest("models: ['opus', 'sonnet', 'haiku', 'fable']\ndefaults: ['voice']\n")
+    world.environment.update(variables)
+
+
+def caller_names(world, model, agent_type="critic"):
+    """The per-spawn model the caller named, as the Agent tool hook records it."""
+
+    state = world.config / ".tmp" / "rulesets-engine"
+    spawn_log.append_spawn("s1", "p1", agent_type, model, state)
+
+
+def shown_notices(record):
+    return [n for n in record["notices"] if n["shown"]]
+
+
+class TestModelAliasesResolveThroughTheProfileVariables:
+    def test_an_alias_takes_the_identifier_its_profile_variable_holds(self, scene):
+        scene.caller_names("haiku")
+
+        fact = scene.fact(env={"ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5"})
+
+        assert fact == model_fact.Claimed("haiku", "claude-haiku-5", "per-spawn")
+
+    def test_an_alias_with_no_profile_variable_keeps_its_text(self, scene):
+        scene.caller_names("haiku")
+
+        fact = scene.fact(env={})
+
+        assert fact == model_fact.Claimed("haiku", "haiku", "per-spawn")
+
+    def test_a_profile_variable_naming_a_non_claude_model_is_unclaimed_and_draws_a_shown_notice(
+        self, world
+    ):
+        alias_world(world, ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5")
+        caller_names(world, "opus")
+
+        world.start_delegate("critic")
+
+        (record,) = world.records()
+        assert record["model"]["state"] == "unclaimed"
+        assert record["model"]["identifier"] == "glm-5"
+        (notice,) = shown_notices(record)
+        assert notice["kind"] == "model-unclaimed"
+        assert "glm-5" in notice["subject"]
+
+
+class TestEachAliasNamesItsProfileVariable:
+    def test_the_fable_alias_reads_the_fable_variable_and_no_other(self, scene):
+        scene.caller_names("fable")
+
+        fact = scene.fact(
+            env={
+                "ANTHROPIC_DEFAULT_FABLE_MODEL": "claude-fable-5-1",
+                "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5",
+                "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5",
+                "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5",
+            }
+        )
+
+        assert fact == model_fact.Claimed("fable", "claude-fable-5-1", "per-spawn")
+
+
+class TestTheEngineReadsNoModelVariableMeantForASeparateMechanism:
+    def test_the_collapse_model_variable_changes_nothing(self, tmp_path):
+        payload = {"model": "claude-opus-5-5", "session_id": "s1"}
+        collapse = {"CLAUDE_CONTEXT_COLLAPSE_MODEL": "claude-haiku-4-5"}
+
+        with_variable = session_model.resolve_session_model(
+            payload, ["opus", "haiku"], collapse, tmp_path
+        )
+        without_variable = session_model.resolve_session_model(
+            payload, ["opus", "haiku"], {}, tmp_path
+        )
+
+        assert with_variable.fact == model_fact.Claimed(
+            "opus", "claude-opus-5-5", "harness-reported"
+        )
+        assert with_variable == without_variable
+
+
+class TestAHostManagedProviderDrawsAnUnshownNoticeForADisregardedVariable:
+    def test_a_host_managed_alias_variable_still_resolves_with_an_unshown_notice(self, world):
+        alias_world(
+            world,
+            CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST="1",
+            ANTHROPIC_DEFAULT_OPUS_MODEL="claude-opus-5-5",
+        )
+        caller_names(world, "opus")
+
+        world.start_delegate("critic")
+
+        (record,) = world.records()
+        assert record["model"]["identifier"] == "claude-opus-5-5"
+        assert record["model"]["name"] == "opus"
+        assert {
+            "kind": "provider-variable",
+            "subject": "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST",
+            "shown": False,
+        } in record["notices"]
+
+    def test_an_inherited_anthropic_model_draws_only_an_unshown_notice(self, world):
+        alias_world(
+            world,
+            CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST="1",
+            ANTHROPIC_MODEL="claude-opus-5-5",
+        )
+
+        delivery = world.start_session(model=None)
+
+        (record,) = world.records()
+        assert {
+            "kind": "provider-variable",
+            "subject": "ANTHROPIC_MODEL",
+            "shown": False,
+        } in record["notices"]
+        assert shown_notices(record) == []
+        assert delivery.message is None
+
+
+class TestTheAgentFactComesFromTheHarnessesAgentType:
+    def test_a_delegates_agent_fact_follows_its_start_payload(self, world):
+        stems = ["voice", "tone"]
+        for stem in stems:
+            world.rule(stem)
+        world.manifest(
+            "defaults: []\nwhen:\n  - agent critic: ['voice']\n  - agent auditor: ['tone']\n"
+        )
+
+        delivery = world.start_delegate("critic")
+
+        assert received(delivery, stems) == ["voice"]
+        assert truth("agent critic", agent="critic") == "TRUE"
+        assert truth("agent auditor", agent="critic") == "FALSE"
+
+    def test_a_session_started_with_an_agent_carries_that_agent_fact(self, world):
+        stems = ["voice", "tone"]
+        for stem in stems:
+            world.rule(stem)
+        world.manifest(
+            "defaults: []\nwhen:\n  - agent critic: ['voice']\n  - agent auditor: ['tone']\n"
+        )
+
+        delivery = world.start_session(agent_type="critic")
+
+        assert received(delivery, stems) == ["voice"]
+        (record,) = world.records()
+        assert record["agent"] == "critic"
+
+
+class TestAPlainMainSessionCarriesNoAgentFact:
+    def test_an_agent_test_evaluates_unknown_and_the_record_names_the_absence(self, world):
+        world.rule("voice")
+        world.manifest("defaults: []\nwhen:\n  - agent eval-runner: ['voice']\n")
+
+        delivery = world.start_session()
+
+        assert received(delivery, ["voice"]) == []
+        assert truth("agent eval-runner") == "UNKNOWN"
+        (record,) = world.records()
+        assert record["agent"] is None
+        (absent,) = [n for n in record["notices"] if n["kind"] == "agent-absent"]
+        assert absent["shown"] is False
+        assert "agent fact is absent" in absent["subject"]
+
+
+class TestATestOverAnAbsentFactEvaluatesUnknown:
+    def test_a_negation_over_an_absent_fact_stays_unknown_and_the_block_does_not_apply(self, world):
+        world.rule("voice")
+        world.manifest("defaults: []\nwhen:\n  - not agent critic: ['voice']\n")
+
+        delivery = world.start_session()
+
+        assert received(delivery, ["voice"]) == []
+        assert truth("not agent critic") == "UNKNOWN"
+
+
+class TestConditionsCombineTrueFalseAndUnknownByThreeValuedLogic:
+    def test_a_true_side_settles_an_or_over_an_unknown_side(self):
+        assert truth("flag strict or model haiku", flags=["strict"], model="missing") == "TRUE"
+        assert truth("model haiku or flag strict", flags=["strict"], model="missing") == "TRUE"
+        assert truth("flag strict or model haiku", model="missing") == "UNKNOWN"
+
+    def test_a_false_side_settles_an_and_inside_a_negation(self, world):
+        world.rule("security-pass")
+        world.manifest(
+            DECLARED
+            + "defaults: []\nwhen:\n  - not (agent critic and model haiku): ['security-pass']\n"
+        )
+
+        scout = world.start_delegate("scout", session_id="s1")
+        critic = world.start_delegate("critic", session_id="s2")
+
+        assert received(scout, ["security-pass"]) == ["security-pass"]
+        assert received(critic, ["security-pass"]) == []
+        assert truth("not (agent critic and model haiku)", agent="scout") == "TRUE"
+        assert truth("not (agent critic and model haiku)", agent="critic") == "UNKNOWN"
+
+
+TOOL_BLOCKS = "defaults: []\nwhen:\n  - tools Bash: ['voice']\n  - tools Edit: ['tone']\n"
+
+
+def define_agent(world, name, front):
+    """An agent definition under the configuration directory with the given frontmatter lines."""
+
+    path = world.config / "agents" / f"{name}.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"---\nname: {name}\n{front}\n---\nbody\n", encoding="utf-8")
+
+
+def tools_of(world, name):
+    return tools_fact(definition_front(name, None, world.config))
+
+
+def tools_world(world):
+    for stem in ("voice", "tone"):
+        world.rule(stem)
+    world.manifest(TOOL_BLOCKS)
+
+
+class TestToolsComeFromTheAgentDefinition:
+    def test_the_tools_fact_follows_a_definitions_tools_list(self, world):
+        tools_world(world)
+        define_agent(world, "critic", "tools: Read, Grep, Bash")
+
+        delivery = world.start_delegate("critic")
+
+        assert tools_of(world, "critic") == ListedTools(frozenset({"Read", "Grep", "Bash"}))
+        assert received(delivery, ["voice", "tone"]) == ["voice"]
+
+    def test_a_yaml_list_of_tools_reads_as_the_same_fact(self, world):
+        define_agent(world, "critic", "tools: [Read, Grep, Bash]")
+
+        assert tools_of(world, "critic") == ListedTools(frozenset({"Read", "Grep", "Bash"}))
+
+
+class TestADisallowedToolEntryRemovesTheWholeTool:
+    def test_an_entry_with_a_specifier_removes_the_tool(self, world):
+        tools_world(world)
+        define_agent(world, "critic", "tools: Read, Grep, Bash\ndisallowedTools: Bash(git push *)")
+
+        delivery = world.start_delegate("critic")
+
+        assert tools_of(world, "critic") == ListedTools(frozenset({"Read", "Grep"}))
+        assert received(delivery, ["voice", "tone"]) == []
+
+
+class TestADefinitionWithNoToolsListInheritsEveryTool:
+    def test_every_tool_but_the_disallowed_ones_is_held(self, world):
+        tools_world(world)
+        define_agent(world, "critic", "disallowedTools: Edit")
+
+        delivery = world.start_delegate("critic")
+
+        assert tools_of(world, "critic") == AllToolsBut(frozenset({"Edit"}))
+        assert received(delivery, ["voice", "tone"]) == ["voice"]
+
+
+class TestAContextWithNoAgentDefinitionHasNoToolsFact:
+    def test_a_delegate_with_no_definition_file_has_an_absent_tools_fact_named_in_the_record(
+        self, world
+    ):
+        tools_world(world)
+
+        delivery = world.start_delegate("critic")
+
+        assert tools_of(world, "critic") is ABSENT
+        assert received(delivery, ["voice", "tone"]) == []
+        (record,) = world.records()
+        (absent,) = [n for n in record["notices"] if n["kind"] == "tools-absent"]
+        assert absent["shown"] is False
+        assert "no definition file registers its agent type" in absent["subject"]
+
+    def test_the_tools_test_over_an_absent_fact_and_its_negation_are_unknown(self):
+        assert truth_of_tools("tools Bash", ABSENT) == "UNKNOWN"
+        assert truth_of_tools("not tools Bash", ABSENT) == "UNKNOWN"
+
+
+def truth_of_tools(text, tools):
+    facts = Facts(model=ABSENT, agent=ABSENT, kind="delegate", flags=frozenset(), tools=tools)
+    return evaluate(parse_condition(text), facts).name
+
+
+class TestTheToolsFactIgnoresABackgroundSubagentsNarrowerToolSet:
+    def test_a_background_delegates_tools_fact_reads_the_definition_alone(self, world):
+        tools_world(world)
+        define_agent(world, "critic", "tools: Edit")
+
+        delivery = world.start_delegate("critic", run_in_background=True, tools=["Read"])
+
+        assert received(delivery, ["voice", "tone"]) == ["tone"]

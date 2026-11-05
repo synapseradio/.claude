@@ -7,7 +7,7 @@ from typing import get_args
 from rulesets.facts.model.claim import claim_model
 from rulesets.facts.model.fact import FromVariable, ModelFact, ModelResolution, SessionVariable
 from rulesets.facts.model.record import read_model_record
-from rulesets.notices import provider_notices
+from rulesets.notices import disregarded_variable_notices, provider_notices
 
 SESSION_VARIABLES: tuple[SessionVariable, ...] = get_args(SessionVariable.__value__)
 
@@ -24,7 +24,11 @@ def resolve_session_model(
     not a string leaves the model missing and passes to no later source.
     """
 
-    return ModelResolution(_session_fact(payload, models, env, state_dir), provider_notices(env))
+    fact = _session_fact(payload, models, env, state_dir)
+    notices = provider_notices(env)
+    if isinstance(fact.source, FromVariable):
+        notices += disregarded_variable_notices(env, fact.source.name)
+    return ModelResolution(fact, notices)
 
 
 def _session_fact(

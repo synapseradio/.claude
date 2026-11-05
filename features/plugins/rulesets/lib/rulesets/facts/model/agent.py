@@ -5,8 +5,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal
 
+from rulesets.facts.agent_definition import definition_front
 from rulesets.facts.environment import flag_is_set
-from rulesets.facts.model.agent_definition import definition_front
 from rulesets.facts.model.claim import opens_on
 
 _INHERIT = "inherit"
