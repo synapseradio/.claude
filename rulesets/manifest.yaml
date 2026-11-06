@@ -1,21 +1,67 @@
 models: ["opus", "sonnet", "haiku", "fable", "opus-4-8"]
-defaults: ["all:*"]
+defaults: ["core:*"]
+rulesets:
+  core:
+    [
+      "core-rules",
+      "sorting",
+      "reporting",
+      "reasoning-guidelines",
+      "ask-user-before-assuming",
+      "user-approval",
+      "user-out-of-artifacts",
+      "exact-edits",
+      "scratchpad",
+      "waiting-on-processes",
+    ]
+  reasoning: ["claims"]
+  lookup: ["search-tools", "structural-search"]
+  prose: ["writing-prose", "unasked-asides"]
+  code: ["writing-code", "comments", "data-modeling", "repairing", "debugging"]
+  git: ["git-commit"]
+  dialogue: ["resolving-input", "inquiring", "asking-questions"]
+  planning: ["writing-plans", "handoff", "persistent-memory"]
+  orchestration: ["agent-delegation", "worktrees"]
+  bash: ["shell-scripts"]
 when:
   - "model sonnet": ["agent-delegation@sonnet"]
-  - "model haiku":
-      [
-        "agent-delegation@haiku",
-        "-asking-questions",
-        "-claims",
-        "-data-modeling",
-        "-debugging",
-        "-handoff",
-        "-inquiring",
-        "-persistent-memory",
-        "-reasoning-guidelines",
-        "-repairing",
-        "-worktrees",
-        "-writing-code",
-        "writing-prose@haiku",
-      ]
-  - "agent eval-runner": ["-writing-prose"]
+  - "model haiku": ["agent-delegation@haiku", "writing-prose@haiku", "-reasoning-guidelines"]
+  # A remove in the variant's own list would cancel its add, variant included; in a block of its
+  # own it excludes the rule at model rank and leaves the variant set for the agent blocks that add it.
+  - "model haiku": ["-writing-prose"]
+  - "kind session": ["all:*"]
+  - "kind delegate": ["delegate-report"]
+  - "tools Bash": ["bash-commands"]
+
+  - "agent orchestrator": ["reasoning:*", "lookup:*", "prose:*", "resolving-input"]
+  - "agent orchestrator and not model haiku": ["dialogue:*", "planning:*"]
+  - "agent orchestrator and (model opus or model opus-4-8 or model fable)": ["orchestration:*"]
+
+  - "agent critic or agent thinkies": ["reasoning:*", "lookup:*", "prose:*"]
+
+  - "agent designer": ["reasoning:*", "lookup:*", "prose:*"]
+  - "agent designer and not model haiku": ["data-modeling"]
+
+  - "agent systems-thinker": ["reasoning:*", "lookup:*", "prose:*", "resolving-input"]
+  - "agent systems-thinker and not model haiku": ["dialogue:*"]
+
+  - "agent instruction-crafter": ["reasoning:*", "lookup:*", "prose:*"]
+  - "agent instruction-crafter and (model opus or model opus-4-8 or model fable)": ["orchestration:*"]
+
+  - "agent skill-author": ["lookup:*", "prose:*", "git:*"]
+
+  - "agent software-implementer or agent software-refiner": ["lookup:*", "prose:*", "git:*", "comments"]
+  - "agent software-tester": ["lookup:*", "git:*", "comments"]
+  - "agent shell-scripter": ["bash:*", "lookup:*", "git:*", "comments"]
+  - "(agent software-implementer or agent software-refiner or agent software-tester or agent shell-scripter) and not model haiku": ["code:*"]
+
+  - "agent eval-runner": ["reasoning:*", "lookup:*"]
+  - "agent scout or agent spider": ["lookup:*"]
+
+  - "agent general-purpose": ["reasoning:*", "lookup:*", "prose:*", "git:*", "resolving-input", "comments", "bash-commands"]
+  - "agent general-purpose and not model haiku": ["code:*", "dialogue:*"]
+  - "agent general-purpose and (model opus or model opus-4-8 or model fable)": ["orchestration:*"]
+
+  - "agent Explore or agent claude-code-guide": ["lookup:*", "bash-commands"]
+  - "agent Plan": ["reasoning:*", "lookup:*", "bash-commands"]
+  - "agent Plan and not model haiku": ["planning:*"]

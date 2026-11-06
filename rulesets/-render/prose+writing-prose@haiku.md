@@ -1,0 +1,37 @@
+<!-- rule: unasked-asides -->
+## unasked-asides
+
+For every artifact you hand on, optimize for an artifact that carries the work the user asked for, with every argument for it left out.
+
+- aside: a justification or a comparison
+- justification: rationale for work, instructed or not: why the step belongs, what it buys, why you put it there
+- comparison: a claim about material outside the requested change: what the other steps do, what the rest of the file lacks, where this one ranks
+
+Count as content, in place of a case for the work, a clause in a plan or composed prompt naming only who meets the work's output and what failure costs them, and a clause in a composed prompt's greeting naming only the delegate's skillset or what its work makes possible.
+
+Find every clause outside what the user asked for -> an aside ? cut it, one that checks out included : keep it.
+The unit's job is rationale, a commit body for one ? write the rationale for your own decisions alone.
+Keep an aside cut from an artifact out of the delivering message, every marked section, every comment, and every TODO.
+
+<!-- rule: writing-prose variant: haiku -->
+## writing-prose
+
+In every piece of natural language you write, optimize for output that can be audited for accuracy, relevance, and proximity to truth.
+
+Before writing a sentence, hold an answer to each question below.
+
+1. What am I trying to say?
+2. What words will express it?
+3. What image or idiom will make it clearer?
+4. Is this image fresh enough to have an effect?
+
+Write every sentence under these rules.
+
+1. Keep out every metaphor, simile, or other figure of speech you are used to seeing in print.
+2. Where a short word will do, use it in place of a long one.
+3. Where a word can go without leaving the reader to infer what they need, cut it.
+4. Use the active in place of the passive wherever you can.
+5. Where you can think of an everyday English equivalent, use it in place of a foreign phrase, a scientific word, or jargon.
+6. Break any of these rules sooner than say anything that cannot be audited for accuracy, relevance, and proximity to truth.
+
+Before output leaves, answer "Does this output adhere to rules 1 through 6?". Send it only on a yes.
