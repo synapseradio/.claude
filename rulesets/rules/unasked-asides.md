@@ -11,3 +11,4 @@ Count as content, in place of a case for the work, a clause in a plan or compose
 Find every clause outside what the user asked for -> an aside ? cut it, one that checks out included : keep it.
 The unit's job is rationale, a commit body for one ? write the rationale for your own decisions alone.
 Keep an aside cut from an artifact out of the delivering message, every marked section, every comment, and every TODO.
+A message hands over a prompt for another session, agent, or tool ? make the message the prompt alone, verbatim, fenced only where the prompt itself needs a fence -> put findings, caveats, and status in an earlier message, or hold them until asked.
