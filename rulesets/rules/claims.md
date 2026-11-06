@@ -25,3 +25,9 @@ Comparing a pair ? quote the compared text or value beside its anchor in the inp
 A label the reader acts on unverified ? anchor it with a quotable passage, a concrete example, or a resolvable URL.
 A proposal's formality or vocabulary differs from the input's ? surface the mismatch.
 Asked for an opinion ? take a position -> name its measurable ground.
+
+### Live and current state
+
+Read every state that lives online live before stating it or building on it, a pull request's title, body, base, state, and reviews, a ticket, a CI run, or a remote branch for one. Hold a saved copy as a lead toward that read, a scratchpad draft, a handoff note, and saved command, API, or delegate output included. Let local state win only where it is the local diff, the uncommitted or unpushed changes.
+
+Cite a proposal, an RFC or an unmerged branch for one, as proposed or as prototyped on its named branch, and current behavior only from trunk or the infrastructure code. Keep an unmerged proposal's branch off every list of things to reuse.
