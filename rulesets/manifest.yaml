@@ -1,11 +1,10 @@
 models: ["opus", "sonnet", "haiku", "fable", "opus-4-8"]
 defaults: ["all:*"]
 when:
-  - "model opus": ["spawn-decision@opus"]
-  - "model sonnet": ["-agent-delegation", "spawn-decision@sonnet"]
+  - "model sonnet": ["agent-delegation@sonnet"]
   - "model haiku":
       [
-        "-agent-delegation",
+        "agent-delegation@haiku",
         "-asking-questions",
         "-claims",
         "-data-modeling",
@@ -15,7 +14,6 @@ when:
         "-persistent-memory",
         "-reasoning-guidelines",
         "-repairing",
-        "-spawn-decision",
         "-worktrees",
         "-writing-code",
         "writing-prose@haiku",
