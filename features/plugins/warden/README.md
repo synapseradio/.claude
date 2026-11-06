@@ -1,6 +1,6 @@
 # Warden
 
-Before Claude Code runs a shell command on your machine, it shows the command to eleven of these guards. Seven of them refuse a command outright and say why. The other four pause and ask you first. Everything else runs untouched. One of the eleven also checks the path when Claude Code opens a file directly, which is a second layer behind whatever your own settings already refuse, and another also checks where Claude Code's own file search tools start. The twelfth guard checks each subagent Claude Code spawns.
+Before Claude Code runs a shell command on your machine, it shows the command to the guards in the table below that watch commands. Most of them refuse a command outright and say why. The others pause and ask you first. Everything else runs untouched. One of them also checks the path when Claude Code opens a file directly, which is a second layer behind whatever your own settings already refuse, and another also checks where Claude Code's own file search tools start. The last guard in the table checks each subagent Claude Code spawns.
 
 ## What each guard stops
 
@@ -17,7 +17,8 @@ Before Claude Code runs a shell command on your machine, it shows the command to
 | `deny-eval` | A command that runs `eval` | Refused |
 | `ask-shell-c` | A command that runs a shell with `-c` | A prompt asking you to approve |
 | `ask-git-amend` | A command that amends a commit with `git commit --amend` | A prompt asking you to approve |
-| `deny-unset-model` | A subagent spawned without a model | Refused |
+| `deny-hook-covered-check` | A command that runs by hand a check the repository's git hooks already run | Refused |
+| `deny-unset-model` | A subagent spawned without a model, and a critic or planner spawned on haiku | Refused |
 
 `block-secret-leaks` watches for commands that print the hidden values your shell keeps for you, the ones named like a key, a token, a password, or a credential. It also refuses a command that would list every one of those values at once.
 
@@ -41,7 +42,15 @@ Before Claude Code runs a shell command on your machine, it shows the command to
 
 `ask-git-amend` steps in when a command runs `git commit` with `--amend`, wherever `--amend` stands and whatever options precede the subcommand, as in `git -C <path> commit --amend`. It does not refuse. It asks, and the message it carries says that after a hook rejects a commit, the cause is fixed and the commit made anew rather than amended. A commit message that mentions `--amend` does not prompt.
 
+`deny-hook-covered-check` refuses a command that runs a check by hand when the repository you are working in already runs that check from a git hook on commit or push. The hook runs it on every commit anyway, so the refusal says to commit and let the hook run it. The guard finds the repository from the directory Claude Code works in, and follows a `cd` in the command into another repository. It reads the pre-commit and pre-push hooks from `lefthook.yml` and `lefthook.yaml` (and their `.lefthook` and `-local` variants), from the `entry:` lines of `.pre-commit-config.yaml`, from `.husky/pre-commit` and `.husky/pre-push`, and from the executable `pre-commit` and `pre-push` files in the git hooks directory, which follows `core.hooksPath`. A hook that `.pre-commit-config.yaml` takes from a remote repository names no command there, so it is not read, and neither are lefthook `scripts:` and YAML written in flow style or anchors.
+
+A command counts as a hook's check in one of three ways. A package script matches when the package manager, any `--filter` or `--cwd` scope, and the whole script name agree, so `bun run lint` and `bun lint` match a hook running `bun run lint`, while `bun run lint:fix` and `npm run lint` do not. A tool with a subcommand matches on the program and the subcommand, so `biome check src` matches a hook running `biome check --staged`, while `biome lint` does not. A tool without a subcommand matches on the program and the flags the hook passes, so `tsc --noEmit -p tsconfig.json` matches a hook running `tsc --noEmit`, while `tsc --version` does not; flags that only change how a tool runs, such as `--fix` and `--write`, are not required. A runner in front, such as `bunx`, `npx`, `uv run`, or `python -m`, is looked through on both sides.
+
+Test runs stay allowed even when a hook runs them: a script named `test` or `test:<something>`, `bun test`, `npm test`, `cargo test`, `go test`, and `jest`, `vitest`, `bats`, `pytest`, and the other test runners. So do general-purpose programs such as `git`, `node`, `python`, `bash`, and `echo`, a build tool like `make` with no target, and the hook runners `lefthook`, `husky`, and `pre-commit`. A directory that is no repository, a repository with no hook configuration, and a configuration the guard cannot read all pass without a word. The guard stops reading after two seconds, well inside the five-second limit.
+
 `deny-unset-model` refuses a subagent spawn that names no model. Without one, a subagent runs on the model its definition names, and otherwise on the model of the main conversation, so a session on the most expensive model spawns every helper on it too. A fork passes, since it shares the main conversation's model by design. So does a spawn of an agent whose definition pins a model other than `inherit`. The guard finds that definition in your Claude directory's `agents/`, in the project's `.claude/agents/`, or, for a name like `my-plugin:reviewer`, in the installed plugin's `agents/`. The order Claude Code resolves a subagent's model in is documented at <https://code.claude.com/docs/en/sub-agents.md#choose-a-model>.
+
+The same guard refuses a spawn of a `critic` or a `Plan` agent that runs on haiku, whether the call names haiku or names no model and the agent's definition pins haiku. Critics and planners run on sonnet or opus, and the refusal says so. The built-in `Plan` agent has no definition file, so only a model named on the call can put it on haiku. Its refusal when no model is named is the unset-model one above.
 
 ## What still runs normally
 
@@ -63,6 +72,8 @@ These guards are built to stay out of the way. All of the following keep working
 - `git rm`, `npm rm`, `bun rm`, `pnpm rm`, `docker rm`, `rmdir`, and `trash`, and the word `rm` as an argument, as in `grep -n rm file`, or inside quotation marks
 - `bunx` and `bun x`, and package commands that fetch nothing to run, such as `npm install` and `docker build`
 - A subagent spawn that names its model, and any fork
+- A critic or planner spawned on sonnet or opus, and haiku for any other agent
+- A check no git hook runs, a test run, a script whose name only starts like a hook's (`bun run build` against a hook running `bun run build:check`), and any command in a directory outside a repository
 - A search inside one folder of your home, such as `find ~/projects/app -name x`, and a plain `ls ~`
 
 ## Adding your own sensitive paths
@@ -107,13 +118,13 @@ Run these two commands in Claude Code, replacing the path with wherever you keep
 /plugin install warden@claude-root
 ```
 
-The name `claude-root` is the marketplace this repository publishes. If your own configuration already runs any of these twelve guards, take those entries out when you install. Two copies of one guard both run, so you would be refused twice for the same command.
+The name `claude-root` is the marketplace this repository publishes. If your own configuration already runs any of these guards, take those entries out when you install. Two copies of one guard both run, so you would be refused twice for the same command.
 
 ## Checking that the guards are live
 
 Do this after installing, and again after any change to your configuration.
 
-1. Run `/hooks` and open `PreToolUse`. Eleven entries should appear against the Bash tool, one against the Read tool, one against the Grep and Glob tools, and one against the Agent tool, each labelled `[plugin:warden]`. That label is what tells you the guard comes from this plugin.
+1. Run `/hooks` and open `PreToolUse`. One entry should appear against the Bash tool for each guard in the table above that watches commands, and one each against the Read tool, the Grep and Glob tools, and the Agent tool, each labelled `[plugin:warden]`. That label is what tells you the guard comes from this plugin.
 2. From this plugin's directory, run `bash scripts/preflight.sh`. It puts a set of commands through the guards and prints one line for each. Every line should begin with `ok`, and the last line should read that every guard decided as expected.
 3. If any line begins with `FAIL`, that guard is not doing its job. The line names the guard and what it decided instead. Treat the protection as absent until it reads `ok` again.
 
@@ -127,7 +138,7 @@ Read the refusal, which names what it matched and why. If you meant the command,
 
 A guard recognizes the shape of a dangerous command. Somebody determined to get around one could write the same command differently, so treat these as protection against an accident rather than against an adversary.
 
-You cannot switch off one guard. The only setting that turns hooks off, `disableAllHooks`, is all or nothing, and it silences every hook you have from every source, not only these twelve. To stop a single guard, uninstall this plugin or make your own copy and remove that guard's entry from `hooks/hooks.json`. Both of those leave a visible trace, which for a safety control is the point.
+You cannot switch off one guard. The only setting that turns hooks off, `disableAllHooks`, is all or nothing, and it silences every hook you have from every source, not only these. To stop a single guard, uninstall this plugin or make your own copy and remove that guard's entry from `hooks/hooks.json`. Both of those leave a visible trace, which for a safety control is the point.
 
 The guards see a command only when Claude Code is about to run it. They do not watch your terminal, your editor, or anything else on the machine.
 

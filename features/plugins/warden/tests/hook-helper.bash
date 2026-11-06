@@ -49,6 +49,43 @@ run_bash_hook() {
 }
 
 #######################################
+# Run the guard against a command the Bash tool proposes from a directory.
+# Globals:
+#   HOOK_OUTPUT, HOOK_STATUS
+# Arguments:
+#   $1 - the session's working directory.
+#   $2 - the shell command.
+#######################################
+run_bash_hook_in() {
+  local cwd="$1" command="$2" envelope
+  envelope="$(jq -nc --arg c "${command}" --arg cwd "${cwd}" \
+    '{tool_name:"Bash",cwd:$cwd,tool_input:{command:$c}}')"
+  run_hook_envelope "${envelope}"
+}
+
+#######################################
+# Assert the guard denies a Bash command run from a directory.
+# Arguments:
+#   $1 - the session's working directory.
+#   $2 - the shell command.
+#######################################
+assert_denies_in() {
+  run_bash_hook_in "$1" "$2"
+  assert_decision 'deny' "$2"
+}
+
+#######################################
+# Assert the guard stays silent about a Bash command run from a directory.
+# Arguments:
+#   $1 - the session's working directory.
+#   $2 - the shell command.
+#######################################
+assert_silent_in() {
+  run_bash_hook_in "$1" "$2"
+  assert_no_decision "$2"
+}
+
+#######################################
 # Run the guard against a path the Read tool proposes to open.
 # Globals:
 #   HOOK_OUTPUT, HOOK_STATUS

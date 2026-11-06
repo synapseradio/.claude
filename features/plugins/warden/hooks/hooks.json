@@ -69,6 +69,12 @@
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-git-amend.sh\"",
             "timeout": 5,
             "statusMessage": "Checking the command for a commit amend"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-hook-covered-check.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the command for a check the git hooks already run"
           }
         ]
       },
@@ -90,7 +96,7 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-unset-model.sh\"",
             "timeout": 5,
-            "statusMessage": "Checking the spawn for a model"
+            "statusMessage": "Checking the spawn for a model, and for a haiku critic or planner"
           }
         ]
       },

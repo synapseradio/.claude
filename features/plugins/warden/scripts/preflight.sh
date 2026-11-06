@@ -17,7 +17,7 @@
 # The checks run against the machine as it stands, a banned-reads file
 # included, so this reports the guards as configured rather than as shipped.
 #
-# Globals: HOOKS_DIR, FAILURES, DECISION, STATUS.
+# Globals: HOOKS_DIR, HOOK_REPO, FAILURES, DECISION, STATUS.
 # Arguments: none.
 # Stdout:  one line per case, then a count.
 # Exit:    0 when every case matched, 1 otherwise.
@@ -26,6 +26,8 @@ set -uo pipefail
 
 HOOKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../hooks" && pwd)"
 readonly HOOKS_DIR
+HOOK_REPO="${TMPDIR:-/tmp}/warden-preflight-hook-repo"
+readonly HOOK_REPO
 
 FAILURES=0
 DECISION=''
@@ -114,6 +116,50 @@ check_agent() {
 }
 
 #######################################
+# Put one proposed shell command through one guard from inside a repository
+# whose lefthook pre-commit hook runs `bun run lint`, `biome check`, and
+# `bun run test`. The repository lives at one fixed path, written again on
+# each run, so nothing accumulates.
+# Globals:
+#   HOOK_REPO
+# Arguments:
+#   $1 - the guard's file name.
+#   $2 - the expected decision.
+#   $3 - a label for the case.
+#   $4 - the command the Bash tool would propose.
+#######################################
+check_in_repo() {
+  local envelope
+  envelope="$(jq -nc --arg c "$4" --arg cwd "${HOOK_REPO}" \
+    '{tool_name:"Bash",cwd:$cwd,tool_input:{command:$c}}')"
+  decide "$1" "${envelope}"
+  report "$1" "$2" "$3"
+}
+
+#######################################
+# Write the repository check_in_repo runs its cases in.
+# Globals:
+#   HOOK_REPO
+# Returns:
+#   Non-zero when the repository could not be written.
+#######################################
+write_hook_repo() {
+  mkdir -p "${HOOK_REPO}" || return 1
+  GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+    git -C "${HOOK_REPO}" init -q || return 1
+  cat >"${HOOK_REPO}/lefthook.yml" <<'EOF'
+pre-commit:
+  commands:
+    lint:
+      run: bun run lint
+    biome:
+      run: biome check --staged {staged_files}
+    tests:
+      run: bun run test
+EOF
+}
+
+#######################################
 # Put one proposed Read target through one guard.
 # Arguments:
 #   $1 - the guard's file name.
@@ -191,6 +237,27 @@ main() {
     'git -C /tmp/repo commit --amend --no-edit'
   check ask-git-amend.sh allow 'commits anew' 'git commit -m "fix: x"'
 
+  if write_hook_repo; then
+    check_in_repo deny-hook-covered-check.sh deny 'runs a hook-run script' \
+      'bun run lint'
+    check_in_repo deny-hook-covered-check.sh deny 'runs a hook-run tool' \
+      'biome check src'
+    check_in_repo deny-hook-covered-check.sh allow 'runs a longer script name' \
+      'bun run lint:fix'
+    check_in_repo deny-hook-covered-check.sh allow 'runs the tests' \
+      'bun run test'
+  else
+    printf 'FAIL  %-30s %-30s could not write the fixture repository\n' \
+      deny-hook-covered-check.sh 'fixture'
+    FAILURES=$((FAILURES + 1))
+  fi
+
+  check_agent deny-unset-model.sh deny 'spawns a critic on haiku' \
+    '{"prompt":"p","subagent_type":"critic","model":"haiku"}'
+  check_agent deny-unset-model.sh deny 'spawns a planner on haiku' \
+    '{"prompt":"p","subagent_type":"Plan","model":"haiku"}'
+  check_agent deny-unset-model.sh allow 'spawns a critic on sonnet' \
+    '{"prompt":"p","subagent_type":"critic","model":"sonnet"}'
   check_agent deny-unset-model.sh deny 'spawns with no model' \
     '{"prompt":"p","subagent_type":"general-purpose"}'
   check_agent deny-unset-model.sh allow 'spawns with a model' \
