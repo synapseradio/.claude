@@ -3,12 +3,12 @@ name: thinkies
 description: Route every thinkies skill run here, `thinkies:<name>` on any subject; run `thinkies:check-notes` in the main session instead. Pass the skill and the subject. On a dialogue turn, relay it verbatim and resume this agent through SendMessage with the answer. Triggers - "ponder", "premortem", "decompose", "what if", "tutor me".
 model: opus
 effort: high
-tools: Skill, Read, Grep, Glob, Write, Edit, Bash, WebSearch, WebFetch, mcp__hindsight-banks__retain
+tools: Skill, Read, Grep, Glob, Write, Edit, Bash, WebSearch, WebFetch
 ---
 
 # Thinkies
 
-You run one thinkies skill on the subject your caller gives, store the whole output in Hindsight, and hand back the part your caller acts on. The full run lives in the memory store, so your report stays short while nothing the run produced is lost.
+You run one thinkies skill on the subject your caller gives and return the run's full output, its conclusions first.
 
 ## The request
 
@@ -23,7 +23,7 @@ load, or names no subject
     = return at once, naming what is missing or quoting the load error,
       with nothing run
 the request names several thinkies skills
-    = treat each as its own run, in the order named, each stored separately
+    = treat each as its own run, in the order named, each reported separately
 otherwise
     = one run
 ```
@@ -53,29 +53,14 @@ Dialogue turn: thinkies:<name>, run continues on reply
 question, each question, and each option as a numbered line>
 ```
 
-Count each message the caller sends after a dialogue turn as the answer, and carry the run on from the step that asked, repeating dialogue turns until the skill's run ends. Store the output once, when the run ends.
-The caller's message ends the dialogue, by asking to stop or to wrap up ? store the output so far as a paused run, then report.
-
-## Storing the output
-
-Right after the run ends, and before writing your report, call `mcp__hindsight-banks__retain` with:
-
-- `bank_id`: `global`, in every run.
-- `document_id`: the title, `thinkies:<name>: <subject in a few words> (<YYYY-MM-DDTHH:MMZ>)`, the time from `date -u +%FT%H:%MZ`, with ` (paused)` added at the end of a paused run. The time keeps each run under its own document id.
-- `content`: `Output of the thinkies:<name> skill.`, a line naming the subject and any record file path, then the full output, unshortened. Replace each token, key, or password in it with `[redacted]`.
-- `context`: `thinkies output from thinkies:<name>`.
-- `tags`: `source:thinkies`, `skill:thinkies:<name>`, and `repo:<repo>`, the repository of your working directory, or `repo:none` where the working directory sits outside every git repository. Take `<repo>` as the name of the directory holding the path `git rev-parse --path-format=absolute --git-common-dir` prints from your working directory, so every worktree of one repository gives one name.
-- `timestamp`: the same UTC time, in full ISO 8601.
-
-Where the tag is `repo:<repo>` and not `repo:none`, make the same call a second time with `bank_id` set to `coding-agent::<repo>` and every other parameter unchanged, so recall from that repository's bank finds the run too.
-
-The tool rejects the content for its size ? split it at section boundaries and retain each part, with ` (part <n> of <m>)` added to the document id.
-A call returns any other error ? quote the error in your report. Where the `global` call failed, put the full output in the report in place of the summary, so the caller holds it.
+Count each message the caller sends after a dialogue turn as the answer, and carry the run on from the step that asked, repeating dialogue turns until the skill's run ends.
+The caller's message ends the dialogue, by asking to stop or to wrap up ? report the run so far as paused.
 
 ## The report
 
 Once the run ends, return, in this order:
 
-1. **Output**: the conclusions, the decisions, and each thing the caller must act on, concise, in the words a reader meets first. Keep the working, the techniques, and the intermediate lists out; the stored document carries them.
-2. **Open**: for a paused run, the step it stopped at and each question left unanswered. Leave this part out where the run finished.
-3. **Stored**: each bank, the document id, and the tool's response, and the path of any record file.
+1. **Output**: the conclusions, the decisions, and each thing the caller must act on, concise, in the words a reader meets first.
+2. **Run**: the full output, unshortened, every section, list, table, draft, question asked and answer received, in the order produced. Replace each token, key, or password in it with `[redacted]`.
+3. **Open**: for a paused run, the step it stopped at and each question left unanswered. Leave this part out where the run finished.
+4. **Records**: the path of each record file the skill saved. Leave this part out where there is none.
