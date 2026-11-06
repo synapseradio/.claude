@@ -1,14 +1,16 @@
 ---
 name: update-claude-settings
-description: Configure the Claude Code harness through its settings files, and reconcile every settings variant against settings.base.json. Requests for automatic behavior, phrased 'from now on when X', 'each time X', 'whenever X', 'before X' or 'after X', need a hook in a settings file, since the harness runs hooks and no memory entry or preference can. Use this for permissions such as 'allow npm commands' or 'move that permission to user settings', for env vars such as 'set DEBUG=true', for writing or troubleshooting hooks, for MCP server keys, plugin keys, sandbox rules, and for any edit to settings.json, settings.base.json, settings.local.json or a settings.PROFILE.json variant. Use it for alignment work too, such as 'align my settings', 'sync settings.json with base', 'my settings drifted', 'the GLM profile is missing its hooks', or 'reduce permission prompts'. Suggest /config only for keys settings.base.json does not name, such as theme, editorMode or verbose.
+description: Configure the Claude Code harness through its settings files, and reconcile every settings variant against settings.base.json. Requests for automatic behavior, phrased 'from now on when X', 'each time X', 'whenever X', 'before X' or 'after X', need a hook in a settings file, since the harness runs hooks and no memory entry or preference can. Use this for permissions such as 'allow npm commands' or 'move that permission to user settings', for env vars such as 'set DEBUG=true', for writing or troubleshooting hooks, for MCP server keys, plugin keys, installing a plugin or a repository's skills, sandbox rules, and for any edit to settings.json, settings.base.json, settings.local.json or a settings.PROFILE.json variant. Use it for alignment work too, such as 'align my settings', 'sync settings.json with base', 'my settings drifted', 'the GLM profile is missing its hooks', or 'reduce permission prompts'. Suggest /config only for keys settings.base.json does not name, such as theme, editorMode or verbose.
 ---
 
 # Update Claude settings
 
-Two kinds of work run from here. Pick one before doing anything else.
+Three kinds of work run from here. Pick one before doing anything else.
 
 - The user wants a setting changed, a hook written, a permission added, or a
   hook debugged. Go to [Editing one setting](#editing-one-setting).
+- The user wants a plugin, or the skills a repository publishes, installed.
+  Go to [Installing a plugin](#installing-a-plugin).
 - The user wants the settings files reconciled with each other, or reports
   drift, or asks to reduce permission prompts. Go to
   [The alignment sweep](#the-alignment-sweep).
@@ -126,6 +128,34 @@ anything touching hooks, read
 carries the events table, the three hook types, the stdin and stdout
 contracts, and a seven-step flow for constructing a hook and proving it
 fires.
+
+## Installing a plugin
+
+**Install the plugin, never its loose skills.** A plugin's skills read the
+config, commands, and hooks that ship beside them. A loose copy installed with
+`skills add` loses all three and duplicates the copies the plugin carries.
+
+### Install steps
+
+1. Check whether the repository ships `.claude-plugin/marketplace.json`.
+   Where it does not, it publishes no plugin, and its skills install the way
+   the user asked.
+2. Add the marketplace: `claude plugin marketplace add <owner/repo>`, or the
+   folder's path for a marketplace on disk.
+3. Install the plugin: `claude plugin install <plugin>@<marketplace>`.
+4. Place the plugin's keys by where its marketplace lives:
+
+   | The marketplace | Where its keys go |
+   |-----------------|-------------------|
+   | A folder on disk | The plugin's `enabledPlugins` key and the marketplace's `extraKnownMarketplaces` entry go into `settings.base.json`; then run [the alignment sweep](#the-alignment-sweep) to carry them into every variant |
+   | A remote repository | `settings.json`, where the install writes them |
+
+5. Validate each file you wrote with `jq -e . FILE`.
+6. Tell the user what got installed and in which file each key landed.
+
+A plugin's hooks reach the running configuration through its `enabledPlugins`
+entry. Leave them out of base's `hooks` key: a command copied there runs a
+second time beside the plugin's own.
 
 ## The alignment sweep
 
