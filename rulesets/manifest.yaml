@@ -3,5 +3,21 @@ defaults: ["all:*"]
 when:
   - "model opus": ["spawn-decision@opus"]
   - "model sonnet": ["-agent-delegation", "spawn-decision@sonnet"]
-  - "model haiku": ["-agent-delegation", "-asking-questions", "-claims", "-comments", "-data-modeling", "-debugging", "-handoff", "-inquiring", "-persistent-memory", "-reasoning-guidelines", "-repairing", "-spawn-decision", "-worktrees", "-writing-code", "writing-prose@haiku"]
+  - "model haiku":
+      [
+        "-agent-delegation",
+        "-asking-questions",
+        "-claims",
+        "-data-modeling",
+        "-debugging",
+        "-handoff",
+        "-inquiring",
+        "-persistent-memory",
+        "-reasoning-guidelines",
+        "-repairing",
+        "-spawn-decision",
+        "-worktrees",
+        "-writing-code",
+        "writing-prose@haiku",
+      ]
   - "agent eval-runner": ["-writing-prose"]
