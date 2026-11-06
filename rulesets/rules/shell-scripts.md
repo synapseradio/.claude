@@ -1,11 +1,3 @@
----
-paths:
-  - "**/*.{sh,bash,zsh,ksh,fish,bats}"
-  - "**/{.bashrc,.bash_profile,.zshrc,.profile,.zshenv,.bash_aliases}"
----
-
-<!-- rule: shell-scripts -->
-
 ## shell-scripts
 
 For every shell script and every shell startup file you write or review, optimize for a script that runs what its writer named and reads like every other script here.
