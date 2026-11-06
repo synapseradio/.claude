@@ -124,7 +124,10 @@ If a step fails, report what broke, what it cost, and what it changes next.
 ```
 
 stateInPrompt model
-  | haiku = every step, paths, exact constraints, the check to run and return
+  | haiku
+      = every step, paths, exact constraints, the check to run and return, and a
+        read's return as cited facts, each a path:line beside its quoted line, in
+        place of a verdict, a classification, or a recommendation
   | sonnet = the problem, the decisions, constraints by reference
   | opus = the problem, its constraints, the decisions made
 
