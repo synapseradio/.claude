@@ -48,6 +48,7 @@ Effort field exists ? set it : state the depth in the prompt: search breadth, al
 ### The prompt
 
 State in each haiku's prompt every step, every path, the exact constraints, and the check to run and return.
+Direct each haiku read to return cited facts, each a path:line beside its quoted line, in place of a verdict, a classification, or a recommendation.
 Fill the template below, replacing each bracket with what it describes and sending the rest verbatim. Drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Name the delegate's model family and identifier in the `You are` line, resolved through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
 Keep mutation checks out of every prompt, code broken on purpose and failing assertions added to watch a suite go red included.
 State every cost in tokens, calls, or wait, with time units kept out.
