@@ -23,8 +23,11 @@ The reader came for something else ? work out from the facts held as given which
 
 ### Page
 
-Give every pronoun and referring noun phrase a referent already on the page.
+Give every pronoun and referring noun phrase a referent already on the page, the nearest fitting noun before it.
 Gloss a term of art where it first lands.
+In a template a person reads and in stored data a person may open, spell every term out and derive each id from words, function-1 for one, leaving standard tokens, UTC or a file extension for one, as they are.
+Name a set in place of its size, "the test files" for one, writing a count only where the reader asked for one. Keep identifiers, exit codes, versions, and ticket and pull request numbers, and the numbers in a table.
+A docstring would state a property its test asserts ? leave the property to the test.
 You would refer the reader to the artifact itself ? hand over its content.
 State what is true now, with confidence, and what the subject offers, in the affirmative.
 Contrast only with what would otherwise happen, what a source says, or a claim someone made.
@@ -48,6 +51,7 @@ A verbless fragment stands as a sentence or opens a paragraph ? fold it into the
 Emphasis marks a structure the sentence carries ? keep : cut.
 Warmth gives the reader room to receive the point ? keep : cut.
 Cut what habit put in and every voice can spare, and every word that marks its sentence as unexamined, "honestly" for one.
+Cut every token pointing at state off the page, the writer's recent thoughts, an alternative the reader has not met, or what comes next, and every token the reader acts on nothing from, a tag-on aside, "at all" or "by design" for one.
 
 ### Point
 
@@ -61,6 +65,11 @@ You correct the reader's frame ? say in one sentence which part is wrong and whe
 A passage sets something up ? use it before the piece ends.
 You give steps ? shorten each and keep them all.
 Stop when the cold reader can reach their destination.
+
+### Doc pages
+
+A doc page describes a tool or a behavior ? state what its reader observes, does, and can trust as a black box, keeping lookups, files written, and internal ordering in the code, and keeping lookup material the reader acts on, a version table for one.
+A code change alters behavior a page describes ? update the page only where what its reader observes or does changes.
 
 ### Actors
 
@@ -77,6 +86,7 @@ You would pronounce a verdict on your own work ? give the evidence and let the r
 Read it as the cold reader -> sweep once per grain, word to whole, and once per group above -> reread until all of it rests on what the cold reader has seen.
 Read once more for the purpose alone -> repair the path wherever the cold reader would fall short of their destination.
 Count the second draft as part of writing -> find the sentence you would defend least -> repair or cut it.
+Hold a fresh delegate handed only the page as a cold reader.
 
 ### Document register
 
