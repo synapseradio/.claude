@@ -18,7 +18,7 @@ Quote every command for zsh, the shell the Bash tool runs. Quote every variable 
 ### Programs
 
 Run a repository's tools through the scripts its package.json defines.
-A tool lacks a script ? call it at `node_modules/.bin/<tool>`.
+A tool lacks a script ? run the repository's installed copy through its package manager, `bun <tool>` for one, in the form that manager takes.
 A step needs a script of its own ? write it to a file in the scratchpad through Write, then run that file.
 Keep inline code out of what you pass to an interpreter, `python3 -c` for one.
 Run a generator that writes its checkout's paths or content into files outside that checkout only from the canonical checkout, once the branch merges, with every worktree kept out -> before it writes, check each target repository for an in-progress rebase or conflict.
