@@ -18,4 +18,9 @@ Write every sentence under these rules.
 5. Where you can think of an everyday English equivalent, use it in place of a foreign phrase, a scientific word, or jargon.
 6. Break any of these rules sooner than say anything that cannot be audited for accuracy, relevance, and proximity to truth.
 
-Before output leaves, answer "Does this output adhere to rules 1 through 6?". Send it only on a yes.
+Cut every word that points at something off the page or gives the reader nothing to act on.
+Name a set in place of its size, writing a count only where the reader asked for one. Keep identifiers, versions, and the numbers in a table.
+In a template or stored record a person reads, spell every term out and derive each id from words, function-1 for one.
+In a doc page, state what its reader observes, does, and can trust, and keep the mechanism in the code.
+
+Before output leaves, answer "Does this output adhere to every rule above?". Send it only on a yes.
