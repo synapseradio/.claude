@@ -34,13 +34,21 @@ spawn, the agent definition's pin, the `CLAUDE_CODE_SUBAGENT_MODEL` variable, an
 session's recorded model. A haiku delegate under an opus session receives the haiku composition when
 the spawn names haiku, and the session keeps the opus one.
 
+Several delegates of one agent type spawned in one message can each name a different model. The
+harness tells a starting delegate nothing that identifies its spawn, so each delegate takes the
+oldest spawn of its type in that message that no earlier delegate took, and keeps it when resumed.
+The harness does not promise that delegates start in the order they were spawned; a delegate that
+starts out of order takes another delegate's model, and no notice reports the swap. A delegate that
+finds every such spawn taken takes the model they all name, or, where they name different models,
+the next source above, with a notice of ambiguity in its delivery record.
+
 After a model switch, the plugin composes again for the new model. Where the new model composes the
 same rules at the same variants as the rules last delivered, it delivers nothing. Where it composes
 different rules, it delivers them, and the earlier rules remain in the conversation above them; the
 plugin cannot retract text it already delivered.
 
-Three further hooks deliver nothing. A `PreToolUse` hook on the `Agent` tool records the model a
-caller names for a spawn. An `InstructionsLoaded` hook records each instruction file the harness
+Three further hooks deliver nothing. A `PreToolUse` hook on the `Agent` tool records each spawn and
+the model its caller names, if any. An `InstructionsLoaded` hook records each instruction file the harness
 loaded. A `SessionEnd` hook ends the session's toggles. The records feed the checks below.
 
 A delivery can skip a reference, withhold a rule, leave a rule out, or reach no rule, and each
@@ -321,7 +329,8 @@ Records and state sit under `.tmp/rulesets-engine/` in the configuration directo
 | `audit/<session>/deliveries.jsonl` | one record for each delivery: the context's facts with their sources, each rule delivered with its variant and a SHA-256 digest of its file's text, and every skipped, withheld, and shown item |
 | `audit/<session>/emitted-<part>.jsonl` | one record for each later part of a delivery |
 | `audit/<session>/loads.jsonl` | the files the harness loaded |
-| `audit/<session>/spawns.jsonl` | the model a caller named for each spawn |
+| `audit/<session>/spawns.jsonl` | one record for each spawn, with the model its caller named, if any |
+| `audit/<session>/claims.jsonl` | which delegate took which spawn record |
 | `models/<session>.json` | the main session's model identifier, written at session start and at each model switch |
 | `session/<session>.yaml` | the session's toggles |
 

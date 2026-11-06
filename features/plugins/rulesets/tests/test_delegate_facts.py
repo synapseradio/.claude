@@ -174,7 +174,7 @@ class TestTheCallersModelJoinsByPromptAndAgentType:
         assert resolution.fact == model_fact.Claimed("haiku", "haiku", "per-spawn")
         assert resolution.notices == ()
 
-    def test_a_second_record_of_the_spawn_naming_no_model_leaves_the_named_model_standing(
+    def test_a_spawn_naming_haiku_before_one_naming_no_model_gives_the_first_start_haiku(
         self, scene
     ):
         scene.caller_names("haiku")
@@ -185,45 +185,12 @@ class TestTheCallersModelJoinsByPromptAndAgentType:
         assert resolution.fact == model_fact.Claimed("haiku", "haiku", "per-spawn")
         assert resolution.notices == ()
 
-    def test_two_spawns_of_one_type_naming_different_models_leave_the_source_yielding(self, scene):
-        scene.parent_runs(OPUS)
-        scene.caller_names("opus")
-        scene.caller_names("haiku")
-        scene.user_agent("general-purpose.md", "model: sonnet")
-
-        resolution = scene.resolve()
-
-        assert resolution.fact == model_fact.Claimed("sonnet", "sonnet", "definition-pin")
-        assert [notice.kind for notice in resolution.notices] == ["per-spawn-ambiguous"]
-
-    def test_each_of_the_two_delegates_resolves_from_the_next_source_and_carries_the_notice(
-        self, scene
-    ):
-        scene.parent_runs(OPUS)
-        scene.caller_names("opus")
-        scene.caller_names("haiku")
-
-        first = scene.resolve(agent_id="a1")
-        second = scene.resolve(agent_id="a2")
-
-        assert first == second
-        assert first.fact == model_fact.Claimed("opus", OPUS, "parent-record")
-        assert [notice.kind for notice in first.notices] == ["per-spawn-ambiguous"]
-
-    def test_the_ambiguity_notice_names_the_models_the_records_disagree_on(self, scene):
-        scene.caller_names("opus")
-        scene.caller_names("haiku")
-
-        (notice,) = scene.resolve().notices
-
-        assert notice.subject == "opus, haiku"
-
     def test_two_spawns_of_different_types_each_resolve_from_their_own_record(self, scene):
         scene.caller_names("opus", agent_type="critic")
         scene.caller_names("haiku", agent_type="auditor")
 
-        assert model_fact.claimed_name(scene.fact("critic")) == "opus"
-        assert model_fact.claimed_name(scene.fact("auditor")) == "haiku"
+        assert model_fact.claimed_name(scene.fact("critic", agent_id="a1")) == "opus"
+        assert model_fact.claimed_name(scene.fact("auditor", agent_id="a2")) == "haiku"
 
     def test_no_record_matching_the_pair_leaves_the_source_yielding_to_the_definition(self, scene):
         scene.caller_names("opus", prompt_id="other-prompt")
@@ -235,6 +202,75 @@ class TestTheCallersModelJoinsByPromptAndAgentType:
 
         assert resolution.fact == model_fact.Claimed("haiku", "haiku", "definition-pin")
         assert resolution.notices == ()
+
+
+class TestSeveralMatchingPerSpawnRecordsNamingDifferentModels:
+    def test_two_same_type_spawns_naming_haiku_and_opus_resolve_to_haiku_and_opus_in_start_order(
+        self, scene
+    ):
+        scene.parent_runs(SONNET)
+        scene.caller_names("haiku")
+        scene.caller_names("opus")
+
+        first = scene.resolve(agent_id="a1")
+        second = scene.resolve(agent_id="a2")
+
+        assert first.fact == model_fact.Claimed("haiku", "haiku", "per-spawn")
+        assert second.fact == model_fact.Claimed("opus", "opus", "per-spawn")
+        assert (first.notices, second.notices) == ((), ())
+
+    def test_a_start_finding_every_matching_spawn_claimed_yields_to_the_pin_with_the_ambiguity_notice(
+        self, scene
+    ):
+        scene.parent_runs(OPUS)
+        scene.caller_names("opus")
+        scene.caller_names("haiku")
+        scene.user_agent("general-purpose.md", "model: sonnet")
+        scene.resolve(agent_id="a1")
+        scene.resolve(agent_id="a2")
+
+        third = scene.resolve(agent_id="a3")
+
+        assert third.fact == model_fact.Claimed("sonnet", "sonnet", "definition-pin")
+        (notice,) = third.notices
+        assert (notice.kind, notice.subject) == ("per-spawn-ambiguous", "opus, haiku")
+
+    def test_a_start_carrying_no_agent_id_yields_to_the_parent_with_the_ambiguity_notice(
+        self, scene
+    ):
+        scene.parent_runs(OPUS)
+        scene.caller_names("opus")
+        scene.caller_names("haiku")
+
+        resolution = scene.resolve(agent_id=None)
+
+        assert resolution.fact == model_fact.Claimed("opus", OPUS, "parent-record")
+        assert [notice.kind for notice in resolution.notices] == ["per-spawn-ambiguous"]
+
+
+class TestEachDelegateStartClaimsTheOldestUnclaimedMatchingSpawnRecord:
+    def test_a_delegate_resolved_again_keeps_the_spawn_it_claimed_first(self, scene):
+        scene.caller_names("haiku")
+        scene.caller_names("opus")
+
+        first = scene.resolve(agent_id="a1")
+        again = scene.resolve(agent_id="a1")
+        second = scene.resolve(agent_id="a2")
+
+        assert model_fact.claimed_name(first.fact) == "haiku"
+        assert model_fact.claimed_name(again.fact) == "haiku"
+        assert model_fact.claimed_name(second.fact) == "opus"
+
+    def test_starts_arriving_out_of_spawn_order_take_each_others_models_with_no_notice(self, scene):
+        scene.caller_names("haiku")
+        scene.caller_names("opus")
+
+        spawned_second = scene.resolve(agent_id="a2")
+        spawned_first = scene.resolve(agent_id="a1")
+
+        assert model_fact.claimed_name(spawned_second.fact) == "haiku"
+        assert model_fact.claimed_name(spawned_first.fact) == "opus"
+        assert (spawned_second.notices, spawned_first.notices) == ((), ())
 
 
 class TestAnUnreadableStartPayloadYieldsThePerSpawnModel:

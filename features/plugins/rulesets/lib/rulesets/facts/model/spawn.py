@@ -19,13 +19,16 @@ def spawn_model(
     session_id: str | None,
     prompt_id: str | None,
     agent_type: str | None,
+    agent_id: str | None,
     state_dir: pathlib.Path,
 ) -> SpawnModel:
     """The model the caller named for the spawn that `prompt_id` and `agent_type` identify.
 
     A start missing one of the three fields cannot be joined and raises
-    `per-spawn-unreadable`. Records that name different models for the pair raise
-    `per-spawn-ambiguous` and name none.
+    `per-spawn-unreadable`. A start carrying an `agent_id` claims the oldest matching record
+    no other start claimed and takes the model it names, none where it names none. A start
+    that claims nothing reads every matching record: one model names the caller's, and
+    different models raise `per-spawn-ambiguous` and name none.
     """
 
     missing = [
@@ -37,8 +40,13 @@ def spawn_model(
         )
         if not value
     ]
-    if missing or session_id is None:
+    if missing or session_id is None or prompt_id is None or agent_type is None:
         return SpawnModel(notices=(Notice("per-spawn-unreadable", ", ".join(missing)),))
+
+    if agent_id:
+        claimed = spawn_log.claim_spawn(session_id, prompt_id, agent_type, agent_id, state_dir)
+        if claimed is not None:
+            return SpawnModel(None if claimed.model in (None, "") else claimed.model)
 
     named: list[object] = []
     for model in spawn_log.read_spawns(session_id, prompt_id, agent_type, state_dir):

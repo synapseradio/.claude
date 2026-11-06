@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Record the model a caller names for one `Agent` spawn; print nothing and exit 0."""
+"""Record one `Agent` spawn and the model its caller names, if any; print nothing and exit 0."""
 
 import json
 import os
@@ -21,7 +21,11 @@ def main() -> int:
 
 
 def record(payload: object, locations: Locations) -> None:
-    """Append the spawn's model, joined on the prompt and the agent type; skip a spawn naming none."""
+    """Append one record per spawn, joined on the prompt and the agent type.
+
+    A spawn naming no model is recorded with no model, so it keeps its own place among the
+    spawns a delegate start claims in order.
+    """
 
     if not isinstance(payload, dict):
         return
@@ -30,13 +34,11 @@ def record(payload: object, locations: Locations) -> None:
     if not isinstance(tool_input, dict) or not isinstance(session_id, str) or not session_id:
         return
     model = tool_input.get("model")
-    if model in (None, ""):
-        return
     spawn_log.append_spawn(
         session_id,
         _text(payload.get("prompt_id")),
         _text(tool_input.get("subagent_type")),
-        model,
+        None if model == "" else model,
         locations.state,
     )
 

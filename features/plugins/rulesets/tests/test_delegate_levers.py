@@ -236,7 +236,7 @@ class TestAHostManagedProviderDrawsNoNoticeOfItsOwn:
         scene.caller_names("opus")
         scene.caller_names("haiku")
 
-        resolution = scene.resolve(env={HOST_MANAGED: "1"})
+        resolution = scene.resolve(env={HOST_MANAGED: "1"}, agent_id=None)
 
         assert [n.kind for n in resolution.notices] == ["per-spawn-ambiguous"]
 

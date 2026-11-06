@@ -14,6 +14,7 @@ Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_context_fact
 import json
 import pathlib
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from delivery_world import DECLARED, World
@@ -754,8 +755,92 @@ class TestTheCallersModelIsReadFromTheAgentToolHooksRecord:
         by_agent = {record["agent"]["name"]: model_of(record) for record in delegate_records(world)}
         assert by_agent == {"critic": ("haiku", "per-spawn"), "scout": ("opus", "per-spawn")}
 
+    def test_a_spawn_naming_no_model_leaves_the_named_model_to_the_delegate_it_belongs_to(
+        self, world
+    ):
+        model_world(world)
+        define_agent(world, "critic", "model: sonnet")
+        world.spawn("critic", model=None)
+        world.spawn("critic", model="haiku")
+
+        world.start_delegate("critic", agent_id="a1")
+        world.start_delegate("critic", agent_id="a2")
+
+        unnamed, named = delegate_records(world)
+        assert model_of(unnamed) == ("sonnet", "definition-pin")
+        assert model_of(named) == ("haiku", "per-spawn")
+
+
+def haiku_rule_world(world):
+    """A world whose rules give a haiku delegate the `terse` rule an opus delegate lacks."""
+
+    world.rule("voice")
+    world.rule("terse")
+    world.manifest(
+        "models: ['opus', 'sonnet', 'haiku']\n"
+        "defaults: ['voice']\n"
+        "when:\n"
+        "  - model haiku: ['terse']\n"
+    )
+
+
+def ambiguity_notices(record):
+    return [n for n in record["notices"] if n["kind"] == "per-spawn-ambiguous"]
+
 
 class TestSeveralMatchingPerSpawnRecordsNamingDifferentModels:
+    def test_two_delegates_of_one_type_spawned_in_one_message_each_receive_their_own_models_rules(
+        self, world
+    ):
+        haiku_rule_world(world)
+        world.spawn("critic", model="haiku")
+        world.spawn("critic", model="opus")
+
+        first = world.start_delegate("critic", agent_id="a1")
+        second = world.start_delegate("critic", agent_id="a2")
+
+        assert received(first, ["voice", "terse"]) == ["voice", "terse"]
+        assert received(second, ["voice", "terse"]) == ["voice"]
+        records = delegate_records(world)
+        assert [model_of(record) for record in records] == [
+            ("haiku", "per-spawn"),
+            ("opus", "per-spawn"),
+        ]
+        assert [n for record in records for n in ambiguity_notices(record)] == []
+
+    def test_two_delegates_starting_at_once_each_claim_a_different_spawn(self, world):
+        model_world(world)
+        world.spawn("critic", model="haiku")
+        world.spawn("critic", model="opus")
+
+        def start(agent_id):
+            return world.start_delegate("critic", agent_id=agent_id)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            list(pool.map(start, ["a1", "a2"]))
+
+        assert sorted(model_of(record) for record in delegate_records(world)) == [
+            ("haiku", "per-spawn"),
+            ("opus", "per-spawn"),
+        ]
+
+    def test_the_record_of_a_start_finding_every_spawn_claimed_carries_the_unshown_notice(
+        self, world
+    ):
+        model_world(world)
+        parent_runs(world, SONNET_IDENTIFIER)
+        caller_names(world, "haiku")
+        caller_names(world, "opus")
+
+        for agent_id in ("a1", "a2", "a3"):
+            world.start_delegate("critic", agent_id=agent_id)
+
+        first, second, third = delegate_records(world)
+        assert (ambiguity_notices(first), ambiguity_notices(second)) == ([], [])
+        assert model_of(third) == (SONNET_IDENTIFIER, "parent-record")
+        (ambiguous,) = ambiguity_notices(third)
+        assert ambiguous["shown"] is False
+
     def test_two_same_type_spawns_under_one_prompt_naming_one_model_give_that_model_with_no_notice(
         self, world
     ):
@@ -916,23 +1001,18 @@ class TestAParentWithNoRecordedIdentifier:
         assert "no model identifier was available" in notice["subject"]
 
 
-class TestTwoSpawnsOfOneTypeNamingDifferentModels:
-    def test_the_per_spawn_source_yields_with_an_unshown_notice_in_each_record(self, world):
-        model_world(world)
-        parent_runs(world, SONNET_IDENTIFIER)
-        caller_names(world, "haiku")
-        caller_names(world, "opus")
-
-        world.start_delegate("critic", agent_id="a1")
+class TestEachDelegateStartClaimsTheOldestUnclaimedMatchingSpawnRecord:
+    def test_a_resumed_delegate_receives_the_rules_of_its_first_start(self, world):
+        haiku_rule_world(world)
+        world.spawn("critic", model="haiku")
+        world.spawn("critic", model="opus")
+        first = world.start_delegate("critic", agent_id="a1")
         world.start_delegate("critic", agent_id="a2")
 
-        records = delegate_records(world)
-        assert [model_of(record) for record in records] == [
-            (SONNET_IDENTIFIER, "parent-record")
-        ] * 2
-        for record in records:
-            (ambiguous,) = [n for n in record["notices"] if n["kind"] == "per-spawn-ambiguous"]
-            assert ambiguous["shown"] is False
+        resumed = world.start_delegate("critic", agent_id="a1")
+
+        assert received(first, ["voice", "terse"]) == ["voice", "terse"]
+        assert resumed.context == first.context
 
 
 class TestAStartPayloadWithoutAPromptIdentifier:

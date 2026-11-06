@@ -59,7 +59,13 @@ def resolve_delegate_model(
         case ForceLever.SUBAGENT:
             candidate = subagent_default(env) or parent, FromForceLever(lever)
         case None:
-            spawn = spawn_model(session_id, _text(payload.get("prompt_id")), agent_type, state_dir)
+            spawn = spawn_model(
+                session_id,
+                _text(payload.get("prompt_id")),
+                agent_type,
+                _text(payload.get("agent_id")),
+                state_dir,
+            )
             notices += spawn.notices
             if spawn.identifier is not None:
                 candidate = spawn.identifier, "per-spawn"
