@@ -651,5 +651,19 @@
   "subagentPromptCacheTtl": "1h",
   "tui": "fullscreen",
   "verbose": false,
-  "viewMode": "default"
+  "viewMode": "default",
+  "enabledPlugins": {
+    "epistemic-marks@claude-root": true,
+    "harness-config@claude-root": true,
+    "rulesets@claude-root": true,
+    "warden@claude-root": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-root": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/nke/.claude"
+      }
+    }
+  }
 }
