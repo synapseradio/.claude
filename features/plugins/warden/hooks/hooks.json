@@ -36,6 +36,12 @@
           },
           {
             "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-unpinned-bunx.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the command for a bunx run with no version"
+          },
+          {
+            "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-sleep.sh\"",
             "timeout": 5,
             "statusMessage": "Checking the command for a sleep"

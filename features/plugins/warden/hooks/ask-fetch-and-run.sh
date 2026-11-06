@@ -13,7 +13,8 @@
 #   pnpm dlx, pnpm create, yarn dlx, yarn create, bun create
 #   uv tool run, pipx run
 #   docker run, podman run (also docker container run)
-# bunx and bun x stay silent, as does npm init without an initializer name.
+# bunx and bun x stay silent here (deny-unpinned-bunx.sh judges them), as
+# does npm init without an initializer name.
 #
 # A program counts when it stands at a command position, as the splitting in
 # lib/command_words.sh defines it, so the name inside a quoted argument

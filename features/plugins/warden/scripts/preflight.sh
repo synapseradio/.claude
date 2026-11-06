@@ -215,6 +215,16 @@ main() {
   check ask-remote-data-send.sh allow 'fetches a page' \
     'curl -sfL https://example.com/docs.md'
 
+  check deny-unpinned-bunx.sh deny 'runs bunx with no version' \
+    'bunx cowsay'
+  check deny-unpinned-bunx.sh deny 'runs bunx with a bare --package' \
+    'bunx --package typescript tsc'
+  check deny-unpinned-bunx.sh allow 'runs bunx at a version' \
+    'bunx @scope/pkg@2.0.1'
+  check deny-unpinned-bunx.sh allow 'runs bunx at latest' \
+    'bunx cowsay@latest'
+  check deny-unpinned-bunx.sh allow 'installs with bun' 'bun install'
+
   check deny-sleep.sh deny 'waits on a timer' 'sleep 5 && gh run view'
   check deny-sleep.sh allow 'searches for a word' 'grep -rn sleepy src/'
 

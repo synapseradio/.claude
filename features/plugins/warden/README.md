@@ -11,6 +11,7 @@ Before Claude Code runs a shell command on your machine, it shows the command to
 | `deny-inplace-stream-edit` | A command that rewrites a file in a way that can quietly damage it | Refused |
 | `ask-remote-data-send` | A command that would upload data to another machine | A prompt asking you to approve |
 | `ask-fetch-and-run` | A command that downloads a package and runs it in the same step | A prompt asking you to approve |
+| `deny-unpinned-bunx` | A `bunx` or `bun x` command whose package names no version | Refused |
 | `deny-sleep` | A command that waits on a timer | Refused |
 | `deny-rm` | A command that deletes files for good with `rm` | Refused |
 | `deny-bulk-home-search` | A file search that walks your whole home directory or the whole disk | Refused |
@@ -28,7 +29,9 @@ Before Claude Code runs a shell command on your machine, it shows the command to
 
 `ask-remote-data-send` steps in when a command would send a file or a block of data to a machine on the network. It does not refuse. It asks, and you decide. Fetching something to read, such as a page of documentation, does not prompt, and neither does sending data to a program running on your own machine.
 
-`ask-fetch-and-run` steps in when a command downloads a package from a registry and runs it at once: `npx`, `npm exec`, `npm x`, `npm create`, `npm init` with an initializer name, `pnpm dlx`, `pnpx`, `pnpm create`, `yarn dlx`, `yarn create`, `bun create`, `bx`, `uvx`, `uv tool run`, `pipx run`, `docker run`, and `podman run`. It does not refuse. It asks, and the message it carries tells Claude Code to state the package, the version the command pins, what it executes, and which installed tool falls short of the step, and to pin a version. `bunx` and `bun x` run without a prompt.
+`ask-fetch-and-run` steps in when a command downloads a package from a registry and runs it at once: `npx`, `npm exec`, `npm x`, `npm create`, `npm init` with an initializer name, `pnpm dlx`, `pnpx`, `pnpm create`, `yarn dlx`, `yarn create`, `bun create`, `bx`, `uvx`, `uv tool run`, `pipx run`, `docker run`, and `podman run`. It does not refuse. It asks, and the message it carries tells Claude Code to state the package, the version the command pins, what it executes, and which installed tool falls short of the step, and to pin a version. `bunx` and `bun x` do not prompt here; `deny-unpinned-bunx` judges them.
+
+`deny-unpinned-bunx` refuses a `bunx` or `bun x` command whose package argument names no version, because `bunx` downloads the package and runs it in the same step, so a bare name runs whatever the registry serves at that moment. `bunx cowsay` is refused. `bunx cowsay@1.5.0`, `bunx @scope/pkg@2.0.1`, and `bunx cowsay@latest` run. It skips the options that come before the package, such as `--bun` and `--silent`, and the value of a few options that take one, such as `--cwd`. When `-p` or `--package` appears, the guard judges that value in place of the word after the options, which then names a binary, and a command with several is refused if any one names no version. A scoped package's leading `@` marks the scope and not a version. It covers the same command positions as `deny-rm`, and a command with no package, such as `bunx --version`, is left alone. The refusal says to run `bunx <pkg>@<version>`, pinned or at `@latest`, and to state the package, the version, what it executes, and which installed tool falls short of the step.
 
 `deny-sleep` refuses `sleep` wherever it starts a command, a loop body included. A sleep holds the session on a guess at how long something takes. The refusal points at running the command in the background, which resumes the session with a completion notice when the command exits, or at reading the log once with a command that exits.
 
@@ -70,7 +73,7 @@ These guards are built to stay out of the way. All of the following keep working
 - A `.secrets.baseline`, the record a secret-scanning tool keeps
 - A word that only contains `sleep`, such as `sleepy`, or `sleep` inside quotation marks
 - `git rm`, `npm rm`, `bun rm`, `pnpm rm`, `docker rm`, `rmdir`, and `trash`, and the word `rm` as an argument, as in `grep -n rm file`, or inside quotation marks
-- `bunx` and `bun x`, and package commands that fetch nothing to run, such as `npm install` and `docker build`
+- `bunx` and `bun x` at a pinned version or `@latest`, and package commands that fetch nothing to run, such as `bun install`, `npm install`, and `docker build`
 - A subagent spawn that names its model, and any fork
 - A critic or planner spawned on sonnet or opus, and haiku for any other agent
 - A check no git hook runs, a test run, a script whose name only starts like a hook's (`bun run build` against a hook running `bun run build:check`), and any command in a directory outside a repository
