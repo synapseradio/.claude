@@ -15,7 +15,7 @@ rulesets:
       "waiting-on-processes",
     ]
   reasoning: ["claims"]
-  lookup: ["search-tools", "structural-search"]
+  lookup: ["search-tools"]
   prose: ["writing-prose", "unasked-asides"]
   code: ["writing-code", "comments", "data-modeling", "repairing", "debugging"]
   git: ["git-commit"]
