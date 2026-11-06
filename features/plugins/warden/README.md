@@ -1,6 +1,6 @@
 # Warden
 
-Before Claude Code runs a shell command on your machine, it shows the command to six of these guards. Five of them refuse a command outright and say why. The sixth pauses and asks you first. Everything else runs untouched. One of the six also checks the path when Claude Code opens a file directly, which is a second layer behind whatever your own settings already refuse, and another also checks where Claude Code's own file search tools start. The seventh guard checks each subagent Claude Code spawns.
+Before Claude Code runs a shell command on your machine, it shows the command to eight of these guards. Six of them refuse a command outright and say why. The other two pause and ask you first. Everything else runs untouched. One of the eight also checks the path when Claude Code opens a file directly, which is a second layer behind whatever your own settings already refuse, and another also checks where Claude Code's own file search tools start. The ninth guard checks each subagent Claude Code spawns.
 
 ## What each guard stops
 
@@ -10,7 +10,9 @@ Before Claude Code runs a shell command on your machine, it shows the command to
 | `block-secret-file-reads` | A command that would open a file holding your credentials | Refused |
 | `deny-inplace-stream-edit` | A command that rewrites a file in a way that can quietly damage it | Refused |
 | `ask-remote-data-send` | A command that would upload data to another machine | A prompt asking you to approve |
+| `ask-fetch-and-run` | A command that downloads a package and runs it in the same step | A prompt asking you to approve |
 | `deny-sleep` | A command that waits on a timer | Refused |
+| `deny-rm` | A command that deletes files for good with `rm` | Refused |
 | `deny-bulk-home-search` | A file search that walks your whole home directory or the whole disk | Refused |
 | `deny-unset-model` | A subagent spawned without a model | Refused |
 
@@ -22,7 +24,11 @@ Before Claude Code runs a shell command on your machine, it shows the command to
 
 `ask-remote-data-send` steps in when a command would send a file or a block of data to a machine on the network. It does not refuse. It asks, and you decide. Fetching something to read, such as a page of documentation, does not prompt, and neither does sending data to a program running on your own machine.
 
+`ask-fetch-and-run` steps in when a command downloads a package from a registry and runs it at once: `npx`, `npm exec`, `npm x`, `npm create`, `npm init` with an initializer name, `pnpm dlx`, `pnpx`, `pnpm create`, `yarn dlx`, `yarn create`, `bun create`, `bx`, `uvx`, `uv tool run`, `pipx run`, `docker run`, and `podman run`. It does not refuse. It asks, and the message it carries tells Claude Code to state the package, the version the command pins, what it executes, and which installed tool falls short of the step, and to pin a version. `bunx` and `bun x` run without a prompt.
+
 `deny-sleep` refuses `sleep` wherever it starts a command, a loop body included. A sleep holds the session on a guess at how long something takes. The refusal points at running the command in the background, which resumes the session when the command exits.
+
+`deny-rm` refuses `rm` wherever it starts a command: at the beginning, after `&&`, `||`, `;`, `|`, or a new line, inside a subshell or `$(`, after `sudo`, `command`, `xargs`, `env`, or `exec`, inside a `bash -c` string, and behind `find -exec`. The refusal points at `trash <path>`, which moves the path to the Trash where it can be recovered.
 
 `deny-bulk-home-search` refuses a file search that starts at the top of the disk, at the folder that holds every user's home, or at your home folder itself. It covers `find`, `fd`, `rg`, a recursive `grep`, `ag`, `ack`, `tree`, `du`, a recursive `ls` or one over a wildcard at the top of home, `locate`, and `mdfind` without `-onlyin`, along with Claude Code's own Grep and Glob tools. A search that names no starting folder starts in the current one, so the guard also refuses it when the current folder is one of those. A search inside one folder of your home runs untouched. The refusal points at searching the one folder that holds what is wanted, or at the tool's documentation.
 
@@ -45,6 +51,8 @@ These guards are built to stay out of the way. All of the following keep working
 - An example or template beside a real secrets file, such as `secrets.env.example`
 - A `.secrets.baseline`, the record a secret-scanning tool keeps
 - A word that only contains `sleep`, such as `sleepy`, or `sleep` inside quotation marks
+- `git rm`, `npm rm`, `bun rm`, `pnpm rm`, `docker rm`, `rmdir`, and `trash`, and the word `rm` as an argument, as in `grep -n rm file`, or inside quotation marks
+- `bunx` and `bun x`, and package commands that fetch nothing to run, such as `npm install` and `docker build`
 - A subagent spawn that names its model, and any fork
 - A search inside one folder of your home, such as `find ~/projects/app -name x`, and a plain `ls ~`
 
@@ -90,13 +98,13 @@ Run these two commands in Claude Code, replacing the path with wherever you keep
 /plugin install warden@claude-root
 ```
 
-The name `claude-root` is the marketplace this repository publishes. If your own configuration already runs any of these seven guards, take those entries out when you install. Two copies of one guard both run, so you would be refused twice for the same command.
+The name `claude-root` is the marketplace this repository publishes. If your own configuration already runs any of these nine guards, take those entries out when you install. Two copies of one guard both run, so you would be refused twice for the same command.
 
 ## Checking that the guards are live
 
 Do this after installing, and again after any change to your configuration.
 
-1. Run `/hooks` and open `PreToolUse`. Six entries should appear against the Bash tool, one against the Read tool, one against the Grep and Glob tools, and one against the Agent tool, each labelled `[plugin:warden]`. That label is what tells you the guard comes from this plugin.
+1. Run `/hooks` and open `PreToolUse`. Eight entries should appear against the Bash tool, one against the Read tool, one against the Grep and Glob tools, and one against the Agent tool, each labelled `[plugin:warden]`. That label is what tells you the guard comes from this plugin.
 2. From this plugin's directory, run `bash scripts/preflight.sh`. It puts a set of commands through the guards and prints one line for each. Every line should begin with `ok`, and the last line should read that every guard decided as expected.
 3. If any line begins with `FAIL`, that guard is not doing its job. The line names the guard and what it decided instead. Treat the protection as absent until it reads `ok` again.
 
@@ -110,7 +118,7 @@ Read the refusal, which names what it matched and why. If you meant the command,
 
 A guard recognizes the shape of a dangerous command. Somebody determined to get around one could write the same command differently, so treat these as protection against an accident rather than against an adversary.
 
-You cannot switch off one guard. The only setting that turns hooks off, `disableAllHooks`, is all or nothing, and it silences every hook you have from every source, not only these seven. To stop a single guard, uninstall this plugin or make your own copy and remove that guard's entry from `hooks/hooks.json`. Both of those leave a visible trace, which for a safety control is the point.
+You cannot switch off one guard. The only setting that turns hooks off, `disableAllHooks`, is all or nothing, and it silences every hook you have from every source, not only these nine. To stop a single guard, uninstall this plugin or make your own copy and remove that guard's entry from `hooks/hooks.json`. Both of those leave a visible trace, which for a safety control is the point.
 
 The guards see a command only when Claude Code is about to run it. They do not watch your terminal, your editor, or anything else on the machine.
 

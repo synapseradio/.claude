@@ -30,9 +30,21 @@
           },
           {
             "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-fetch-and-run.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the command for a package it would fetch and run"
+          },
+          {
+            "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-sleep.sh\"",
             "timeout": 5,
             "statusMessage": "Checking the command for a sleep"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-rm.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the command for an rm"
           },
           {
             "type": "command",
