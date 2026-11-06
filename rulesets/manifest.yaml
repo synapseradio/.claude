@@ -30,6 +30,7 @@ when:
   # own it excludes the rule at model rank and leaves the variant set for the agent blocks that add it.
   - "model haiku": ["-writing-prose"]
   - "kind session": ["all:*"]
+  - "kind session": ["-shell-scripts"]
   - "kind delegate": ["delegate-report"]
   - "tools Bash": ["bash-commands"]
 
@@ -38,6 +39,7 @@ when:
   - "agent orchestrator and (model opus or model opus-4-8 or model fable)": ["orchestration:*"]
 
   - "agent critic or agent thinkies": ["reasoning:*", "lookup:*", "prose:*"]
+  - "agent critic": ["writing-code"]
 
   - "agent designer": ["reasoning:*", "lookup:*", "prose:*"]
   - "agent designer and not model haiku": ["data-modeling"]
@@ -63,5 +65,5 @@ when:
   - "agent general-purpose and (model opus or model opus-4-8 or model fable)": ["orchestration:*"]
 
   - "agent Explore or agent claude-code-guide": ["lookup:*", "bash-commands"]
-  - "agent Plan": ["reasoning:*", "lookup:*", "bash-commands"]
+  - "agent Plan": ["reasoning:*", "lookup:*", "bash-commands", "writing-code"]
   - "agent Plan and not model haiku": ["planning:*"]
