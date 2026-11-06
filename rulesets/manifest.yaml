@@ -25,10 +25,13 @@ rulesets:
   bash: ["shell-scripts"]
 when:
   - "model sonnet": ["agent-delegation@sonnet"]
-  - "model haiku": ["agent-delegation@haiku", "writing-prose@haiku", "-reasoning-guidelines"]
+  - "model haiku": ["agent-delegation@haiku", "writing-prose@haiku", "git-commit@haiku", "-reasoning-guidelines"]
   # A remove in the variant's own list would cancel its add, variant included; in a block of its
   # own it excludes the rule at model rank and leaves the variant set for the agent blocks that add it.
-  - "model haiku": ["-writing-prose"]
+  - "model haiku": ["-writing-prose", "-git-commit"]
+  # A kind test lifts this block to agent rank, where its removes beat every agent block's adds;
+  # at model rank alone they would lose to them.
+  - "model haiku and (kind delegate or kind session)": ["-comments", "-claims", "-resolving-input", "-unasked-asides"]
   - "kind session": ["all:*"]
   - "kind session": ["-shell-scripts"]
   - "kind delegate": ["delegate-report"]
