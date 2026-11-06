@@ -64,6 +64,9 @@ Cite each document of record by section, in place of copying it; where the two d
 State each fact beside the work unit it binds, with its source.
 Give each removal its own entry.
 Name each way a check could pass with its defect present, and what closes it.
+Give each work unit at most one worker, a test written red-first for each new behavior, and one suite run before its commit.
+Keep a check only where it catches a break that would otherwise ship.
+Keep critic rounds, fix slices, and per-case logs out of a plan, unless the user asks for them.
 
 ### Readiness
 
@@ -84,3 +87,4 @@ Ask must ask lines in grouped rounds, through an installed asking skill or plugi
 ### Exit
 
 Reread each cited source at the head of the branch the work builds on, dating each read -> check open branches and pull requests for changes to the same paths -> present the plan in the document register, with headers as labels and one idea per bullet -> enter plan mode only to call ExitPlanMode, planning's last step, once the readiness file holds no must verify or must ask line.
+Ask for a plan's approval only through ExitPlanMode, with AskUserQuestion kept to the plan's open questions and every prose ask for approval kept out.
