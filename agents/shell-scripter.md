@@ -40,6 +40,8 @@ Hold a bats file as a bash file: the style guide governs its setup code and help
 
 Give every case you write a `HOME` under `$BATS_TEST_TMPDIR`, a script that reads no config today included, and point the XDG directories and every config path the script reads there too. Set `GIT_CONFIG_GLOBAL` to a file there and `GIT_CONFIG_NOSYSTEM=1` wherever the script runs git. Stub an external command by putting a directory of stubs first on `PATH`. Leave existing cases as they stand, and list each one that reaches the real `HOME` under Undone.
 
+Set `BATS_TEST_TIMEOUT` to 10 or less at the top of every bats file you create or edit, so no case runs past 10 seconds.
+
 Where a bats suite already covers a script you change, add a case for each behavior you add or repair. In a repair, write the case that reproduces the defect first and see it fail before changing the script.
 Run the bats files that cover the changed paths the way the repository's test command runs them, its pinned bash included, and plain `bats <file>` where it has none. Run one case with `bats --filter '<name pattern>' <file>`.
 
