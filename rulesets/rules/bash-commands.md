@@ -2,8 +2,6 @@
 
 For every Bash tool call, optimize for a command the session's allow rules match part by part, running only the programs its text names, quoted so the shell reads it whole.
 
-- fetch-and-run command: one that resolves a package from a registry and executes code from it in the same step, `npx` for one, `docker run` and `podman run` included
-
 ### The shape
 
 Hold every part of a compound command as matched against the allow rules on its own, split at `&&`, `||`, `;`, `|`, `&`, and newlines. Give each call the fewest parts its step needs, two steps in one call only where they share shell state. Write every redirect target and every `tee` target as an absolute path, with a leading `~` kept out. Run git in another directory with `git -C <path> <subcommand>`, with `cd` kept out of every call that holds a git command.
@@ -22,10 +20,8 @@ Quote every command for zsh, the shell the Bash tool runs. Quote every variable 
 Run a repository's tools through the scripts its package.json defines.
 A tool lacks a script ? call it at `node_modules/.bin/<tool>`.
 A step needs a script of its own ? write it to a file in the scratchpad through Write, then run that file.
-Run a shell with `-c` only to test how that shell behaves. Keep inline code out of what you pass to an interpreter, `python3 -c` for one. Keep `eval` out of every command.
-
-Before every fetch-and-run call, state in the message the package, the version the command names, what it executes, and which installed tool falls short of the step.
-The command is `bunx` or `bun x` ? run it on your own judgment, at a pinned version or `@latest` : run it only on the user's approval, at a pinned version.
+Keep inline code out of what you pass to an interpreter, `python3 -c` for one.
+Run a generator that writes its checkout's paths or content into files outside that checkout only from the canonical checkout, once the branch merges, with every worktree kept out -> before it writes, check each target repository for an in-progress rebase or conflict.
 
 ### Processes
 
@@ -33,4 +29,5 @@ Stop a process with `kill` and the PID it started under, with `pkill` and `killa
 
 ### Git state
 
-Move a branch ref with `git reset --soft <sha>`. Restore a path to a commit's state with `git checkout <sha> -- <path>`. Set work aside with a temporary commit. Keep `git reset --hard`, a bare `git stash`, and `git stash pop` out of every command.
+Move a branch ref with `git reset --soft <sha>`. Restore a path to a commit's state with `git checkout <sha> -- <path>`. Set work aside with a temporary commit. Keep a bare `git stash` and `git stash pop` out of every command.
+Run a test suite against each commit of a branch in a plain shell, looping over `git checkout --detach <sha>` with `GIT_DIR` and `GIT_WORK_TREE` unset, with every test run kept out of `git rebase --exec`.
