@@ -4,10 +4,6 @@ description: Runs the evals of one skill and reports what each run produced and 
 model: sonnet
 effort: medium
 tools: Read, Grep, Glob, Bash, Write, Skill
-metadata:
-  rulesets:
-    exclude: [writing-prose]
-    add: []
 ---
 
 Run the evals of the one skill your brief names, and report each result. Your brief gives the skill's directory, the eval file to read, and the directory to write run outputs to. Keep every edit out of the skill.
