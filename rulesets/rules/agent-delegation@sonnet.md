@@ -1,22 +1,36 @@
 ## agent-delegation
 
-For every step of work a delegate could take, and every spawn you make, optimize for a read, scan, or other gathering of information done by a fresh haiku that returns a result you can check, with its output kept out of your own context and every other step done yourself.
+For every step a delegate could take, and every spawn you make, optimize for gathering done by a fresh haiku that returns a result you can check, its output kept out of your own context, a thinkies skill run done by the thinkies agent, shell work done by shell-scripter, and every other step done yourself.
+
+- gathering: a read, a grep, a log scan, or a command run for its output, a test suite's run for one, with every command whose job is a change, a commit, an edit, or an install outside it
 
 ### Whether to spawn
 
-Hold a read, a grep, a log scan, or any other gathering of information as work beyond the context in hand. Count a command run for its output, a test suite's run for one, as gathering of information, and a command whose job is a change, a commit, an edit, or an install, as outside it. Take the first arm that fits.
+Take the first arm that fits.
 
 route step
-  | a step is the Read of a file that the Edit tool, or the Write tool over an existing file, requires before your next change to that file, the reading of the newest handoff note at a session's first turn, the opening of a cited line to confirm it backs a claim, or a scan of a saved command output by grep, jq, ast-grep, or a Read by line range
+  | a step is a thinkies skill run other than `thinkies:check-notes`, with a
+    spawning tool in hand
+      = spawn the thinkies agent, effort high, at the model the run's complexity
+        calls for -> relay only its final output
+  | a step writes, reviews, or repairs a shell script, a shell startup file, a git
+    hook or other extensionless shell file, or a bats suite, with a spawning tool
+    in hand and a run of any of them left to the arms below
+      = spawn shell-scripter at sonnet with a prompt for the task
+  | a step is the Read of a file that Edit, or Write over an existing file, requires
+    before your next change to it, the newest handoff note read at a session's
+    first turn, a cited line opened to confirm it backs a claim, or a scan of saved
+    command output by grep, jq, ast-grep, or a Read by line range
       = act directly
-  | a step is any other read, scan, or gathering of information, and you hold no tool that spawns an agent
-      = act directly
-  | a step is any other read, scan, or gathering of information
-      = spawn it to a fresh haiku, one haiku holding the step's related reads > parallel haikus, each command run's output saved by the haiku to a file in the scratchpad
+  | a step is any other gathering, with no spawning tool in hand = act directly
+  | a step is any other gathering
+      = spawn a fresh haiku, one holding the step's related reads > parallel haikus,
+        each saving every command run's output to a file in the scratchpad
   | otherwise = act directly
 
-Set every spawn's model to haiku, whatever agent type it runs.
+Set every other spawn's model to haiku, whatever agent type it runs.
 Spawn a re-check of your own result only on the user's ask.
+A change edits only comment text, JSDoc included ? commit it, with no test run and no runner spawned.
 
 ### The spawn
 
@@ -28,15 +42,19 @@ effort prompt
   | it states every step of a task in one part = low
   | otherwise = medium
 
-Spawn at effort high or above only on the user's ask or permission.
+Spawn at effort high or above only on the user's ask or permission, or for a thinkies skill run.
 Effort field exists ? set it : state the depth in the prompt: search breadth, alternatives to weigh, the check to run.
 
 ### The prompt
 
 State in each haiku's prompt every step, every path, the exact constraints, and the check to run and return.
-Fill the template below. Replace each bracket with what it describes, and send the rest verbatim. Drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Name the haiku's family and identifier in the first line, resolved through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
+Fill the template below, replacing each bracket with what it describes and sending the rest verbatim. Drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Name the delegate's model family and identifier in the `You are` line, resolved through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
+Keep mutation checks out of every prompt, code broken on purpose and failing assertions added to watch a suite go red included.
+State every cost in tokens, calls, or wait, with time units kept out.
 
 ```markdown
+Effort: [the effort level, written whether or not the effort field is set]
+
 You are [model family and identifier]. [a welcome for this spawn, glad the delegate is here as a specialist in the step's skillset, bash and bats for one, naming what its work makes possible]
 
 ## Perspective
