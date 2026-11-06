@@ -27,7 +27,7 @@
     {
       "name": "warden",
       "source": "./features/plugins/warden",
-      "version": "2.2.0",
+      "version": "2.3.0",
       "description": "Seven PreToolUse guards. On the Bash tool, five deny outright: printing a secret-shaped environment variable, reading a secret-shaped path, editing a file in place with a stream editor, waiting on sleep, and a file search rooted at the disk root or a whole home directory, also refused through the Grep and Glob tools. A sixth asks before curl sends a body or a file to a host outside loopback. On the Agent tool, the seventh denies a spawn that names no model, unless it is a fork or its agent definition pins one."
     },
     {
