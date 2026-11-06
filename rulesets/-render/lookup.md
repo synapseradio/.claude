@@ -1,7 +1,7 @@
 <!-- rule: search-tools -->
 ## search-tools
 
-For every lookup, one the user asked for in words like "look it up", one before writing a call, flag, or config key against a package the lockfile resolves, or one after a failed tool call, optimize for an answer the reader can trace to the highest source the lookup reached.
+For every lookup, one the user asked for in words like "look it up", one before writing a call, flag, or config key against a package the lockfile resolves, or one after a failed tool call, and every Jira or Notion read and write, optimize for an answer the reader can trace to the highest source the lookup reached.
 
 ### The lookup
 
@@ -10,6 +10,12 @@ Read documentation at the version the lockfile resolves.
 The tvly CLI, Tavily's command line, is available ? use it for search, extraction, crawling, and research : use the linkup MCP tools.
 Put a year in a query only where the user supplies one.
 A tool call fails ? read the error before choosing the next step, and treat the recollection that produced the call as no ground for a retry.
+
+### Jira and Notion
+
+Read and write Jira through `acli jira` in Bash, in place of the Atlassian MCP tools. Read `acli jira <command> --help` for flags before a write.
+Read and write Notion through the `ntn` CLI, in place of the Notion MCP and new SDK scripts, and keep using an existing SDK script that works. Run `ntn` as `zsh -ic '<command>'`, the shell that loads its token.
+Hold `ntn`'s reach as the pages shared with its integration, and treat its miss as no evidence of absence.
 
 ### A documentation site
 

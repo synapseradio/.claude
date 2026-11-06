@@ -1,48 +1,68 @@
 <!-- rule: agent-delegation -->
 ## agent-delegation
 
-For every step of work a delegate could take, and every spawn through Agent, Fork, or any other spawning tool, a delegate's own spawns included, optimize for a step done by the cheapest model able to take it, through a spawn that pays its cost in tokens and wait and returns a result the caller can check.
+For every step a delegate could take, and every spawn through Agent, Fork, or any other spawning tool, a delegate's own spawns included, optimize for a step done by the cheapest model able to take it, through a spawn that pays its cost in tokens and wait and returns a result the caller can check.
 
-- gauges: inference, what the delegate must infer beyond the prompt and its evidence; span, whether the work fits one context; reversibility, the cost of undoing a wrong result; verifiability, which check outside the delegate catches a wrong answer, a test, a linter, a diff you read, or your check of the report; surviving critiques, critique findings still awaiting repair
-- shared focus: any file, artifact, decision, term, or convention two or more agents in one orchestration read, write, or state, a spec two delegates both edit for one
+- gauges: inference, what the delegate must infer beyond the prompt and its evidence; span, whether the work fits one context; reversibility, the cost of undoing a wrong result; verifiability, which check outside the delegate, a test or your own read of its result, catches a wrong answer; surviving critiques, critique findings awaiting repair
+- gathering: a read, a grep, a log scan, or a command run for its output, a test suite's run for one, with every command whose job is a change, a commit, an edit, or an install outside it
+- shared focus: a file, artifact, decision, term, or convention two or more agents in one orchestration read, write, or state, a spec two delegates both edit for one
 - roster: the orchestration's running agents, each with its address and the slice it owns
 
 ### Whether to spawn
 
 Keep the conversation with the user, the routing, the prompts you compose, and the grounding of what comes back.
-Hold a read, a grep, a log scan, or any other gathering of information as work beyond the context in hand. Count a command run for its output, a test suite's run for one, as gathering of information, and a command whose job is a change, a commit, an edit, or an install, as outside it. Take the first arm that fits.
+Hold gathering as work beyond the context in hand. Take the first arm that fits.
 
 route step
+  | a step is a thinkies skill run other than `thinkies:check-notes`, with a
+    spawning tool in hand
+      = spawn the thinkies agent at opus, effort high -> relay only its final output
+  | a step writes, reviews, or repairs a shell script, a shell startup file, a git
+    hook or other extensionless shell file, or a bats suite, with a spawning tool
+    in hand and a run of any of them left to the arms below
+      = spawn shell-scripter with a prompt for the task
   | a step finishes in one tool call with the context in hand = act directly
+  | a step is a git operation whose command you can state whole, outside a slice
+    you built, with a spawning tool in hand = spawn it to a general-purpose haiku
   | a fix for a break would pull you off the current task = spawn it
-  | a step is the Read of a file that the Edit tool, or the Write tool over an existing file, requires before your next change to that file, the reading of the newest handoff note at a session's first turn, the opening of a cited line to confirm it backs a claim, or a scan of a saved command output by grep, jq, ast-grep, or a Read by line range
+  | a step is the Read of a file that Edit, or Write over an existing file, requires
+    before your next change to it, the newest handoff note read at a session's
+    first turn, a cited line opened to confirm it backs a claim, or a scan of saved
+    command output by grep, jq, ast-grep, or a Read by line range
       = act directly
-  | a step is any other read, scan, or gathering of information, and you hold no tool that spawns an agent
-      = act directly
-  | a step is any other read, scan, or gathering of information
-      = spawn it to a fresh haiku, one haiku holding the step's related reads > parallel haikus, each command run's output saved by the haiku to a file in the scratchpad
+  | a step is any other gathering, with no spawning tool in hand = act directly
+  | a step is any other gathering
+      = spawn a fresh haiku, one holding the step's related reads > parallel haikus,
+        each saving every command run's output to a file in the scratchpad
+  | a step is a unit of a plan whose units run in sequence on one working tree
+      = act directly, whatever delegates the plan names, its gathering spawned as
+        above and every verdict on its work, a check passing or a review finding,
+        judged by you
   | a step is sizeable work independent of the step in hand = spawn it
   | a step finishes with the context already in hand = act directly
-  | a step is a read, a map, an implementation, a critique, a design, or a plan
+  | a step is a map, an implementation, a critique, a design, or a plan
       = spawn it to the cheapest model able to take it
 
 One delegate completes the task ? spawn one.
 Spawn a re-check of your own result only on the user's ask.
+A change edits only comment text, JSDoc included ? commit it, with no test run and no runner spawned.
 
 ### The spawn
 
 Take the gauges -> choose agent type, model, and effort, in that order -> compose the prompt -> spawn -> hold each reported claim pending until you find its source.
-Span exceeds one context ? first split the work into sequential spawns, each finishing its slice end to end, in place of one layer across every feature.
+Span exceeds one context ? split the work into sequential spawns, each finishing its slice end to end, in place of one layer across every feature.
 Hold a haiku delegate's context as a 99k-token budget when gauging span.
 Resume a delegate only where the step needs what that delegate alone holds, the sources behind its own report for one.
+A critic reports ? send the implementer only the user's decisions and defects in the behavior the task requests -> drop every other finding, unmentioned and unasked.
+Docs work, a how-to page or a docs edit for one ? spawn general-purpose running the repository's docs skill, with software-implementer kept out.
 
 model
   | the user named one = that model
   | the agent type is Explore = haiku
-  | a read, map, list, summary, or stated change verified by reading its output = haiku
+  | a read, map, list, summary, verbatim copy of a prepared payload, or git operation the prompt states whole = haiku
   | implementing from a design, refining a diff, or critiquing = sonnet
   | a design, a plan, or an irreversible edit = opus
-  | the prompt states every step and reading verifies the result = haiku
+  | the prompt states every step, reading verifies the result, and no file changes = haiku
   | scope stated, open questions few and named = sonnet
   | scope broad, or several unknowns to settle as it goes = opus
   | otherwise = sonnet
@@ -51,14 +71,19 @@ effort prompt
   | it states every step of a task in one part = low
   | otherwise = medium
 
-Spawn fable only on the user's ask, once per ask. Spawn at effort high or above only on the user's ask or permission.
+Spawn fable only on the user's ask, once per ask. Spawn at effort high or above only on the user's ask or permission, or for a thinkies skill run.
 Effort field exists ? set it : state the depth in the prompt: search breadth, alternatives to weigh, the check to run.
 
 ### The prompt
 
-Fill the template below. Replace each bracket with what it describes, and send the rest verbatim. Drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Resolve the model from call > agent file > session, through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
+Fill the template below, replacing each bracket with what it describes and sending the rest verbatim. Drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Resolve the model from call > agent file > session, through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
+Name in each implementer's prompt the files it may change, and direct it to add nothing beyond them. Direct a worker that builds a slice to commit it once its checks pass.
+Keep mutation checks out of every prompt and brief, code broken on purpose and failing assertions added to watch a suite go red included. Direct a critic to judge tests by reading them.
+State every cost in tokens, calls, or wait, with time units kept out.
 
 ```markdown
+Effort: [the effort level, written whether or not the effort field is set]
+
 You are [model family and identifier]. [a welcome for this spawn, glad the delegate is here as a specialist in the step's skillset, bash and bats for one, naming what its work makes possible]
 
 ## Perspective
@@ -100,12 +125,12 @@ If a step fails, report what broke, what it cost, and what it changes next.
 
 stateInPrompt model
   | haiku = every step, paths, exact constraints, the check to run and return
-  | sonnet = the problem, the decisions, constraints by reference, exact context wherever the delegate would guess
+  | sonnet = the problem, the decisions, constraints by reference
   | opus = the problem, its constraints, the decisions made
 
 ### Agents running at once
 
-Two or more agents run at once and a shared focus exists or could arise ? keep each agent's roster current, in its prompt or by message once it runs, and to every running agent when one joins -> give each agent the conventions all agents apply, worded identically -> direct each agent, before settling a wording or decision, to agree on it through SendMessage with every agent whose files state it -> address every final report to the caller.
+Two or more agents run at once and a shared focus exists or could arise ? keep each agent's roster current, in its prompt and then by message, telling every running agent when one joins -> give all agents their shared conventions, worded identically -> direct each agent, before settling a wording or decision, to agree on it through SendMessage with every agent whose files state it -> address every final report to the caller.
 One agent's edits wait on another's finishing ? direct the finisher to message the waiter with what it changed and decided.
 Let agents edit each file one at a time.
 
@@ -119,6 +144,8 @@ For every git worktree you create, enter, list, merge, or remove, optimize for a
 Create with `wt --yes switch --create $branch --base $base`, naming as `$base` the branch the work builds on. List with `wt list`. Remove with `wt remove`. Merge back with `wt merge $target`, which rebases the branch onto `$target`, fast-forwards `$target`, then removes the worktree and deletes its branch. Answer a question about wt from its config file and docs.
 
 Address files in a worktree by the absolute path wt prints.
+The branch of a worktree the current work created has merged ? run `git -C <path> status --short` -> uncommitted changes show ? report them and keep the worktree : remove it with `wt remove`.
+Leave every worktree and branch the current work neither created nor names untouched and unmentioned.
 A delegate works in its own worktree ? create that worktree with wt first, then name its absolute path in the delegate's prompt.
 
 Before merging, run `git fetch`, then `git rev-list --left-right --count "$target...$target@{upstream}"`.

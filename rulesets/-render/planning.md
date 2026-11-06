@@ -21,9 +21,13 @@ A session's first turn runs on a branch whose scratchpad directory holds a hando
 
 For every fact the user asks you to remember, and every fact you identify as worth keeping across sessions, optimize for a fact the next session's search finds.
 
+A decision is made, a lesson learned, or a failure understood ? ingest a note holding only what a later session needs into Hindsight with `hindsight_ingest_document`, in every repository, a failure note saying what broke, why, and what fixed it.
+Keep logs, probe output, verdict files, pid and port lists, ledgers, and other scratchpad material out of Hindsight.
+Carry this duty into every orchestrator and long-running delegate prompt, with the ToolSearch query `select:mcp__hindsight__hindsight_ingest_document`.
+The ingest tool is unavailable ? report that, with every quiet fallback to the scratchpad kept out.
 A fact is session narrative, a working note, or a run file ? it goes to the scratchpad.
 A fact belongs to one repository ? name the repository inside its memory entry.
-A fact belongs outside any one repository ? ask the user which store, and write only after they answer.
+Any other fact belongs outside any one repository ? ask the user which store, and write only after they answer.
 A stale memory states the reverse of what holds ? reverse it.
 
 <!-- rule: writing-plans -->
@@ -93,6 +97,9 @@ Cite each document of record by section, in place of copying it; where the two d
 State each fact beside the work unit it binds, with its source.
 Give each removal its own entry.
 Name each way a check could pass with its defect present, and what closes it.
+Give each work unit at most one worker, a test written red-first for each new behavior, and one suite run before its commit.
+Keep a check only where it catches a break that would otherwise ship.
+Keep critic rounds, fix slices, and per-case logs out of a plan, unless the user asks for them.
 
 ### Readiness
 
@@ -113,3 +120,4 @@ Ask must ask lines in grouped rounds, through an installed asking skill or plugi
 ### Exit
 
 Reread each cited source at the head of the branch the work builds on, dating each read -> check open branches and pull requests for changes to the same paths -> present the plan in the document register, with headers as labels and one idea per bullet -> enter plan mode only to call ExitPlanMode, planning's last step, once the readiness file holds no must verify or must ask line.
+Ask for a plan's approval only through ExitPlanMode, with AskUserQuestion kept to the plan's open questions and every prose ask for approval kept out.

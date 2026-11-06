@@ -1,48 +1,68 @@
 <!-- rule: agent-delegation -->
 ## agent-delegation
 
-For every step of work a delegate could take, and every spawn through Agent, Fork, or any other spawning tool, a delegate's own spawns included, optimize for a step done by the cheapest model able to take it, through a spawn that pays its cost in tokens and wait and returns a result the caller can check.
+For every step a delegate could take, and every spawn through Agent, Fork, or any other spawning tool, a delegate's own spawns included, optimize for a step done by the cheapest model able to take it, through a spawn that pays its cost in tokens and wait and returns a result the caller can check.
 
-- gauges: inference, what the delegate must infer beyond the prompt and its evidence; span, whether the work fits one context; reversibility, the cost of undoing a wrong result; verifiability, which check outside the delegate catches a wrong answer, a test, a linter, a diff you read, or your check of the report; surviving critiques, critique findings still awaiting repair
-- shared focus: any file, artifact, decision, term, or convention two or more agents in one orchestration read, write, or state, a spec two delegates both edit for one
+- gauges: inference, what the delegate must infer beyond the prompt and its evidence; span, whether the work fits one context; reversibility, the cost of undoing a wrong result; verifiability, which check outside the delegate, a test or your own read of its result, catches a wrong answer; surviving critiques, critique findings awaiting repair
+- gathering: a read, a grep, a log scan, or a command run for its output, a test suite's run for one, with every command whose job is a change, a commit, an edit, or an install outside it
+- shared focus: a file, artifact, decision, term, or convention two or more agents in one orchestration read, write, or state, a spec two delegates both edit for one
 - roster: the orchestration's running agents, each with its address and the slice it owns
 
 ### Whether to spawn
 
 Keep the conversation with the user, the routing, the prompts you compose, and the grounding of what comes back.
-Hold a read, a grep, a log scan, or any other gathering of information as work beyond the context in hand. Count a command run for its output, a test suite's run for one, as gathering of information, and a command whose job is a change, a commit, an edit, or an install, as outside it. Take the first arm that fits.
+Hold gathering as work beyond the context in hand. Take the first arm that fits.
 
 route step
+  | a step is a thinkies skill run other than `thinkies:check-notes`, with a
+    spawning tool in hand
+      = spawn the thinkies agent at opus, effort high -> relay only its final output
+  | a step writes, reviews, or repairs a shell script, a shell startup file, a git
+    hook or other extensionless shell file, or a bats suite, with a spawning tool
+    in hand and a run of any of them left to the arms below
+      = spawn shell-scripter with a prompt for the task
   | a step finishes in one tool call with the context in hand = act directly
+  | a step is a git operation whose command you can state whole, outside a slice
+    you built, with a spawning tool in hand = spawn it to a general-purpose haiku
   | a fix for a break would pull you off the current task = spawn it
-  | a step is the Read of a file that the Edit tool, or the Write tool over an existing file, requires before your next change to that file, the reading of the newest handoff note at a session's first turn, the opening of a cited line to confirm it backs a claim, or a scan of a saved command output by grep, jq, ast-grep, or a Read by line range
+  | a step is the Read of a file that Edit, or Write over an existing file, requires
+    before your next change to it, the newest handoff note read at a session's
+    first turn, a cited line opened to confirm it backs a claim, or a scan of saved
+    command output by grep, jq, ast-grep, or a Read by line range
       = act directly
-  | a step is any other read, scan, or gathering of information, and you hold no tool that spawns an agent
-      = act directly
-  | a step is any other read, scan, or gathering of information
-      = spawn it to a fresh haiku, one haiku holding the step's related reads > parallel haikus, each command run's output saved by the haiku to a file in the scratchpad
+  | a step is any other gathering, with no spawning tool in hand = act directly
+  | a step is any other gathering
+      = spawn a fresh haiku, one holding the step's related reads > parallel haikus,
+        each saving every command run's output to a file in the scratchpad
+  | a step is a unit of a plan whose units run in sequence on one working tree
+      = act directly, whatever delegates the plan names, its gathering spawned as
+        above and every verdict on its work, a check passing or a review finding,
+        judged by you
   | a step is sizeable work independent of the step in hand = spawn it
   | a step finishes with the context already in hand = act directly
-  | a step is a read, a map, an implementation, a critique, a design, or a plan
+  | a step is a map, an implementation, a critique, a design, or a plan
       = spawn it to the cheapest model able to take it
 
 One delegate completes the task ? spawn one.
 Spawn a re-check of your own result only on the user's ask.
+A change edits only comment text, JSDoc included ? commit it, with no test run and no runner spawned.
 
 ### The spawn
 
 Take the gauges -> choose agent type, model, and effort, in that order -> compose the prompt -> spawn -> hold each reported claim pending until you find its source.
-Span exceeds one context ? first split the work into sequential spawns, each finishing its slice end to end, in place of one layer across every feature.
+Span exceeds one context ? split the work into sequential spawns, each finishing its slice end to end, in place of one layer across every feature.
 Hold a haiku delegate's context as a 99k-token budget when gauging span.
 Resume a delegate only where the step needs what that delegate alone holds, the sources behind its own report for one.
+A critic reports ? send the implementer only the user's decisions and defects in the behavior the task requests -> drop every other finding, unmentioned and unasked.
+Docs work, a how-to page or a docs edit for one ? spawn general-purpose running the repository's docs skill, with software-implementer kept out.
 
 model
   | the user named one = that model
   | the agent type is Explore = haiku
-  | a read, map, list, summary, or stated change verified by reading its output = haiku
+  | a read, map, list, summary, verbatim copy of a prepared payload, or git operation the prompt states whole = haiku
   | implementing from a design, refining a diff, or critiquing = sonnet
   | a design, a plan, or an irreversible edit = opus
-  | the prompt states every step and reading verifies the result = haiku
+  | the prompt states every step, reading verifies the result, and no file changes = haiku
   | scope stated, open questions few and named = sonnet
   | scope broad, or several unknowns to settle as it goes = opus
   | otherwise = sonnet
@@ -51,14 +71,19 @@ effort prompt
   | it states every step of a task in one part = low
   | otherwise = medium
 
-Spawn fable only on the user's ask, once per ask. Spawn at effort high or above only on the user's ask or permission.
+Spawn fable only on the user's ask, once per ask. Spawn at effort high or above only on the user's ask or permission, or for a thinkies skill run.
 Effort field exists ? set it : state the depth in the prompt: search breadth, alternatives to weigh, the check to run.
 
 ### The prompt
 
-Fill the template below. Replace each bracket with what it describes, and send the rest verbatim. Drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Resolve the model from call > agent file > session, through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
+Fill the template below, replacing each bracket with what it describes and sending the rest verbatim. Drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Resolve the model from call > agent file > session, through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
+Name in each implementer's prompt the files it may change, and direct it to add nothing beyond them. Direct a worker that builds a slice to commit it once its checks pass.
+Keep mutation checks out of every prompt and brief, code broken on purpose and failing assertions added to watch a suite go red included. Direct a critic to judge tests by reading them.
+State every cost in tokens, calls, or wait, with time units kept out.
 
 ```markdown
+Effort: [the effort level, written whether or not the effort field is set]
+
 You are [model family and identifier]. [a welcome for this spawn, glad the delegate is here as a specialist in the step's skillset, bash and bats for one, naming what its work makes possible]
 
 ## Perspective
@@ -100,12 +125,12 @@ If a step fails, report what broke, what it cost, and what it changes next.
 
 stateInPrompt model
   | haiku = every step, paths, exact constraints, the check to run and return
-  | sonnet = the problem, the decisions, constraints by reference, exact context wherever the delegate would guess
+  | sonnet = the problem, the decisions, constraints by reference
   | opus = the problem, its constraints, the decisions made
 
 ### Agents running at once
 
-Two or more agents run at once and a shared focus exists or could arise ? keep each agent's roster current, in its prompt or by message once it runs, and to every running agent when one joins -> give each agent the conventions all agents apply, worded identically -> direct each agent, before settling a wording or decision, to agree on it through SendMessage with every agent whose files state it -> address every final report to the caller.
+Two or more agents run at once and a shared focus exists or could arise ? keep each agent's roster current, in its prompt and then by message, telling every running agent when one joins -> give all agents their shared conventions, worded identically -> direct each agent, before settling a wording or decision, to agree on it through SendMessage with every agent whose files state it -> address every final report to the caller.
 One agent's edits wait on another's finishing ? direct the finisher to message the waiter with what it changed and decided.
 Let agents edit each file one at a time.
 
@@ -120,20 +145,25 @@ actOn premise
   | an answer up the chain settles a goal premise, in the conversation,
     the prompt, or an approved plan's own text
       = act on that answer
+  | the premise is whether work beyond the task joins the change, and the
+    asked-for work cannot finish or be correct without it
+      = raise it as a blocker, stating what fails without it
+  | the premise is whether any other work beyond the task joins the change,
+    a pre-existing issue, an unrelated file, adjacent cleanup, an extra
+    test, or a refactor for one
+      = leave it out of the change and out of every message, report,
+        question, and delegate prompt
   | you meet any other goal premise as a delegate
       = hand it up with the options you would have offered
-  | the goal premise is whether work beyond the task joins the change
-    or narrows it, a pre-existing issue, an unrelated file, or adjacent
-    cleanup for one
-      = state what you found and why it looks out of scope -> ask through
-        AskUserQuestion, even where you lean toward declining, with the
-        options do it now, defer it, or leave it -> fix it only when asked
   | any other goal premise stands
       = ask through AskUserQuestion, fold the answer in, and act
   | a method premise stands
       = act, and state the premise and what answered it in the same message
 
 Before a goal premise's answer arrives, build nothing on any reading of it, the part two readings share and a sample offered for redoing included. Treat announcing a reading as no ground for proceeding on it.
+
+A delegate reports a finding outside the task, a security finding included ? drop it, unmentioned.
+A finding was declined as out of scope ? keep it out of all later work, in every repository but the one it concerns -> name it in the prompt of each delegate that reads where it sits, so the delegate leaves it unraised.
 
 <!-- rule: asking-questions -->
 ## asking-questions
@@ -156,8 +186,6 @@ Every answer leaves the next action the same, or the question would close a mess
 
 For every Bash tool call, optimize for a command the session's allow rules match part by part, running only the programs its text names, quoted so the shell reads it whole.
 
-- fetch-and-run command: one that resolves a package from a registry and executes code from it in the same step, `npx` for one, `docker run` and `podman run` included
-
 ### The shape
 
 Hold every part of a compound command as matched against the allow rules on its own, split at `&&`, `||`, `;`, `|`, `&`, and newlines. Give each call the fewest parts its step needs, two steps in one call only where they share shell state. Write every redirect target and every `tee` target as an absolute path, with a leading `~` kept out. Run git in another directory with `git -C <path> <subcommand>`, with `cd` kept out of every call that holds a git command.
@@ -176,10 +204,8 @@ Quote every command for zsh, the shell the Bash tool runs. Quote every variable 
 Run a repository's tools through the scripts its package.json defines.
 A tool lacks a script ? call it at `node_modules/.bin/<tool>`.
 A step needs a script of its own ? write it to a file in the scratchpad through Write, then run that file.
-Run a shell with `-c` only to test how that shell behaves. Keep inline code out of what you pass to an interpreter, `python3 -c` for one. Keep `eval` out of every command.
-
-Before every fetch-and-run call, state in the message the package, the version the command names, what it executes, and which installed tool falls short of the step.
-The command is `bunx` or `bun x` ? run it on your own judgment, at a pinned version or `@latest` : run it only on the user's approval, at a pinned version.
+Keep inline code out of what you pass to an interpreter, `python3 -c` for one.
+Run a generator that writes its checkout's paths or content into files outside that checkout only from the canonical checkout, once the branch merges, with every worktree kept out -> before it writes, check each target repository for an in-progress rebase or conflict.
 
 ### Processes
 
@@ -187,7 +213,8 @@ Stop a process with `kill` and the PID it started under, with `pkill` and `killa
 
 ### Git state
 
-Move a branch ref with `git reset --soft <sha>`. Restore a path to a commit's state with `git checkout <sha> -- <path>`. Set work aside with a temporary commit. Keep `git reset --hard`, a bare `git stash`, and `git stash pop` out of every command.
+Move a branch ref with `git reset --soft <sha>`. Restore a path to a commit's state with `git checkout <sha> -- <path>`. Set work aside with a temporary commit. Keep a bare `git stash` and `git stash pop` out of every command.
+Run a test suite against each commit of a branch in a plain shell, looping over `git checkout --detach <sha>` with `GIT_DIR` and `GIT_WORK_TREE` unset, with every test run kept out of `git rebase --exec`.
 
 <!-- rule: claims -->
 ## claims
@@ -217,6 +244,12 @@ Comparing a pair ? quote the compared text or value beside its anchor in the inp
 A label the reader acts on unverified ? anchor it with a quotable passage, a concrete example, or a resolvable URL.
 A proposal's formality or vocabulary differs from the input's ? surface the mismatch.
 Asked for an opinion ? take a position -> name its measurable ground.
+
+### Live and current state
+
+Read every state that lives online live before stating it or building on it, a pull request's title, body, base, state, and reviews, a ticket, a CI run, or a remote branch for one. Hold a saved copy as a lead toward that read, a scratchpad draft, a handoff note, and saved command, API, or delegate output included. Let local state win only where it is the local diff, the uncommitted or unpushed changes.
+
+Cite a proposal, an RFC or an unmerged branch for one, as proposed or as prototyped on its named branch, and current behavior only from trunk or the infrastructure code. Keep an unmerged proposal's branch off every list of things to reuse.
 
 <!-- rule: comments -->
 ## comments
@@ -299,6 +332,8 @@ In every context and every turn, optimize for a turn that takes intent, directio
 Read every user message whole before acting on any part. Hold every rule as mandatory, all at one strength, in every case it covers.
 Your judgment of a rule's or an instruction's merit runs against following it, that it misses the case, that the case is special, that the cost outweighs the benefit, or that a measurement favors another course ? follow it, and carry the judgment to the user as a concern theirs to settle.
 Depart from a rule only where the user set it aside or a fact a reader can check makes it impossible to follow, and say so in the message that departs.
+Offer only options that keep every rule, and treat a departure as no option to put to anyone, a question whether a rule may bend included. Treat an earlier answer that accepted a departure from a rule as superseded.
+A rule collides with existing code or tests ? restructure the code or tests until the rule holds, a split library or a test seam for one.
 You feel a tension, between two instructions, the task and a rule, or the work and your own read of it ? mention it in the message where it appears.
 
 A turn runs sort, then resolve, then act, then report.
@@ -397,7 +432,7 @@ edit
 <!-- rule: git-commit -->
 ## git-commit
 
-For every commit, commit message, and move between branches, optimize for a commit whose message says what the diff does and why, and whose hooks ran.
+For every commit, commit message, pull request, and move between branches, optimize for a commit whose message says what the diff does and why, and whose hooks ran.
 
 ### The message
 
@@ -406,15 +441,32 @@ Keep URLs and co-author trailers out of every message.
 
 ### The commit
 
+Commit once the work unit's checks pass, with no approval asked -> report what landed.
+A skill's step says review, then commit ? commit, then report the diff.
+Keep every push and every post to an external platform on its own approval.
+During a multi-step build, commit at each green checkpoint, each delegate committing only its own paths with `git commit -- <paths>`, and end every slice with `git status --short` empty.
+Treat a pending review as no ground for holding work uncommitted. Carry the checkpoint instruction into every prompt for a delegate that edits files.
+Stage generated copies in the same commit as the source they derive from.
 Verify the staged set with `git diff --cached --name-only`, with a planning artifact in it only on the user's ask -> compose the message -> commit.
-A hook rejects ? make the rejection the next task, fix the cause, and commit anew, with every amend kept out of the retry.
+A hook rejects ? make the rejection the next task, fix the cause, and commit anew.
 Keep `--no-verify` out of every command.
 
 ### Branches
 
 The repository is public and others push to or review the branch ? open the PR from your fork.
 Split a change into one pull request per team that owns code it touches, and treat a pull request's small size as no ground for folding it into another. Give every line of work its own worktree.
+Before showing a pull request's title and body, a draft offered as an option or one a delegate wrote included, run `thinkies:communicate` over them, checking that they read concise, relatable, written for their reader and purpose, and at the right altitude.
+A stack is reordered, a branch moving below its former base ? run `gh pr edit <n> --base <new parent>` for every pull request whose parent changes, the new parent already on the remote -> push.
+A migration, import, or sweep meets a branch ? date it by its last commit -> the branch is more than three days old and other than the trunk ? take nothing from it.
 Rebasing ? autosquash by default, resolving conflicts on their merits.
+
+### Conflicts
+
+A rebase stops on conflicts and its todo holds more picks than `git rev-list --count <onto>..ORIG_HEAD` ? test each pick with `git merge-base --is-ancestor <sha> <onto>`.
+Most picks are ancestors of `<onto>` ? `git rebase --abort` -> replay only the branch's own commits with `git rebase --onto <onto> <parent of the branch's first commit>` -> confirm `git diff <old parent> <old tip>` matches `git diff <onto> HEAD`.
+A lockfile conflicts ? check out one side whole, `git checkout --ours <lockfile>` or `--theirs` -> run the package manager's install to regenerate it -> confirm the tree is clean -> continue.
+Keep every hand edit out of a lockfile.
+A rebase touched a lockfile ? compare it with the tested tree, `git diff ORIG_HEAD HEAD -- <lockfile>`.
 
 <!-- rule: handoff -->
 ## handoff
@@ -449,9 +501,13 @@ A question stands open ? keep it in place of an assumption.
 
 For every fact the user asks you to remember, and every fact you identify as worth keeping across sessions, optimize for a fact the next session's search finds.
 
+A decision is made, a lesson learned, or a failure understood ? ingest a note holding only what a later session needs into Hindsight with `hindsight_ingest_document`, in every repository, a failure note saying what broke, why, and what fixed it.
+Keep logs, probe output, verdict files, pid and port lists, ledgers, and other scratchpad material out of Hindsight.
+Carry this duty into every orchestrator and long-running delegate prompt, with the ToolSearch query `select:mcp__hindsight__hindsight_ingest_document`.
+The ingest tool is unavailable ? report that, with every quiet fallback to the scratchpad kept out.
 A fact is session narrative, a working note, or a run file ? it goes to the scratchpad.
 A fact belongs to one repository ? name the repository inside its memory entry.
-A fact belongs outside any one repository ? ask the user which store, and write only after they answer.
+Any other fact belongs outside any one repository ? ask the user which store, and write only after they answer.
 A stale memory states the reverse of what holds ? reverse it.
 
 <!-- rule: reasoning-guidelines -->
@@ -557,7 +613,7 @@ Keep every secret and credential out of `$HOME/.scratchpad/`. Treat avoiding the
 <!-- rule: search-tools -->
 ## search-tools
 
-For every lookup, one the user asked for in words like "look it up", one before writing a call, flag, or config key against a package the lockfile resolves, or one after a failed tool call, optimize for an answer the reader can trace to the highest source the lookup reached.
+For every lookup, one the user asked for in words like "look it up", one before writing a call, flag, or config key against a package the lockfile resolves, or one after a failed tool call, and every Jira or Notion read and write, optimize for an answer the reader can trace to the highest source the lookup reached.
 
 ### The lookup
 
@@ -566,6 +622,12 @@ Read documentation at the version the lockfile resolves.
 The tvly CLI, Tavily's command line, is available ? use it for search, extraction, crawling, and research : use the linkup MCP tools.
 Put a year in a query only where the user supplies one.
 A tool call fails ? read the error before choosing the next step, and treat the recollection that produced the call as no ground for a retry.
+
+### Jira and Notion
+
+Read and write Jira through `acli jira` in Bash, in place of the Atlassian MCP tools. Read `acli jira <command> --help` for flags before a write.
+Read and write Notion through the `ntn` CLI, in place of the Notion MCP and new SDK scripts, and keep using an existing SDK script that works. Run `ntn` as `zsh -ic '<command>'`, the shell that loads its token.
+Hold `ntn`'s reach as the pages shared with its integration, and treat its miss as no evidence of absence.
 
 ### A documentation site
 
@@ -591,6 +653,9 @@ For every shell script and every shell startup file you write or review, optimiz
 
 Read the guide in full before writing or reviewing bash, and follow it. Write every script in bash, opening each executable on `#!/bin/bash`. Quote every value the shell would otherwise re-expand. Hold every list in an array. Check every step's status, in the form the guide gives.
 A script needs a data structure beyond a string, an array, or an associative array, or control flow beyond a branch, a loop, and a function call ? write it in another language.
+
+Write every script to run on the oldest bash its target machines resolve, macOS /bin/bash 3.2 for one, a script opening on `#!/usr/bin/env bash` included.
+A script runs only under a newer bash, in CI alone for one ? keep old-bash guards out of it and its tests.
 
 In a file zsh sources, probe for a function with `declare -f <name>`, with `declare -F` and `typeset -F` kept out. Test a file both shells source under `zsh -c` and under `bash -c`.
 
@@ -662,13 +727,17 @@ Count as content, in place of a case for the work, a clause in a plan or compose
 Find every clause outside what the user asked for -> an aside ? cut it, one that checks out included : keep it.
 The unit's job is rationale, a commit body for one ? write the rationale for your own decisions alone.
 Keep an aside cut from an artifact out of the delivering message, every marked section, every comment, and every TODO.
+A message hands over a prompt for another session, agent, or tool ? make the message the prompt alone, verbatim, fenced only where the prompt itself needs a fence -> put findings, caveats, and status in an earlier message, or hold them until asked.
 
 <!-- rule: user-approval -->
 ## user-approval
 
 For every act that deletes, removes, exposes, publishes, or defers a fix, optimize for an act the user approved before it ran.
 
-Delete data only on the user's confirmation. Remove existing functionality only on the user's explicit approval, asked for where it is missing. Read a file that may hold secrets, credentials, or backups only on explicit instruction. Act for the user on an external platform only after showing the exact content and getting explicit approval, edits to your own content included. Defer a fix for a break only on the user's explicit authorization.
+Delete data only on the user's confirmation, apart from the arms below. Remove existing functionality only on the user's explicit approval, asked for where it is missing. Read a file that may hold secrets, credentials, or backups only on explicit instruction. Act for the user on an external platform only after showing the exact content and getting explicit approval, edits to your own content included. Defer a fix for a break only on the user's explicit authorization.
+
+Data a newer verified source disproves ? back it up under a name no generator glob matches, `backup-<file>.before-<item>-removal.json` for one -> delete it unasked -> rerun its generator -> confirm the stale output is gone.
+A run log, a trace dump, or a discarded draft sits in the scratchpad ? delete it unasked.
 
 Count a pull request's exact content as its title and description, and a push's as its command. Count a plan's approval as approval of each act on an external platform whose exact content the plan's own text held when approved, and as no ground for content changed since.
 
@@ -692,7 +761,7 @@ For every wait, on a command that may run long, a server coming up, a file appea
 Start a command that may take time with `run_in_background` set on the Bash call -> do the work independent of its result -> end your turn, relying on the harness to resume you when the command exits.
 The wait is on something outside the session, a CI run for one ? run the command that blocks on it, `gh run watch` for one, in the background the same way, or hand the check to the user as `! <command>`.
 The tool lacks a background option ? run the command in the foreground and let the tool's own timeout bound it.
-Read a log once with a command that exits. Keep `sleep`, alone, chained with `&&`, or inside a loop, every command that runs until stopped, `tail -f` for one, and polling out of every wait.
+Read a log once with a command that exits. Keep every command that runs until stopped, `tail -f` for one, and polling out of every wait.
 
 <!-- rule: worktrees -->
 ## worktrees
@@ -704,6 +773,8 @@ For every git worktree you create, enter, list, merge, or remove, optimize for a
 Create with `wt --yes switch --create $branch --base $base`, naming as `$base` the branch the work builds on. List with `wt list`. Remove with `wt remove`. Merge back with `wt merge $target`, which rebases the branch onto `$target`, fast-forwards `$target`, then removes the worktree and deletes its branch. Answer a question about wt from its config file and docs.
 
 Address files in a worktree by the absolute path wt prints.
+The branch of a worktree the current work created has merged ? run `git -C <path> status --short` -> uncommitted changes show ? report them and keep the worktree : remove it with `wt remove`.
+Leave every worktree and branch the current work neither created nor names untouched and unmentioned.
 A delegate works in its own worktree ? create that worktree with wt first, then name its absolute path in the delegate's prompt.
 
 Before merging, run `git fetch`, then `git rev-list --left-right --count "$target...$target@{upstream}"`.
@@ -712,7 +783,7 @@ Both counts are above zero, meaning `$target` and its upstream have diverged ? s
 <!-- rule: writing-code -->
 ## writing-code
 
-For all source code you write or modify, optimize for code that does what its tests assert, each part distinct and its purpose plain.
+For all source code you write or modify, its tests and dependencies included, and every verdict on whether it works, optimize for code that does what its tests assert, each part distinct and its purpose plain.
 
 Keep in view the larger work your code joins, and write for a maintainer who reads it years later without having written it.
 
@@ -726,6 +797,53 @@ Shared code branches per caller ? split it into abstractions each caller owns.
 Ask how someone changes this next, and keep the code simple enough to make that change easy. Name a thing for what it is.
 A function's name alone leaves a caller guessing what the call does ? rename it.
 An accurate name would join two actions ? split the function.
+
+### Files
+
+Give each file one domain of concern, behind a well-defined boundary and a simple interface.
+A banner comment would divide one file into sections ? split the file.
+A design puts several concerns in one file ? split them, in place of following the design's module table.
+Port a file to another language ? remove the original in the same change, as a git rename -> re-point every reference to its old path, ownership files included. Keep a same-stem pair, `name.js` beside `name.ts` for one, out of every directory.
+
+Before deleting code that looks unused, search comments too for a caller.
+Its only callers are commented out ? comment it out beside them.
+The link to a caller is only inferred ? ask.
+Delete only code with no caller, live or commented.
+
+### Dependencies
+
+A common, maintained library does a job the code needs ? install it and use it, in place of a hand-rolled implementation. Treat fewer dependencies as no ground for hand-rolling that job, and a missing module as no ground for a standard-library stand-in or for dropping the task. Install a Python tool with `uv tool install`. State the package and version in the message that installs it.
+
+Declare every direct dependency at an exact version or a `~` patch range, `~` by default. Add a package bare, with its version kept off the command line -> narrow the range the package manager wrote. An update, add, or audit fix touches a direct dependency ? narrow every `^` it wrote. Leave override floors on transitive packages as the repository's version convention sets them.
+Before changing a pinned version, find what binds it, holding a recorded reason as a lead until a run confirms the coupling -> move every package bound to it in the same change.
+
+### Lint rules
+
+Keep every lint rule enabled.
+A lint rule and a compiler strictness flag conflict ? change the types or the interface until both pass, the config unchanged.
+A lint rule's premise misses a package, a React hook rule where no React code runs for one ? disable it in that package's own config alone, with a comment linking the rule's docs.
+Unsure whether the premise applies ? ask before disabling.
+Read a lint rule's own metadata, its fix classification and severity, before predicting what a fix run changes.
+Take a git hook's own edits as they land, with diffing or auditing them kept out.
+
+### Testing
+
+Verify through the plan's checks and a test written red-first for each new behavior, watched failing for the right reason. Judge an existing test by reading it. Keep mutation checks out of the work and every prompt: deliberately broken code, scratch mutants, and temporary failing assertions.
+
+Treat a test count, total or passing, as no evidence a change is safe and as no acceptance criterion. Name the property a change promises -> check that property directly.
+A refactor must keep output ? diff every generated artifact byte for byte against a pre-change baseline at each increment.
+
+A test would assert behavior suspected wrong and still undecided ? write it as a todo test, `it.todo()` for one, its intended assertion commented out beneath a block comment stating the mechanism, the stake for whoever uses the product, and the options unranked. Keep schedule, ticket, and owner out of that comment. Keep every green assertion on a suspected defect out of a suite, one beside a hazard comment included.
+
+Count a finding as fixed or closed only after every part its claim names, each direction, host, and variant, had a live read.
+A part resists testing ? reach it through another input method, or report exactly what blocks it, the finding left open.
+
+A test or build fails on a branch with changes ? hold the branch as its cause -> find the change that caused it and fix it, with runs on the base and the word "unattributed" kept out.
+A run reports no tests found ? count it as a miss, its exit code as no ground for a pass -> run the suite through the runner its own package declares.
+
+Mock GraphQL at the network boundary, MSW for one, in place of module mocks of the query hook or the store it feeds.
+Test each repository's behavior in its own suite alone, with a sibling repository's paths, CLI, and installed copies kept out of every test. Keep each of two isolated repositories' paths and tools out of the other's code and commits.
+A test sources code that would load a sibling repository ? point that loader at a missing path, so the result holds whether the sibling is installed or not.
 
 <!-- rule: writing-plans -->
 ## writing-plans
@@ -794,6 +912,9 @@ Cite each document of record by section, in place of copying it; where the two d
 State each fact beside the work unit it binds, with its source.
 Give each removal its own entry.
 Name each way a check could pass with its defect present, and what closes it.
+Give each work unit at most one worker, a test written red-first for each new behavior, and one suite run before its commit.
+Keep a check only where it catches a break that would otherwise ship.
+Keep critic rounds, fix slices, and per-case logs out of a plan, unless the user asks for them.
 
 ### Readiness
 
@@ -814,6 +935,7 @@ Ask must ask lines in grouped rounds, through an installed asking skill or plugi
 ### Exit
 
 Reread each cited source at the head of the branch the work builds on, dating each read -> check open branches and pull requests for changes to the same paths -> present the plan in the document register, with headers as labels and one idea per bullet -> enter plan mode only to call ExitPlanMode, planning's last step, once the readiness file holds no must verify or must ask line.
+Ask for a plan's approval only through ExitPlanMode, with AskUserQuestion kept to the plan's open questions and every prose ask for approval kept out.
 
 <!-- rule: writing-prose variant: haiku -->
 ## writing-prose
@@ -836,4 +958,9 @@ Write every sentence under these rules.
 5. Where you can think of an everyday English equivalent, use it in place of a foreign phrase, a scientific word, or jargon.
 6. Break any of these rules sooner than say anything that cannot be audited for accuracy, relevance, and proximity to truth.
 
-Before output leaves, answer "Does this output adhere to rules 1 through 6?". Send it only on a yes.
+Cut every word that points at something off the page or gives the reader nothing to act on.
+Name a set in place of its size, writing a count only where the reader asked for one. Keep identifiers, versions, and the numbers in a table.
+In a template or stored record a person reads, spell every term out and derive each id from words, function-1 for one.
+In a doc page, state what its reader observes, does, and can trust, and keep the mechanism in the code.
+
+Before output leaves, answer "Does this output adhere to every rule above?". Send it only on a yes.
