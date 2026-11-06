@@ -27,13 +27,13 @@
     {
       "name": "warden",
       "source": "./features/plugins/warden",
-      "version": "2.1.0",
+      "version": "2.2.0",
       "description": "Seven PreToolUse guards. On the Bash tool, five deny outright: printing a secret-shaped environment variable, reading a secret-shaped path, editing a file in place with a stream editor, waiting on sleep, and a file search rooted at the disk root or a whole home directory, also refused through the Grep and Glob tools. A sixth asks before curl sends a body or a file to a host outside loopback. On the Agent tool, the seventh denies a spawn that names no model, unless it is a fork or its agent definition pins one."
     },
     {
       "name": "harness-config",
       "source": "./features/plugins/harness-config",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Configure the Claude Code harness and switch provider profiles without a credential ever entering the repository. Ships the policy floor and its alignment machinery, a profile format whose only credential field is a path to a helper script, activation as a bounded write, value-free diagnostics, and guards that verify every settings variant stays out of git.",
       "keywords": [
         "settings",
