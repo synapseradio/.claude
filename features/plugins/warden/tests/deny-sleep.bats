@@ -49,6 +49,16 @@ setup() {
     <<<"${HOOK_OUTPUT}")" == *'run_in_background'* ]]
 }
 
+@test "a denial states the replacement act and cites no rule" {
+  run_bash_hook 'sleep 5'
+  local reason
+  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
+    <<<"${HOOK_OUTPUT}")"
+  [[ "${reason}" == *'completion notice'* ]]
+  [[ "${reason}" == *'a command that exits, once'* ]]
+  [[ "${reason}" != *'waiting-on-processes'* ]]
+}
+
 @test "a word containing sleep stays silent" {
   assert_silent 'grep -rn sleepy src/'
 }

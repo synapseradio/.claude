@@ -51,6 +51,24 @@
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-bulk-home-search.sh\"",
             "timeout": 5,
             "statusMessage": "Checking the command for a search of the whole home directory"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-eval.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the command for an eval"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-shell-c.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the command for a shell run with -c"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-git-amend.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking the command for a commit amend"
           }
         ]
       },

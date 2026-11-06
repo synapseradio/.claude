@@ -179,6 +179,18 @@ main() {
   check deny-bulk-home-search.sh allow 'searches one directory' \
     'find ~/projects/app -name config.py'
 
+  # Single quotes are intentional: the guard has to receive the literal text.
+  # shellcheck disable=SC2016
+  check deny-eval.sh deny 'evals a string' 'eval "$(ssh-agent -s)"'
+  check deny-eval.sh allow 'names eval as an argument' 'echo eval'
+
+  check ask-shell-c.sh ask 'runs a shell with -c' "bash -lc 'echo hi'"
+  check ask-shell-c.sh allow 'counts matches with grep -c' 'grep -c eval f'
+
+  check ask-git-amend.sh ask 'amends a commit' \
+    'git -C /tmp/repo commit --amend --no-edit'
+  check ask-git-amend.sh allow 'commits anew' 'git commit -m "fix: x"'
+
   check_agent deny-unset-model.sh deny 'spawns with no model' \
     '{"prompt":"p","subagent_type":"general-purpose"}'
   check_agent deny-unset-model.sh allow 'spawns with a model' \
