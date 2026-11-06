@@ -562,6 +562,11 @@
             "type": "command",
             "command": "python3.14 -I $HOME/.claude/scripts/hooks/hindsight-retain-delegate-report.py",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "python3.14 -I $HOME/.claude/scripts/hooks/hindsight-retain-thinkies-subagent.py",
+            "timeout": 30
           }
         ]
       }

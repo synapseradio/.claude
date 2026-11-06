@@ -16,6 +16,7 @@ def load(name, filename):
 
 research = load("research", "hindsight-research-retain.py")
 thinkies = load("thinkies", "hindsight-thinkies-retain.py")
+subagent = load("subagent", "hindsight-retain-thinkies-subagent.py")
 
 
 def prompt(text):
@@ -112,3 +113,54 @@ def test_last_turn_starts_at_the_latest_typed_prompt(tmp_path):
     ]
     transcript.write_text("\n".join(json.dumps(line) for line in lines))
     assert thinkies.thinkies_output(thinkies.last_turn(transcript)) is None
+
+
+def run_subagent_hook(monkeypatch, payload, repo="ui-amboss"):
+    """Runs the SubagentStop hook with retain stubbed; returns the recorded calls."""
+    calls = []
+    monkeypatch.setattr(subagent, "retain", lambda *args, **kwargs: calls.append((args, kwargs)))
+    monkeypatch.setattr(subagent, "repo_name", lambda cwd: repo)
+    monkeypatch.setattr(sys, "stdin", __import__("io").StringIO(json.dumps(payload)))
+    subagent.main()
+    return calls
+
+
+def thinkies_payload(report, **extra):
+    return {
+        "agent_type": "thinkies",
+        "agent_id": "a1",
+        "cwd": "/work/repo",
+        "last_assistant_message": report,
+        **extra,
+    }
+
+
+def test_thinkies_subagent_report_goes_to_global_and_repo_banks(monkeypatch):
+    calls = run_subagent_hook(monkeypatch, thinkies_payload("Output of thinkies:ponder\n\nbody"))
+    assert [args[0] for args, _ in calls] == ["global", "coding-agent::ui-amboss"]
+    args, _ = calls[0]
+    assert args[2] == "thinkies:thinkies:ponder:a1"
+    assert args[3] == ["source:thinkies", "repo:ui-amboss"]
+
+
+def test_thinkies_subagent_report_without_skill_name_uses_the_agent_id(monkeypatch):
+    calls = run_subagent_hook(monkeypatch, thinkies_payload("plain findings"))
+    assert calls[0][0][2] == "thinkies:a1"
+
+
+def test_thinkies_subagent_outside_a_repo_retains_to_global_only(monkeypatch):
+    calls = run_subagent_hook(monkeypatch, thinkies_payload("findings"), repo=None)
+    assert [args[0] for args, _ in calls] == ["global"]
+    assert calls[0][0][3] == ["source:thinkies", "repo:none"]
+
+
+def test_thinkies_subagent_report_is_capped(monkeypatch):
+    calls = run_subagent_hook(monkeypatch, thinkies_payload("x" * (subagent.MAX_CHARS + 500)))
+    assert len(calls[0][0][1]) <= subagent.MAX_CHARS + 200
+
+
+def test_other_agents_and_empty_reports_retain_nothing(monkeypatch):
+    other = thinkies_payload("findings", agent_type="spider")
+    assert run_subagent_hook(monkeypatch, other) == []
+    assert run_subagent_hook(monkeypatch, thinkies_payload("  ")) == []
+    assert run_subagent_hook(monkeypatch, thinkies_payload("x", stop_hook_active=True)) == []
