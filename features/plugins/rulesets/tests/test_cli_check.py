@@ -106,7 +106,7 @@ class TestWarningsOnly:
             tmp_path,
             "defaults: ['voice']\n",
             stems=["security"],
-            bodies={"voice": "Run security first.\n"},
+            bodies={"voice": "Run `security` first.\n"},
         )
 
         result = check(root)

@@ -25,6 +25,7 @@ RENDER_DIRECTORY = "-render"
 _REFERENCE_CITATION = re.compile(
     rf"`(?P<path>~/[^`\s]+|/[^`\s/]+/[^`\s]+|{REFERENCES_DIRECTORY}/[^`\s]+)`"
 )
+_PLACEHOLDER = re.compile(r"<[A-Za-z][A-Za-z0-9_-]*>")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -48,8 +49,8 @@ class Citation:
     """A path a body cites in backticks, as written, with the file line it sits on.
 
     A path opens on `~/`, on `/` and a second segment, or on `references/`, and holds no
-    whitespace. A bare `/`, a slash command such as `/clear`, any other relative path, and a
-    URL are no citation.
+    whitespace. A bare `/`, a slash command such as `/clear`, any other relative path, a URL,
+    and a path holding a `<placeholder>` are no citation.
     """
 
     text: str
@@ -147,6 +148,7 @@ def _citations(text: str) -> tuple[Citation, ...]:
     return tuple(
         Citation(text=found["path"], line=_line_of(text, found.start()))
         for found in _REFERENCE_CITATION.finditer(text)
+        if not _PLACEHOLDER.search(found["path"])
     )
 
 

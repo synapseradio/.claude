@@ -554,7 +554,7 @@ class TestCheckReportsEveryErrorAndWarningInOneRun:
             tmp_path,
             "defaults: ['report-format']\n",
             ["sorting"],
-            {"report-format": "Follow sorting before you list items\n"},
+            {"report-format": "Follow `sorting` before you list items\n"},
         )
 
         result = check(root)
@@ -711,7 +711,7 @@ class TestCheckWarnsWhereARuleNamesAnotherRule:
             "defaults: ['all:*']\n",
             ["sorting"],
             {
-                "report-format": "Follow sorting before you list items\n",
+                "report-format": "Follow `sorting` before you list items\n",
                 "voice": "The voice rule keeps one voice\n",
             },
         )
@@ -732,7 +732,7 @@ class TestCheckWarnsWhereARuleNamesAnotherRule:
             tmp_path,
             "defaults: ['all:*']\n",
             ["sorting", "voice"],
-            {"voice@terse": "Be terse.\nBe brief.\nPrefer sorting here.\nsorting again\n"},
+            {"voice@terse": "Be terse.\nBe brief.\nPrefer `sorting` here.\n`sorting` again\n"},
         )
 
         result = check(root)
@@ -750,8 +750,8 @@ class TestCheckMatchesARuleNameAsAWholeWordCaseSensitive:
             "defaults: ['all:*']\n",
             ["comments", "sorting"],
             {
-                "notes": "uncomments the line\nsorting-rules\ncommentsection\nSorting\n",
-                "joined": "sorting2\n_sorting\nsorting_rules\n9comments\nno-comments\n",
+                "notes": "rule uncomments\nsorting-rules.md\nrule commentsection\n`Sorting`\n",
+                "joined": "sorting2.md\n_sorting.md\nrule sorting_rules\nrule 9comments\nthe no-comments rule\n",
             },
         )
 

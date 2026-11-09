@@ -13,6 +13,8 @@ Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_check_warnin
 import pathlib
 import sys
 
+import pytest
+
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
@@ -145,7 +147,7 @@ class TestARuleWhoseTextNamesAnotherRule:
         root = build(
             tmp_path,
             stems=["sorting"],
-            bodies={"voice": "# voice\n\nKeep it short.\nSee sorting before you write.\n"},
+            bodies={"voice": "# voice\n\nKeep it short.\nSee `sorting` before you write.\n"},
         )
 
         (warning,) = warnings_of(root, "cross-reference")
@@ -159,7 +161,7 @@ class TestARuleWhoseTextNamesAnotherRule:
         root = build(
             tmp_path,
             stems=["sorting"],
-            bodies={"voice": "sorting\nsorting\nsorting\n"},
+            bodies={"voice": "`sorting`\n`sorting`\n`sorting`\n"},
         )
 
         (warning,) = warnings_of(root, "cross-reference")
@@ -169,7 +171,7 @@ class TestARuleWhoseTextNamesAnotherRule:
         root = build(
             tmp_path,
             stems=["sorting", "voice"],
-            bodies={"voice@terse": "<!-- rule: voice variant: terse -->\nSee sorting.\n"},
+            bodies={"voice@terse": "<!-- rule: voice variant: terse -->\nSee `sorting`.\n"},
         )
 
         (warning,) = warnings_of(root, "cross-reference")
@@ -180,14 +182,14 @@ class TestARuleWhoseTextNamesAnotherRule:
         root = build(
             tmp_path,
             stems=["sorting"],
-            bodies={"voice": "See sorting.\n", "voice@terse": "Also sorting.\n"},
+            bodies={"voice": "See `sorting`.\n", "voice@terse": "Also `sorting`.\n"},
         )
 
         (warning,) = warnings_of(root, "cross-reference")
         assert warning.file == root / "rules" / "voice.md"
 
     def test_two_rules_naming_each_other_draw_two_warnings(self, tmp_path):
-        root = build(tmp_path, bodies={"a": "uses b\n", "b": "uses a\n"})
+        root = build(tmp_path, bodies={"a": "uses `b`\n", "b": "uses `a`\n"})
 
         assert subjects_of(root, "cross-reference") == [
             RulePairSubject("a", "b"),
@@ -195,7 +197,7 @@ class TestARuleWhoseTextNamesAnotherRule:
         ]
 
     def test_one_rule_naming_two_others_draws_a_warning_for_each(self, tmp_path):
-        root = build(tmp_path, stems=["b", "c"], bodies={"a": "b and c\n"})
+        root = build(tmp_path, stems=["b", "c"], bodies={"a": "`b` and `c`\n"})
 
         assert subjects_of(root, "cross-reference") == [
             RulePairSubject("a", "b"),
@@ -208,47 +210,51 @@ class TestARuleWhoseTextNamesAnotherRule:
         assert warnings_of(root, "cross-reference") == []
 
     def test_a_name_inside_a_longer_hyphenated_word_is_no_match(self, tmp_path):
-        root = build(tmp_path, stems=["code"], bodies={"a": "writing-code and code-review\n"})
+        root = build(
+            tmp_path, stems=["code"], bodies={"a": "writing-code.md and rule code-review\n"}
+        )
 
         assert warnings_of(root, "cross-reference") == []
 
     def test_a_hyphenated_rule_name_matches_whole(self, tmp_path):
-        root = build(tmp_path, stems=["writing-code"], bodies={"a": "Follow writing-code.\n"})
+        root = build(tmp_path, stems=["writing-code"], bodies={"a": "Follow `writing-code`.\n"})
 
         assert subjects_of(root, "cross-reference") == [RulePairSubject("a", "writing-code")]
 
     def test_a_hyphenated_rule_name_inside_a_longer_name_is_no_match(self, tmp_path):
-        root = build(tmp_path, stems=["writing-code"], bodies={"a": "writing-code-review\n"})
+        root = build(tmp_path, stems=["writing-code"], bodies={"a": "rule writing-code-review\n"})
 
         assert warnings_of(root, "cross-reference") == []
 
     def test_an_underscore_continues_a_name(self, tmp_path):
-        root = build(tmp_path, stems=["voice"], bodies={"a": "voice_tone and _voice\n"})
+        root = build(tmp_path, stems=["voice"], bodies={"a": "rule voice_tone and _voice.md\n"})
 
         assert warnings_of(root, "cross-reference") == []
 
     def test_a_digit_continues_a_name(self, tmp_path):
-        root = build(tmp_path, stems=["voice"], bodies={"a": "voice2 and 2voice\n"})
+        root = build(tmp_path, stems=["voice"], bodies={"a": "rule voice2 and 2voice.md\n"})
 
         assert warnings_of(root, "cross-reference") == []
 
     def test_a_rule_name_made_of_digits_and_underscores_matches_whole(self, tmp_path):
-        root = build(tmp_path, stems=["rule_2"], bodies={"a": "apply rule_2 here\n"})
+        root = build(tmp_path, stems=["rule_2"], bodies={"a": "apply `rule_2` here\n"})
 
         assert subjects_of(root, "cross-reference") == [RulePairSubject("a", "rule_2")]
 
     def test_the_match_is_case_sensitive(self, tmp_path):
-        root = build(tmp_path, stems=["voice"], bodies={"a": "Voice and VOICE\n"})
+        root = build(tmp_path, stems=["voice"], bodies={"a": "`Voice`, rule VOICE and Voice.md\n"})
 
         assert warnings_of(root, "cross-reference") == []
 
-    def test_punctuation_and_backticks_end_a_name(self, tmp_path):
-        root = build(tmp_path, stems=["voice"], bodies={"a": "Keep `voice`, (voice) and voice.\n"})
+    def test_punctuation_ends_a_name(self, tmp_path):
+        root = build(
+            tmp_path, stems=["voice"], bodies={"a": "Keep (rule voice), then the voice rule.\n"}
+        )
 
         assert subjects_of(root, "cross-reference") == [RulePairSubject("a", "voice")]
 
     def test_a_dot_in_a_rule_name_is_a_dot_and_nothing_wider(self, tmp_path):
-        root = build(tmp_path, stems=["v1.2"], bodies={"a": "v1x2\n"})
+        root = build(tmp_path, stems=["v1.2"], bodies={"a": "`v1x2` and rule v1x2\n"})
 
         assert warnings_of(root, "cross-reference") == []
 
@@ -262,6 +268,86 @@ class TestARuleWhoseTextNamesAnotherRule:
             tmp_path,
             stems=["sorting"],
             bodies={"voice": "<!-- rule: sorting -->\ntext\n"},
+        )
+
+        assert warnings_of(root, "cross-reference") == []
+
+
+class TestARuleNamedOnlyInAReferenceForm:
+    @pytest.mark.parametrize(
+        "text",
+        [
+            pytest.param("Follow `sorting` first.\n", id="name-in-backticks"),
+            pytest.param("Open `sorting.md` first.\n", id="backticked-file-name"),
+            pytest.param("Open sorting.md first.\n", id="bare-file-name"),
+            pytest.param("Open `sorting@terse.md` first.\n", id="backticked-variant-file-name"),
+            pytest.param("Open sorting@terse.md first.\n", id="bare-variant-file-name"),
+            pytest.param("See [the order](../rules/sorting.md).\n", id="link-to-the-file"),
+            pytest.param("See [the order](sorting@terse.md#top).\n", id="link-to-a-variant-file"),
+            pytest.param("Apply rule sorting first.\n", id="rule-name-bare"),
+            pytest.param("Apply rule `sorting` first.\n", id="rule-name-backticked"),
+            pytest.param("Apply the sorting rule first.\n", id="the-name-rule-bare"),
+            pytest.param("Apply the `sorting` rule first.\n", id="the-name-rule-backticked"),
+        ],
+    )
+    def test_each_reference_form_draws_a_warning(self, tmp_path, text):
+        root = build(tmp_path, stems=["sorting"], bodies={"voice": text})
+
+        (warning,) = warnings_of(root, "cross-reference")
+        assert warning.subject == RulePairSubject("voice", "sorting")
+        assert warning.line == 1
+
+    def test_a_bare_single_word_name_draws_no_warning(self, tmp_path):
+        root = build(
+            tmp_path,
+            stems=["reporting", "comments"],
+            bodies={"voice": "Check before reporting. Search comments too.\n"},
+        )
+
+        assert warnings_of(root, "cross-reference") == []
+
+    def test_a_bare_hyphenated_name_draws_no_warning(self, tmp_path):
+        root = build(
+            tmp_path,
+            stems=["agent-delegation"],
+            bodies={"voice": "Hand it over per agent-delegation here.\n"},
+        )
+
+        assert warnings_of(root, "cross-reference") == []
+
+    def test_a_bare_name_in_a_variant_draws_no_warning(self, tmp_path):
+        root = build(
+            tmp_path,
+            stems=["handoff", "voice"],
+            bodies={"voice@terse": "Read the newest handoff note.\n"},
+        )
+
+        assert warnings_of(root, "cross-reference") == []
+
+    def test_a_bare_mention_before_a_reference_form_is_not_the_first_match(self, tmp_path):
+        root = build(
+            tmp_path,
+            stems=["sorting"],
+            bodies={"voice": "sorting first.\nThen `sorting`.\n"},
+        )
+
+        (warning,) = warnings_of(root, "cross-reference")
+        assert warning.line == 2
+
+    def test_a_file_name_inside_a_longer_name_is_no_match(self, tmp_path):
+        root = build(
+            tmp_path,
+            stems=["code"],
+            bodies={"voice": "See writing-code.md, code-review.md and code.mdx.\n"},
+        )
+
+        assert warnings_of(root, "cross-reference") == []
+
+    def test_a_phrase_around_a_longer_name_is_no_match(self, tmp_path):
+        root = build(
+            tmp_path,
+            stems=["voice"],
+            bodies={"a": "Apply rule voice-over, rule Voice, and the voice rules.\n"},
         )
 
         assert warnings_of(root, "cross-reference") == []
@@ -425,6 +511,28 @@ class TestABodyCitingAFileTheCorpusCannotHandOver:
         assert warning.line == 1
         assert "/etc/hosts" in warning.message
 
+    def test_a_path_holding_a_placeholder_segment_is_no_citation(self, tmp_path):
+        root = build(
+            tmp_path,
+            bodies={
+                "voice": (
+                    "Write `/tmp/<skill>-<slug>.md`, `~/notes/<topic>/x.md`, "
+                    "and `references/<name>.md`.\n"
+                )
+            },
+        )
+
+        assert warnings_of(root, "external-reference") == []
+        assert warnings_of(root, "dangling-reference") == []
+
+    def test_a_concrete_path_beside_an_unrelated_angle_bracket_is_external(self, tmp_path):
+        root = build(
+            tmp_path,
+            bodies={"voice": "Read `/opt/data/a<b.md` and `~/notes/x>y.md` and `/opt/<a/b>.md`.\n"},
+        )
+
+        assert len(warnings_of(root, "external-reference")) == 3
+
     def test_a_corpus_reference_that_exists_draws_nothing(self, tmp_path):
         root = build(
             tmp_path,
@@ -494,7 +602,7 @@ class TestWarningsOnly:
             tmp_path,
             "defaults: ['voice']\n",
             stems=["security"],
-            bodies={"voice": "Run security first.\n"},
+            bodies={"voice": "Run `security` first.\n"},
         )
 
         report = check(root)

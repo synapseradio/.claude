@@ -188,11 +188,12 @@ Reports every error and every warning in one run, each with its file and line. E
 variant with no default form, a ruleset cycle, a reference to a name nothing declares, a condition
 that tests anything but a fact, a rule file longer than 9,000 characters with its marker, frontmatter
 that carries a condition, conflicting variants set by blocks that can both apply, and an unknown
-top-level key. Warnings include a rule that no add includes, a rule whose text names another rule as
-a whole word, a stray directory, a file path a rule cites that the directory does not hold, a
-context whose rules need more parts than a delivery carries, and a rule file that opens on a marker
-for another rule or another form of its own. A warning never fails the run. A clean directory prints
-nothing.
+top-level key. Warnings include a rule that no add includes, a rule whose text names another rule
+(by its name in backticks, its file name, a link to its file, or the phrase "rule name" or "the name
+rule"; a bare word is no mention), a stray directory, a file path a rule cites that the directory
+does not hold (a path with a `<placeholder>` segment is no citation), a context whose rules need
+more parts than a delivery carries, and a rule file that opens on a marker for another rule or
+another form of its own. A warning never fails the run. A clean directory prints nothing.
 
 ### explain
 
