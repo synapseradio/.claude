@@ -2,7 +2,7 @@
 
 For every git worktree you create, enter, list, merge, or remove, optimize for a worktree the wt CLI created, listed, merged, and removed, with its hooks and config run.
 
-- wt: worktrunk, documented at https://worktrunk.dev, its config, hooks included, at `~/.dotfiles/.config/worktrunk/config.toml`
+- wt: worktrunk, documented at https://worktrunk.dev, its config, hooks included, shown with each file's location by `wt config show`
 
 Create with `wt --yes switch --create $branch --base $base`, naming as `$base` the branch the work builds on. List with `wt list`. Remove with `wt remove`. Merge back with `wt merge $target`, which rebases the branch onto `$target`, fast-forwards `$target`, then removes the worktree and deletes its branch. Answer a question about wt from its config file and docs.
 
