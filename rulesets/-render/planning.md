@@ -33,7 +33,7 @@ A stale memory states the reverse of what holds ? reverse it.
 <!-- rule: writing-plans -->
 ## writing-plans
 
-For every plan file you write and every exit from plan mode, optimize for a plan an agent carries to its target outcomes holding only the file.
+For every plan file you write and every exit from plan mode, optimize for a future agent that carries to its target outcomes holding only the file.
 
 - executor: the agent running the plan, delegating at will, holding the plan and each file it names by absolute path, never the conversation
 - work unit: work that lands as one commit
