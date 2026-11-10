@@ -1,8 +1,10 @@
 # rulesets
 
 The rules this repository delivers to Claude Code sessions and delegates. This page is for editing
-them. [The plugin README](../features/plugins/rulesets/README.md) covers how the plugin composes
-and delivers them, and every command named below.
+them. The plugin's [manifest page](../features/plugins/rulesets/docs/manifest.md) covers how it
+composes them, its [delivery page](../features/plugins/rulesets/docs/delivery.md) how it delivers
+them, and its [commands page](../features/plugins/rulesets/docs/commands.md) every command named
+below.
 
 The commands below run from the repository root. `$CLI` stands for
 `python3.14 features/plugins/rulesets/lib/rulesets/cli.py`.

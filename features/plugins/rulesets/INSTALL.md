@@ -57,8 +57,8 @@ the rule's text and no marker line; delivery writes the marker.
 defaults: ["all:*"]
 ```
 
-`all:*` spreads every rule in the pool to every context. See the [README](README.md) for variants,
-blocks, and flags.
+`all:*` spreads every rule in the pool to every context. See [the manifest page](docs/manifest.md) for
+variants, blocks, and flags.
 
 If you hold rules already, `adopt` maps a folder of rule files, or a tier corpus, into a new
 rulesets directory and compares what the source delivers with what the new directory delivers:
