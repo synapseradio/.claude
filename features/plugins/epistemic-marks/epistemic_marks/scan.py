@@ -52,7 +52,7 @@ def _turn_state_path(directory, transcript_path):
 def _load_turn_start(path):
     try:
         data = json.loads(path.read_text())
-    except OSError, ValueError:
+    except (OSError, ValueError):
         return 0
     offset = data.get("turn_start_offset") if isinstance(data, dict) else None
     return offset if isinstance(offset, int) and offset >= 0 else 0

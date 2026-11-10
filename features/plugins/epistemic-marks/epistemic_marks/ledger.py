@@ -69,7 +69,7 @@ def prune(directory, now):
 def read_reported(path):
     try:
         reported = json.loads(path.read_text())
-    except OSError, ValueError:
+    except (OSError, ValueError):
         return []
     return reported if isinstance(reported, list) else []
 
