@@ -10,10 +10,11 @@ prose form the rule corpus uses â€” a universal opener, then instruction only â€
 so a session that receives rules from elsewhere reads this one in the same
 voice.
 
-A plugin update replaces this file, so keep your own edits elsewhere. Every
-way to switch this delivery off takes more with it: `disableAllHooks` silences
-every plugin at once, so stopping this enforcement alone means uninstalling
-the plugin.
+A plugin update replaces this file, so an edit made here does not survive an
+update. The plugin delivers this file as shipped, and no setting points
+delivery at another file. `claude plugin disable epistemic-marks@claude-root`
+stops delivery and enforcement together after a reload. `disableAllHooks`
+silences the hooks of every plugin at once.
 
 ---
 
