@@ -41,7 +41,7 @@ plugin cannot retract text it already delivered.
 
 Three further hooks deliver nothing. A `PreToolUse` hook on the `Agent` tool records each spawn and
 the model its caller names, if any. An `InstructionsLoaded` hook records each instruction file the harness
-loaded. A `SessionEnd` hook ends the session's toggles. The records feed the checks below.
+loaded. A `SessionEnd` hook ends the session's toggles. The records feed the checks in [Commands](commands.md).
 
 A delivery can skip a reference, withhold a rule, leave a rule out, or reach no rule, and each
 draws a notice. At session start, the plugin shows the notices to you as a message and never puts
