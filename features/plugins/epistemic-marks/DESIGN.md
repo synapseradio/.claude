@@ -266,3 +266,35 @@ vocabulary opened at three tokens and stands at four: the escalation token
 split into a caller's mark and a standing question, because one token meant
 both "my caller can settle this" and "a person must", and a caller receiving
 it could not tell the two apart.
+
+## Testing
+
+From the plugin directory, with any Python 3.9 or later:
+
+```sh
+python3 -m unittest discover -s tests -q
+```
+
+The tests need only the standard library and read nothing outside the plugin.
+`tests/test_python_floor.py` parses every shipped module at Python 3.9, and
+`tests/test_with_python.py` holds the launcher to the same floor. Run the
+suite on the oldest and the newest interpreter at hand after a change to
+either.
+
+To check an installed copy without a session, feed each hook its input by
+hand. `PLUGIN_DIR` is the `installPath` from `claude plugin list --json`, or
+`readFromFolder` where that key is present.
+
+```sh
+printf '%s' '{"hook_event_name":"SessionStart"}' | bash "PLUGIN_DIR/hooks/with-python.sh" "PLUGIN_DIR/hooks/deliver-rule.py"
+```
+
+prints JSON that starts
+`{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "<!-- rule: epistemic-marks -->`.
+
+```sh
+printf '%s' '{"stop_hook_active":false,"last_assistant_message":"Nobody else calls it [?]."}' | bash "PLUGIN_DIR/hooks/with-python.sh" "PLUGIN_DIR/hooks/verify-marks.py"
+```
+
+prints JSON that starts `{"decision": "block"`. With `(src/a.py:12)` in place
+of the mark, it prints nothing and exits 0.

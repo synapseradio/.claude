@@ -1,167 +1,70 @@
 # epistemic-marks
 
-This plugin blocks a reply that still contains a claim that nobody has checked.
+This plugin stops Claude from ending a reply on a claim nobody has checked.
 
-## What it is
+Claude marks each claim it has not verified with a short token at the end of the clause. Before the reply ends, the plugin finds every mark still standing and sends the reply back once. Claude then checks each claim and replaces its mark with a source, narrows the claim, or removes it.
 
-An epistemic mark is a short token. A writer puts it at the end of a clause to show that the claim in that clause has no verified source yet. The plugin has two parts. Hooks check each reply for marks. Rule text teaches the model which marks to write.
+> **Are you an AI agent installing this plugin?** Follow [SETUP.md](SETUP.md). It gives each command with its expected output, and the steps you must hand to a person.
 
-A hook is a command that Claude Code runs when an event occurs. An event is a step in a session, such as the end of a reply. Rule text is a file that the plugin delivers into each session.
+## The marks
 
-The plugin knows four marks. The label states the action that the mark needs.
-
-| Mark | Name | Label |
+| Mark | Name | What it asks for |
 | --- | --- | --- |
-| `[?]` | the unsourced mark | `needs_citation` |
-| `[.?]` | the secondhand mark | `needs_verification` |
-| `[^?]` | the caller's mark | `escalate_decision` |
-| `[!?]` | the standing question | `ask_user` |
+| `[?]` | the unsourced mark | a citation |
+| `[.?]` | the secondhand mark | a check of what another agent or tool reported |
+| `[^?]` | the caller's mark | a decision the agent that started this one can make |
+| `[!?]` | the standing question | a decision only a person can make |
 
-A mark does not count in these places:
-
-- a fenced code block
-- an inline code span that holds more than the mark
-- an inline code span that holds only the mark, on a line that also calls that mark by its name
-
-A sentence that calls the mark by its name describes the mark. It makes no claim under the mark. A backticked mark on a line with no such name still counts. The hook lists each skipped mention, so no mention goes unseen.
-
-The plugin ships both parts, so it needs no other plugin. It reads none of your configuration and none of your other plugins. The hooks that check replies read the session transcript. The transcript is the file that records the conversation. Claude Code gives its path in the hook input.
+A mark inside a code block, or inside a longer code span, does not count. Neither does a mark in backticks on a line that names it, such as "the unsourced mark, `[?]`". Such a line describes the mark rather than claiming under it.
 
 ## Requirements
 
-Make sure that you meet both requirements before you install the plugin.
+- Claude Code 2.1.268 or later.
+- Python 3.9 or later. The hooks look for `python3`, then `python3.15` down to `python3.9`. If none of them on your `PATH` is 3.9 or later, set `EPISTEMIC_MARKS_PYTHON` to the interpreter's path.
 
-1. Run `claude --version`.
-
-   The output must read `2.1.268 (Claude Code)` or show a higher number. Claude Code 2.1.268 is the oldest version that anyone has verified. The plugin needs the `SubagentStart` event. If the number is lower, run `claude update`.
-
-2. Run this command:
-
-   ```sh
-   python3 -c 'import sys; sys.exit(sys.version_info < (3, 9))'
-   ```
-
-   The exit code, the number that a command returns when it ends, must be 0. If it is not 0, install Python 3.9 or later. Then give the environment variable `EPISTEMIC_MARKS_PYTHON` the path of that Python. Do this in the place that starts Claude Code.
-
-The hooks try `python3` first. Then they try `python3.15` down to `python3.9`. A name such as `python3.11` in your PATH can serve in place of `python3`. Your PATH holds the directories where your system looks for commands. If no usable Python exists, each hook prints one line to the error output. The session then has no rule text, and no hook checks a reply.
+Without a usable Python, each hook prints one line to stderr. Sessions then run with no rule text and no checks.
 
 ## Install
 
-This repository is a marketplace, a catalog of plugins. Step 1 adds the catalog. Step 2 installs the plugin from the catalog.
+```sh
+claude plugin marketplace add synapseradio/.claude
+claude plugin install epistemic-marks@claude-root
+```
 
-1. Run this command:
+Then run `/reload-plugins` in an open session, or restart Claude Code.
 
-   ```sh
-   claude plugin marketplace add synapseradio/.claude
-   ```
+If the first command fails over SSH, run it again with `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` set.
 
-   The output ends with `Successfully added marketplace: claude-root (declared in user settings)`. If you run it again, the output says `already on disk`, and the exit code is 0.
+## What it does
 
-   If the SSH connection to GitHub fails, run this command:
+The plugin teaches the marks and enforces them, so it needs nothing else installed.
 
-   ```sh
-   CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1 claude plugin marketplace add synapseradio/.claude
-   ```
-
-2. Run this command:
-
-   ```sh
-   claude plugin install epistemic-marks@claude-root
-   ```
-
-   The output ends with `Successfully installed plugin: epistemic-marks@claude-root (scope: user)`. If you run it again, the output says `is already installed`, and the exit code is 0.
-
-3. Person step: tell the person to run `/reload-plugins` in an open session, or to restart Claude Code.
-
-   An agent cannot run a slash command, a command that starts with `/`, for the person.
-
-## Check it loaded
-
-Steps 1 to 5 are for the agent. Step 6 is for the person.
-
-1. Run `claude plugin list`.
-
-   The output has a section for `epistemic-marks@claude-root`. The section contains the line `Status: ✔ enabled`.
-
-2. Run `claude plugin details epistemic-marks@claude-root`.
-
-   The output contains `Hooks (5)  SessionStart, SubagentStart, PostToolBatch, Stop, SubagentStop`.
-
-3. Run `claude plugin list --json`.
-
-   The output is JSON, a structured text format. Read the value of `installPath`. If the output has a `readFromFolder` key, read that value instead. Call the path `PLUGIN_DIR`. Replace `PLUGIN_DIR` with the real path in steps 4 and 5.
-
-4. Run this command:
-
-   ```sh
-   printf '%s' '{"hook_event_name":"SessionStart"}' | bash "PLUGIN_DIR/hooks/with-python.sh" "PLUGIN_DIR/hooks/deliver-rule.py"
-   ```
-
-   The output starts with this text:
-
-   ```text
-   {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "<!-- rule: epistemic-marks -->
-   ```
-
-5. Run this command:
-
-   ```sh
-   printf '%s' '{"stop_hook_active":false,"last_assistant_message":"Nobody else calls it [?]."}' | bash "PLUGIN_DIR/hooks/with-python.sh" "PLUGIN_DIR/hooks/verify-marks.py"
-   ```
-
-   The output starts with `{"decision": "block"`. Now replace `[?]` in the command with the citation `(src/a.py:12)`. Run the command again. It prints nothing and exits with code 0.
-
-6. Person step: after the reload, the person runs `/hooks` in the session.
-
-   The output shows five entries. The agent tells the person which steps succeeded, and that step 6 is the person's step.
-
-## Use
-
-A hook acts only where a reply carries a mark. The plugin acts on three events.
-
-The Stop hook checks a reply when the reply ends. If the reply carries a mark, the hook blocks the reply once. The reason for the block starts with `Your reply still carries unresolved marks`. It lists each marked line, with one instruction for each mark. If marks remain when the hook checks the reply again, the hook shows them to the user and does not block again.
-
-A subagent is an agent that another agent starts. A subagent cannot reach the user. The SubagentStop hook lists the caller's mark and the standing question back to the subagent. The subagent puts them in its report. The report carries them to the caller. The caller is the agent that started the subagent.
-
-The PostToolBatch hook checks the text that the model wrote since your last message. It does this after each group of tool calls, which are actions such as reading a file. It never blocks. It shows each line once for each session.
+- **At every session and subagent start**, it adds the rule text from `rule-text/epistemic-marks.md` to the context. The rule text teaches Claude when to write each mark and how to resolve it.
+- **When a reply ends**, the Stop hook blocks it once if it carries a mark. The block lists each marked line with what to do about it. A mark still standing after the rewrite is shown to you, and the reply ends.
+- **When a subagent finishes**, the caller's mark and the standing question go back to the subagent. It puts them in its report, so the agent that started it can answer them or ask you.
+- **After each batch of tool calls**, the PostToolBatch hook shows any marked line written since your last message. It never blocks, and it shows each line once per session.
 
 ## Turn it off
 
-1. Run `claude plugin disable epistemic-marks@claude-root`.
-
-   The output ends with `Successfully disabled plugin: epistemic-marks (scope: user)`. The plugin then neither delivers rule text nor checks replies.
-
-2. Person step: tell the person to run `/reload-plugins` or to restart Claude Code.
-
-To turn the plugin on again, run `claude plugin enable epistemic-marks@claude-root`. A person must reload again. To remove the plugin, run `claude plugin uninstall epistemic-marks@claude-root`.
-
-The setting `disableAllHooks` turns off the hooks of every plugin. It does not turn off this plugin alone.
-
-## State and config
-
-The PostToolBatch hook keeps a record of the lines that it has already shown. The record holds a SHA-256 fingerprint of each line. A fingerprint identifies a line and does not reveal its text. The record never holds the text of a line. The plugin removes entries that are older than one day.
-
-The plugin writes the record to the first of these directories that applies:
-
-1. The directory in `VERIFY_MARKS_STATE_DIR`.
-2. The directory `verify-marks` inside the directory in `CLAUDE_PLUGIN_DATA`. Claude Code defines `CLAUDE_PLUGIN_DATA`.
-3. The directory `epistemic-marks-verify-marks` inside the system temporary directory.
-
-Two variables configure the plugin. Nothing else does.
-
-- `EPISTEMIC_MARKS_PYTHON`: the name or path of the Python that runs the hooks. The launcher tries it before all other names.
-- `VERIFY_MARKS_STATE_DIR`: the directory for the record. It overrides the other directories.
-
-The plugin delivers the rule text file as shipped. No setting points delivery at another file. An update replaces `rule-text/epistemic-marks.md`, so an edit to that file does not survive an update.
-
-## Test
-
-Run this command in the plugin directory. In a clone of the repository, that directory is `features/plugins/epistemic-marks`.
-
 ```sh
-python3 -m unittest discover -s tests -q
+claude plugin disable epistemic-marks@claude-root
 ```
 
-The output ends with `OK`. The tests need only the Python standard library, and they read nothing outside the plugin. One test compares the marks in the rule text with the marks in `epistemic_marks/marks.py`. It fails with the name of any mark that differs.
+Then reload as after installing. `claude plugin enable epistemic-marks@claude-root` turns it back on, and `claude plugin uninstall epistemic-marks@claude-root` removes it.
 
-For the reasons behind the design, read [DESIGN.md](DESIGN.md).
+## State and configuration
+
+To show each PostToolBatch line only once, the plugin keeps a record of lines it has shown. The record holds a SHA-256 fingerprint of each line, never its text. Entries older than a day are removed.
+
+Two environment variables configure the plugin:
+
+- `EPISTEMIC_MARKS_PYTHON`: the Python that runs the hooks. It is tried before every other name.
+- `VERIFY_MARKS_STATE_DIR`: where the record goes. Without it, the record goes to `verify-marks` under `CLAUDE_PLUGIN_DATA`, or else to `epistemic-marks-verify-marks` in the system temporary directory.
+
+The plugin delivers its rule text as shipped, and no setting points it at another file. An update replaces `rule-text/epistemic-marks.md`, so local edits to it do not survive.
+
+The plugin reads none of your configuration and no other plugin. The hooks that check replies read the session transcript whose path Claude Code passes them.
+
+## More
+
+[DESIGN.md](DESIGN.md) explains why the plugin works this way and how to test it.
