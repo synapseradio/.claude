@@ -363,6 +363,47 @@ EOF
   assert_silent_in "${REPO}" 'lefthook run pre-commit'
 }
 
+@test "a lefthook shim and a command that redirects stderr with 2>&1 stay allowed" {
+  cat >"${REPO}/.git/hooks/pre-commit" <<'EOF'
+#!/bin/sh
+
+if [ "$LEFTHOOK_VERBOSE" = "1" -o "$LEFTHOOK_VERBOSE" = "true" ]; then
+  set -x
+fi
+
+if [ "$LEFTHOOK" = "0" ]; then
+  exit 0
+fi
+
+call_lefthook()
+{
+  if test -n "$LEFTHOOK_BIN"
+  then
+    "$LEFTHOOK_BIN" "$@"
+  elif lefthook -h >/dev/null 2>&1
+  then
+    lefthook "$@"
+  fi
+}
+
+call_lefthook run "pre-commit" "$@"
+EOF
+  chmod +x "${REPO}/.git/hooks/pre-commit"
+  assert_silent_in "${REPO}" 'python3.14 -m pytest some/tests -q > /tmp/out.txt 2>&1'
+}
+
+@test "a command that redirects both streams with &> stays allowed" {
+  lefthook_runs 'bun run lint'
+  assert_silent_in "${REPO}" 'python3.14 -m pytest some/tests -q &> /tmp/out.txt'
+}
+
+@test "a check a hook runs is denied when its output is redirected" {
+  lefthook_runs 'ruff check .'
+  assert_denies_in "${REPO}" 'ruff check . > /tmp/out.txt 2>&1'
+  assert_denies_in "${REPO}" 'ruff check . &> /tmp/out.txt'
+  assert_denies_in "${REPO}" 'ruff check . 2>&1 | tail -5'
+}
+
 @test "a refusal names the file that runs the check and the command" {
   lefthook_runs 'bun run lint'
   run_bash_hook_in "${REPO}" 'bun run lint'

@@ -283,7 +283,16 @@ command_words::split() {
         stack="${stack%?}"
       fi
       ;;
-    ';' | '|' | '&')
+    '&')
+      # The & of >&1, <&3, and &> is part of a redirect, not a separator.
+      if ((index > 0)) && [[ "${text:index-1:1}" == '>' || "${text:index-1:1}" == '<' ]] ||
+        [[ "${text:index+1:1}" == '>' ]]; then
+        command_words::add_char "${char}"
+      else
+        command_words::end_segment
+      fi
+      ;;
+    ';' | '|')
       command_words::end_segment
       ;;
     $'\n')
