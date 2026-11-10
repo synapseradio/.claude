@@ -1,5 +1,5 @@
 """Tests for hooks/with-python.sh, the interpreter chooser every hook command
-runs through instead of naming `python3.14` directly, run from the plugin
+runs through instead of naming an interpreter directly, run from the plugin
 root:
 
     python3.14 -m pytest tests/test_with_python.py -v
@@ -31,7 +31,7 @@ def make_executable(path, body):
 
 
 def working_mock(path, real_interpreter):
-    """A stand-in that behaves like a real 3.14+ interpreter.
+    """A stand-in that behaves like a real interpreter at or above the floor.
 
     It answers a `-c` version probe and a script invocation alike by handing
     both to the real interpreter underneath, so it passes with-python.sh's
@@ -42,8 +42,27 @@ def working_mock(path, real_interpreter):
 
 def unusable_mock(path):
     """A stand-in for an interpreter below the floor: found on PATH, but
-    fails the version probe every time, the way a pre-3.14 python would."""
+    fails the version probe every time, the way a pre-3.9 python would."""
     make_executable(path, "#!/bin/bash\nexit 1\n")
+
+
+def version_reporting_mock(path, real_interpreter, version):
+    """A stand-in that reports `version` to a `-c` probe and runs scripts for real.
+
+    The probe is evaluated by the real interpreter with `sys.version_info`
+    replaced first, so the launcher's own comparison decides the outcome and
+    a probe set too high or too low fails a test. A script invocation passes
+    straight through to the real interpreter.
+    """
+    reported = f"({version[0]}, {version[1]}, 0, 'final', 0)"
+    make_executable(
+        path,
+        "#!/bin/bash\n"
+        'if [[ "${1:-}" == -c ]]; then\n'
+        f'  exec "{real_interpreter}" -c "import sys; sys.version_info = {reported}; ${{2}}"\n'
+        "fi\n"
+        f'exec "{real_interpreter}" "$@"\n',
+    )
 
 
 def run_chooser(script, path_dirs, env_extra=None):
@@ -60,11 +79,11 @@ def run_chooser(script, path_dirs, env_extra=None):
 
 
 class WithPythonFallsBackWhenThePreferredInterpreterIsAbsent(unittest.TestCase):
-    def test_it_execs_python3_when_python3_14_is_nowhere_on_path(self):
+    def test_it_execs_python3_when_no_versioned_interpreter_is_on_path(self):
         real = sys.executable
         with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
             bindir = Path(bindir)
-            # No python3.14 anywhere on this PATH; only a python3 stands in.
+            # No versioned interpreter anywhere on this PATH; only a python3 stands in.
             working_mock(bindir / "python3", real)
             script = Path(scratch) / "probe.py"
             script.write_text(PROBE_SCRIPT)
@@ -110,8 +129,52 @@ class WithPythonReportsAndExitsNonZeroWhenNothingServes(unittest.TestCase):
 
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stdout, "")
-        self.assertIn("3.14", result.stderr)
+        self.assertIn("3.9", result.stderr)
         self.assertIn(ESCAPE_HATCH, result.stderr)
+
+
+class WithPythonBindsItsFloorFromBothSides(unittest.TestCase):
+    def test_an_interpreter_reporting_3_9_serves_the_script(self):
+        real = sys.executable
+        with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
+            bindir = Path(bindir)
+            version_reporting_mock(bindir / "python3", real, (3, 9))
+            script = Path(scratch) / "probe.py"
+            script.write_text(PROBE_SCRIPT)
+
+            result = run_chooser(script, [bindir])
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "PROBE-OK")
+
+    def test_an_interpreter_reporting_3_8_is_refused_and_the_floor_is_named(self):
+        real = sys.executable
+        with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
+            bindir = Path(bindir)
+            version_reporting_mock(bindir / "python3", real, (3, 8))
+            script = Path(scratch) / "probe.py"
+            script.write_text(PROBE_SCRIPT)
+
+            result = run_chooser(script, [bindir])
+
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("3.9", result.stderr)
+        self.assertIn(ESCAPE_HATCH, result.stderr)
+
+    def test_a_versioned_interpreter_serves_where_python3_is_unusable(self):
+        real = sys.executable
+        with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
+            bindir = Path(bindir)
+            unusable_mock(bindir / "python3")
+            working_mock(bindir / "python3.11", real)
+            script = Path(scratch) / "probe.py"
+            script.write_text(PROBE_SCRIPT)
+
+            result = run_chooser(script, [bindir])
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "PROBE-OK")
 
 
 if __name__ == "__main__":

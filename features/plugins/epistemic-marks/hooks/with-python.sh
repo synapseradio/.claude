@@ -4,20 +4,20 @@
 # that can serve it, passing stdin and stdout through untouched.
 #
 # The hook commands name this rather than an interpreter, because `python3`
-# on one machine is 3.14 and on another is a system Python below 3.14, where
-# the hook would exit before reading its payload and the session would start
-# with no user rules and no verification, silently.
+# on one machine is a current release and on another is a system Python below
+# the floor, where the hook would exit before reading its payload and the
+# session would start with no user rules and no verification, silently.
 #
-# The floor is 3.14, not merely "recent": epistemic_marks/ledger.py catches
-# `except OSError, ValueError:` without parentheses, grammar PEP 758 adds in
-# 3.14, so an older interpreter fails to import the package at all rather
-# than running it in some degraded way.
+# The floor is 3.9, the oldest interpreter the test suite runs green on. The
+# syntax limit is 3.8: the walrus operator at epistemic_marks/scan.py:164. An
+# older interpreter fails to import the package at all rather than running it
+# in some degraded way.
 
 set -uo pipefail
 
-readonly REQUIREMENT='Python 3.14 or later'
-readonly CANDIDATES=(python3.14 python3)
-readonly VERSION_PROBE='import sys; sys.exit(sys.version_info < (3, 14))'
+readonly REQUIREMENT='Python 3.9 or later'
+readonly CANDIDATES=(python3 python3.15 python3.14 python3.13 python3.12 python3.11 python3.10 python3.9)
+readonly VERSION_PROBE='import sys; sys.exit(sys.version_info < (3, 9))'
 
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
@@ -30,7 +30,7 @@ err() {
 # Arguments:
 #   The interpreter's name or path.
 # Returns:
-#   0 where it exists and reports 3.14 or later.
+#   0 where it exists and reports 3.9 or later.
 #######################################
 usable() {
   local candidate="$1"
