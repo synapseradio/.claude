@@ -16,8 +16,9 @@ artifacts have to agree about which tokens exist:
 - Rule text delivered into the session tells a model which mark to write and
   what each one obliges. It teaches marks.
 
-This plugin ships the first and none of the second, so the two artifacts sit
-on opposite sides of an install boundary and are written by different people.
+This plugin ships both. The hooks recognize marks, `rule-text/epistemic-marks.md`
+teaches them, and `hooks/deliver-rule.py` delivers that file at session start
+and at subagent start. The two stay separate files, so they can drift apart.
 Two failures follow, and both are quiet. A mark the rule text teaches and the
 hooks do not check lets every claim under it leave the session unverified. A
 mark the hooks block and no rule text mentions corrects a model against
@@ -74,10 +75,10 @@ place, and the stale citation shows the drift is not hypothetical.
 
 **Make the rule text the source and have the hooks read it.** The vocabulary
 would be stated once, in the artifact a model actually reads. A hook receives
-no rule text, so it would have to find the file on disk and parse it. That
-requires knowing where somebody else keeps their rule text, which this plugin
-cannot know and must not assume, and any path it guessed would break the
-moment that text moved.
+no rule text, so it would have to open the shipped file and parse prose
+written for a model. That prose gives each mark's meaning and carries neither
+a label nor an act, so the hooks would still need a second statement of both,
+and a rewording of the prose would change what they enforce.
 
 **Make the plugin the source and have the rule text cite it.** The vocabulary
 would be stated once, in a data file the hooks load and the rule text points
@@ -100,9 +101,10 @@ literal. The message builders branch on nothing: they look each detected
 mark's act up on its own record, so a reply carrying one mark reads one
 instruction.
 
-The plugin is the side that ships, which settles the ownership question. Rule
-text is written by whoever installs this, so the enforced vocabulary has to be
-readable and checkable from here without reaching into anything they own.
+The hooks enforce the vocabulary, which settles the ownership question: the
+plugin owns it. The rule text ships beside it as prose, and
+`hooks/deliver-rule.py` delivers it, so the enforced vocabulary is readable
+and checkable from here without reaching into anything outside the plugin.
 
 `tests/test_marks_vocabulary.py` binds the sides. Both artifacts ship in this
 directory, so the comparison needs no path from anyone and takes no setting:
