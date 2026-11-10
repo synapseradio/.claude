@@ -203,6 +203,25 @@ A second pass also reads only the reply rewritten after the block. The rest
 of the turn still holds the draft the block asked to rewrite, and a line only
 that draft carries is one the rewrite already answered.
 
+## Why delivery runs on both start events
+
+Enforcement on its own would correct a model against something nothing taught
+it, so the teaching ships with it. `rule-text/epistemic-marks.md` holds the
+rule text, and `hooks/deliver-rule.py` hands it over at every start.
+
+On `SessionStart` the delivery entry in `hooks/hooks.json` has no matcher, so
+it runs on every source of a session start, compaction included. Injected
+context does not outlive a compaction, and each firing restores it, per
+https://code.claude.com/docs/en/hooks.
+
+It runs on `SubagentStart` too, and that half is not a courtesy. The
+verification pass matches literal tokens, so a spawned agent that was never
+taught the vocabulary writes no mark, the scan comes back empty, and the pass
+is inert. Teaching is what produces the signal enforcement exists to find.
+`test_the_wiring_delivers_on_both_starts` in `tests/test_delivery.py` reads
+`hooks/hooks.json` and fails if delivery is wired to only one of the two
+starts.
+
 ## Independence from every other plugin
 
 `epistemic-marks` installs and works alone. It assumes no sibling plugin is

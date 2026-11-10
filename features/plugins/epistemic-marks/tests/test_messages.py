@@ -1,6 +1,6 @@
 """Tests for the strings the hooks generate, driven at the builders:
 
-    python3.14 -m pytest tests/test_messages.py -v
+    python3 -m unittest discover -s tests -p test_messages.py -v
 
 Every other test module drives a hook through stdin, which is where behavior
 lives. What is pinned here is the prose itself, so the assertions read the

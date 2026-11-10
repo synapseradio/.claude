@@ -2,7 +2,7 @@
 runs through instead of naming an interpreter directly, run from the plugin
 root:
 
-    python3.14 -m pytest tests/test_with_python.py -v
+    python3 -m unittest discover -s tests -p test_with_python.py -v
 
 Every interpreter here is a mock executable placed in a temporary directory
 that becomes the child process's whole PATH, so a test never depends on

@@ -1,6 +1,6 @@
 """Tests that the reported-lines record discloses no conversation text.
 
-    python3.14 -m pytest tests/test_ledger_content.py -v
+    python3 -m unittest discover -s tests -p test_ledger_content.py -v
 
 The record can land in a directory shared with other users, so what it holds
 is a disclosure question rather than a formatting one.

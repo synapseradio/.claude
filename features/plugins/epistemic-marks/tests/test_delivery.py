@@ -1,6 +1,6 @@
 """Tests for the rule text this plugin delivers into a session.
 
-python3.14 -m pytest tests/test_delivery.py -v
+python3 -m unittest discover -s tests -p test_delivery.py -v
 """
 
 import json

@@ -1,6 +1,6 @@
 """Tests binding this plugin's independence from everything outside it:
 
-    python3.14 -m pytest tests/test_independence.py -v
+    python3 -m unittest discover -s tests -p test_independence.py -v
 
 `epistemic-marks` installs and works on a machine that has never seen a
 ruleset corpus, a marketplace cache, or a `~/.claude` of any shape. That is

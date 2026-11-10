@@ -1,6 +1,6 @@
 """Tests binding the enforced vocabulary to the rule text that teaches it.
 
-    python3.14 -m pytest tests/test_marks_vocabulary.py -v
+    python3 -m unittest discover -s tests -p test_marks_vocabulary.py -v
 
 Both sides ship here, so a disagreement between them is this plugin's own
 defect and needs nothing from outside to detect.

@@ -1,6 +1,6 @@
 """Tests for the verify-marks hook, run from the plugin root:
 
-    python3.14 -m pytest tests -v
+    python3 -m unittest discover -s tests -v
 
 Each test drives the entrypoint through stdin the way the harness does, and
 builds every fixture it needs in a temporary directory: the transcripts it

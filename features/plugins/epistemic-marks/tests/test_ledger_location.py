@@ -1,6 +1,6 @@
 """Tests for where the batch pass keeps its record of reported lines.
 
-    python3.14 -m pytest tests/test_ledger_location.py -v
+    python3 -m unittest discover -s tests -p test_ledger_location.py -v
 
 The location matters for two reasons. Writing inside the plugin root loses
 the record on every plugin update and fails outright where that root is read

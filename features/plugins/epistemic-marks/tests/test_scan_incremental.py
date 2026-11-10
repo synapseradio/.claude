@@ -1,6 +1,6 @@
 """Pins epistemic_marks.scan.last_turn_text's output while its cost changes.
 
-    python3.14 -m pytest tests/test_scan_incremental.py -v
+    python3 -m unittest discover -s tests -p test_scan_incremental.py -v
 
 Written and confirmed green against the full-rescan implementation before
 that implementation was touched, so a later change to how the function
