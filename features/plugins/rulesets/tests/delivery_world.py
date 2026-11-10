@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 HOOKS_JSON = PLUGIN_ROOT / "hooks" / "hooks.json"
-TOGGLE_SKILL = PLUGIN_ROOT / "skills" / "toggle" / "SKILL.md"
+TOGGLE_SKILL = PLUGIN_ROOT / "skills" / "rulesets" / "SKILL.md"
 CLI = PLUGIN_ROOT / "lib" / "rulesets" / "cli.py"
 
 OPUS = "claude-opus-5-5"
@@ -263,13 +263,22 @@ class World:
         return found[0]
 
     def toggle(self, arguments: str, session_id: str = "s1") -> subprocess.CompletedProcess[str]:
-        """The command the toggle skill injects, with the placeholders filled as the harness fills them."""
+        """The skill's toggle command, its placeholders filled as the harness and the model fill them.
 
-        assert TOGGLE_SKILL.is_file(), "the plugin ships skills/toggle/SKILL.md"
+        The harness substitutes `${CLAUDE_SESSION_ID}` and `${CLAUDE_PLUGIN_ROOT}` in a skill's
+        text, and the model replaces `ACTION` with the action's words.
+        https://code.claude.com/docs/en/skills.md
+        """
+
+        assert TOGGLE_SKILL.is_file(), "the plugin ships skills/rulesets/SKILL.md"
         lines = TOGGLE_SKILL.read_text(encoding="utf-8").splitlines()
-        command = next(line[2:-1] for line in lines if line.startswith("!`") and line.endswith("`"))
-        filled = command.replace("${CLAUDE_SESSION_ID}", session_id).replace(
-            "$ARGUMENTS", arguments
+        commands = [line for line in lines if " toggle --session " in line]
+        assert len(commands) == 1, f"one toggle command line in the skill, found {commands}"
+        filled = (
+            commands[0]
+            .replace("${CLAUDE_SESSION_ID}", session_id)
+            .replace("${CLAUDE_PLUGIN_ROOT}", str(PLUGIN_ROOT))
+            .replace("ACTION", arguments)
         )
         return subprocess.run(
             ["bash", "-c", filled],
