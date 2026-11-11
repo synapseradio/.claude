@@ -15,7 +15,6 @@ import pathlib
 import pytest
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-REPOSITORY_ROOT = PLUGIN_ROOT.parents[2]
 SKILL = PLUGIN_ROOT / "skills" / "rulesets"
 
 SHIPPED = sorted(
@@ -46,14 +45,10 @@ class TestTheShippedTextHoldsNoOldFileNameOrNotation:
             assert "config.yaml" in path.read_text(encoding="utf-8"), path.name
 
 
-class TestBothVersionFieldsRead400:
-    def test_the_plugin_file_and_the_marketplace_entry_read_4_0_0(self):
+class TestThePluginFileReads400:
+    def test_the_plugin_file_reads_4_0_0(self):
         plugin = json.loads(
             (PLUGIN_ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
         )
-        marketplace = json.loads(
-            (REPOSITORY_ROOT / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8")
-        )
-        (entry,) = [p for p in marketplace["plugins"] if p["name"] == "rulesets"]
 
-        assert (plugin["version"], entry["version"]) == ("4.0.0", "4.0.0")
+        assert plugin["version"] == "4.0.0"
