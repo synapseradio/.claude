@@ -22,7 +22,7 @@ pre-commit:
 
     - name: render-rulesets
       glob:
-        - "rulesets/manifest.yaml"
+        - "rulesets/config.yaml"
         - "rulesets/rules/**"
       run: >-
         python3.14 features/plugins/rulesets/lib/rulesets/cli.py render --root rulesets

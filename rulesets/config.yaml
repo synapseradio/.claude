@@ -1,0 +1,99 @@
+models: opus sonnet haiku fable opus-4-8
+defaults: core.*
+sets:
+  core:
+    core-rules sorting reporting reasoning-guidelines
+    ask-user-before-assuming user-approval user-out-of-artifacts
+    exact-edits scratchpad waiting-on-processes
+  reasoning: claims
+  lookup: search-tools
+  prose: writing-prose unasked-asides
+  code: writing-code comments data-modeling repairing debugging
+  git: git-commit
+  dialogue: resolving-input inquiring asking-questions
+  planning: writing-plans handoff persistent-memory
+  orchestration: agent-delegation worktrees
+  bash: shell-scripts
+
+model sonnet:
+  include: agent-delegation@sonnet
+model haiku:
+  include: agent-delegation@haiku writing-prose@haiku git-commit@haiku
+  exclude: reasoning-guidelines
+  # An exclude in the variant's own list would cancel its include, variant and all; under `then`
+  # it excludes the rule at model rank and leaves the variant set for the agent blocks that include it.
+  then:
+    exclude: writing-prose git-commit
+  # `kind any` lifts this block to agent rank, where its excludes beat every agent block's
+  # includes; at model rank alone they would lose to them.
+  kind any:
+    exclude: comments claims resolving-input unasked-asides
+kind session:
+  include: all.*
+  then:
+    exclude: shell-scripts
+kind delegate:
+  include: delegate-report
+tools Bash:
+  include: bash-commands
+
+agent orchestrator:
+  include: reasoning.* lookup.* prose.* resolving-input
+  not model haiku:
+    include: dialogue.* planning.*
+  model opus opus-4-8 fable:
+    include: orchestration.*
+
+agent critic thinkies:
+  include: reasoning.* lookup.* prose.*
+agent critic:
+  include: writing-code
+
+agent designer:
+  include: reasoning.* lookup.* prose.*
+  not model haiku:
+    include: data-modeling
+
+agent systems-thinker:
+  include: reasoning.* lookup.* prose.* resolving-input
+  not model haiku:
+    include: dialogue.*
+
+agent instruction-crafter:
+  include: reasoning.* lookup.* prose.*
+  model opus opus-4-8 fable:
+    include: orchestration.*
+
+agent skill-author:
+  include: lookup.* prose.* git.*
+
+agent software-implementer software-refiner:
+  include: lookup.* prose.* git.* comments
+agent software-tester:
+  include: lookup.* git.* comments
+agent shell-scripter:
+  include: bash.* lookup.* git.* comments
+agent software-implementer software-refiner software-tester shell-scripter:
+  not model haiku:
+    include: code.*
+
+agent eval-runner:
+  include: reasoning.* lookup.*
+agent scout spider:
+  include: lookup.*
+
+agent general-purpose:
+  include:
+    reasoning.* lookup.* prose.* git.*
+    resolving-input comments bash-commands
+  not model haiku:
+    include: code.* dialogue.*
+  model opus opus-4-8 fable:
+    include: orchestration.*
+
+agent Explore claude-code-guide:
+  include: lookup.* bash-commands
+agent Plan:
+  include: reasoning.* lookup.* bash-commands writing-code
+  not model haiku:
+    include: planning.*

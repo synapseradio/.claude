@@ -1,7 +1,7 @@
 # rulesets
 
 The rules this repository delivers to Claude Code sessions and delegates. This page is for editing
-them. The plugin's [manifest page](../features/plugins/rulesets/docs/manifest.md) covers how it
+them. The plugin's [config page](../features/plugins/rulesets/docs/config.md) covers how it
 composes them, its [delivery page](../features/plugins/rulesets/docs/delivery.md) how it delivers
 them, and its [commands page](../features/plugins/rulesets/docs/commands.md) every command named
 below.
@@ -13,7 +13,7 @@ The commands below run from the repository root. `$CLI` stands for
 
 ```text
 rulesets/
-  manifest.yaml    which rules each context receives
+  config.yaml      which rules each context receives
   rules/           the pool: one file per rule or variant
   -render/         generated renders, written by `render`
 ```
@@ -24,10 +24,11 @@ rulesets/
 - A rule file carries its text and no marker line. Delivery writes `<!-- rule: <name> -->` and a
   blank line before each rule's body, and those bytes count toward the 9,000-character budget of a
   delivered part. A rule file and its marker together come to 9,000 characters or fewer.
-- `manifest.yaml` decides who receives what. `defaults` gives every context the whole pool, and the
-  blocks under `when` remove rules for a model or an agent, or set a variant for one. A new rule file
-  reaches every context through the spread of the whole pool in `defaults`, with no manifest edit.
-  To keep a rule from some contexts, add a remove to a block.
+- `config.yaml` decides who receives what. `defaults` gives every context the `core` set, and each
+  condition block, such as `kind session:` or `agent critic:`, includes or excludes rules for the
+  contexts its condition matches, or sets a variant for them. A new rule file reaches every main
+  session through `include: all.*` under `kind session:`, with no config edit. To keep a rule from
+  some contexts, add it under `exclude:` in a block.
 
 The folder also holds the directories of the earlier tier layout, `default/`, `fable/`, `opus/`,
 `sonnet/`, `haiku/`, `claude-opus-4-8/`, and `renders/`. The engine reads none of them, and `check`
@@ -97,5 +98,5 @@ Run both commands yourself before pushing to see what the gate will say.
 
 `epistemic-marks` ships in its own plugin, `features/plugins/epistemic-marks`. That plugin delivers
 its rule text itself, through its own `SessionStart` and `SubagentStart` hooks, from
-`rule-text/epistemic-marks.md`. It has no file in `rules/` and no line in the manifest, so a rule
+`rule-text/epistemic-marks.md`. It has no file in `rules/` and no line in the config, so a rule
 added to the pool under that name would be a second copy.
