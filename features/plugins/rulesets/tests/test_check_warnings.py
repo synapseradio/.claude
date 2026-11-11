@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check warns about what is legal but probably not meant, and a warning never fails a check.
 
-The check serves the engineer who edits rule files and a manifest: it tells them of a rule no
+The check serves the engineer who edits rule files and a config: it tells them of a rule no
 list adds, a rule whose text names another rule, a directory nothing reads, a body that marks
 the wrong rule, and a citation of a file that cannot be handed
 over. Each warning names its kind, subject, file, and line, and leaves the errors empty. Each
@@ -23,13 +23,13 @@ from rulesets.check.findings import DirectorySubject, RulePairSubject, RuleSubje
 from rulesets.check.run import check  # noqa: E402  (path must be set before this import)
 
 
-def build(tmp_path, manifest=None, stems=(), bodies=None):
-    """A rulesets directory with the manifest text, a file per stem, and any given bodies."""
+def build(tmp_path, config=None, stems=(), bodies=None):
+    """A rulesets directory with the config text, a file per stem, and any given bodies."""
 
     root = tmp_path / "rulesets"
     (root / "rules").mkdir(parents=True)
-    if manifest is not None:
-        (root / "manifest.yaml").write_text(manifest, encoding="utf-8")
+    if config is not None:
+        (root / "config.yaml").write_text(config, encoding="utf-8")
     texts = {stem: f"text of {stem}\n" for stem in stems} | (bodies or {})
     for stem, text in texts.items():
         (root / "rules" / f"{stem}.md").write_text(text, encoding="utf-8")
@@ -46,7 +46,11 @@ def subjects_of(root, kind):
 
 class TestARuleNoAddAnywhereIncludes:
     def test_a_rule_the_defaults_remove_and_nothing_adds_is_named_with_its_file(self, tmp_path):
-        root = build(tmp_path, "defaults: ['all:*', '-security']\n", stems=["voice", "security"])
+        root = build(
+            tmp_path,
+            "defaults:\n  include: all.*\n  exclude: security\n",
+            stems=["voice", "security"],
+        )
 
         (warning,) = warnings_of(root, "never-included")
         assert warning.subject == RuleSubject("security")
@@ -55,21 +59,21 @@ class TestARuleNoAddAnywhereIncludes:
     def test_a_rule_reached_only_by_an_item_that_never_applies_is_included(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['voice']\nwhen:\n  - flag never-set: ['security']\n",
+            "defaults: voice\nflag never-set:\n  include: security\n",
             stems=["voice", "security"],
         )
 
         assert warnings_of(root, "never-included") == []
 
     def test_a_rule_added_by_name_is_included(self, tmp_path):
-        root = build(tmp_path, "defaults: ['voice']\n", stems=["voice"])
+        root = build(tmp_path, "defaults: voice\n", stems=["voice"])
 
         assert warnings_of(root, "never-included") == []
 
     def test_a_rule_added_through_a_ruleset_is_included(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['tone:*']\nrulesets:\n  tone: ['voice']\n",
+            "defaults: tone.*\nsets:\n  tone: voice\n",
             stems=["voice"],
         )
 
@@ -78,41 +82,41 @@ class TestARuleNoAddAnywhereIncludes:
     def test_a_rule_added_through_nested_rulesets_is_included(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['outer:*']\nrulesets:\n  outer: ['inner:*']\n  inner: ['voice']\n",
+            "defaults: outer.*\nsets:\n  outer: inner.*\n  inner: voice\n",
             stems=["voice"],
         )
 
         assert warnings_of(root, "never-included") == []
 
     def test_every_rule_is_included_by_the_spread_of_all(self, tmp_path):
-        root = build(tmp_path, "defaults: ['all:*']\n", stems=["a", "b", "c"])
+        root = build(tmp_path, "defaults: all.*\n", stems=["a", "b", "c"])
 
         assert warnings_of(root, "never-included") == []
 
-    def test_a_missing_manifest_includes_every_rule(self, tmp_path):
+    def test_a_missing_config_includes_every_rule(self, tmp_path):
         root = build(tmp_path, stems=["a", "b"])
 
         assert warnings_of(root, "never-included") == []
 
-    def test_a_manifest_that_adds_nothing_leaves_every_rule_unreached(self, tmp_path):
-        root = build(tmp_path, "defaults: []\n", stems=["a", "b"])
+    def test_a_config_that_adds_nothing_leaves_every_rule_unreached(self, tmp_path):
+        root = build(tmp_path, "defaults:\n", stems=["a", "b"])
 
         assert subjects_of(root, "never-included") == [RuleSubject("a"), RuleSubject("b")]
 
-    def test_an_empty_manifest_leaves_every_rule_unreached(self, tmp_path):
+    def test_an_empty_config_leaves_every_rule_unreached(self, tmp_path):
         root = build(tmp_path, "# nothing yet\n", stems=["a"])
 
         assert subjects_of(root, "never-included") == [RuleSubject("a")]
 
     def test_a_rule_with_variants_is_named_once(self, tmp_path):
-        root = build(tmp_path, "defaults: []\n", stems=["voice", "voice@terse", "voice@warm"])
+        root = build(tmp_path, "defaults:\n", stems=["voice", "voice@terse", "voice@warm"])
 
         assert subjects_of(root, "never-included") == [RuleSubject("voice")]
 
     def test_a_remove_in_an_item_does_not_undo_an_add_elsewhere(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['voice']\nwhen:\n  - flag quiet: ['-voice']\n",
+            "defaults: voice\nflag quiet:\n  exclude: voice\n",
             stems=["voice"],
         )
 
@@ -121,7 +125,7 @@ class TestARuleNoAddAnywhereIncludes:
     def test_an_add_in_a_ruleset_nothing_spreads_still_includes_its_rule(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['other']\nrulesets:\n  tone: ['voice']\n",
+            "defaults: other\nsets:\n  tone: voice\n",
             stems=["voice", "other"],
         )
 
@@ -130,13 +134,13 @@ class TestARuleNoAddAnywhereIncludes:
     def test_a_rule_removed_in_the_list_that_spreads_it_is_unreached(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['all:*', '-voice']\nrulesets:\n  tone: ['other']\n",
+            "defaults:\n  include: all.*\n  exclude: voice\nsets:\n  tone: other\n",
             stems=["voice", "other"],
         )
 
         assert subjects_of(root, "never-included") == [RuleSubject("voice")]
 
-    def test_a_manifest_that_does_not_parse_draws_no_inclusion_warning(self, tmp_path):
+    def test_a_config_that_does_not_parse_draws_no_inclusion_warning(self, tmp_path):
         root = build(tmp_path, "models: [opus-4-8[1m]]\n", stems=["voice"])
 
         assert warnings_of(root, "never-included") == []
@@ -600,7 +604,7 @@ class TestWarningsOnly:
     def test_a_rule_no_add_includes_and_a_rule_naming_another_draw_two_warnings(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['voice']\n",
+            "defaults: voice\n",
             stems=["security"],
             bodies={"voice": "Run `security` first.\n"},
         )
@@ -613,7 +617,7 @@ class TestWarningsOnly:
     def test_a_clean_rulesets_directory_reports_nothing(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['all:*']\n",
+            "defaults: all.*\n",
             stems=["voice", "voice@terse", "sorting"],
             bodies={"sorting": "<!-- rule: sorting -->\nOrder things.\n"},
         )
@@ -624,6 +628,6 @@ class TestWarningsOnly:
         assert (report.errors, report.warnings) == ((), ())
 
     def test_a_new_rule_file_reached_by_the_spread_of_all_draws_no_layout_finding(self, tmp_path):
-        root = build(tmp_path, "defaults: ['all:*']\n", stems=["old", "brand-new"])
+        root = build(tmp_path, "defaults: all.*\n", stems=["old", "brand-new"])
 
         assert warnings_of(root) == []

@@ -1,4 +1,4 @@
-"""Agent definitions read for the rules they exclude, and those exclusions as manifest blocks."""
+"""Agent definitions read for the rules they exclude, and those exclusions as config blocks."""
 
 from __future__ import annotations
 
@@ -54,11 +54,11 @@ def read_definitions(agents: pathlib.Path) -> tuple[AgentDefinition, ...]:
 def exclusion_blocks(
     definitions: Iterable[AgentDefinition], rules: Collection[str]
 ) -> tuple[Block, ...]:
-    """One block per agent, keyed on the agent, removing each excluded stem the pool holds."""
+    """One block per agent, keyed on the agent, excluding each excluded stem the pool holds."""
 
     blocks: list[Block] = []
     for definition in definitions:
-        removes = tuple(f"-{stem}" for stem in definition.excluded if stem in rules)
-        if removes:
-            blocks.append(Block(f"agent {definition.name}", removes))
+        excluded = tuple(stem for stem in definition.excluded if stem in rules)
+        if excluded:
+            blocks.append(Block(f"agent {definition.name}", exclude=excluded))
     return tuple(blocks)

@@ -6,7 +6,7 @@ the pool for a rule's default form and variants and for what each body claims in
 its first line, and never walk `rules/` themselves. Each case builds its own
 rulesets directory under `tmp_path`.
 
-Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_manifest_pool.py`.
+Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_config_pool.py`.
 """
 
 import pathlib
@@ -85,7 +85,7 @@ class TestRuleNamesComeFromFileStems:
         assert list(read_pool(root).rules) == ["voice"]
 
     def test_a_missing_pool_holds_no_rule(self, tmp_path):
-        root = build(tmp_path, {"manifest.yaml": "defaults: []\n"})
+        root = build(tmp_path, {"config.yaml": "defaults:\n"})
 
         pool = read_pool(root)
 

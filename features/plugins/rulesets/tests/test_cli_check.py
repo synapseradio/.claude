@@ -18,13 +18,13 @@ PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 CLI = PLUGIN_ROOT / "lib" / "rulesets" / "cli.py"
 
 
-def build(tmp_path, manifest=None, stems=(), bodies=None):
-    """A rulesets directory with the manifest text, a file per stem, and any given bodies."""
+def build(tmp_path, config=None, stems=(), bodies=None):
+    """A rulesets directory with the config text, a file per stem, and any given bodies."""
 
     root = tmp_path / "rulesets"
     (root / "rules").mkdir(parents=True)
-    if manifest is not None:
-        (root / "manifest.yaml").write_text(manifest, encoding="utf-8")
+    if config is not None:
+        (root / "config.yaml").write_text(config, encoding="utf-8")
     texts = {stem: f"text of {stem}\n" for stem in stems} | (bodies or {})
     for stem, text in texts.items():
         (root / "rules" / f"{stem}.md").write_text(text, encoding="utf-8")
@@ -64,36 +64,31 @@ class TestSeveralProblemsAtOnce:
     def test_every_error_of_the_run_is_printed_and_the_exit_is_non_zero(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['ghost']\n"
-            "rulesets:\n"
-            "  a: ['b:*']\n"
-            "  b: ['a:*']\n"
-            "when:\n"
-            "  - project amboss: ['voice']\n",
+            "defaults: ghost\nsets:\n  a: b.*\n  b: a.*\nproject amboss:\n  include: voice\n",
             stems=["voice"],
         )
 
         result = check(root)
 
         assert result.returncode == 1
-        manifest = root / "manifest.yaml"
+        config = root / "config.yaml"
         assert sorted(findings_of(result)) == [
-            (f"{manifest}:1", "error", "undeclared-reference"),
-            (f"{manifest}:3", "error", "ruleset-cycle"),
-            (f"{manifest}:6", "error", "condition-invalid"),
+            (f"{config}:1", "error", "undeclared-reference"),
+            (f"{config}:3", "error", "ruleset-cycle"),
+            (f"{config}:5", "error", "condition-invalid"),
         ]
 
     def test_each_finding_sits_on_one_line_with_its_file_and_line(self, tmp_path):
-        root = build(tmp_path, "defaults: ['ghost']\n")
+        root = build(tmp_path, "defaults: ghost\n")
 
         result = check(root)
 
         (line,) = lines_of(result)
-        assert line.startswith(f"{root / 'manifest.yaml'}:1: error [undeclared-reference]")
+        assert line.startswith(f"{root / 'config.yaml'}:1: error [undeclared-reference]")
         assert "ghost" in line
 
     def test_errors_are_printed_before_warnings(self, tmp_path):
-        root = build(tmp_path, "defaults: []\nproject: x\n", stems=["voice"])
+        root = build(tmp_path, "defaults:\nproject x:\n  include: voice\n", stems=["voice", "tone"])
 
         severities = [severity for _, severity, _ in findings_of(check(root))]
 
@@ -104,7 +99,7 @@ class TestWarningsOnly:
     def test_both_warnings_are_printed_and_the_exit_is_zero(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['voice']\n",
+            "defaults: voice\n",
             stems=["security"],
             bodies={"voice": "Run `security` first.\n"},
         )
@@ -118,7 +113,7 @@ class TestWarningsOnly:
         assert "[cross-reference]" in result.stdout
 
     def test_a_finding_without_a_line_names_the_file_alone(self, tmp_path):
-        root = build(tmp_path, "defaults: []\n", stems=["voice"])
+        root = build(tmp_path, "defaults:\n", stems=["voice"])
 
         (line,) = lines_of(check(root))
 
@@ -136,13 +131,13 @@ class TestWarningsOnly:
 
 class TestACleanRulesetsDirectory:
     def test_nothing_is_printed_and_the_exit_is_zero(self, tmp_path):
-        root = build(tmp_path, "defaults: ['all:*']\n", stems=["voice", "voice@terse"])
+        root = build(tmp_path, "defaults: all.*\n", stems=["voice", "voice@terse"])
 
         result = check(root)
 
         assert (result.returncode, result.stdout, result.stderr) == (0, "", "")
 
-    def test_a_directory_with_no_manifest_and_no_rules_is_clean(self, tmp_path):
+    def test_a_directory_with_no_config_and_no_rules_is_clean(self, tmp_path):
         root = tmp_path / "empty"
         root.mkdir()
 
@@ -151,7 +146,7 @@ class TestACleanRulesetsDirectory:
         assert (result.returncode, result.stdout) == (0, "")
 
 
-class TestAManifestThatDoesNotParse:
+class TestAConfigThatDoesNotParse:
     def test_the_failure_is_printed_with_its_line_and_the_exit_is_non_zero(self, tmp_path):
         root = build(tmp_path, "defaults: [voice]\nmodels: [opus-4-8[1m]]\n", stems=["voice"])
 
@@ -159,7 +154,7 @@ class TestAManifestThatDoesNotParse:
 
         assert result.returncode == 1
         (line,) = lines_of(result)
-        assert line.startswith(f"{root / 'manifest.yaml'}:2: error [manifest-unparsable]")
+        assert line.startswith(f"{root / 'config.yaml'}:2: error [config-unparsable]")
 
 
 class TestARuleFileThatIsNotUtf8:
@@ -189,15 +184,18 @@ class TestTheOutwardVocabulary:
     def test_no_message_names_a_tier_a_stem_or_an_internal_type(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['ghost', 'voice@terse', 'voice@warm']\n"
-            "rulesets:\n"
-            "  a: ['a:*']\n"
-            "  all: []\n"
+            "defaults: ghost voice@terse voice@warm\n"
+            "sets:\n"
+            "  a: a.*\n"
+            "  all:\n"
+            "project x:\n"
+            "  include: voice\n"
+            "model nova:\n"
+            "  include: voice\n"
+            "bad:\n"
+            "project: y\n"
             "when:\n"
-            "  - project x: ['voice']\n"
-            "  - model nova: ['voice']\n"
-            "  - bad\n"
-            "project: y\n",
+            "  - flag a: [voice]\n",
             stems=["tone@dry", "voice", "voice@terse", "voice@warm"],
             bodies={"loud": "---\nmodel: haiku\n---\n" + "x" * 9_500},
         )
@@ -206,19 +204,21 @@ class TestTheOutwardVocabulary:
         output = check(root).stdout.replace(str(root), "")
 
         assert output
-        for word in ("tier", "stem", "Subject", "Target", "Expansion", "PoolFile", "Manifest("):
+        for word in ("tier", "stem", "Subject", "Target", "Expansion", "PoolFile", "Config("):
             assert word not in output
 
-    def test_an_item_is_called_an_item_and_names_its_file_and_line(self, tmp_path):
+    def test_a_block_is_called_a_block_and_names_its_file_and_line(self, tmp_path):
         root = build(
             tmp_path,
-            "when:\n  - flag a: ['voice']\n  - env CI: ['voice']\nflags: ['a']\n",
+            "flags: a\nflag a:\n  include: voice\nenv CI:\n  include: voice\n",
             stems=["voice"],
         )
 
         (line,) = lines_of(check(root))
 
-        assert line.startswith(f"{root / 'manifest.yaml'}:3: error [condition-invalid] item 2")
+        assert line.startswith(
+            f"{root / 'config.yaml'}:4: error [condition-invalid] block `env CI`"
+        )
 
     def test_a_rule_error_is_called_a_rule(self, tmp_path):
         root = build(tmp_path, bodies={"voice": "---\nmodel: haiku\n---\ntext\n"})
@@ -228,17 +228,40 @@ class TestTheOutwardVocabulary:
         assert f"{root / 'rules' / 'voice.md'}:2: error [rule-condition] rule `voice`" in line
 
     def test_a_ruleset_and_a_key_are_called_a_ruleset_and_a_key(self, tmp_path):
-        root = build(tmp_path, "rulesets:\n  none: []\nproject: x\n")
+        root = build(tmp_path, "sets:\n  none:\nwhen: x\n")
 
         first, second = lines_of(check(root))
 
         assert "ruleset `none`" in first
-        assert "key `project`" in second
+        assert "key `when`" in second
+
+    def test_a_qualified_reference_is_quoted_as_the_config_writes_it_at_its_own_line(
+        self, tmp_path
+    ):
+        root = build(
+            tmp_path,
+            "sets:\n"
+            "  code: writing-code\n"
+            "agent critic:\n"
+            "  include:\n"
+            "    code.writing-code\n"
+            "    code.resolving-input\n"
+            "  exclude: voice\n",
+            stems=["writing-code", "resolving-input", "voice"],
+        )
+
+        (line,) = [line for line in lines_of(check(root)) if ": error " in line]
+
+        assert line.startswith(f"{root / 'config.yaml'}:6: error [undeclared-reference]")
+        assert "`code.resolving-input`" in line
+        assert "ruleset `code` holds no rule `resolving-input`" in line
+        assert ":*" not in check(root).stdout
+        assert " `-" not in check(root).stdout
 
     def test_a_variant_conflict_names_both_references(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['voice@terse', 'voice@warm']\n",
+            "defaults: voice@terse voice@warm\n",
             stems=["voice", "voice@terse", "voice@warm"],
         )
 
@@ -277,7 +300,7 @@ class TestUsage:
         assert run().returncode == 2
 
     def test_the_command_runs_from_any_working_directory(self, tmp_path):
-        root = build(tmp_path, "defaults: ['ghost']\n")
+        root = build(tmp_path, "defaults: ghost\n")
 
         result = subprocess.run(
             [sys.executable, str(CLI), "check", "--root", str(root)],
@@ -289,3 +312,16 @@ class TestUsage:
 
         assert result.returncode == 1
         assert "ghost" in result.stdout
+
+
+class TestAManifestYamlWithNoConfigYaml:
+    def test_check_reports_an_error_naming_both_files_and_exits_non_zero(self, tmp_path):
+        root = build(tmp_path, stems=["voice"])
+        (root / "manifest.yaml").write_text("defaults: ['voice']\n", encoding="utf-8")
+
+        result = check(root)
+
+        assert result.returncode == 1
+        (line,) = [line for line in lines_of(result) if ": error " in line]
+        assert line.startswith(f"{root / 'manifest.yaml'}: error [config-file]")
+        assert "`config.yaml`" in line

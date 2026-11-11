@@ -7,7 +7,7 @@ import pathlib
 from collections.abc import Collection
 
 from rulesets.adopt.agent_exclusions import exclusion_blocks, read_definitions
-from rulesets.adopt.manifest_text import manifest_text
+from rulesets.adopt.config_text import config_text
 from rulesets.adopt.mapping import map_source, rule_of
 from rulesets.adopt.opening_marker import without_own_marker
 from rulesets.adopt.skipped import Skipped
@@ -17,8 +17,8 @@ from rulesets.compare.run import CompareReport, compare
 from rulesets.locations import Locations
 from rulesets.render.tree import render_tree
 from rulesets.render.tree_writer import write_tree
+from rulesets.source.config import CONFIG_FILE
 from rulesets.source.directory import read_directory
-from rulesets.source.manifest import MANIFEST_FILE
 from rulesets.source.pool import RENDER_DIRECTORY
 
 _POOL_FOLDER = "rules"
@@ -51,7 +51,7 @@ def _refusal(source: pathlib.Path, out: pathlib.Path) -> str | None:
 def adopt(
     source: pathlib.Path, out: pathlib.Path, expect: Collection[str], locations: Locations
 ) -> Adopted | Refused:
-    """Write the pool, the manifest, and the render tree into `out`, then compare every context.
+    """Write the pool, the config, and the render tree into `out`, then compare every context.
 
     The source and the agent definitions are read and never written.
     """
@@ -74,7 +74,7 @@ def adopt(
         (out / _POOL_FOLDER / name).write_bytes(
             without_own_marker(rule_of(name), path.read_bytes())
         )
-    (out / MANIFEST_FILE).write_text(manifest_text(adopted.models, blocks), encoding="utf-8")
+    (out / CONFIG_FILE).write_text(config_text(adopted.models, blocks), encoding="utf-8")
     write_tree(out / RENDER_DIRECTORY, render_tree(read_directory(out)))
 
     return Adopted(adopted.skipped, compare(source, out, expect, locations))

@@ -5,9 +5,9 @@ Usage:
   impact.py snapshot [--root DIR] --out SNAPSHOT
   impact.py diff BEFORE AFTER
 
-`snapshot` copies the manifest and the pool to SNAPSHOT/source and writes each context's
+`snapshot` copies the config and the pool to SNAPSHOT/source and writes each context's
 composition to SNAPSHOT/compositions.txt. `diff` composes both snapshots over the contexts
-either manifest names and prints, for each context that differs, the rules added (+), removed
+either config names and prints, for each context that differs, the rules added (+), removed
 (-), or set to another variant (~). It prints nothing where no context differs.
 
 The contexts cross each kind (session, delegate); each declared model, and no model; each agent
@@ -30,6 +30,7 @@ from rulesets.facts.named_context import named_context
 from rulesets.locations import Locations
 from rulesets.session.state import SessionState
 from rulesets.source.condition import ConditionError, fact_tests, parse_condition
+from rulesets.source.config import CONFIG_FILE
 from rulesets.source.directory import Present, RulesetsDirectory, read_directory
 
 _USAGE_ERROR = 2
@@ -68,12 +69,12 @@ type Received = dict[str, str | None]
 def _tested(directory: RulesetsDirectory, fact: str) -> set[str]:
     """The values a `when` condition tests the fact against."""
 
-    if not isinstance(directory.manifest, Present):
+    if not isinstance(directory.config, Present):
         return set()
     values: set[str] = set()
-    for item in directory.manifest.manifest.items:
+    for block in directory.config.config.blocks:
         try:
-            condition = parse_condition(item.condition)
+            condition = parse_condition(block.condition)
         except ConditionError:
             continue
         values |= {test.value for test in fact_tests(condition) if test.fact == fact}
@@ -81,14 +82,14 @@ def _tested(directory: RulesetsDirectory, fact: str) -> set[str]:
 
 
 def _declared(directory: RulesetsDirectory) -> tuple[set[str], set[str]]:
-    if not isinstance(directory.manifest, Present):
+    if not isinstance(directory.config, Present):
         return set(), set()
-    manifest = directory.manifest.manifest
-    return set(manifest.models), set(manifest.flags)
+    config = directory.config.config
+    return set(config.models), set(config.flags)
 
 
 def contexts(*directories: RulesetsDirectory) -> list[Context]:
-    """The matrix the directories' manifests name between them, each fact's values in order."""
+    """The matrix the directories' configs name between them, each fact's values in order."""
 
     models: set[str] = set()
     flags: set[str] = set()
@@ -115,14 +116,14 @@ def contexts(*directories: RulesetsDirectory) -> list[Context]:
 def received(directory: RulesetsDirectory, context: Context) -> Received:
     """Each rule the context receives, with its variant (None for the default form)."""
 
-    manifest = directory.manifest.manifest if isinstance(directory.manifest, Present) else None
+    config = directory.config.config if isinstance(directory.config, Present) else None
     facts = named_context(
         context.model,
         context.agent,
         context.kind,
         [context.tool] if context.tool else [],
         [context.flag] if context.flag else [],
-        manifest,
+        config,
     )
     return {rule.rule: rule.variant for rule in compose(directory, facts, SessionState()).rules}
 
@@ -153,8 +154,8 @@ def snapshot(root: pathlib.Path, out: pathlib.Path) -> int:
         return _USAGE_ERROR
     source = out / _SOURCE
     source.mkdir(parents=True)
-    if (root / "manifest.yaml").is_file():
-        shutil.copy2(root / "manifest.yaml", source / "manifest.yaml")
+    if (root / CONFIG_FILE).is_file():
+        shutil.copy2(root / CONFIG_FILE, source / CONFIG_FILE)
     if (root / "rules").is_dir():
         shutil.copytree(root / "rules", source / "rules")
     directory = read_directory(source)

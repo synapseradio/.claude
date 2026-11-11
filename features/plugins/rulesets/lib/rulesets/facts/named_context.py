@@ -6,7 +6,7 @@ from collections.abc import Iterable
 
 from rulesets.facts.context import ABSENT, UNCLAIMED, Facts, Kind, ListedTools
 from rulesets.facts.model.claim import claiming_name
-from rulesets.source.manifest import Manifest
+from rulesets.source.config import Config
 
 
 def named_context(
@@ -15,7 +15,7 @@ def named_context(
     kind: Kind | None,
     tools: Iterable[str],
     flags: Iterable[str],
-    manifest: Manifest | None,
+    config: Config | None,
 ) -> Facts:
     """The facts a person names. A fact left unnamed is absent, and flags left unnamed are unset.
 
@@ -24,7 +24,7 @@ def named_context(
     """
 
     held = frozenset(tools)
-    declared = manifest.models if manifest else ()
+    declared = config.models if config else ()
     claimed = (claiming_name(model, frozenset(declared)) or UNCLAIMED) if model else ABSENT
     return Facts(
         model=claimed,

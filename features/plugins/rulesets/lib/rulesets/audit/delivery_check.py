@@ -49,7 +49,7 @@ def delivery_check(
 ) -> tuple[Difference, ...]:
     """The differences between each counted delivery of the session and its recomposition now.
 
-    The recomposition reads the manifest and pool under `root` as they stand, with the facts,
+    The recomposition reads the config and pool under `root` as they stand, with the facts,
     flags, and session state the delivery's record names.
     """
 

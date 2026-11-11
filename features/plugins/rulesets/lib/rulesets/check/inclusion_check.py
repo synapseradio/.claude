@@ -1,16 +1,14 @@
-"""Find the rules of a pool that no add in the manifest includes."""
+"""Find the rules of a pool that no add in the config includes."""
 
 from __future__ import annotations
 
 from rulesets.check.findings import CheckWarning, RuleSubject
+from rulesets.source.config import Config
 from rulesets.source.expansion import Expander
-from rulesets.source.manifest import Manifest
 from rulesets.source.pool import Pool
 
 
-def inclusion_warnings(
-    manifest: Manifest, pool: Pool, expander: Expander
-) -> tuple[CheckWarning, ...]:
+def inclusion_warnings(config: Config, pool: Pool, expander: Expander) -> tuple[CheckWarning, ...]:
     """One warning for each rule that no add in any list includes, by name or through a ruleset.
 
     A rule counts as included where any list adds it, a conflicted add included, whether or
@@ -19,7 +17,7 @@ def inclusion_warnings(
 
     included = {
         entry.rule
-        for references in manifest.written_lists()
+        for references in config.written_lists()
         for entry in expander.expand(references).entries
     }
     return tuple(

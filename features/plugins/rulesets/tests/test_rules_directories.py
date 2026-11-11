@@ -53,18 +53,18 @@ from rulesets.source.directory import Present, read_directory  # noqa: E402
 from rulesets.source.expansion import Expander  # noqa: E402
 from rulesets.source.pool import read_pool  # noqa: E402
 
-MODELS = "models: ['opus', 'sonnet', 'haiku']\n"
+MODELS = "models: opus sonnet haiku\n"
 
 
-def build(tmp_path, manifest, rules):
-    """A rulesets directory with the manifest text and a rule file per stem.
+def build(tmp_path, config, rules):
+    """A rulesets directory with the config text and a rule file per stem.
 
     `rules` maps a stem to its text, or to None for a stem holding the text `text of <stem>`.
     """
 
     root = tmp_path / "rulesets"
     (root / "rules").mkdir(parents=True)
-    (root / "manifest.yaml").write_text(manifest, encoding="utf-8")
+    (root / "config.yaml").write_text(config, encoding="utf-8")
     for stem, text in rules.items():
         body = f"text of {stem}\n" if text is None else text
         (root / "rules" / f"{stem}.md").write_text(body, encoding="utf-8")
@@ -100,7 +100,7 @@ def withheld_rules(world: World) -> list[str]:
 
 class TestTermsAndOutwardVocabulary:
     def test_a_check_message_names_the_rule_and_the_variant_and_no_retired_word(self, tmp_path):
-        root = build(tmp_path, "defaults: ['tone']\n", {"tone@dry": None})
+        root = build(tmp_path, "defaults: tone\n", {"tone@dry": None})
 
         lines = report_lines(check(root))
 
@@ -109,6 +109,37 @@ class TestTermsAndOutwardVocabulary:
         assert "variant `dry`" in naming
         assert not re.search(r"\b(tier|stem)s?\b", "\n".join(lines), re.IGNORECASE)
 
+    def test_a_message_about_the_file_says_config_and_never_manifest(self, tmp_path):
+        root = build(
+            tmp_path,
+            "models: opus\nmodel hiaku:\n  include: tone\n",
+            {"tone": None},
+        )
+
+        lines = report_lines(check(root))
+
+        (naming,) = [line for line in lines if "unknown-model" in line]
+        assert "the config does not declare" in naming
+        assert not re.search(r"manifest", "\n".join(lines), re.IGNORECASE)
+
+
+class TestAPoolRuleWhoseNameHoldsADotIsACheckError:
+    def test_the_file_is_named_in_an_error_and_a_spread_of_all_delivers_none_of_its_text(
+        self, world
+    ):
+        world.rule("voice", "the voice\n")
+        world.rule("voice.short", "the short voice\n")
+        world.write_config(MODELS + "defaults: all.*\n")
+
+        report = check(world.rulesets)
+        delivery = world.start_session()
+
+        (error,) = report.errors
+        assert (error.kind, error.file.name) == ("rule-name", "voice.short.md")
+        assert "`voice.short.md`" in error.message
+        assert delivery.context == "the voice\n"
+        assert withheld_rules(world) == ["voice.short"]
+
 
 class TestRuleVariantDefaultFormAndPool:
     def test_a_list_naming_a_rule_bare_and_a_list_naming_it_at_a_variant_each_deliver_their_own_file(
@@ -116,13 +147,14 @@ class TestRuleVariantDefaultFormAndPool:
     ):
         world.rule("voice", "the default voice\n")
         world.rule("voice@terse", "the terse voice\n")
-        world.manifest(
+        world.write_config(
             MODELS
-            + "flags: ['plain', 'terse']\n"
-            + "defaults: []\n"
-            + "when:\n"
-            + "  - flag plain: ['voice']\n"
-            + "  - flag terse: ['voice@terse']\n"
+            + "flags: plain terse\n"
+            + "defaults:\n"
+            + "flag plain:\n"
+            + "  include: voice\n"
+            + "flag terse:\n"
+            + "  include: voice@terse\n"
         )
 
         world.environment["RULESETS_FLAGS"] = "plain"
@@ -139,14 +171,14 @@ class TestRulesetFlagBlockAndModel:
         self, world
     ):
         world.rule("security-pass", "check the security\n")
-        world.manifest(
+        world.write_config(
             MODELS
-            + "rulesets:\n"
-            + "  review: ['security-pass']\n"
-            + "flags: ['strict']\n"
-            + "defaults: []\n"
-            + "when:\n"
-            + "  - flag strict: ['review:*']\n"
+            + "sets:\n"
+            + "  review: security-pass\n"
+            + "flags: strict\n"
+            + "defaults:\n"
+            + "flag strict:\n"
+            + "  include: review.*\n"
         )
 
         world.environment["RULESETS_FLAGS"] = "strict"
@@ -164,7 +196,7 @@ class TestReferenceAndList:
     ):
         root = build(
             tmp_path,
-            "defaults: ['tone', 'voice@terse', '-tone']\n",
+            "defaults:\n  include: tone voice@terse\n  exclude: tone\n",
             {"tone": None, "voice": None, "voice@terse": None},
         )
 
@@ -179,20 +211,19 @@ class TestStatementAndPosition:
     ):
         root = build(
             tmp_path,
-            "rulesets:\n"
-            "  review: ['voice', 'tone']\n"
-            "flags: ['strict']\n"
-            "defaults: ['-tone']\n"
-            "when:\n"
-            "  - flag strict: ['review:*']\n",
+            "flags: strict\n"
+            "defaults:\n"
+            "  exclude: tone\n"
+            "sets:\n"
+            "  review: voice tone\n"
+            "flag strict:\n"
+            "  include: review.*\n",
             {"voice": None, "tone": None},
         )
         directory = read_directory(root)
         facts = session_facts(flags=["strict"])
-        assert isinstance(directory.manifest, Present)
-        expander = Expander(
-            directory.manifest.manifest.spreadable(), directory.pool.variants_by_rule()
-        )
+        assert isinstance(directory.config, Present)
+        expander = Expander(directory.config.config.spreadable(), directory.pool.variants_by_rule())
 
         made = statements(applying_lists(directory, facts, SessionState()), expander)
 
@@ -213,7 +244,7 @@ class TestThePoolHoldsEveryRuleFile:
     def test_one_rule_is_read_from_a_default_form_and_two_variants(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: []\n",
+            "defaults:\n",
             {"voice": None, "voice@terse": None, "voice@warm": None},
         )
 
@@ -227,7 +258,7 @@ class TestThePoolHoldsEveryRuleFile:
     def test_an_empty_default_form_passes_check_and_delivers_no_text(self, world):
         world.rule("voice", "")
         world.rule("voice@terse", "the terse voice\n")
-        world.manifest(MODELS + "defaults: ['voice']\n")
+        world.write_config(MODELS + "defaults: voice\n")
 
         report = check(world.rulesets)
         delivery = world.start_session()
@@ -243,7 +274,7 @@ class TestThePoolHoldsEveryRuleFile:
 class TestAVariantBesideNoDefaultFormIsACheckError:
     def test_a_variant_with_no_default_form_fails_check_and_is_withheld_from_delivery(self, world):
         world.rule("tone@dry")
-        world.manifest(MODELS + "defaults: ['tone']\n")
+        world.write_config(MODELS + "defaults: tone\n")
 
         report = check(world.rulesets)
         delivery = world.start_session()
@@ -260,7 +291,7 @@ class TestAPoolFileDeliversNothingByBeingThere:
     ):
         world.rule("voice")
         world.rule("sorting")
-        world.manifest(MODELS + "defaults: ['voice', 'sorting']\n")
+        world.write_config(MODELS + "defaults: voice sorting\n")
         world.rule("draft-notes", "scratch thoughts\n")
 
         deliveries = every_context(world)
@@ -272,7 +303,7 @@ class TestTheReferencesAndRenderFoldersAreReserved:
     def test_rendered_files_in_the_render_folder_become_no_rule_and_draw_no_stray_warning(
         self, tmp_path
     ):
-        root = build(tmp_path, "defaults: ['*']\n", {"sorting": None})
+        root = build(tmp_path, "defaults: all.*\n", {"sorting": None})
         (root / "-render").mkdir()
         (root / "-render" / "voice.md").write_text("rendered voice\n", encoding="utf-8")
         (root / "-render" / "voice@terse.md").write_text("rendered terse\n", encoding="utf-8")
@@ -293,7 +324,7 @@ class TestOneRulesetsDirectorySitsAtAFixedPathAtUserScope:
         self, world, tmp_path, monkeypatch
     ):
         world.rule("user-rule")
-        world.manifest(MODELS + "defaults: ['*']\n")
+        world.write_config(MODELS + "defaults: all.*\n")
         project = tmp_path / "project"
         harness_rules = project / ".claude" / "rules"
         harness_rules.mkdir(parents=True)
@@ -301,7 +332,7 @@ class TestOneRulesetsDirectorySitsAtAFixedPathAtUserScope:
         for inside in (project / "rulesets", project / ".claude" / "rulesets"):
             (inside / "rules").mkdir(parents=True)
             (inside / "rules" / "project-only.md").write_text("project only\n", encoding="utf-8")
-            (inside / "manifest.yaml").write_text("defaults: ['*']\n", encoding="utf-8")
+            (inside / "config.yaml").write_text("defaults: all.*\n", encoding="utf-8")
         before = {p: p.read_bytes() for p in harness_rules.rglob("*") if p.is_file()}
         monkeypatch.chdir(project)
 
@@ -318,7 +349,7 @@ class TestOneRulesetsDirectorySitsAtAFixedPathAtUserScope:
         self, world, tmp_path
     ):
         world.rule("user-rule")
-        world.manifest(MODELS + "defaults: ['*']\n")
+        world.write_config(MODELS + "defaults: all.*\n")
         shipped = world.config / "rules"
         shipped.mkdir()
         (shipped / "shipped-rule.md").write_bytes(b"shipped by a plugin\r\n\xc3\xa9")
@@ -347,8 +378,8 @@ class TestOneRulesetsDirectorySitsAtAFixedPathAtUserScope:
 class TestTheDirectoryAndSessionStateStandInTwoBands:
     def test_the_toggle_all_overrides_a_blocks_exclude_for_a_haiku_delegate(self, world):
         world.rule("writing-code")
-        world.manifest(
-            MODELS + "defaults: ['writing-code']\nwhen:\n  - model haiku: ['-writing-code']\n"
+        world.write_config(
+            MODELS + "defaults: writing-code\nmodel haiku:\n  exclude: writing-code\n"
         )
         state = Locations(world.config).state
         for session_id in ("toggled", "plain"):
@@ -366,8 +397,8 @@ class TestSessionStateHoldsNoRuleFile:
     def test_a_delegate_reads_the_edited_rule_text_and_the_flag_a_toggle_set(self, world):
         world.rule("voice")
         world.rule("security-pass")
-        world.manifest(
-            "flags: ['strict']\ndefaults: ['voice']\nwhen:\n  - flag strict: ['security-pass']\n"
+        world.write_config(
+            "flags: strict\ndefaults: voice\nflag strict:\n  include: security-pass\n"
         )
         world.start_session()
         world.toggle_flags({"strict": "set"})
@@ -387,7 +418,7 @@ class TestARuleIsUnconditionalText:
         world.rule("modeled", "---\nmodel: haiku\n---\nmodeled text\n")
         world.rule("broken", "---\npaths: [unclosed\n---\nbroken text\n")
         world.rule("plain", "plain text\n")
-        world.manifest(MODELS + "defaults: ['scoped', 'modeled', 'broken', 'plain']\n")
+        world.write_config(MODELS + "defaults: scoped modeled broken plain\n")
 
         report = check(world.rulesets)
         delivery = world.start_session()
@@ -408,7 +439,7 @@ class TestARuleIsUnconditionalText:
     ):
         text = "on haiku models, keep answers short\n"
         world.rule("brevity", text)
-        world.manifest(MODELS + "defaults: ['brevity']\n")
+        world.write_config(MODELS + "defaults: brevity\n")
         state = Locations(world.config).state
         spawn_log.append_spawn("s2", "p1", "critic", "haiku", state)
 
@@ -425,7 +456,7 @@ class TestReservedRulesetsCarryFixedMeanings:
         world.rule("voice", "default voice\n")
         world.rule("voice@terse", "terse voice\n")
         world.rule("sorting", "sorting text\n")
-        world.manifest(MODELS + "defaults: ['all:*']\n")
+        world.write_config(MODELS + "defaults: all.*\n")
 
         assert world.start_session().context == "sorting text\ndefault voice\n"
 
@@ -434,13 +465,14 @@ class TestReservedRulesetsCarryFixedMeanings:
     ):
         world.rule("voice", "voice text\n")
         world.rule("sorting", "sorting text\n")
-        world.manifest(
+        world.write_config(
             MODELS
-            + "flags: ['one', 'every']\n"
-            + "defaults: []\n"
-            + "when:\n"
-            + "  - flag one: ['rules:voice']\n"
-            + "  - flag every: ['rules:*']\n"
+            + "flags: one every\n"
+            + "defaults:\n"
+            + "flag one:\n"
+            + "  include: rules.voice\n"
+            + "flag every:\n"
+            + "  include: rules.*\n"
         )
 
         world.environment["RULESETS_FLAGS"] = "one"
@@ -454,7 +486,7 @@ class TestReservedRulesetsCarryFixedMeanings:
     def test_the_spread_of_none_delivers_no_rule(self, world):
         world.rule("voice")
         world.rule("sorting")
-        world.manifest(MODELS + "defaults: ['none:*']\n")
+        world.write_config(MODELS + "defaults: none.*\n")
 
         alone = world.start_session()
 
@@ -462,7 +494,7 @@ class TestReservedRulesetsCarryFixedMeanings:
         assert "received nothing" in alone.message
         assert alone.context == ""
 
-        world.manifest(MODELS + "defaults: ['voice', 'none:*']\n")
+        world.write_config(MODELS + "defaults: voice none.*\n")
 
         beside_voice = world.start_session(session_id="s2")
 
@@ -475,16 +507,16 @@ class TestTheDefaultsRulesetAppliesInEveryContextAtTheLowestPosition:
         world.rule("voice", "default voice\n")
         world.rule("voice@terse", "terse voice\n")
         world.rule("sorting", "sorting text\n")
-        world.manifest(MODELS + "defaults: ['all:*']\n")
+        world.write_config(MODELS + "defaults: all.*\n")
 
         deliveries = every_context(world)
 
         assert [d.context for d in deliveries] == ["sorting text\ndefault voice\n"] * 4
 
-    def test_a_manifest_listing_nothing_under_defaults_delivers_no_rule_to_any_context(self, world):
+    def test_a_config_listing_nothing_under_defaults_delivers_no_rule_to_any_context(self, world):
         world.rule("voice")
         world.rule("sorting")
-        world.manifest(MODELS)
+        world.write_config(MODELS)
 
         deliveries = every_context(world)
 
@@ -492,8 +524,8 @@ class TestTheDefaultsRulesetAppliesInEveryContextAtTheLowestPosition:
 
 
 def expander_of(directory) -> Expander:
-    assert isinstance(directory.manifest, Present)
-    return Expander(directory.manifest.manifest.spreadable(), directory.pool.variants_by_rule())
+    assert isinstance(directory.config, Present)
+    return Expander(directory.config.config.spreadable(), directory.pool.variants_by_rule())
 
 
 def made_statements(root, facts):
@@ -512,13 +544,13 @@ class TestDeclaringAReservedNameIsACheckError:
         world.rule("voice", "voice text\n")
         world.rule("sorting", "sorting text\n")
         world.rule("tone", "tone text\n")
-        world.manifest("rulesets:\n  all: ['voice', 'sorting']\ndefaults: ['all:*']\n")
+        world.write_config("defaults: all.*\nsets:\n  all: voice sorting\n")
 
         report = check(world.rulesets)
         delivery = world.start_session()
 
         assert [(e.kind, e.subject, e.line) for e in report.errors] == [
-            ("reserved-ruleset", RulesetSubject("all"), 2)
+            ("reserved-ruleset", RulesetSubject("all"), 3)
         ]
         assert delivery.context == "sorting text\ntone text\nvoice text\n"
 
@@ -529,9 +561,14 @@ class TestARuleAndARulesetMayShareAName:
     ):
         root = build(
             tmp_path,
-            "rulesets:\n  reviewer: ['security-pass', 'report-format']\n"
-            "flags: ['bare', 'spread']\ndefaults: []\n"
-            "when:\n  - flag bare: ['reviewer']\n  - flag spread: ['reviewer:*']\n",
+            "flags: bare spread\n"
+            "defaults:\n"
+            "sets:\n"
+            "  reviewer: security-pass report-format\n"
+            "flag bare:\n"
+            "  include: reviewer\n"
+            "flag spread:\n"
+            "  include: reviewer.*\n",
             {"reviewer": None, "security-pass": None, "report-format": None},
         )
 
@@ -549,11 +586,18 @@ class TestARulesetGroupsRulesByReference:
     def test_every_reference_form_passes_check_in_defaults_a_blocks_list_and_a_rulesets_list(
         self, tmp_path
     ):
-        forms = "['voice', 'rules:voice', 'voice@terse', 'group:*', '-tone']"
+        forms = (
+            "    include: voice rules.voice voice@terse group.voice group.*\n    exclude: tone\n"
+        )
+        top = forms.replace("    ", "  ")
         root = build(
             tmp_path,
-            f"rulesets:\n  group: ['voice']\n  inner: {forms}\n"
-            f"flags: ['f']\ndefaults: {forms}\nwhen:\n  - flag f: {forms}\n",
+            "sets:\n  group: voice\n  inner:\n"
+            + forms
+            + "flags: f\ndefaults:\n"
+            + top
+            + "flag f:\n"
+            + top,
             {"voice": None, "voice@terse": None, "tone": None},
         )
 
@@ -567,13 +611,15 @@ class TestASpreadYieldsTheEntriesOfTheSpreadRuleset:
     def test_a_ruleset_inside_a_ruleset_yields_the_entries_of_both(self, tmp_path):
         root = build(
             tmp_path,
-            "rulesets:\n  review: ['code:*', 'report-format']\n"
-            "  code: ['writing-code', 'data-modeling']\ndefaults: ['review:*']\n",
+            "defaults: review.*\n"
+            "sets:\n"
+            "  review: code.* report-format\n"
+            "  code: writing-code data-modeling\n",
             {"writing-code": None, "data-modeling": None, "report-format": None},
         )
         directory = read_directory(root)
-        assert isinstance(directory.manifest, Present)
-        defaults = directory.manifest.manifest.spreadable()["defaults"]
+        assert isinstance(directory.config, Present)
+        defaults = directory.config.config.spreadable()["defaults"]
 
         entries = expander_of(directory).expand(defaults).entries
 
@@ -588,8 +634,12 @@ class TestASpreadYieldsTheEntriesOfTheSpreadRuleset:
     ):
         root = build(
             tmp_path,
-            "rulesets:\n  auditor: ['report-format@table']\nflags: ['f']\ndefaults: []\n"
-            "when:\n  - flag f: ['auditor:*']\n",
+            "flags: f\n"
+            "defaults:\n"
+            "sets:\n"
+            "  auditor: report-format@table\n"
+            "flag f:\n"
+            "  include: auditor.*\n",
             {"report-format": None, "report-format@table": None},
         )
 
@@ -606,10 +656,14 @@ class TestASpreadInACycleOfSpreadsReachesNoRule:
         world.rule("voice")
         world.rule("tone")
         world.rule("sorting")
-        world.manifest(
-            "rulesets:\n  a: ['b:*', 'voice']\n  b: ['a:*', 'tone']\n"
-            "flags: ['other']\ndefaults: ['a:*', 'sorting']\n"
-            "when:\n  - flag other: ['b:*']\n"
+        world.write_config(
+            "flags: other\n"
+            "defaults: a.* sorting\n"
+            "sets:\n"
+            "  a: b.* voice\n"
+            "  b: a.* tone\n"
+            "flag other:\n"
+            "  include: b.*\n"
         )
 
         report = check(world.rulesets)
@@ -630,22 +684,20 @@ class TestAReferenceToAnUndeclaredNameIsSkipped:
     ):
         world.rule("voice")
         world.rule("sorting")
-        world.manifest(
-            MODELS
-            + "rulesets:\n  review:\n    - 'voise'\n    - 'voice'\n    - 'sorting'\n"
-            + "defaults: ['review:*']\n"
+        world.write_config(
+            MODELS + "sets:\n  review: voise voice sorting\n" + "defaults: review.*\n"
         )
 
         report = check(world.rulesets)
         delivery = world.start_session()
 
         assert [(e.kind, e.subject, e.line) for e in report.errors] == [
-            ("undeclared-reference", ReferenceSubject("voise", 4), 4)
+            ("undeclared-reference", ReferenceSubject("voise", 3), 3)
         ]
         assert delivery.context == "text of sorting\ntext of voice\n"
         assert len(delivery.messages) == 1
         assert "`voise`" in delivery.message
-        assert "manifest line 4" in delivery.message
+        assert "config line 3" in delivery.message
 
 
 class TestWithinAListRemovesApplyAfterAdds:
@@ -653,8 +705,8 @@ class TestWithinAListRemovesApplyAfterAdds:
         self, tmp_path
     ):
         pool = {"voice": None, "sorting": None, "tone": None}
-        before = build(tmp_path / "before", "defaults: ['-voice', 'all:*']\n", pool)
-        after = build(tmp_path / "after", "defaults: ['all:*', '-voice']\n", pool)
+        before = build(tmp_path / "before", "defaults:\n  include: all.*\n  exclude: voice\n", pool)
+        after = build(tmp_path / "after", "defaults:\n  include: all.*\n  exclude: voice\n", pool)
 
         for root in (before, after):
             assert delivered(root, session_facts()) == (
@@ -667,7 +719,9 @@ class TestARemoveOfARuleAtAVariantTakesThatVariantOutAlone:
     def test_a_variant_remove_leaves_the_rule_on_at_its_default_form(self, world):
         world.rule("voice", "default voice\n")
         world.rule("voice@terse", "terse voice\n")
-        world.manifest(MODELS + "defaults: ['voice', 'voice@terse', '-voice@terse']\n")
+        world.write_config(
+            MODELS + "defaults:\n  include: voice voice@terse\n  exclude: voice@terse\n"
+        )
 
         assert world.start_session().context == "default voice\n"
 
@@ -678,8 +732,14 @@ class TestARemoveStandsAsAStatementInAnApplyingListAndAsNoneInsideASpreadRuleset
     ):
         root = build(
             tmp_path,
-            "rulesets:\n  lean: ['all:*', '-voice']\nflags: ['f']\ndefaults: ['voice']\n"
-            "when:\n  - flag f: ['lean:*']\n",
+            "flags: f\n"
+            "defaults: voice\n"
+            "sets:\n"
+            "  lean:\n"
+            "    include: all.*\n"
+            "    exclude: voice\n"
+            "flag f:\n"
+            "  include: lean.*\n",
             {"voice": None, "sorting": None, "tone": None},
         )
         facts = session_facts(flags=["f"])
@@ -697,7 +757,7 @@ class TestARemoveStandsAsAStatementInAnApplyingListAndAsNoneInsideASpreadRuleset
     ):
         root = build(
             tmp_path,
-            "flags: ['f']\ndefaults: ['voice', 'sorting']\nwhen:\n  - flag f: ['-voice']\n",
+            "flags: f\ndefaults: voice sorting\nflag f:\n  exclude: voice\n",
             {"voice": None, "sorting": None},
         )
         facts = session_facts(flags=["f"])
@@ -717,7 +777,7 @@ class TestExactlyOneVariantOfARuleReachesAContext:
         world.rule("voice", "the default voice\n")
         world.rule("voice@terse", "the terse voice\n")
         world.rule("voice@warm", "the warm voice\n")
-        world.manifest(MODELS + "flags: ['f']\ndefaults: []\nwhen:\n  - flag f: ['voice@terse']\n")
+        world.write_config(MODELS + "flags: f\ndefaults:\nflag f:\n  include: voice@terse\n")
         world.environment["RULESETS_FLAGS"] = "f"
 
         assert world.start_session().context == "the terse voice\n"
@@ -725,10 +785,8 @@ class TestExactlyOneVariantOfARuleReachesAContext:
     def test_a_block_naming_a_variant_the_pool_lacks_is_skipped_with_a_shown_notice(self, world):
         world.rule("voice", "the default voice\n")
         world.rule("voice@terse", "the terse voice\n")
-        world.manifest(
-            MODELS
-            + "flags: ['f']\ndefaults: ['voice@terse']\n"
-            + "when:\n  - flag f: ['voice@brisk']\n"
+        world.write_config(
+            MODELS + "flags: f\ndefaults: voice@terse\n" + "flag f:\n  include: voice@brisk\n"
         )
         world.environment["RULESETS_FLAGS"] = "f"
 
@@ -738,7 +796,7 @@ class TestExactlyOneVariantOfARuleReachesAContext:
 
         assert delivery.context == "the terse voice\n"
         assert delivery.message == (
-            "the reference `voice@brisk` at manifest line 5 names `voice@brisk`, "
+            "the reference `voice@brisk` at config line 5 names `voice@brisk`, "
             "which is not declared; skipped"
         )
         assert [(e.kind, e.subject, e.line) for e in report.errors] == [
@@ -750,11 +808,12 @@ class TestAContextReceivesASetOfRulesWithNoDuplicates:
     def test_a_rule_reached_by_defaults_a_spread_and_a_name_arrives_once(self, world):
         world.rule("report-format", "REPORT FORMAT BODY\n")
         world.rule("voice", "voice text\n")
-        world.manifest(
-            MODELS
-            + "rulesets:\n  group: ['report-format']\n"
-            + "defaults: ['all:*']\n"
-            + "when:\n  - agent auditor: ['group:*']\n  - agent auditor: ['report-format']\n"
+        world.write_config(
+            MODELS + "sets:\n"
+            "  group: report-format\n" + "defaults: all.*\n" + "agent auditor:\n"
+            "  include: group.*\n"
+            "  then:\n"
+            "    include: report-format\n"
         )
 
         delegate = world.start_delegate("auditor")
@@ -770,10 +829,10 @@ class TestRulesArriveSortedByName:
         world.rule("writing-code", "writing text\n")
         world.rule("core-rules", "core text\n")
         world.rule("sorting", "sorting text\n")
-        world.manifest(
-            MODELS
-            + "flags: ['f']\ndefaults: ['writing-code', 'sorting']\n"
-            + "when:\n  - flag f: ['core-rules']\n"
+        world.write_config(
+            MODELS + "flags: f\n"
+            "defaults: writing-code sorting\n" + "flag f:\n"
+            "  include: core-rules\n"
         )
         world.environment["RULESETS_FLAGS"] = "f"
 
@@ -792,7 +851,7 @@ class TestRulesArriveSortedByName:
         }
         for rule, text in bodies.items():
             world.rule(rule, text)
-        world.manifest(MODELS + "defaults: ['*']\n")
+        world.write_config(MODELS + "defaults: all.*\n")
         first_part = (
             under_marker("aa-no-final-newline", "no final newline")
             + under_marker("bb-crlf", "line one\r\nline two\r\n")
@@ -829,13 +888,13 @@ class TestTheEnginesCodeNamesNoContent:
                 ("third", "third role text\n"),
             ):
                 kept.rule(names[role], text)
-            kept.manifest(
-                f"models: ['{names['big']}', '{names['small']}']\n"
-                f"rulesets:\n  {names['group']}: ['{names['third']}', '{names['first']}']\n"
-                f"flags: ['{names['flag']}']\n"
-                f"defaults: ['{names['second']}']\n"
-                f"when:\n  - flag {names['flag']}: ['{names['group']}:*']\n"
-                f"  - model {names['small']}: ['-{names['second']}']\n"
+            kept.write_config(
+                f"models: {names['big']} {names['small']}\n"
+                f"sets:\n  {names['group']}: {names['third']} {names['first']}\n"
+                f"flags: {names['flag']}\n"
+                f"defaults: {names['second']}\n"
+                f"flag {names['flag']}:\n  include: {names['group']}.*\n"
+                f"model {names['small']}:\n  exclude: {names['second']}\n"
             )
             return kept, f"claude-{names['small']}-4-5"
 
@@ -903,7 +962,7 @@ class TestTheEnginesCodeNamesNoContent:
         assert sources
         assert offenders == []
 
-    def test_a_built_in_agent_takes_its_harness_pin_as_the_model_fact_when_the_manifest_declares_the_pinned_name(
+    def test_a_built_in_agent_takes_its_harness_pin_as_the_model_fact_when_the_config_declares_the_pinned_name(
         self, scene
     ):
         fact = scene.fact("claude-code-guide", models=["opus", "haiku"])
@@ -916,11 +975,11 @@ class TestTheEnginesCodeNamesNoContent:
         assert statusline == model_fact.Claimed("sonnet", "sonnet", "built-in-pin")
         assert model_fact.claimed_name(statusline) == "sonnet"
 
-    def test_a_built_in_agents_pinned_identifier_stays_unclaimed_when_the_manifest_declares_no_model_names(
+    def test_a_built_in_agents_pinned_identifier_stays_unclaimed_when_the_config_declares_no_model_names(
         self, world
     ):
         world.rule("voice")
-        world.manifest("defaults: []\nwhen:\n  - model haiku: ['voice']\n")
+        world.write_config("defaults:\nmodel haiku:\n  include: voice\n")
 
         delivery = world.start_delegate("claude-code-guide")
 

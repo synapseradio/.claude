@@ -16,8 +16,9 @@ type NoticeKind = Literal[
     "directory-scaffolded",
     "earlier-rules-remain",
     "launch-flag-undeclared",
-    "manifest-missing",
-    "manifest-unparsable",
+    "config-missing",
+    "config-unparsable",
+    "config-file-old",
     "model-missing",
     "model-unclaimed",
     "nothing-received",
@@ -38,8 +39,9 @@ SHOWN: frozenset[NoticeKind] = frozenset(
         "delivery-failure",
         "directory-scaffolded",
         "launch-flag-undeclared",
-        "manifest-missing",
-        "manifest-unparsable",
+        "config-missing",
+        "config-unparsable",
+        "config-file-old",
         "model-missing",
         "model-unclaimed",
         "nothing-received",
@@ -71,10 +73,10 @@ def disregarded_variable_notices(env: Mapping[str, str], variable: str) -> tuple
 def variant_conflict_notice(
     rule: str, statements: Iterable[tuple[str, int]], variant: str | None
 ) -> Notice:
-    """The notice for a rule whose sets conflicted: each statement with its manifest line, and the variant delivered."""
+    """The notice for a rule whose sets conflicted: each statement with its config line, and the variant delivered."""
 
     delivered = "its default form" if variant is None else f"variant `{variant}`"
-    stated = ", ".join(f"`{text}` at manifest line {line}" for text, line in statements)
+    stated = ", ".join(f"`{text}` at config line {line}" for text, line in statements)
     return Notice(
         "variant-conflict",
         f"rule `{rule}` sets conflicting variants ({stated}); delivered at {delivered}",
@@ -82,7 +84,7 @@ def variant_conflict_notice(
 
 
 def flag_notice(name: str) -> Notice:
-    """The notice for a launch flag the manifest does not declare."""
+    """The notice for a launch flag the config does not declare."""
 
     return Notice(
         "launch-flag-undeclared", f"the launch flag `{name}` is not declared and is dropped"
@@ -90,7 +92,7 @@ def flag_notice(name: str) -> Notice:
 
 
 def block_skipped_notice(condition: str, undeclared: Undeclared) -> Notice:
-    """The notice for a block whose condition names models or flags the manifest does not declare."""
+    """The notice for a block whose condition names models or flags the config does not declare."""
 
     reasons = [
         *(f"`{name}` is not a declared model" for name in undeclared.models),
@@ -104,7 +106,7 @@ def block_skipped_notice(condition: str, undeclared: Undeclared) -> Notice:
 def reference_notice(reference: str, line: int, name: str) -> Notice:
     return Notice(
         "reference-skipped",
-        f"the reference `{reference}` at manifest line {line} names `{name}`, which is not declared; skipped",
+        f"the reference `{reference}` at config line {line} names `{name}`, which is not declared; skipped",
     )
 
 
@@ -138,17 +140,25 @@ def earlier_rules_remain_notice() -> Notice:
     )
 
 
-def manifest_missing_notice(path: str) -> Notice:
+def config_missing_notice(path: str) -> Notice:
     return Notice(
-        "manifest-missing",
-        f"the manifest `{path}` is missing; every rule is delivered at its default form",
+        "config-missing",
+        f"the config `{path}` is missing; every rule is delivered at its default form",
     )
 
 
-def manifest_unparsable_notice(error: str) -> Notice:
+def old_config_file_notice(old_path: str, path: str) -> Notice:
     return Notice(
-        "manifest-unparsable",
-        f"the manifest does not parse ({error}); every rule is delivered at its default form",
+        "config-file-old",
+        f"the engine reads only the config `{path}`, and `{old_path}` stands in its place; "
+        "every rule is delivered at its default form until the config is written",
+    )
+
+
+def config_unparsable_notice(error: str) -> Notice:
+    return Notice(
+        "config-unparsable",
+        f"the config does not parse ({error}); every rule is delivered at its default form",
     )
 
 

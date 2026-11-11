@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A context receives the rules its applying lists leave on, each at the variant they settle.
 
-The composition serves the engineer who writes a manifest and the person whose agents receive
+The composition serves the engineer who writes a config and the person whose agents receive
 the result: a block keyed on a fact reaches the contexts where the key holds, the statements of
 every applying list settle each rule's inclusion and variant by position, and check names the
 conflicts and layout problems that make a composition surprising. Each case builds its rulesets
@@ -33,19 +33,19 @@ from rulesets.compose.composition import compose  # noqa: E402  (path must be se
 from rulesets.facts.context import ABSENT, UNCLAIMED, Facts  # noqa: E402
 from rulesets.locations import Locations  # noqa: E402
 from rulesets.session.state import Band, SessionState, read_state, write_state  # noqa: E402
+from rulesets.source.config import read_config  # noqa: E402
 from rulesets.source.directory import read_directory  # noqa: E402
-from rulesets.source.manifest import read_manifest  # noqa: E402
 
 
-def build(tmp_path, manifest, rules):
-    """A rulesets directory with the manifest text and a rule file per stem.
+def build(tmp_path, config, rules):
+    """A rulesets directory with the config text and a rule file per stem.
 
     `rules` maps a stem to its text, or to None for a stem holding the text `text of <stem>`.
     """
 
     root = tmp_path / "rulesets"
     (root / "rules").mkdir(parents=True)
-    (root / "manifest.yaml").write_text(manifest, encoding="utf-8")
+    (root / "config.yaml").write_text(config, encoding="utf-8")
     for stem, text in rules.items():
         body = f"text of {stem}\n" if text is None else text
         (root / "rules" / f"{stem}.md").write_text(body, encoding="utf-8")
@@ -80,10 +80,7 @@ class TestBlocksApplyWhereTheirKeyEvaluatesTrue:
     def test_a_model_block_removes_a_rule_from_every_context_on_that_model(self, tmp_path):
         root = build(
             tmp_path,
-            "models: ['opus', 'haiku']\n"
-            "defaults: ['writing-code']\n"
-            "when:\n"
-            "  - model haiku: ['-writing-code']\n",
+            "models: opus haiku\ndefaults: writing-code\nmodel haiku:\n  exclude: writing-code\n",
             {"writing-code": None},
         )
 
@@ -98,10 +95,7 @@ class TestBlocksApplyWhereTheirKeyEvaluatesTrue:
     def test_a_model_block_leaves_the_rule_in_contexts_on_another_model(self, tmp_path):
         root = build(
             tmp_path,
-            "models: ['opus', 'haiku']\n"
-            "defaults: ['writing-code']\n"
-            "when:\n"
-            "  - model haiku: ['-writing-code']\n",
+            "models: opus haiku\ndefaults: writing-code\nmodel haiku:\n  exclude: writing-code\n",
             {"writing-code": None},
         )
 
@@ -118,10 +112,10 @@ class TestBlocksApplyWhereTheirKeyEvaluatesTrue:
     ):
         root = build(
             tmp_path,
-            "models: ['opus', 'sonnet']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - agent critic and model opus: ['security-pass']\n",
+            "models: opus sonnet\n"
+            "defaults:\n"
+            "agent critic and model opus:\n"
+            "  include: security-pass\n",
             {"security-pass": None},
         )
 
@@ -138,11 +132,11 @@ class TestBlocksApplyWhereTheirKeyEvaluatesTrue:
     ):
         root = build(
             tmp_path,
-            "rulesets:\n"
-            "  auditor: ['report-format@table']\n"
-            "defaults: ['*']\n"
-            "when:\n"
-            "  - agent auditor: ['auditor:*']\n",
+            "defaults: all.*\n"
+            "sets:\n"
+            "  auditor: report-format@table\n"
+            "agent auditor:\n"
+            "  include: auditor.*\n",
             {"report-format": None, "report-format@table": None},
         )
 
@@ -159,10 +153,11 @@ class TestEachApplyingListYieldsStatements:
     def test_adds_include_removes_exclude_and_a_variant_remove_strikes_alone(self, tmp_path):
         root = build(
             tmp_path,
-            "flags: ['strict']\n"
-            "defaults: ['*', 'tone@dry']\n"
-            "when:\n"
-            "  - flag strict: ['voice@terse', '-writing-code', '-tone@dry']\n",
+            "flags: strict\n"
+            "defaults: all.* tone@dry\n"
+            "flag strict:\n"
+            "  include: voice@terse\n"
+            "  exclude: writing-code tone@dry\n",
             {
                 "voice": None,
                 "voice@terse": None,
@@ -179,7 +174,7 @@ class TestTheStatementAtTheHigherPositionDecides:
     def test_a_block_that_removes_a_rule_defaults_include_leaves_it_off(self, tmp_path):
         root = build(
             tmp_path,
-            "flags: ['strict']\ndefaults: ['voice']\nwhen:\n  - flag strict: ['-voice']\n",
+            "flags: strict\ndefaults: voice\nflag strict:\n  exclude: voice\n",
             {"voice": None},
         )
 
@@ -189,7 +184,7 @@ class TestTheStatementAtTheHigherPositionDecides:
     def test_a_block_that_includes_a_rule_defaults_exclude_turns_it_on(self, tmp_path):
         root = build(
             tmp_path,
-            "flags: ['a']\ndefaults: ['-voice']\nwhen:\n  - flag a: ['voice']\n",
+            "flags: a\ndefaults:\n  exclude: voice\nflag a:\n  include: voice\n",
             {"voice": None},
         )
 
@@ -199,7 +194,7 @@ class TestTheStatementAtTheHigherPositionDecides:
     def test_the_toggle_none_keeps_a_set_flags_include_out_of_a_delegate(self, tmp_path):
         root = build(
             tmp_path,
-            "flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['security-pass']\n",
+            "flags: strict\ndefaults:\nflag strict:\n  include: security-pass\n",
             {"security-pass": None},
         )
         locations = Locations(tmp_path / "config")
@@ -214,13 +209,14 @@ class TestTheStatementAtTheHigherPositionDecides:
     ):
         root = build(
             tmp_path,
-            "flags: ['a', 'b']\n"
-            "rulesets:\n"
-            "  review: ['voice']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - flag a: ['review:*']\n"
-            "  - flag b: ['-voice']\n",
+            "flags: a b\n"
+            "defaults:\n"
+            "sets:\n"
+            "  review: voice\n"
+            "flag a:\n"
+            "  include: review.*\n"
+            "flag b:\n"
+            "  exclude: voice\n",
             {"voice": None},
         )
 
@@ -231,13 +227,14 @@ class TestTheStatementAtTheHigherPositionDecides:
     ):
         root = build(
             tmp_path,
-            "flags: ['a', 'b']\n"
-            "rulesets:\n"
-            "  review: ['voice']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - flag a: ['voice']\n"
-            "  - flag b: ['-review:*']\n",
+            "flags: a b\n"
+            "defaults:\n"
+            "sets:\n"
+            "  review: voice\n"
+            "flag a:\n"
+            "  include: voice\n"
+            "flag b:\n"
+            "  exclude: review.*\n",
             {"voice": None},
         )
 
@@ -246,7 +243,7 @@ class TestTheStatementAtTheHigherPositionDecides:
     def test_an_exclude_beats_an_include_of_the_same_rule_at_one_rank(self, tmp_path):
         root = build(
             tmp_path,
-            "flags: ['a', 'b']\ndefaults: []\nwhen:\n  - flag a: ['voice']\n  - flag b: ['-voice']\n",
+            "flags: a b\ndefaults:\nflag a:\n  include: voice\nflag b:\n  exclude: voice\n",
             {"voice": None},
         )
         critic = context(agent="critic", kind="delegate", flags=["a", "b"])
@@ -258,7 +255,7 @@ class TestTheStatementAtTheHigherPositionDecides:
     ):
         root = build(
             tmp_path,
-            "flags: ['a', 'b']\ndefaults: []\nwhen:\n  - flag b: ['-voice']\n  - flag a: ['voice']\n",
+            "flags: a b\ndefaults:\nflag b:\n  exclude: voice\nflag a:\n  include: voice\n",
             {"voice": None},
         )
         critic = context(agent="critic", kind="delegate", flags=["a", "b"])
@@ -270,8 +267,13 @@ class TestABareStatementDecidesInclusionAlone:
     def test_a_higher_bare_add_leaves_a_lower_set_variant_in_force(self, tmp_path):
         root = build(
             tmp_path,
-            "models: ['haiku']\nflags: ['strict']\ndefaults: []\n"
-            "when:\n  - flag strict: ['voice']\n  - model haiku: ['voice@terse']\n",
+            "models: haiku\n"
+            "flags: strict\n"
+            "defaults:\n"
+            "flag strict:\n"
+            "  include: voice\n"
+            "model haiku:\n"
+            "  include: voice@terse\n",
             {"voice": None, "voice@terse": None},
         )
 
@@ -284,11 +286,12 @@ class TestAStrikeDecidesOnlyAgainstTheVariantItNames:
     ):
         root = build(
             tmp_path,
-            "flags: ['voice-terse']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - flag voice-terse: ['voice@terse']\n"
-            "  - session abc123: ['-voice@terse']\n",
+            "flags: voice-terse\n"
+            "defaults:\n"
+            "flag voice-terse:\n"
+            "  include: voice@terse\n"
+            "session abc123:\n"
+            "  exclude: voice@terse\n",
             {"voice": None, "voice@terse": None},
         )
         delegate = context(kind="delegate", flags=["voice-terse"], session="abc123")
@@ -299,12 +302,13 @@ class TestAStrikeDecidesOnlyAgainstTheVariantItNames:
     def test_a_strike_at_a_lower_position_than_the_set_leaves_the_set_standing(self, tmp_path):
         root = build(
             tmp_path,
-            "models: ['haiku']\n"
-            "flags: ['voice-terse']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - model haiku: ['-voice@terse']\n"
-            "  - flag voice-terse: ['voice@terse']\n",
+            "models: haiku\n"
+            "flags: voice-terse\n"
+            "defaults:\n"
+            "model haiku:\n"
+            "  exclude: voice@terse\n"
+            "flag voice-terse:\n"
+            "  include: voice@terse\n",
             {"voice": None, "voice@terse": None},
         )
 
@@ -313,12 +317,13 @@ class TestAStrikeDecidesOnlyAgainstTheVariantItNames:
     def test_a_strike_leaves_the_rule_on_and_strikes_only_the_variant_it_names(self, tmp_path):
         root = build(
             tmp_path,
-            "models: ['haiku']\n"
-            "flags: ['strict']\n"
-            "defaults: ['voice@warm']\n"
-            "when:\n"
-            "  - model haiku: ['voice@terse']\n"
-            "  - flag strict: ['-voice@terse']\n",
+            "models: haiku\n"
+            "flags: strict\n"
+            "defaults: voice@warm\n"
+            "model haiku:\n"
+            "  include: voice@terse\n"
+            "flag strict:\n"
+            "  exclude: voice@terse\n",
             {"voice": None, "voice@terse": None, "voice@warm": None},
         )
 
@@ -328,7 +333,12 @@ class TestAStrikeDecidesOnlyAgainstTheVariantItNames:
     def test_a_strike_below_a_set_leaves_the_rule_on_and_the_set_variant_standing(self, tmp_path):
         root = build(
             tmp_path,
-            "flags: ['a']\ndefaults: ['voice', '-voice@terse']\nwhen:\n  - flag a: ['voice@terse']\n",
+            "flags: a\n"
+            "defaults:\n"
+            "  include: voice\n"
+            "  exclude: voice@terse\n"
+            "flag a:\n"
+            "  include: voice@terse\n",
             {"voice": None, "voice@terse": None},
         )
 
@@ -338,9 +348,9 @@ class TestAStrikeDecidesOnlyAgainstTheVariantItNames:
 
 class TestTheManifestDeclaresFlags:
     def test_a_flags_key_lists_the_declared_flags_and_check_reports_no_error(self, tmp_path):
-        root = build(tmp_path, "flags: ['strict', 'terse']\ndefaults: []\n", {})
+        root = build(tmp_path, "flags: strict terse\ndefaults:\n", {})
 
-        assert read_manifest(root).flags == ("strict", "terse")
+        assert read_config(root).flags == ("strict", "terse")
         assert check(root).errors == ()
 
 
@@ -348,11 +358,12 @@ class TestTwoVariantsSetAtOnePositionAreAConflict:
     def test_check_reports_an_error_naming_the_rule_and_both_statements(self, tmp_path):
         root = build(
             tmp_path,
-            "flags: ['a', 'b']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - flag a: ['voice@terse']\n"
-            "  - flag b: ['voice@warm']\n",
+            "flags: a b\n"
+            "defaults:\n"
+            "flag a:\n"
+            "  include: voice@terse\n"
+            "flag b:\n"
+            "  include: voice@warm\n",
             {"voice": None, "voice@terse": None, "voice@warm": None},
         )
 
@@ -360,7 +371,7 @@ class TestTwoVariantsSetAtOnePositionAreAConflict:
 
         assert error.kind == "variant-conflict"
         assert error.subject == ReferencesSubject(
-            (ReferenceSubject("voice@terse", 4), ReferenceSubject("voice@warm", 5))
+            (ReferenceSubject("voice@terse", 4), ReferenceSubject("voice@warm", 6))
         )
         assert "`voice`" in error.message
         assert main(["check", "--root", str(root)]) == 1
@@ -368,11 +379,12 @@ class TestTwoVariantsSetAtOnePositionAreAConflict:
     def test_check_reports_no_conflict_between_blocks_for_different_models(self, tmp_path):
         root = build(
             tmp_path,
-            "models: ['opus', 'sonnet']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - model opus: ['voice@terse']\n"
-            "  - model sonnet: ['voice@warm']\n",
+            "models: opus sonnet\n"
+            "defaults:\n"
+            "model opus:\n"
+            "  include: voice@terse\n"
+            "model sonnet:\n"
+            "  include: voice@warm\n",
             {"voice": None, "voice@terse": None, "voice@warm": None},
         )
 
@@ -384,14 +396,16 @@ class TestTwoVariantsSetAtOnePositionAreAConflict:
         world = World(tmp_path)
         for stem in ("voice", "voice@terse", "voice@warm", "voice@calm"):
             world.rule(stem)
-        world.manifest(
-            "models: ['haiku']\n"
-            "flags: ['a', 'b']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - flag a: ['voice@terse']\n"
-            "  - flag b: ['voice@warm']\n"
-            "  - model haiku: ['voice@calm']\n"
+        world.write_config(
+            "models: haiku\n"
+            "flags: a b\n"
+            "defaults:\n"
+            "flag a:\n"
+            "  include: voice@terse\n"
+            "flag b:\n"
+            "  include: voice@warm\n"
+            "model haiku:\n"
+            "  include: voice@calm\n"
         )
         world.environment["RULESETS_FLAGS"] = "a,b"
 
@@ -401,8 +415,8 @@ class TestTwoVariantsSetAtOnePositionAreAConflict:
         (notice,) = notice_entries(world, "variant-conflict")
         assert notice["shown"]
         assert "rule `voice`" in notice["subject"]
-        assert "`voice@terse` at manifest line 5" in notice["subject"]
-        assert "`voice@warm` at manifest line 6" in notice["subject"]
+        assert "`voice@terse` at config line 5" in notice["subject"]
+        assert "`voice@warm` at config line 7" in notice["subject"]
         assert "delivered at variant `calm`" in notice["subject"]
         assert notice["subject"] in delivery.message
 
@@ -412,13 +426,14 @@ class TestTwoVariantsSetAtOnePositionAreAConflict:
         world = World(tmp_path)
         for stem in ("voice", "voice@terse", "voice@warm"):
             world.rule(stem)
-        world.manifest(
+        world.write_config(
             DECLARED
-            + "flags: ['a', 'b']\n"
-            + "defaults: []\n"
-            + "when:\n"
-            + "  - flag a: ['voice@terse']\n"
-            + "  - flag b: ['voice@warm']\n"
+            + "flags: a b\n"
+            + "defaults:\n"
+            + "flag a:\n"
+            + "  include: voice@terse\n"
+            + "flag b:\n"
+            + "  include: voice@warm\n"
         )
         world.environment["RULESETS_FLAGS"] = "a,b"
 
@@ -428,19 +443,20 @@ class TestTwoVariantsSetAtOnePositionAreAConflict:
         (notice,) = notice_entries(world, "variant-conflict")
         assert notice["shown"]
         assert "rule `voice`" in notice["subject"]
-        assert "`voice@terse` at manifest line 5" in notice["subject"]
-        assert "`voice@warm` at manifest line 6" in notice["subject"]
+        assert "`voice@terse` at config line 5" in notice["subject"]
+        assert "`voice@warm` at config line 7" in notice["subject"]
         assert "delivered at its default form" in notice["subject"]
         assert notice["subject"] in delivery.message
 
     def test_two_sets_naming_the_same_variant_are_no_conflict(self, tmp_path):
         root = build(
             tmp_path,
-            "flags: ['a', 'b']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - flag a: ['voice@terse']\n"
-            "  - flag b: ['voice@terse']\n",
+            "flags: a b\n"
+            "defaults:\n"
+            "flag a:\n"
+            "  include: voice@terse\n"
+            "flag b:\n"
+            "  include: voice@terse\n",
             {"voice": None, "voice@terse": None},
         )
 
@@ -453,12 +469,14 @@ class TestTwoVariantsSetAtOnePositionAreAConflict:
     def test_a_third_statement_striking_one_of_two_variants_leaves_no_conflict(self, tmp_path):
         root = build(
             tmp_path,
-            "flags: ['a', 'b', 'c']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - flag a: ['voice@terse']\n"
-            "  - flag b: ['voice@warm']\n"
-            "  - flag c: ['-voice@warm']\n",
+            "flags: a b c\n"
+            "defaults:\n"
+            "flag a:\n"
+            "  include: voice@terse\n"
+            "flag b:\n"
+            "  include: voice@warm\n"
+            "flag c:\n"
+            "  exclude: voice@warm\n",
             {"voice": None, "voice@terse": None, "voice@warm": None},
         )
 
@@ -472,12 +490,14 @@ class TestTwoVariantsSetAtOnePositionAreAConflict:
     ):
         root = build(
             tmp_path,
-            "flags: ['a', 'b']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - flag a: ['voice@terse']\n"
-            "  - flag b: ['voice@warm']\n"
-            "  - flag a: ['-voice@warm']\n",
+            "flags: a b\n"
+            "defaults:\n"
+            "flag a:\n"
+            "  include: voice@terse\n"
+            "  then:\n"
+            "    exclude: voice@warm\n"
+            "flag b:\n"
+            "  include: voice@warm\n",
             {"voice": None, "voice@terse": None, "voice@warm": None},
         )
 
@@ -489,12 +509,14 @@ class TestTwoVariantsSetAtOnePositionAreAConflict:
     ):
         root = build(
             tmp_path,
-            "flags: ['a', 'b', 'c']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - flag a: ['voice@terse']\n"
-            "  - flag b: ['voice@warm']\n"
-            "  - flag c: ['-voice@warm']\n",
+            "flags: a b c\n"
+            "defaults:\n"
+            "flag a:\n"
+            "  include: voice@terse\n"
+            "flag b:\n"
+            "  include: voice@warm\n"
+            "flag c:\n"
+            "  exclude: voice@warm\n",
             {"voice": None, "voice@terse": None, "voice@warm": None},
         )
 
@@ -505,7 +527,7 @@ class TestRulesWithNoSetStatementTakeTheirDefaultForm:
     def test_an_included_rule_no_list_sets_arrives_at_its_default_form(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['*']\n",
+            "defaults: all.*\n",
             {"voice": None, "voice@terse": None, "sorting": None},
         )
 
@@ -514,7 +536,7 @@ class TestRulesWithNoSetStatementTakeTheirDefaultForm:
     def test_a_rule_no_applying_statement_includes_stays_off(self, tmp_path):
         root = build(
             tmp_path,
-            "flags: ['strict']\ndefaults: ['sorting']\nwhen:\n  - flag strict: ['voice']\n",
+            "flags: strict\ndefaults: sorting\nflag strict:\n  include: voice\n",
             {"voice": None, "sorting": None},
         )
 
@@ -525,7 +547,7 @@ class TestCheckWarnsAboutTheLayoutOfTheRulesetsDirectory:
     def test_a_directory_in_the_pool_draws_a_stray_directory_warning_and_a_zero_exit(
         self, tmp_path
     ):
-        root = build(tmp_path, "defaults: ['*']\n", {"voice": None})
+        root = build(tmp_path, "defaults: all.*\n", {"voice": None})
         (root / "rules" / "drafts").mkdir()
 
         (warning,) = check(root).warnings
@@ -536,7 +558,7 @@ class TestCheckWarnsAboutTheLayoutOfTheRulesetsDirectory:
     def test_the_reserved_folders_beside_the_pool_draw_no_stray_warning_and_another_directory_does(
         self, tmp_path
     ):
-        root = build(tmp_path, "defaults: ['*']\n", {"voice": None})
+        root = build(tmp_path, "defaults: all.*\n", {"voice": None})
         for name in ("references", "-render", "drafts"):
             (root / name).mkdir()
 
@@ -546,7 +568,7 @@ class TestCheckWarnsAboutTheLayoutOfTheRulesetsDirectory:
         assert main(["check", "--root", str(root)]) == 0
 
     def test_a_new_rule_file_needs_no_position_and_arrives_in_name_order(self, tmp_path):
-        root = build(tmp_path, "defaults: ['*']\n", {"alpha": None, "zeta": None})
+        root = build(tmp_path, "defaults: all.*\n", {"alpha": None, "zeta": None})
         before = check(root)
         (root / "rules" / "middle.md").write_text("text of middle\n", encoding="utf-8")
 
@@ -558,7 +580,7 @@ class TestCheckWarnsAboutTheLayoutOfTheRulesetsDirectory:
     def test_a_body_opening_with_another_rules_marker_draws_a_misnamed_body_warning(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['*']\n",
+            "defaults: all.*\n",
             {"voice": "<!-- rule: sorting -->\ntext\n", "sorting": None},
         )
 
@@ -579,7 +601,7 @@ class TestABodyLongerThanThePartBudgetIsACheckError:
         world.rule("alpha")
         world.rule("big", "x" * 12000)
         world.rule("zeta")
-        world.manifest(DECLARED + "defaults: ['*']\n")
+        world.write_config(DECLARED + "defaults: all.*\n")
         root = world.rulesets
 
         (error,) = check(root).errors
@@ -602,7 +624,7 @@ class TestABodyLongerThanThePartBudgetIsACheckError:
     def test_a_body_that_fits_only_without_its_marker_draws_an_oversize_error(self, tmp_path):
         world = World(tmp_path)
         world.rule("a-rule", "x" * 8990)
-        world.manifest(DECLARED + "defaults: ['*']\n")
+        world.write_config(DECLARED + "defaults: all.*\n")
 
         (error,) = check(world.rulesets).errors
         delivery = world.start_session()
@@ -618,12 +640,11 @@ class TestCheckWarnsAboutPartCountAndReferences:
         stems = {f"rule-{number:02d}": "y" * 5000 + "\n" for number in range(11)}
         root = build(
             tmp_path,
-            "models: ['opus', 'haiku']\n"
-            "flags: ['strict', 'lint']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - agent critic and kind delegate and model haiku and flag strict and flag lint:"
-            " ['*']\n",
+            "models: opus haiku\n"
+            "flags: strict lint\n"
+            "defaults:\n"
+            "agent critic and kind delegate and model haiku and flag strict and flag lint:\n"
+            "  include: all.*\n",
             stems,
         )
 
@@ -639,7 +660,7 @@ class TestCheckWarnsAboutPartCountAndReferences:
         stems = {f"rule-{number:02d}": "y" * 5000 + "\n" for number in range(11)}
         root = build(
             tmp_path,
-            "models: ['opus']\ndefaults: ['*']\nwhen:\n  - model opus: ['-*']\n",
+            "models: opus\ndefaults: all.*\nmodel opus:\n  exclude: all.*\n",
             stems,
         )
 
@@ -650,12 +671,12 @@ class TestCheckWarnsAboutPartCountAndReferences:
             ContextSubject(Facts(UNCLAIMED, ABSENT, "delegate", frozenset())),
         ]
 
-    def test_a_directory_with_no_manifest_draws_the_warning_for_the_every_rule_context(
+    def test_a_directory_with_no_config_draws_the_warning_for_the_every_rule_context(
         self, tmp_path
     ):
         stems = {f"rule-{number:02d}": "y" * 5000 + "\n" for number in range(11)}
         root = build(tmp_path, "", stems)
-        (root / "manifest.yaml").unlink()
+        (root / "config.yaml").unlink()
 
         warnings = [w for w in check(root).warnings if w.kind == "too-many-parts"]
 
@@ -664,7 +685,7 @@ class TestCheckWarnsAboutPartCountAndReferences:
             ContextSubject(Facts(UNCLAIMED, ABSENT, "delegate", frozenset())),
         ]
 
-    def test_a_directory_with_an_unparsable_manifest_draws_the_warning_for_the_every_rule_context(
+    def test_a_directory_with_an_unparsable_config_draws_the_warning_for_the_every_rule_context(
         self, tmp_path
     ):
         stems = {f"rule-{number:02d}": "y" * 5000 + "\n" for number in range(11)}
@@ -672,13 +693,13 @@ class TestCheckWarnsAboutPartCountAndReferences:
 
         report = check(root)
 
-        assert [e.kind for e in report.errors] == ["manifest-unparsable"]
+        assert [e.kind for e in report.errors] == ["config-unparsable"]
         assert len([w for w in report.warnings if w.kind == "too-many-parts"]) == 2
 
     def test_a_citation_of_a_missing_file_under_references_draws_a_dangling_warning(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['*']\n",
+            "defaults: all.*\n",
             {"voice": "See `references/table.md` for the table.\n"},
         )
 
@@ -695,8 +716,8 @@ class TestTerms:
     ):
         world = World(tmp_path)
         world.rule("writing-code")
-        world.manifest(
-            DECLARED + "defaults: ['writing-code']\nwhen:\n  - model haiku: ['-writing-code']\n"
+        world.write_config(
+            DECLARED + "defaults: writing-code\nmodel haiku:\n  exclude: writing-code\n"
         )
         spawn_log.append_spawn("s1", "p1", "critic", "haiku", Locations(world.config).state)
 
@@ -705,3 +726,137 @@ class TestTerms:
 
         named = {r["scope"]: [line["rule"] for line in r["rules"]] for r in world.records()}
         assert named == {"session": ["writing-code"], "delegate": []}
+
+
+class TestABlockHoldsIncludeExcludeNestedBlocksAndThen:
+    def test_a_block_with_both_lists_includes_all_but_what_it_excludes(self, tmp_path):
+        root = build(
+            tmp_path,
+            "sets:\n"
+            "  bash: shell-scripts\n"
+            "kind session:\n"
+            "  include: all.*\n"
+            "  exclude: bash.shell-scripts\n",
+            {"shell-scripts": None, "voice": None, "sorting": None},
+        )
+
+        assert received(root, context()) == {"voice": None, "sorting": None}
+
+    def test_a_nested_model_test_applies_only_where_both_conditions_hold(self, tmp_path):
+        root = build(
+            tmp_path,
+            "models: opus haiku\n"
+            "defaults:\n"
+            "sets:\n"
+            "  planning: plan-steps\n"
+            "agent Plan:\n"
+            "  not model haiku:\n"
+            "    include: planning.*\n",
+            {"plan-steps": None},
+        )
+
+        on_opus = context(model="opus", agent="Plan", kind="delegate")
+        on_haiku = context(model="haiku", agent="Plan", kind="delegate")
+
+        assert received(root, on_opus) == {"plan-steps": None}
+        assert received(root, on_haiku) == {}
+
+    def test_an_exclude_under_then_leaves_the_variant_the_block_set(self, tmp_path):
+        root = build(
+            tmp_path,
+            "models: haiku\n"
+            "defaults:\n"
+            "sets:\n"
+            "  prose: writing-prose\n"
+            "model haiku:\n"
+            "  include: prose.writing-prose@haiku\n"
+            "  then:\n"
+            "    exclude: prose.writing-prose\n"
+            "agent orchestrator:\n"
+            "  include: prose.*\n",
+            {"writing-prose": None, "writing-prose@haiku": None},
+        )
+
+        facts = context(model="haiku", agent="orchestrator", kind="delegate")
+
+        assert received(root, facts) == {"writing-prose": "haiku"}
+
+    def test_the_same_exclude_in_the_blocks_own_list_cancels_the_variant(self, tmp_path):
+        root = build(
+            tmp_path,
+            "models: haiku\n"
+            "defaults:\n"
+            "sets:\n"
+            "  prose: writing-prose\n"
+            "model haiku:\n"
+            "  include: prose.writing-prose@haiku\n"
+            "  exclude: prose.writing-prose\n"
+            "agent orchestrator:\n"
+            "  include: prose.*\n",
+            {"writing-prose": None, "writing-prose@haiku": None},
+        )
+
+        facts = context(model="haiku", agent="orchestrator", kind="delegate")
+
+        assert received(root, facts) == {"writing-prose": None}
+
+
+class TestANestedBlockOrThenListTakesTheRankOfItsCondition:
+    GENERAL_ON_HAIKU = context(model="haiku", agent="general-purpose", kind="delegate")
+
+    def test_a_block_keyed_on_model_and_kind_any_stands_at_agent_rank(self, tmp_path):
+        root = build(
+            tmp_path,
+            "models: haiku\n"
+            "defaults:\n"
+            "model haiku and kind any:\n"
+            "  exclude: comments\n"
+            "agent general-purpose:\n"
+            "  include: comments\n",
+            {"comments": None},
+        )
+
+        assert received(root, self.GENERAL_ON_HAIKU) == {}
+
+    def test_a_nested_kind_any_block_matches_its_flat_equivalent(self, tmp_path):
+        nested = build(
+            tmp_path / "nested",
+            "models: haiku\n"
+            "defaults:\n"
+            "model haiku:\n"
+            "  kind any:\n"
+            "    exclude: comments\n"
+            "agent general-purpose:\n"
+            "  include: comments\n",
+            {"comments": None},
+        )
+        flat = build(
+            tmp_path / "flat",
+            "models: haiku\n"
+            "defaults:\n"
+            "model haiku and kind any:\n"
+            "  exclude: comments\n"
+            "agent general-purpose:\n"
+            "  include: comments\n",
+            {"comments": None},
+        )
+
+        assert received(nested, self.GENERAL_ON_HAIKU) == {}
+        assert received(nested, self.GENERAL_ON_HAIKU) == received(flat, self.GENERAL_ON_HAIKU)
+
+    def test_a_then_list_stands_at_its_blocks_rank_below_an_agent_block(self, tmp_path):
+        root = build(
+            tmp_path,
+            "models: haiku\n"
+            "defaults:\n"
+            "model haiku:\n"
+            "  then:\n"
+            "    exclude: writing-prose\n"
+            "agent orchestrator:\n"
+            "  include: writing-prose\n",
+            {"writing-prose": None},
+        )
+
+        facts = context(model="haiku", agent="orchestrator", kind="delegate")
+
+        assert received(root, facts) == {"writing-prose": None}

@@ -36,9 +36,9 @@ def _bases(directory: RulesetsDirectory) -> dict[str, Held]:
         "defaults": _held(((r.rule, r.variant) for r in base_composition(directory).rules), barred),
         "all": _held(((rule, None) for rule in directory.pool.rules), barred),
     }
-    if isinstance(directory.manifest, Present):
+    if isinstance(directory.config, Present):
         expander = expander_of(directory)
-        for name, ruleset in directory.manifest.manifest.rulesets.items():
+        for name, ruleset in directory.config.config.rulesets.items():
             if _safe_name(name):
                 entries = expander.expand(ruleset.references).entries
                 bases[name] = _held(((e.rule, e.variant) for e in entries), barred)
@@ -46,11 +46,11 @@ def _bases(directory: RulesetsDirectory) -> dict[str, Held]:
 
 
 def _variants_added(directory: RulesetsDirectory) -> dict[str, set[str]]:
-    """Each rule's variants that some add in the manifest names."""
+    """Each rule's variants that some add in the config names."""
 
     named: dict[str, set[str]] = {}
-    if isinstance(directory.manifest, Present):
-        for references in directory.manifest.manifest.written_lists():
+    if isinstance(directory.config, Present):
+        for references in directory.config.config.written_lists():
             for reference in references:
                 match reference.target:
                     case RuleTarget(rule, str() as variant) if not reference.remove:

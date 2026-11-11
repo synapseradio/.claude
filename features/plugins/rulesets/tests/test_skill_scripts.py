@@ -8,15 +8,15 @@ from delivery_world import CLI, PLUGIN_ROOT, World
 SCRIPTS = PLUGIN_ROOT / "skills" / "rulesets" / "scripts"
 LAUNCHER = PLUGIN_ROOT / "hooks" / "with-python.sh"
 
-MANIFEST = """\
-models: ["opus", "haiku"]
-flags: ["strict"]
-defaults: ["voice", "brevity"]
+CONFIG = """\
+models: opus haiku
+flags: strict
+defaults: voice brevity
 """
 
 STRICT_BLOCK = """\
-when:
-  - "flag strict": ["voice@terse"]
+flag strict:
+  include: voice@terse
 """
 
 
@@ -37,7 +37,7 @@ def pool(world: World) -> None:
     world.rule("voice")
     world.rule("voice@terse", "terse text of voice\n")
     world.rule("brevity")
-    world.manifest(MANIFEST)
+    world.write_config(CONFIG)
 
 
 def files_under(root: pathlib.Path) -> dict[str, bytes]:
@@ -52,7 +52,7 @@ class TestGate:
     def test_gate_stops_at_check_when_a_variant_lacks_its_default_form(self, tmp_path):
         world = World(tmp_path)
         world.rule("voice@terse", "terse text of voice\n")
-        world.manifest('defaults: ["all:*"]\n')
+        world.write_config("defaults: all.*\n")
 
         done = run(world, "gate.py", "--root", world.rulesets)
 
@@ -87,11 +87,11 @@ class TestImpact:
         done = run(world, "impact.py", "snapshot", "--root", world.rulesets, "--out", out)
         assert done.returncode == 0, done.stdout + done.stderr
 
-    def test_a_new_when_block_shows_only_in_the_contexts_it_reaches(self, tmp_path):
+    def test_a_new_block_shows_only_in_the_contexts_it_reaches(self, tmp_path):
         world = World(tmp_path)
         pool(world)
         self.snapshot(world, tmp_path / "before")
-        world.manifest(MANIFEST + STRICT_BLOCK)
+        world.write_config(CONFIG + STRICT_BLOCK)
         self.snapshot(world, tmp_path / "after")
 
         done = run(world, "impact.py", "diff", tmp_path / "before", tmp_path / "after")
@@ -107,7 +107,7 @@ class TestImpact:
         world = World(tmp_path)
         pool(world)
         self.snapshot(world, tmp_path / "before")
-        world.manifest("# reordered, same meaning\n" + MANIFEST)
+        world.write_config("# reordered, same meaning\n" + CONFIG)
         self.snapshot(world, tmp_path / "after")
 
         done = run(world, "impact.py", "diff", tmp_path / "before", tmp_path / "after")
@@ -134,7 +134,7 @@ class TestSessionReport:
     def test_comparing_sessions_with_and_without_a_flag_names_the_rule_it_varies(self, tmp_path):
         world = World(tmp_path)
         pool(world)
-        world.manifest(MANIFEST + STRICT_BLOCK)
+        world.write_config(CONFIG + STRICT_BLOCK)
         world.environment["RULESETS_FLAGS"] = "strict"
         world.start_session(session_id="with-strict")
         del world.environment["RULESETS_FLAGS"]
@@ -161,9 +161,25 @@ class TestScaffold:
         assert (fresh / "rules" / "example.md").is_file()
         assert gated.returncode == 0, gated.stdout + gated.stderr
 
+    def test_a_scaffolded_directory_holds_a_config_yaml_check_clears_and_no_manifest(
+        self, tmp_path
+    ):
+        world = World(tmp_path)
+        fresh = tmp_path / "fresh"
+
+        made = run(world, "scaffold.py", "--root", fresh)
+        words = ["bash", str(LAUNCHER), str(CLI), "check", "--root", str(fresh)]
+        checked = world.run_shell(shlex.join(words))
+
+        assert made.returncode == 0, made.stdout + made.stderr
+        assert (fresh / "config.yaml").is_file()
+        assert not (fresh / "manifest.yaml").exists()
+        assert checked.returncode == 0, checked.stdout + checked.stderr
+        assert ": error " not in checked.stdout
+
     def test_scaffolding_fills_the_empty_directory_a_first_session_left(self, tmp_path):
         world = World(tmp_path)
-        world.manifest("models: []\nflags: []\ndefaults: []\n")
+        world.write_config("models:\nflags:\ndefaults:\n")
 
         made = run(world, "scaffold.py", "--root", world.rulesets)
 

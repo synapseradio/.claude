@@ -15,10 +15,10 @@ _NO_FACTS = Facts(model=ABSENT, agent=ABSENT, kind=ABSENT, flags=frozenset())
 def base_composition(directory: RulesetsDirectory) -> Composition:
     """Compose `defaults` alone, at the variants its list names."""
 
-    match directory.manifest:
-        case Present(manifest):
-            without_blocks = dataclasses.replace(manifest, items=())
-            directory = dataclasses.replace(directory, manifest=Present(without_blocks))
+    match directory.config:
+        case Present(config):
+            without_blocks = dataclasses.replace(config, blocks=())
+            directory = dataclasses.replace(directory, config=Present(without_blocks))
         case _:
             pass
     return compose(directory, _NO_FACTS, SessionState())

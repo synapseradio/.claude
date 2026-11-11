@@ -44,8 +44,8 @@ from rulesets.notices import (
     nothing_received_notice,
 )
 from rulesets.session.state import SessionState, read_state, state_path
+from rulesets.source.config import CONFIG_FILE
 from rulesets.source.directory import read_directory
-from rulesets.source.manifest import MANIFEST_FILE
 from rulesets.source.scaffold import scaffold
 
 
@@ -95,7 +95,7 @@ def deliver_first(
     )
     message = shown_message(request.event, notices)
     digests = {body.rule: digest_of(body) for body in bodies}
-    manifest_file = directory.root / MANIFEST_FILE
+    config_file = directory.root / CONFIG_FILE
     log.append(
         log.session_dir(locations, request.session_id) / log.DELIVERIES_FILE,
         DeliveryRecord(
@@ -117,10 +117,10 @@ def deliver_first(
             rules=tuple(RuleLine(r.rule, r.variant, digests[r.rule]) for r in composition.rules),
             withheld=tuple(WithheldLine(w.rule, w.error) for w in composition.withheld),
             skipped_references=tuple(
-                SkippedReferenceLine.of(s, manifest_file) for s in composition.skipped
+                SkippedReferenceLine.of(s, config_file) for s in composition.skipped
             ),
             skipped_blocks=tuple(
-                SkippedBlockLine.of(b, manifest_file) for b in composition.skipped_blocks
+                SkippedBlockLine.of(b, config_file) for b in composition.skipped_blocks
             ),
             conflicts=tuple(ConflictLine.of(c) for c in composition.conflicts),
             left_out=left_out,

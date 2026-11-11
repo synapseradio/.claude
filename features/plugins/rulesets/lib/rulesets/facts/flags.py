@@ -20,7 +20,7 @@ class LaunchFlags:
 
 
 def launch_flags(environ: Mapping[str, str], declared: Collection[str]) -> LaunchFlags:
-    """Read the comma-separated names in `RULESETS_FLAGS`, splitting them by the manifest's flags."""
+    """Read the comma-separated names in `RULESETS_FLAGS`, splitting them by the config's flags."""
 
     named = [name.strip() for name in environ.get(LAUNCH_VARIABLE, "").split(",")]
     named = list(dict.fromkeys(name for name in named if name))

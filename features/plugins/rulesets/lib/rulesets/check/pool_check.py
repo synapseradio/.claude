@@ -8,8 +8,8 @@ from rulesets.source.condition import FACTS
 from rulesets.source.marker import delivered
 from rulesets.source.pool import REFERENCES_DIRECTORY, Citation, Pool, PoolFile
 
-# A frontmatter key scopes a rule file when it is the harness's path scope, the manifest's
-# `when` key, or a fact a condition tests, singular or plural.
+# A frontmatter key scopes a rule file when it is the harness's path scope, `when`, or a fact a
+# condition tests, singular or plural.
 _CONDITION_KEYS = frozenset({"paths", "when", *FACTS, *(f"{fact}s" for fact in FACTS)})
 
 _CONFIGURATION_DIRECTORY = "~/.claude/"
@@ -36,6 +36,17 @@ def pool_errors(pool: Pool) -> tuple[CheckError, ...]:
                 )
             )
         for file in rule.files():
+            if "." in rule.name:
+                errors.append(
+                    CheckError(
+                        "rule-name",
+                        subject,
+                        file.path,
+                        None,
+                        f"`{file.path.name}` names rule `{rule.name}`, and a rule name holds "
+                        "no `.`, since a reference reads `.` as the end of a ruleset's name",
+                    )
+                )
             if file.problem is not None:
                 errors.append(CheckError("unreadable-file", subject, file.path, None, file.problem))
             if file.frontmatter is not None and not file.frontmatter.parsed:

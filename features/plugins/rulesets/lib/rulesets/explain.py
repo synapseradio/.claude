@@ -23,11 +23,11 @@ from rulesets.compose.precedence import (
 from rulesets.compose.withheld import withheld
 from rulesets.facts.context import AllToolsBut, Facts, ListedTools, NoClaim
 from rulesets.session.state import SessionState
+from rulesets.source.config import CONFIG_FILE
 from rulesets.source.directory import Present, RulesetsDirectory
-from rulesets.source.manifest import MANIFEST_FILE
 from rulesets.source.reference import SpreadTarget
 
-_NO_MANIFEST = "no manifest"
+_NO_CONFIG = "no config"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -47,7 +47,7 @@ class Explanation:
 
     rule: str
     facts: Facts
-    manifest_file: str
+    config_file: str
     inclusion: Inclusion
     inclusion_rows: tuple[Statement, ...]
     variant: VariantOutcome
@@ -84,15 +84,15 @@ def explain(directory: RulesetsDirectory, rule: str, facts: Facts) -> Explanatio
         for s in about
         if isinstance(s.source.target, SpreadTarget)
     }
-    manifest_file = (
-        str(directory.manifest.manifest.path)
-        if isinstance(directory.manifest, Present)
-        else str(directory.root / MANIFEST_FILE)
+    config_file = (
+        str(directory.config.config.path)
+        if isinstance(directory.config, Present)
+        else str(directory.root / CONFIG_FILE)
     )
     return Explanation(
         rule,
         facts,
-        manifest_file,
+        config_file,
         inclusion(about),
         ascending[-1:] + ascending[:-1],
         outcome,
@@ -128,7 +128,7 @@ def _context_words(facts: Facts) -> str:
 
 def _cells(label: str, statement: Statement, explanation: Explanation) -> tuple[str, ...]:
     line = statement.source.line
-    location = f"{explanation.manifest_file}:{line}" if line else _NO_MANIFEST
+    location = f"{explanation.config_file}:{line}" if line else _NO_CONFIG
     match statement.origin:
         case DefaultsOrigin():
             key = "defaults"
@@ -140,7 +140,7 @@ def _cells(label: str, statement: Statement, explanation: Explanation) -> tuple[
         reach = "names the rule"
     else:
         reach = f"through ruleset {' > '.join(explanation.routes[statement])}"
-    return (label, location, key, statement.source.text, reach)
+    return (label, location, key, statement.source.quoted, reach)
 
 
 def _variant_label(row: Statement, explanation: Explanation) -> str:

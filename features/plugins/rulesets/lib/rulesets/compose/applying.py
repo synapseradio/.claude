@@ -26,7 +26,7 @@ class AppliedList:
 
 @dataclasses.dataclass(frozen=True)
 class SkippedBlock:
-    """A block whose condition names models or flags the manifest does not declare; it applies nowhere."""
+    """A block whose condition names models or flags the config does not declare; it applies nowhere."""
 
     condition: str
     line: int
@@ -36,22 +36,22 @@ class SkippedBlock:
 def skipped_blocks(directory: RulesetsDirectory) -> tuple[SkippedBlock, ...]:
     """The blocks delivery skips for naming an undeclared model or flag."""
 
-    if not isinstance(directory.manifest, Present):
+    if not isinstance(directory.config, Present):
         return ()
     skipped: list[SkippedBlock] = []
-    for item in directory.manifest.manifest.items:
+    for block in directory.config.config.blocks:
         try:
-            condition = parse_condition(item.condition)
+            condition = parse_condition(block.condition)
         except ConditionError:
             continue
-        undeclared = undeclared_names(condition, directory.manifest.manifest)
+        undeclared = undeclared_names(condition, directory.config.config)
         if undeclared.named:
-            skipped.append(SkippedBlock(item.condition, item.line, undeclared))
+            skipped.append(SkippedBlock(block.condition, block.line, undeclared))
     return tuple(skipped)
 
 
-_SPREAD_ALL = parse_reference("*", 0)
-_REMOVE_ALL = parse_reference("-*", 0)
+_SPREAD_ALL = parse_reference("all.*", 0)
+_REMOVE_ALL = parse_reference("all.*", 0, remove=True)
 
 
 def applying_lists(
@@ -59,33 +59,33 @@ def applying_lists(
 ) -> tuple[AppliedList, ...]:
     """The applying lists in order: defaults, blocks in file order, then the session band's.
 
-    A manifest that is missing or does not parse applies one list, the spread of every rule.
+    A config that is missing or does not parse applies one list, the spread of every rule.
     """
 
-    match directory.manifest:
-        case Present(manifest):
+    match directory.config:
+        case Present(config):
             applied = [
                 AppliedList(
                     PositionBand.DIRECTORY,
                     Rank.NONE,
-                    manifest.defaults.references if manifest.defaults else (),
+                    config.defaults.references if config.defaults else (),
                     DefaultsOrigin(),
                 )
             ]
-            for item in manifest.items:
+            for block in config.blocks:
                 try:
-                    condition = parse_condition(item.condition)
+                    condition = parse_condition(block.condition)
                 except ConditionError:
                     continue
-                if undeclared_names(condition, manifest).named:
+                if undeclared_names(condition, config).named:
                     continue
                 if evaluate(condition, facts) is Truth.TRUE:
                     applied.append(
                         AppliedList(
                             PositionBand.DIRECTORY,
                             block_rank(condition),
-                            item.references,
-                            BlockOrigin(item.condition),
+                            block.references,
+                            BlockOrigin(block.condition),
                         )
                     )
         case _:

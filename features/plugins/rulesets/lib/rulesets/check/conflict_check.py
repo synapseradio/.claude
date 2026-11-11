@@ -20,9 +20,9 @@ from rulesets.compose.precedence import (
 from rulesets.compose.statements import statements
 from rulesets.facts.kinds import block_rank
 from rulesets.source.condition import And, Condition, ConditionError, Not, parse_condition
+from rulesets.source.config import Block
 from rulesets.source.directory import Present, RulesetsDirectory
 from rulesets.source.expansion import Expander
-from rulesets.source.manifest import WhenItem
 from rulesets.source.satisfiability import can_hold
 
 
@@ -35,11 +35,11 @@ class _Block:
 def check_conflicts(directory: RulesetsDirectory) -> tuple[CheckError, ...]:
     """One error for each rule two blocks set to different variants at one position."""
 
-    if not isinstance(directory.manifest, Present):
+    if not isinstance(directory.config, Present):
         return ()
-    manifest = directory.manifest.manifest
-    expander = Expander(manifest.spreadable(), directory.pool.variants_by_rule())
-    blocks = [block for item in manifest.items if (block := _block(item, expander))]
+    config = directory.config.config
+    expander = Expander(config.spreadable(), directory.pool.variants_by_rule())
+    blocks = [block for written in config.blocks if (block := _block(written, expander))]
     errors: list[CheckError] = []
     for first, second in itertools.combinations(blocks, 2):
         if not can_hold(And(first.condition, second.condition)):
@@ -54,7 +54,7 @@ def check_conflicts(directory: RulesetsDirectory) -> tuple[CheckError, ...]:
                 if all(
                     any(id(s) in setting for s in block.statements) for block in (first, second)
                 ) and _stands_in_some_context(first, second, others, conflict):
-                    errors.append(_error(manifest.path, rule, conflict.statements))
+                    errors.append(_error(config.path, rule, conflict.statements))
     return tuple(errors)
 
 
@@ -81,13 +81,16 @@ def _stands_in_some_context(
     return can_hold(wanted)
 
 
-def _block(item: WhenItem, expander: Expander) -> _Block | None:
+def _block(written: Block, expander: Expander) -> _Block | None:
     try:
-        condition = parse_condition(item.condition)
+        condition = parse_condition(written.condition)
     except ConditionError:
         return None
     applied = AppliedList(
-        PositionBand.DIRECTORY, block_rank(condition), item.references, BlockOrigin(item.condition)
+        PositionBand.DIRECTORY,
+        block_rank(condition),
+        written.references,
+        BlockOrigin(written.condition),
     )
     return _Block(condition, statements((applied,), expander))
 

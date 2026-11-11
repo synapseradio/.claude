@@ -55,7 +55,7 @@ _EFFECTS = {
     "none": "receive no rule",
     "flag": "hold the flag {name}",
     "unflag": "do not hold the flag {name}",
-    "clear": "compose from the manifest and the launch flags alone",
+    "clear": "compose from the config and the launch flags alone",
 }
 
 
@@ -68,7 +68,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     checking.add_argument("--root", required=True, type=pathlib.Path, help="the rulesets directory")
     explaining = commands.add_parser(
-        "explain", help="print which manifest lines decided one rule in one named context"
+        "explain", help="print which config lines decided one rule in one named context"
     )
     explaining.add_argument("rule", help="the rule to trace")
     explaining.add_argument("--model", help="the model identifier or declared name of the context")
@@ -189,14 +189,14 @@ def _toggle(session: str, action: ToggleAction) -> int:
     if isinstance(action, Clear):
         remove_state(locations, session)
         return 0
-    match read_directory(locations.rulesets).manifest:
-        case Present(manifest):
-            declared = manifest.flags
+    match read_directory(locations.rulesets).config:
+        case Present(config):
+            declared = config.flags
         case _:
             declared = ()
     match apply_toggle(declared, read_state(locations, session), action):
         case UndeclaredFlag(name):
-            print(f"cli.py: the manifest declares no flag `{name}`", file=sys.stderr)
+            print(f"cli.py: the config declares no flag `{name}`", file=sys.stderr)
             return 1
         case SessionState() as state if state == SessionState():
             remove_state(locations, session)
@@ -208,9 +208,9 @@ def _toggle(session: str, action: ToggleAction) -> int:
 def _explain(arguments: argparse.Namespace) -> int:
     root = arguments.root or Locations.from_environment(os.environ).rulesets
     directory = read_directory(root)
-    manifest = directory.manifest.manifest if isinstance(directory.manifest, Present) else None
+    config = directory.config.config if isinstance(directory.config, Present) else None
     facts = named_context(
-        arguments.model, arguments.agent, arguments.kind, arguments.tools, arguments.flag, manifest
+        arguments.model, arguments.agent, arguments.kind, arguments.tools, arguments.flag, config
     )
     match explain(directory, arguments.rule, facts):
         case UnknownRule(rule):
@@ -292,9 +292,9 @@ def _render(arguments: argparse.Namespace) -> int:
     directory = read_directory(root)
     if arguments.out is None:
         return _render_tree(directory, arguments.check)
-    manifest = directory.manifest.manifest if isinstance(directory.manifest, Present) else None
+    config = directory.config.config if isinstance(directory.config, Present) else None
     facts = named_context(
-        arguments.model, arguments.agent, arguments.kind, arguments.tools, arguments.flag, manifest
+        arguments.model, arguments.agent, arguments.kind, arguments.tools, arguments.flag, config
     )
     composition = compose(directory, facts, SessionState())
     text = render_context(composition, directory.pool)

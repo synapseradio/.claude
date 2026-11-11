@@ -53,7 +53,7 @@ class TestEveryContextReceivesItsRulesByHook:
         self, world
     ):
         world.rule("core-rules", "Hold every rule as mandatory.\n")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
 
         delivery = world.start_session()
 
@@ -64,7 +64,7 @@ class TestEveryContextReceivesItsRulesByHook:
         self, world
     ):
         world.rule("core-rules", "Hold every rule as mandatory.\n")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         world.start_session()
 
         delivery = world.start_delegate("critic")
@@ -74,7 +74,7 @@ class TestEveryContextReceivesItsRulesByHook:
 
     def test_a_delivery_leaves_the_agent_definition_file_byte_for_byte_as_it_was(self, world):
         world.rule("core-rules", "Hold every rule as mandatory.\n")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         definition = world.config / "agents" / "critic.md"
         definition.parent.mkdir(parents=True)
         definition.write_bytes(
@@ -91,7 +91,7 @@ class TestEveryContextReceivesItsRulesByHook:
         self, world
     ):
         world.rule("core-rules", "Hold every rule as mandatory.\n")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         definition = world.project / ".claude" / "agents" / "critic.md"
         definition.parent.mkdir(parents=True)
         definition.write_bytes(
@@ -178,7 +178,7 @@ class TestAForkedSessionAndAForkSubagentReceiveNothingAndLeaveNoRecord:
     def test_a_forked_session_start_delivers_nothing_and_leaves_no_record(self, world):
         world.rule("core-rules")
         world.rule("sorting")
-        world.manifest(DECLARED + "defaults: ['core-rules', 'sorting']\n")
+        world.write_config(DECLARED + "defaults: core-rules sorting\n")
         assert world.start_session().context == "text of core-rules\ntext of sorting\n"
         transcript = world.transcripts / "s2.jsonl"
         transcript.parent.mkdir(parents=True, exist_ok=True)
@@ -202,7 +202,7 @@ class TestAForkedSessionAndAForkSubagentReceiveNothingAndLeaveNoRecord:
     def test_a_fork_subagent_start_delivers_nothing_and_leaves_no_record(self, world):
         world.rule("core-rules")
         world.rule("sorting")
-        world.manifest(DECLARED + "defaults: ['core-rules', 'sorting']\n")
+        world.write_config(DECLARED + "defaults: core-rules sorting\n")
         assert world.start_session().context == "text of core-rules\ntext of sorting\n"
         before = engine_files(world)
 
@@ -225,7 +225,7 @@ class TestDeliveredTextIsRuleTextOnly:
     def test_a_part_holds_each_rules_marker_and_body_sorted_by_name_and_no_other_line(self, world):
         world.rule("sorting", "Sort what you hold.\n")
         world.rule("core-rules", "Hold every rule as mandatory.\n")
-        world.manifest(DECLARED + "defaults: ['sorting', 'core-rules']\n")
+        world.write_config(DECLARED + "defaults: sorting core-rules\n")
 
         delivery = world.start_session()
 
@@ -241,7 +241,7 @@ class TestDeliveredTextIsRuleTextOnly:
     def test_a_variant_arrives_under_its_rules_marker_which_names_no_variant(self, world):
         world.rule("voice", "default voice\n")
         world.rule("voice@terse", "terse voice\n")
-        world.manifest(DECLARED + "defaults: ['voice']\nwhen:\n  - agent critic: ['voice@terse']\n")
+        world.write_config(DECLARED + "defaults: voice\nagent critic:\n  include: voice@terse\n")
 
         delivery = world.start_delegate("critic")
 
@@ -250,7 +250,7 @@ class TestDeliveredTextIsRuleTextOnly:
     def test_markers_count_toward_the_part_budget(self, world):
         world.rule("a-rule", "a" * 4489 + "\n")
         world.rule("b-rule", "b" * 4489 + "\n")
-        world.manifest(DECLARED + "defaults: ['*']\n")
+        world.write_config(DECLARED + "defaults: all.*\n")
 
         delivery = world.start_session()
 
@@ -273,7 +273,7 @@ def notice_entries(world, kind):
 class TestNoticesReachThePersonAndTheRecordNeverTheAgent:
     def test_a_delivery_that_raises_no_shown_notice_shows_the_person_no_message(self, world):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
 
         delivery = world.start_session()
 
@@ -285,7 +285,7 @@ class TestNoticesReachThePersonAndTheRecordNeverTheAgent:
     ):
         world.rule("voice")
         unreadable(world.rule("tone"))
-        world.manifest(DECLARED + "defaults: ['voice', 'tone', 'ghost-one', 'ghost-two']\n")
+        world.write_config(DECLARED + "defaults: voice tone ghost-one ghost-two\n")
 
         delivery = world.start_session()
 
@@ -303,7 +303,7 @@ class TestDeliveryProblemsAreShownNotices:
     ):
         world.rule("voice")
         world.rule("tone@dry")
-        world.manifest("models: ['opus']\nflags: ['strict']\ndefaults: ['voice', 'tone']\n")
+        world.write_config("models: opus\nflags: strict\ndefaults: voice tone\n")
         world.environment["RULESETS_FLAGS"] = "stirct"
 
         delivery = world.start_session(model="claude-x-1")
@@ -319,7 +319,7 @@ class TestAnUnreadableRuleFileIsWithheld:
     ):
         world.rule("voice")
         unreadable(world.rule("tone"))
-        world.manifest(DECLARED + "defaults: ['tone', 'voice']\n")
+        world.write_config(DECLARED + "defaults: tone voice\n")
 
         delivery = world.start_session()
 
@@ -332,7 +332,7 @@ class TestAnUnreadableRuleFileIsWithheld:
 class TestFactsSwitchesAndHostVariablesGoToTheRecordAlone:
     def test_an_absent_agent_fact_reaches_the_record_and_shows_no_message(self, world):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\nwhen:\n  - agent eval-runner: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\nagent eval-runner:\n  include: voice\n")
 
         delivery = world.start_session()
 
@@ -346,7 +346,7 @@ class TestADelegateStartThatShowsNoMessageSendsShownNoticesToTheRecordAlone:
     ):
         world.rule("voice")
         unreadable(world.rule("tone"))
-        world.manifest(DECLARED + "defaults: ['tone', 'voice']\n")
+        world.write_config(DECLARED + "defaults: tone voice\n")
 
         session = world.start_session()
 
@@ -370,11 +370,9 @@ class TestEveryPartOfOneDeliveryCarriesWhatItsFirstPartComposed:
         for name, text in bodies.items():
             world.rule(name, text)
         world.rule("security-pass")
-        world.manifest(
-            DECLARED
-            + "flags: ['strict']\n"
-            + "defaults: ['a-rule', 'b-rule', 'c-rule']\n"
-            + "when:\n  - flag strict: ['security-pass']\n"
+        world.write_config(
+            DECLARED + "flags: strict\n" + "defaults: a-rule b-rule c-rule\n" + "flag strict:\n"
+            "  include: security-pass\n"
         )
         payload = {"session_id": "s1", "agent_id": "a1", "agent_type": "critic", "prompt_id": "p1"}
 
@@ -400,7 +398,7 @@ class TestRulesPastTheLastPartReachAShownNotice:
         for name, text in bodies.items():
             world.rule(name, text)
         world.rule("zeta", "zeta " + "x" * 8494 + "\n")
-        world.manifest(DECLARED + "defaults: ['*']\n")
+        world.write_config(DECLARED + "defaults: all.*\n")
 
         delivery = world.start_session()
 
@@ -422,11 +420,9 @@ def declare_strict(world):
 
     world.rule("core-rules")
     world.rule("security-pass")
-    world.manifest(
-        DECLARED
-        + "flags: ['strict']\n"
-        + "defaults: ['core-rules']\n"
-        + "when:\n  - flag strict: ['security-pass']\n"
+    world.write_config(
+        DECLARED + "flags: strict\n" + "defaults: core-rules\n" + "flag strict:\n"
+        "  include: security-pass\n"
     )
 
 
@@ -436,11 +432,12 @@ class TestAToggleReachesOnlyDelegateDeliveriesThatBeginAfterIt:
     ):
         world.rule("writing-code")
         world.rule("voice")
-        world.manifest(
+        world.write_config(
             DECLARED
-            + "flags: ['without-writing-code']\n"
-            + "defaults: ['writing-code', 'voice']\n"
-            + "when:\n  - flag without-writing-code: ['-writing-code']\n"
+            + "flags: without-writing-code\n"
+            + "defaults: writing-code voice\n"
+            + "flag without-writing-code:\n"
+            "  exclude: writing-code\n"
         )
         session = world.start_session()
         assert "text of writing-code" in session.context
@@ -458,11 +455,11 @@ class TestAToggleReachesOnlyDelegateDeliveriesThatBeginAfterIt:
         world.rule("core-rules")
         world.rule("security-pass")
         world.rule("loud-pass")
-        world.manifest(
-            DECLARED
-            + "flags: ['strict', 'loud']\n"
-            + "defaults: ['core-rules']\n"
-            + "when:\n  - flag strict: ['security-pass']\n  - flag loud: ['loud-pass']\n"
+        world.write_config(
+            DECLARED + "flags: strict loud\n" + "defaults: core-rules\n" + "flag strict:\n"
+            "  include: security-pass\n"
+            "flag loud:\n"
+            "  include: loud-pass\n"
         )
         world.environment["RULESETS_FLAGS"] = "loud"
         assert world.toggle("flag strict").returncode == 0
@@ -478,7 +475,7 @@ class TestAToggleReachesOnlyDelegateDeliveriesThatBeginAfterIt:
         for name, text in bodies.items():
             world.rule(name, text)
         world.rule("writing-code")
-        world.manifest(DECLARED + "defaults: ['writing-code', 'a-rule', 'b-rule', 'c-rule']\n")
+        world.write_config(DECLARED + "defaults: writing-code a-rule b-rule c-rule\n")
         payload = {"session_id": "s1", "agent_id": "a1", "agent_type": "critic", "prompt_id": "p1"}
 
         first = world.run_part("SubagentStart", payload, 1)
@@ -496,7 +493,7 @@ class TestAToggleReachesOnlyDelegateDeliveriesThatBeginAfterIt:
     ):
         world.rule("core-rules")
         world.rule("critic-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         assert world.start_session().context == CORE
 
         toggled = world.toggle("all")
@@ -527,7 +524,7 @@ class TestTheActionsAllAndNoneSetTheSessionBandsList:
     def test_the_later_of_all_and_none_decides_in_each_of_two_sessions(self, world):
         world.rule("core-rules")
         world.rule("critic-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
 
         for action in ("all", "none"):
             assert world.toggle(action, session_id="all-then-none").returncode == 0
@@ -570,7 +567,7 @@ class TestTheFlagActionsCheckTheNameAgainstTheManifestsFlags:
 class TestTheActionClearRemovesTheSessionsState:
     def test_clear_undoes_none_so_the_next_delegate_gets_the_manifests_rules(self, world):
         world.rule("core-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         assert world.toggle("none").returncode == 0
 
         cleared = world.toggle("clear")
@@ -583,7 +580,7 @@ class TestTheActionClearRemovesTheSessionsState:
         self, world
     ):
         world.rule("core-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         world.state_file().parent.mkdir(parents=True)
         world.state_file().write_text("band: sideways\n", encoding="utf-8")
 
@@ -605,7 +602,7 @@ class TestSessionStateEndsAtAClearAndAtTheSessionsEnd:
 
     def test_a_closed_session_ends_its_toggles_for_the_resumed_session(self, world):
         world.rule("core-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         assert world.toggle("none").returncode == 0
 
         world.end_session()
@@ -653,7 +650,7 @@ class TestDeliveryRunsOnPython314OrLater:
         self, world, tmp_path
     ):
         world.rule("core-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         stub(tmp_path, "python3", minor=13, has_yaml=True)
         world.environment["PATH"] = path_of(tmp_path)
 
@@ -667,7 +664,7 @@ class TestDeliveryRunsOnPython314OrLater:
         self, world
     ):
         world.rule("core-rules", "Hold every rule as mandatory.\n")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         world.environment["RULESETS_PYTHON"] = sys.executable
         assert sys.version_info >= (3, 14)
 
@@ -724,9 +721,8 @@ class TestAPreToolUseHookRecordsTheModelACallerNamesForOneSpawn:
     ):
         world.rule("core-rules")
         world.rule("terse-rules")
-        world.manifest(
-            "models: ['opus', 'haiku']\ndefaults: ['core-rules']\n"
-            "when:\n  - model haiku: ['terse-rules']\n"
+        world.write_config(
+            "models: opus haiku\ndefaults: core-rules\nmodel haiku:\n  include: terse-rules\n"
         )
         world.start_session(model=OPUS)
 
@@ -742,7 +738,7 @@ class TestAPreToolUseHookRecordsTheModelACallerNamesForOneSpawn:
         self, world
     ):
         world.rule("core-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         world.start_session(model=OPUS)
 
         spawned = world.spawn("critic", model="opus")
@@ -769,7 +765,7 @@ class TestAPreToolUseHookRecordsTheModelACallerNamesForOneSpawn:
 
     def test_a_spawn_that_names_no_model_leaves_the_delegate_on_its_parents_model(self, world):
         world.rule("core-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         world.start_session(model=OPUS)
 
         recorded = world.spawn("critic", model=None)
@@ -805,7 +801,7 @@ class TestTheActionNoneLeavesANoticeThatTheContextReceivedNothing:
         self, world
     ):
         world.rule("core-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         world.start_session(model=OPUS)
         assert world.toggle("none").returncode == 0
 
@@ -846,7 +842,7 @@ class TestAnUnreadablePayloadLeavesATrace:
         self, world
     ):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
 
         result = world.run_part_process("SessionStart", {"source": "startup"}, 1)
 
@@ -893,7 +889,7 @@ class TestASessionsModelFactIsRecordedAndReadBack:
         self, world
     ):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
 
         world.start_session(model=None)
 
@@ -906,7 +902,7 @@ class TestASessionsModelFactIsRecordedAndReadBack:
         self, world
     ):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
         world.start_session(model=OPUS)
 
         world.start_session(model=None, source="resume")
@@ -922,7 +918,7 @@ class TestADeliverysFirstPartAloneWritesTheSessionsModelRecord:
     def test_the_first_part_writes_the_record_and_no_later_part_writes_it_again(self, world):
         for name in ("a-rule", "b-rule", "c-rule"):
             world.rule(name, f"{name} " + "x" * 5990 + "\n")
-        world.manifest(DECLARED + "defaults: ['a-rule', 'b-rule', 'c-rule']\n")
+        world.write_config(DECLARED + "defaults: a-rule b-rule c-rule\n")
         payload = {"session_id": "s1", "source": "startup", "model": OPUS}
 
         first = world.run_part("SessionStart", payload, 1)
@@ -944,9 +940,13 @@ def declare_voice_scene(world):
     world.rule("core-rules")
     world.rule("haiku-rules")
     world.rule("sonnet-rules")
-    world.manifest(
-        "models: ['opus', 'sonnet', 'haiku']\ndefaults: ['core-rules']\n"
-        "when:\n  - model haiku: ['haiku-rules']\n  - model sonnet: ['sonnet-rules']\n"
+    world.write_config(
+        "models: opus sonnet haiku\n"
+        "defaults: core-rules\n"
+        "model haiku:\n"
+        "  include: haiku-rules\n"
+        "model sonnet:\n"
+        "  include: sonnet-rules\n"
     )
 
 
@@ -955,7 +955,7 @@ class TestADelegateReceivesAllItsRulesAtItsStart:
         self, world
     ):
         world.rule("voice", "old voice\n")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
 
         before = world.start_delegate(agent_id="a1")
         world.rule("voice", "edited voice\n")
@@ -1034,7 +1034,7 @@ class TestADelegatesDeliveryWritesNoSessionFile:
 
 
 class TestAMissingOrUnparsableManifestDeliversEveryRuleAtItsDefault:
-    def test_a_missing_manifest_delivers_each_default_form_sorted_and_the_notice_names_the_path(
+    def test_a_missing_config_delivers_each_default_form_sorted_and_the_notice_names_the_path(
         self, world
     ):
         world.rule("voice", "default voice\n")
@@ -1044,23 +1044,25 @@ class TestAMissingOrUnparsableManifestDeliversEveryRuleAtItsDefault:
         delivery = world.start_session()
 
         assert delivery.context == "a text\ndefault voice\n"
-        assert str(world.rulesets / "manifest.yaml") in delivery.message
+        assert str(world.rulesets / "config.yaml") in delivery.message
+        assert "manifest" not in delivery.message
 
-    def test_an_unparsable_manifest_delivers_each_default_form_and_the_notice_names_path_and_error(
+    def test_an_unparsable_config_delivers_each_default_form_and_the_notice_names_path_and_error(
         self, world
     ):
         world.rule("voice", "default voice\n")
         world.rule("a-rule", "a text\n")
         broken = "models: ['opus'\ndefaults: ['voice']\n"
-        world.manifest(broken)
+        world.write_config(broken)
         with pytest.raises(yaml.YAMLError) as parsed:
             yaml.safe_load(broken)
 
         delivery = world.start_session()
 
         assert delivery.context == "a text\ndefault voice\n"
-        assert str(world.rulesets / "manifest.yaml") in delivery.message
+        assert str(world.rulesets / "config.yaml") in delivery.message
         assert parsed.value.problem in delivery.message
+        assert "manifest" not in delivery.message
 
 
 class TestACompositionThatReachesNoRuleIsNoFailure:
@@ -1074,7 +1076,7 @@ class TestACompositionThatReachesNoRuleIsNoFailure:
     ):
         for name in pool:
             world.rule(name)
-        world.manifest(DECLARED + "defaults: []\n")
+        world.write_config(DECLARED + "defaults:\n")
 
         delivery = world.start_session()
 
@@ -1094,8 +1096,9 @@ class TestAMissingRulesetsDirectoryIsScaffolded:
         assert delivery.context == ""
         assert str(world.rulesets) in delivery.message
         assert list((world.rulesets / "rules").iterdir()) == []
-        declared = yaml.safe_load((world.rulesets / "manifest.yaml").read_text(encoding="utf-8"))
+        declared = yaml.safe_load((world.rulesets / "config.yaml").read_text(encoding="utf-8"))
         assert not any(declared.values())
+        assert not (world.rulesets / "manifest.yaml").exists()
 
 
 class TestADeliveryFailureKeepsTheSessionRunning:
@@ -1132,7 +1135,7 @@ class TestADeliveryFailureKeepsTheSessionRunning:
         self, world, tmp_path
     ):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
         world.state_file().parent.mkdir(parents=True)
         world.state_file().write_text("band: sideways\n", encoding="utf-8")
         delegate = {"session_id": "s1", "agent_id": "a1", "agent_type": "critic"}
@@ -1164,7 +1167,7 @@ def three_part_pool(world, mark="OLD"):
 
     for name in THREE_PARTS:
         world.rule(name, f"{name} {mark} " + "x" * 5980 + "\n")
-    world.manifest(DECLARED + "defaults: ['a-rule', 'b-rule', 'c-rule']\n")
+    world.write_config(DECLARED + "defaults: a-rule b-rule c-rule\n")
 
 
 def block_audit(world):
@@ -1214,7 +1217,7 @@ class TestAResumedDelegateReplaysTheDeliveryItFirstReceived:
         self, world
     ):
         world.rule("core-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         first = world.start_delegate(agent_id="a1")
         assert world.toggle("none").returncode == 0
         world.rule("core-rules", "core-rules, edited\n")
@@ -1236,7 +1239,7 @@ class TestAResumedDelegateReplaysTheDeliveryItFirstReceived:
 
     def test_an_agent_id_that_never_started_is_composed_afresh(self, world):
         world.rule("core-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         world.start_delegate(agent_id="a1")
         assert world.toggle("none").returncode == 0
 
@@ -1244,7 +1247,7 @@ class TestAResumedDelegateReplaysTheDeliveryItFirstReceived:
 
     def test_a_replay_leaves_the_one_record_of_the_delivery_it_repeats(self, world):
         world.rule("core-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         world.start_delegate(agent_id="a1")
 
         world.start_delegate(agent_id="a1")
@@ -1256,7 +1259,7 @@ class TestAResumedDelegateReplaysTheDeliveryItFirstReceived:
         self, world
     ):
         world.rule("core-rules")
-        world.manifest(DECLARED + "defaults: ['core-rules']\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
         jam_delivery_records(world)
         failed = world.start_delegate(agent_id="a1")
         (world.record_files() / "deliveries.jsonl").rmdir()
@@ -1270,7 +1273,7 @@ class TestAResumedDelegateReplaysTheDeliveryItFirstReceived:
 class TestAFailedDeliveryWritesItsRecord:
     def test_a_main_session_failure_leaves_one_record_carrying_the_failure_notice(self, world):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
         (world.rulesets / "rules").chmod(0o000)
         try:
             delivery = world.start_session()
@@ -1290,7 +1293,7 @@ class TestAFailedDeliveryWritesItsRecord:
 
     def test_where_no_record_can_be_written_stderr_carries_the_failure_alone(self, world):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
         block_audit(world)
         payload = {"session_id": "s1", "source": "startup", "model": OPUS}
 
@@ -1303,7 +1306,7 @@ class TestAFailedDeliveryWritesItsRecord:
 
     def test_a_delegate_failure_leaves_a_record_that_states_no_message_was_shown(self, world):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
         (world.rulesets / "rules").chmod(0o000)
         try:
             delivery = world.start_delegate("critic")
@@ -1321,7 +1324,7 @@ class TestAFailedDeliveryWritesItsRecord:
 
     def test_a_failed_delivery_counts_as_nothing_delivered(self, world):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
         (world.rulesets / "rules").chmod(0o000)
         try:
             world.start_session()
@@ -1338,7 +1341,7 @@ class TestAFailedDeliveryWritesItsRecord:
 class TestTheFailureNoticeNamesACommandThatRunsTheDeliveryAgain:
     def fail_once(self, world):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
         (world.rulesets / "rules").chmod(0o000)
         try:
             return world.start_session()
@@ -1436,7 +1439,7 @@ class TestTermsOfDelivery:
     def test_a_delegates_record_names_the_variant_and_its_digest_of_the_text_delivered(self, world):
         world.rule("voice", "default voice\n")
         world.rule("voice@terse", "terse voice")
-        world.manifest(DECLARED + "defaults: ['voice']\nwhen:\n  - agent critic: ['voice@terse']\n")
+        world.write_config(DECLARED + "defaults: voice\nagent critic:\n  include: voice@terse\n")
 
         delivery = world.start_delegate("critic")
 
@@ -1451,7 +1454,7 @@ class TestTermsOfDelivery:
 
 SONNET = "claude-sonnet-5-5"
 HAIKU = "claude-haiku-4-5"
-TIERS = "models: ['opus', 'sonnet', 'haiku']\n"
+TIERS = "models: opus sonnet haiku\n"
 
 
 def declare_tiers(world, *keyed):
@@ -1461,9 +1464,8 @@ def declare_tiers(world, *keyed):
     blocks = ""
     for tier in keyed:
         world.rule(f"{tier}-rules")
-        blocks += f"  - model {tier}: ['{tier}-rules']\n"
-    when = f"when:\n{blocks}" if blocks else ""
-    world.manifest(TIERS + "defaults: ['core-rules']\n" + when)
+        blocks += f"model {tier}:\n  include: {tier}-rules\n"
+    world.write_config(TIERS + "defaults: core-rules\n" + blocks)
 
 
 def switch_records(world):
@@ -1535,7 +1537,7 @@ class TestASwitchThatChangesNoRuleDeliversNothing:
     ):
         world.rule("voice", "default voice\n")
         world.rule("voice@terse", "terse voice\n")
-        world.manifest(TIERS + "defaults: ['voice']\nwhen:\n  - model haiku: ['voice@terse']\n")
+        world.write_config(TIERS + "defaults: voice\nmodel haiku:\n  include: voice@terse\n")
         world.start_session(model=SONNET)
 
         delivery = world.switch_model(HAIKU, from_model=SONNET, prompt_id="p1")
@@ -1565,14 +1567,16 @@ def declare_critic_pool(world):
 
     for name in ("core-rules", "writing-code", "opus-rules", "security-pass"):
         world.rule(name)
-    world.manifest(
+    world.write_config(
         TIERS
-        + "flags: ['strict']\n"
-        + "defaults: ['core-rules', 'writing-code']\n"
-        + "when:\n"
-        + "  - agent critic: ['-writing-code']\n"
-        + "  - model opus: ['opus-rules']\n"
-        + "  - flag strict: ['security-pass']\n"
+        + "flags: strict\n"
+        + "defaults: core-rules writing-code\n"
+        + "agent critic:\n"
+        + "  exclude: writing-code\n"
+        + "model opus:\n"
+        + "  include: opus-rules\n"
+        + "flag strict:\n"
+        + "  include: security-pass\n"
     )
 
 
@@ -1594,10 +1598,11 @@ class TestASwitchKeepsTheSessionsNonModelFacts:
     ):
         for name in ("core-rules", "opus-rules"):
             world.rule(name)
-        world.manifest(
-            TIERS
-            + "defaults: ['core-rules']\n"
-            + "when:\n  - model opus: ['opus-rules']\n  - agent critic: ['-opus-rules']\n"
+        world.write_config(
+            TIERS + "defaults: core-rules\n" + "model opus:\n"
+            "  include: opus-rules\n"
+            "agent critic:\n"
+            "  exclude: opus-rules\n"
         )
         world.start_session(model=SONNET, agent_type="critic")
 
@@ -1654,7 +1659,7 @@ def declare_session_pool(world):
     world.rule("core-rules", "Hold every rule as mandatory.\n")
     world.rule("sorting", "Sort what you hold.\n")
     world.rule("voice", "Speak plainly.\n")
-    world.manifest(DECLARED + "defaults: ['core-rules', 'sorting']\n")
+    world.write_config(DECLARED + "defaults: core-rules sorting\n")
 
 
 WHOLE_COMPOSITION = "Hold every rule as mandatory.\nSort what you hold.\n"
@@ -1701,7 +1706,7 @@ class TestASessionReceivesAllItsRulesAtEveryStart:
         bodies = {"a-rule": "a" * 4477, "b-rule": "b" * 4478, "c-rule": "c" * 4476}
         for name, text in bodies.items():
             world.rule(name, text)
-        world.manifest(DECLARED + "defaults: ['c-rule', 'a-rule', 'b-rule']\n")
+        world.write_config(DECLARED + "defaults: c-rule a-rule b-rule\n")
 
         delivery = world.start_session()
 
@@ -1716,7 +1721,7 @@ class TestASessionReceivesAllItsRulesAtEveryStart:
         bodies = {"a-rule": "a" * 4477, "b-rule": "b" * 4477, "c-rule": "c" * 10}
         for name, text in bodies.items():
             world.rule(name, text)
-        world.manifest(DECLARED + "defaults: ['*']\n")
+        world.write_config(DECLARED + "defaults: all.*\n")
 
         delivery = world.start_session()
 
@@ -1729,7 +1734,7 @@ class TestASessionReceivesAllItsRulesAtEveryStart:
         bodies = {"a-rule": "a" * 4477, "b-rule": "b" * 4478, "c-rule": "c" * 10}
         for name, text in bodies.items():
             world.rule(name, text)
-        world.manifest(DECLARED + "defaults: ['*']\n")
+        world.write_config(DECLARED + "defaults: all.*\n")
 
         delivery = world.start_session()
 
@@ -1815,3 +1820,26 @@ class TestOnlyTheLastOfSeveralRapidSwitchesCountsAsDelivered:
         check = world.delivery_check()
         assert (check.stdout, check.returncode) == ("", 0)
         assert "composed but not delivered" not in check.stdout
+
+
+class TestTheEngineReadsOnlyConfigYaml:
+    def test_config_yaml_decides_delivery_while_a_manifest_yaml_sits_beside_it(self, world):
+        world.rule("voice")
+        world.rule("tone")
+        world.write_config(DECLARED + "defaults: voice\n")
+        (world.rulesets / "manifest.yaml").write_text("defaults: ['tone']\n", encoding="utf-8")
+
+        delivery = world.start_session()
+
+        assert delivery.context == "text of voice\n"
+        assert "text of tone" not in delivery.context
+
+    def test_a_manifest_yaml_alone_draws_a_shown_notice_naming_config_yaml(self, world):
+        world.rule("voice")
+        (world.rulesets / "manifest.yaml").write_text("defaults: ['voice']\n", encoding="utf-8")
+
+        delivery = world.start_session()
+
+        assert str(world.rulesets / "config.yaml") in delivery.message
+        assert str(world.rulesets / "manifest.yaml") in delivery.message
+        assert "reads only the config" in delivery.message

@@ -5,7 +5,14 @@ from __future__ import annotations
 import itertools
 from collections.abc import Callable
 
-from rulesets.source.condition import Condition, FactTest, Truth, evaluate_with, fact_tests
+from rulesets.source.condition import (
+    KIND_ANY,
+    Condition,
+    FactTest,
+    Truth,
+    evaluate_with,
+    fact_tests,
+)
 
 _SINGLE_VALUED = ("model", "agent", "kind", "session")
 _INDEPENDENT = ("flag", "tools")
@@ -37,6 +44,8 @@ def _truth_in(
     def truth_of(test: FactTest) -> Truth:
         if test.fact in _INDEPENDENT:
             return Truth.of((test.fact, test.value) in held)
+        if test == FactTest("kind", KIND_ANY):
+            return Truth.TRUE
         return Truth.of(picked[test.fact] == test.value)
 
     return truth_of

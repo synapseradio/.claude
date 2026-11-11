@@ -39,10 +39,10 @@ class RulesetsSubject:
 
 
 @dataclasses.dataclass(frozen=True)
-class ItemSubject:
-    """A `when` item, by its position among the items written."""
+class BlockSubject:
+    """A block, by its condition: for a nested block or a `then` list, the combined one."""
 
-    index: int
+    condition: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -80,8 +80,8 @@ class ReferencesSubject:
 
 
 @dataclasses.dataclass(frozen=True)
-class ManifestSubject:
-    """The manifest as a whole."""
+class ConfigSubject:
+    """The config as a whole."""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -101,24 +101,28 @@ type Subject = (
     | RulePairSubject
     | RulesetSubject
     | RulesetsSubject
-    | ItemSubject
+    | BlockSubject
     | KeySubject
     | ModelSubject
     | FlagSubject
     | ReferenceSubject
     | ReferencesSubject
-    | ManifestSubject
+    | ConfigSubject
     | DirectorySubject
     | ContextSubject
 )
 
 type ErrorKind = Literal[
-    "manifest-unparsable",
-    "unknown-key",
+    "config-unparsable",
+    "config-file",
+    "old-layout",
+    "duplicate-key",
     "key-shape",
+    "list-shape",
     "ruleset-shape",
+    "ruleset-name",
     "reserved-ruleset",
-    "item-shape",
+    "block-shape",
     "ruleset-cycle",
     "variant-conflict",
     "condition-invalid",
@@ -126,12 +130,13 @@ type ErrorKind = Literal[
     "unknown-flag",
     "undeclared-reference",
     "malformed-reference",
+    "old-reference",
+    "rule-name",
     "rule-condition",
     "frontmatter-unparsable",
     "variant-without-default",
     "unreadable-file",
     "oversize-body",
-    "unquoted-entry",
 ]
 
 type WarningKind = Literal[

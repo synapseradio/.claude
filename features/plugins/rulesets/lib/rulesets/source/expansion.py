@@ -1,8 +1,7 @@
 """Expand a list of references into entries and statements.
 
-A list is the sequence of references a manifest writes under `defaults`, a ruleset, or a
-`when` item. This module needs only the lists a spread can name and the variants each rule
-has, so it reads neither the manifest nor the pool.
+A list is the references a config writes under `defaults`, a set, or a block. This module needs only the lists a spread can name and the variants each rule
+has, so it reads neither the config nor the pool.
 """
 
 from __future__ import annotations
@@ -13,12 +12,11 @@ from typing import assert_never
 
 from rulesets.source.reference import (
     RESERVED_RULESETS,
-    EntryForm,
     MalformedTarget,
+    OldFormTarget,
     Reference,
     RuleTarget,
     SpreadTarget,
-    UnquotedTarget,
 )
 
 
@@ -49,11 +47,20 @@ class MalformedReference:
 
 
 @dataclasses.dataclass(frozen=True)
-class UnquotedReference:
-    """A reference written as anything but a quoted string."""
+class OldFormReference:
+    """A reference in a form the config no longer reads. `advice` says what to write instead."""
 
     reference: Reference
-    form: EntryForm
+    advice: str
+
+
+@dataclasses.dataclass(frozen=True)
+class RuleOutsideRuleset:
+    """A `set.rule` reference whose set yields no entry for the rule."""
+
+    reference: Reference
+    ruleset: str
+    rule: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -82,7 +89,12 @@ class UnknownRuleset:
 
 
 type ReferenceProblem = (
-    MalformedReference | UnquotedReference | UnknownRule | UnknownVariant | UnknownRuleset
+    MalformedReference
+    | OldFormReference
+    | UnknownRule
+    | UnknownVariant
+    | UnknownRuleset
+    | RuleOutsideRuleset
 )
 
 
@@ -116,14 +128,24 @@ class Expansion:
         return tuple(entry for entry in self.entries if entry not in conflicted)
 
 
+def _named_ruleset(reference: Reference) -> str | None:
+    """The set a reference reads from: the one it spreads, or the one a `set.rule` names."""
+
+    match reference.target:
+        case SpreadTarget(ruleset) | RuleTarget(ruleset=str() as ruleset):
+            return ruleset
+        case _:
+            return None
+
+
 def _cycles(lists: Mapping[str, Sequence[Reference]]) -> dict[str, tuple[str, ...]]:
     """Each list that sits in a cycle of spreads, with the sorted names of its cycle."""
 
     edges = {
         name: [
-            reference.target.ruleset
+            held
             for reference in references
-            if isinstance(reference.target, SpreadTarget) and reference.target.ruleset in lists
+            if (held := _named_ruleset(reference)) is not None and held in lists
         ]
         for name, references in lists.items()
     }
@@ -158,7 +180,7 @@ class Expander:
     """Expands lists of references.
 
     `lists` maps each name a spread can reach to its references, `defaults` among them.
-    `rules` maps each rule of the pool to its variants, in the order `all:*` spreads them.
+    `rules` maps each rule of the pool to its variants, in the order `all.*` spreads them.
     A spread of a list that sits in a cycle of spreads reaches no rule.
     """
 
@@ -188,8 +210,8 @@ class Expander:
             (e for e in self.expand(self._lists[ruleset]).without_conflicts if e.rule == rule),
             None,
         )
-        if held is not None and isinstance(held.source.target, SpreadTarget):
-            return (ruleset, *self.route_to(held.source.target.ruleset, rule))
+        if held is not None and (inner := _named_ruleset(held.source)) is not None:
+            return (ruleset, *self.route_to(inner, rule))
         return (ruleset,)
 
     def _spread(self, name: str) -> tuple[tuple[str, str | None], ...]:
@@ -209,7 +231,12 @@ class Expander:
             case SpreadTarget(ruleset):
                 known = ruleset in RESERVED_RULESETS or ruleset in self._lists
                 return None if known else UnknownRuleset(reference, ruleset)
-            case RuleTarget(rule, variant):
+            case RuleTarget(rule, variant, ruleset):
+                if ruleset is not None:
+                    if ruleset not in RESERVED_RULESETS and ruleset not in self._lists:
+                        return UnknownRuleset(reference, ruleset)
+                    if ruleset not in self._cycles and not self._held(ruleset, rule):
+                        return RuleOutsideRuleset(reference, ruleset, rule)
                 if rule not in self._rules:
                     return UnknownRule(reference, rule)
                 if variant is not None and variant not in self._rules[rule]:
@@ -217,6 +244,11 @@ class Expander:
                 return None
             case _:
                 assert_never(target)
+
+    def _held(self, ruleset: str, rule: str) -> tuple[str | None, ...]:
+        """The variants at which a set yields a rule, empty where it yields none."""
+
+        return tuple(variant for held, variant in self._spread(ruleset) if held == rule)
 
     def problems_reached(self, references: Sequence[Reference]) -> tuple[ReferenceProblem, ...]:
         """The problems of a list and of every ruleset it spreads, each ruleset counted once."""
@@ -251,8 +283,8 @@ class Expander:
                 case MalformedTarget(reason):
                     problems.append(MalformedReference(reference, reason))
                     continue
-                case UnquotedTarget(form):
-                    problems.append(UnquotedReference(reference, form))
+                case OldFormTarget(advice):
+                    problems.append(OldFormReference(reference, advice))
                     continue
                 case SpreadTarget() | RuleTarget():
                     if (problem := self._unresolved(reference, target)) is not None:
@@ -264,8 +296,12 @@ class Expander:
                     removals.extend(Removal(rule, None, reference) for rule in reached)
                 case SpreadTarget(ruleset):
                     adds.extend(Entry(r, v, reference) for r, v in self._spread(ruleset))
+                case RuleTarget(ruleset=str() as ruleset) if ruleset in self._cycles:
+                    pass
                 case RuleTarget(rule, variant) if reference.remove:
                     removals.append(Removal(rule, variant, reference))
+                case RuleTarget(rule, None, str() as ruleset):
+                    adds.extend(Entry(rule, held, reference) for held in self._held(ruleset, rule))
                 case RuleTarget(rule, variant):
                     adds.append(Entry(rule, variant, reference))
 

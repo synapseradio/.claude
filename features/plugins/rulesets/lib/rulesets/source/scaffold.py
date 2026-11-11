@@ -5,12 +5,14 @@ from __future__ import annotations
 import dataclasses
 import pathlib
 
-_EMPTY_MANIFEST = "models: []\nflags: []\ndefaults: []\n"
+from rulesets.source.config import CONFIG_FILE
+
+_EMPTY_CONFIG = "models:\nflags:\ndefaults:\n"
 
 
 @dataclasses.dataclass(frozen=True)
 class Scaffolded:
-    """An empty pool and a manifest that declares nothing now stand at the root."""
+    """An empty pool and a config that declares nothing now stand at the root."""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -30,7 +32,7 @@ def scaffold(root: pathlib.Path) -> Scaffolded | AlreadyPresent | ScaffoldFailed
         return AlreadyPresent()
     try:
         (root / "rules").mkdir(parents=True)
-        (root / "manifest.yaml").write_text(_EMPTY_MANIFEST, encoding="utf-8")
+        (root / CONFIG_FILE).write_text(_EMPTY_CONFIG, encoding="utf-8")
     except OSError as failure:
         return ScaffoldFailed(failure.strerror or str(failure))
     return Scaffolded()

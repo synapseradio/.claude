@@ -14,9 +14,9 @@ from rulesets.source.marker import delivered
 def engine_rules(directory: RulesetsDirectory, context: ContextKey) -> dict[str, DeliveredText]:
     """The bytes of each rule the directory delivers to the context, at the variant it delivers."""
 
-    manifest = directory.manifest.manifest if isinstance(directory.manifest, Present) else None
+    config = directory.config.config if isinstance(directory.config, Present) else None
     kind = "delegate" if context.agent else "session"
-    facts = named_context(context.identifier, context.agent, kind, (), (), manifest)
+    facts = named_context(context.identifier, context.agent, kind, (), (), config)
     found: dict[str, DeliveredText] = {}
     for entry in compose(directory, facts, SessionState()).rules:
         rule = directory.pool.rules[entry.rule]

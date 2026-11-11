@@ -16,10 +16,11 @@ _MODEL_PREFIX = "claude-"
 
 @dataclasses.dataclass(frozen=True)
 class Block:
-    """A `when` item: a condition and the references of its list."""
+    """A config block: a condition and the references it includes and excludes."""
 
     condition: str
-    entries: tuple[str, ...]
+    include: tuple[str, ...] = ()
+    exclude: tuple[str, ...] = ()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -50,7 +51,7 @@ def model_name(tier: str) -> str:
 def map_corpus(corpus: TierCorpus) -> AdoptedDirectory:
     """`default/` becomes the default forms; each other tier's files become variants its model's block adds.
 
-    A tier's stems to leave out become removes in that block.
+    A tier's stems to leave out become that block's excludes.
     """
 
     pool = {f"{stem}.md": path for stem, path in corpus.default.items()}
@@ -58,14 +59,14 @@ def map_corpus(corpus: TierCorpus) -> AdoptedDirectory:
     blocks: list[Block] = []
     for tier in corpus.tiers.values():
         kept = delivered_stems(tier.entry, default_stems)
-        removes = tuple(f"-{stem}" for stem in default_stems if stem not in kept)
+        removes = tuple(stem for stem in default_stems if stem not in kept)
         adds: list[str] = []
         for stem, path in sorted(tier.files.items()):
             if stem in kept:
                 pool[f"{stem}@{tier.name}.md"] = path
                 adds.append(f"{stem}@{tier.name}")
         if removes or adds:
-            blocks.append(Block(f"model {model_name(tier.name)}", (*removes, *adds)))
+            blocks.append(Block(f"model {model_name(tier.name)}", tuple(adds), removes))
     tiers = (*corpus.prefixes, *corpus.tiers)
     models = tuple(dict.fromkeys(model_name(tier) for tier in tiers))
     return AdoptedDirectory(pool, models, tuple(blocks), corpus.skipped)

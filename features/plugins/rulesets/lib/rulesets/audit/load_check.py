@@ -30,7 +30,7 @@ def load_check(
 ) -> tuple[StillAutoLoading, ...]:
     """Each load record of the session naming a file whose stem is the name of a rule under `root`.
 
-    A rule's name is the stem of its pool file up to any `@`. The manifest is never read.
+    A rule's name is the stem of its pool file up to any `@`. The config is never read.
     A file named `CLAUDE.md` is expected whatever the pool holds.
     """
 

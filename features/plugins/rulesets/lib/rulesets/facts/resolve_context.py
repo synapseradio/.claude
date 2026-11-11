@@ -43,9 +43,9 @@ def resolve_context(
 ) -> ResolvedContext:
     """Resolve the model, agent, kind, and flags of the context a request starts."""
 
-    manifest = directory.manifest.manifest if isinstance(directory.manifest, Present) else None
-    models = manifest.models if manifest else ()
-    launched = launch_flags(environ, manifest.flags if manifest else ())
+    config = directory.config.config if isinstance(directory.config, Present) else None
+    models = config.models if config else ()
+    launched = launch_flags(environ, config.flags if config else ())
     match request:
         case SessionStart():
             resolution = resolve_session_model(request.payload, models, environ, locations.state)
@@ -68,7 +68,7 @@ def resolve_context(
     agent = agent_fact(request)
     definition = _definition_of(agent, request, locations)
     tools = tools_fact(definition.front if definition else None)
-    notices.extend(absent_fact_notices(manifest, agent, tools))
+    notices.extend(absent_fact_notices(config, agent, tools))
     facts = Facts(
         _model_in_facts(resolution.fact),
         agent,

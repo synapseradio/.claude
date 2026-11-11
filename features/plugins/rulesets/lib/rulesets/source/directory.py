@@ -1,48 +1,57 @@
-"""The rulesets directory read whole: its pool and its manifest."""
+"""The rulesets directory read whole: its pool and its config."""
 
 from __future__ import annotations
 
 import dataclasses
 import pathlib
 
-from rulesets.source.manifest import Manifest, ManifestParseError, read_manifest
+from rulesets.source.config import (
+    CONFIG_FILE,
+    OLD_CONFIG_FILE,
+    Config,
+    ConfigParseError,
+    read_config,
+)
 from rulesets.source.pool import Pool, read_pool
 
 
 @dataclasses.dataclass(frozen=True)
 class Present:
-    manifest: Manifest
+    config: Config
 
 
 @dataclasses.dataclass(frozen=True)
 class Missing:
-    """No manifest file stands in the directory."""
+    """No config file stands in the directory. `old_file` is the old file left standing there, if any."""
+
+    old_file: pathlib.Path | None = None
 
 
 @dataclasses.dataclass(frozen=True)
 class Unparsable:
-    error: ManifestParseError
+    error: ConfigParseError
 
 
-type ManifestState = Present | Missing | Unparsable
+type ConfigState = Present | Missing | Unparsable
 
 
 @dataclasses.dataclass(frozen=True)
 class RulesetsDirectory:
     root: pathlib.Path
     pool: Pool
-    manifest: ManifestState
+    config: ConfigState
 
 
 def read_directory(root: pathlib.Path) -> RulesetsDirectory:
-    """Read the pool and the manifest. A manifest that does not parse is a state, not a raise."""
+    """Read the pool and the config. A config that does not parse is a state, not a raise."""
 
-    manifest: ManifestState
-    if not (root / "manifest.yaml").is_file():
-        manifest = Missing()
+    config: ConfigState
+    if not (root / CONFIG_FILE).is_file():
+        old_file = root / OLD_CONFIG_FILE
+        config = Missing(old_file if old_file.is_file() else None)
     else:
         try:
-            manifest = Present(read_manifest(root))
-        except ManifestParseError as failure:
-            manifest = Unparsable(failure)
-    return RulesetsDirectory(root, read_pool(root), manifest)
+            config = Present(read_config(root))
+        except ConfigParseError as failure:
+            config = Unparsable(failure)
+    return RulesetsDirectory(root, read_pool(root), config)

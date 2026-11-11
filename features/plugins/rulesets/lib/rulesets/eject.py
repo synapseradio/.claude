@@ -40,10 +40,10 @@ class EjectReport:
 
 
 def _uncarried(directory: RulesetsDirectory, ejected: set[tuple[str, str | None]]):
-    if isinstance(directory.manifest, Present):
-        manifest = directory.manifest.manifest
-        for block in manifest.items:
-            yield Uncarried(manifest.path, block.line, f"block `{block.condition}`")
+    if isinstance(directory.config, Present):
+        config = directory.config.config
+        for block in config.blocks:
+            yield Uncarried(config.path, block.line, f"block `{block.condition}`")
     for rule in directory.pool.rules.values():
         for name, file in rule.variants.items():
             if (rule.name, name) not in ejected:

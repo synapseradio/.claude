@@ -2,7 +2,7 @@
 """The audit log shows what reached every context, and the delivery check confirms it by recomposing.
 
 Serves the engineer who asks what each agent was told and why, and who runs `delivery-check`
-after editing a manifest or a rule. Each case builds a configuration directory under `tmp_path`,
+after editing a config or a rule. Each case builds a configuration directory under `tmp_path`,
 produces its records through real deliveries, and runs the `delivery-check` subcommand through
 the launcher.
 
@@ -54,11 +54,11 @@ def unreadable(path):
 def declare_core_and_sorting(world):
     world.rule("core-rules")
     world.rule("sorting")
-    world.manifest(DECLARED + "defaults: ['core-rules']\n")
+    world.write_config(DECLARED + "defaults: core-rules\n")
 
 
 def add_sorting_to_defaults(world):
-    world.manifest(DECLARED + "defaults: ['core-rules', 'sorting']\n")
+    world.write_config(DECLARED + "defaults: core-rules sorting\n")
 
 
 def three_part_delivery(world):
@@ -66,7 +66,7 @@ def three_part_delivery(world):
 
     for name in ("a-rule", "b-rule", "c-rule"):
         world.rule(name, f"{name} " + "x" * 5990 + "\n")
-    world.manifest(DECLARED + "defaults: ['a-rule', 'b-rule', 'c-rule']\n")
+    world.write_config(DECLARED + "defaults: a-rule b-rule c-rule\n")
     return world.start_session()
 
 
@@ -143,8 +143,8 @@ class TestPruningASessionsRecords:
     ):
         world.rule("core-rules")
         world.rule("opus-rules")
-        world.manifest(
-            DECLARED + "defaults: ['core-rules']\nwhen:\n  - model opus: ['opus-rules']\n"
+        world.write_config(
+            DECLARED + ("defaults: core-rules\nmodel opus:\n  include: opus-rules\n")
         )
         world.start_session(model=OPUS, session_id="A")
         shutil.rmtree(world.record_files("A"))
@@ -178,9 +178,8 @@ class TestADelegateDeliveryIsRecordedWithItsRules:
         world.rule("voice", "default voice\n")
         world.rule("voice@terse", "terse voice\n")
         world.rule("sorting", "Sort it.\n")
-        world.manifest(
-            "models: ['haiku']\ndefaults: ['voice', 'sorting']\n"
-            "when:\n  - agent critic: ['voice@terse']\n"
+        world.write_config(
+            "models: haiku\ndefaults: voice sorting\nagent critic:\n  include: voice@terse\n"
         )
         world.start_session()
         world.spawn("critic", "haiku")
@@ -218,9 +217,8 @@ class TestASwitchDeliveryIsRecordedAsASwitch:
     ):
         world.rule("core-rules")
         world.rule("opus-rules")
-        world.manifest(
-            "models: ['opus', 'sonnet', 'haiku']\ndefaults: ['core-rules']\n"
-            "when:\n  - model opus: ['opus-rules']\n"
+        world.write_config(
+            "models: opus sonnet haiku\ndefaults: core-rules\nmodel opus:\n  include: opus-rules\n"
         )
         world.start_session(model=SONNET)
         world.switch_model(HAIKU, from_model=SONNET, prompt_id="p1")
@@ -240,11 +238,16 @@ class TestARecordReadBackIsTheRecordWritten:
         world.rule("voice@terse")
         world.rule("opus-rules")
         unreadable(world.rule("tone"))
-        world.manifest(
-            "models: ['opus', 'haiku']\nflags: ['voice-terse']\n"
-            "defaults: ['voice', 'tone', 'ghost']\n"
-            "when:\n  - flag voice-terse: ['voice@terse']\n  - model opus: ['opus-rules']\n"
-            "  - flag nope: ['voice']\n"
+        world.write_config(
+            "models: opus haiku\n"
+            "flags: voice-terse\n"
+            "defaults: voice tone ghost\n"
+            "flag voice-terse:\n"
+            "  include: voice@terse\n"
+            "model opus:\n"
+            "  include: opus-rules\n"
+            "flag nope:\n"
+            "  include: voice\n"
         )
         world.environment["RULESETS_FLAGS"] = "voice-terse"
         agent = world.config / "agents" / "critic.md"
@@ -271,10 +274,10 @@ class TestADeliveryRecordNamesEachFactWithItsSource:
     ):
         world.rule("voice")
         world.rule("voice@terse")
-        world.manifest(
+        world.write_config(
             DECLARED
-            + "flags: ['voice-terse']\ndefaults: ['voice']\n"
-            + "when:\n  - flag voice-terse: ['voice@terse']\n"
+            + ("flags: voice-terse\ndefaults: voice\n")
+            + ("flag voice-terse:\n  include: voice@terse\n")
         )
         world.environment["RULESETS_FLAGS"] = "voice-terse"
 
@@ -294,7 +297,7 @@ class TestADeliveryRecordNamesEachFactWithItsSource:
         self, world
     ):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
         definition = world.config / "agents" / "critic.md"
         definition.parent.mkdir(parents=True)
         definition.write_text(
@@ -314,7 +317,7 @@ class TestADeliveryRecordNamesEachFactWithItsSource:
 
     def test_a_delegate_with_no_definition_file_names_why_its_tools_are_absent(self, world):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
 
         world.start_delegate("critic")
 
@@ -327,10 +330,10 @@ class TestTwoSessionsLaunchedAlikeDifferByOneFlag:
     def test_the_records_differ_by_the_removed_rule_and_the_flag(self, world):
         world.rule("writing-code")
         world.rule("sorting")
-        world.manifest(
+        world.write_config(
             DECLARED
-            + "flags: ['without-writing-code']\ndefaults: ['writing-code', 'sorting']\n"
-            + "when:\n  - flag without-writing-code: ['-writing-code']\n"
+            + ("flags: without-writing-code\ndefaults: writing-code sorting\n")
+            + ("flag without-writing-code:\n  exclude: writing-code\n")
         )
         world.start_session(session_id="plain")
         world.environment["RULESETS_FLAGS"] = "without-writing-code"
@@ -349,9 +352,8 @@ class TestTwoSessionsLaunchedAlikeDifferByOneFlag:
 class TestADelegateRecordNamesTheSessionStateItRead:
     def test_the_record_names_the_state_file_and_the_flag_a_toggle_set(self, world):
         world.rule("security-pass")
-        world.manifest(
-            DECLARED
-            + "flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['security-pass']\n"
+        world.write_config(
+            DECLARED + ("flags: strict\ndefaults:\nflag strict:\n  include: security-pass\n")
         )
         world.start_session()
         world.toggle_flags({"strict": "set"})
@@ -380,22 +382,23 @@ class TestADeliveryRecordNamesWhatItSkippedWithheldAndConflicted:
         for stem in ("voice", "voice@terse", "voice@warm"):
             world.rule(stem)
         unreadable(world.rule("tone"))
-        world.manifest(
-            "models: ['opus']\n"
-            "flags: ['a', 'b']\n"
-            "defaults: ['voice', 'tone', 'ghost']\n"
-            "when:\n"
-            "  - flag a: ['voice@terse']\n"
-            "  - flag b: ['voice@warm']\n"
+        world.write_config(
+            "models: opus\n"
+            "flags: a b\n"
+            "defaults: voice tone ghost\n"
+            "flag a:\n"
+            "  include: voice@terse\n"
+            "flag b:\n"
+            "  include: voice@warm\n"
         )
         world.environment["RULESETS_FLAGS"] = "a,b"
-        manifest = str(world.rulesets / "manifest.yaml")
+        config = str(world.rulesets / "config.yaml")
 
         world.start_session()
 
         (record,) = world.records()
         assert record["skipped_references"] == [
-            {"file": manifest, "line": 3, "reference": "ghost", "name": "ghost"}
+            {"file": config, "line": 3, "reference": "ghost", "name": "ghost"}
         ]
         (withheld,) = record["withheld"]
         assert withheld["rule"] == "tone"
@@ -405,22 +408,20 @@ class TestADeliveryRecordNamesWhatItSkippedWithheldAndConflicted:
         assert conflict["delivered"] is None
         assert conflict["statements"] == [
             {"reference": "voice@terse", "line": 5, "variant": "terse"},
-            {"reference": "voice@warm", "line": 6, "variant": "warm"},
+            {"reference": "voice@warm", "line": 7, "variant": "warm"},
         ]
 
     def test_the_record_names_a_skipped_block_with_its_file_line_and_undeclared_name(self, world):
         world.rule("voice")
-        world.manifest(
-            "models: ['opus']\ndefaults: ['voice']\nwhen:\n  - model sonnet: ['voice']\n"
-        )
+        world.write_config("models: opus\ndefaults: voice\nmodel sonnet:\n  include: voice\n")
 
         world.start_session()
 
         (record,) = world.records()
         assert record["skipped_blocks"] == [
             {
-                "file": str(world.rulesets / "manifest.yaml"),
-                "line": 4,
+                "file": str(world.rulesets / "config.yaml"),
+                "line": 3,
                 "condition": "model sonnet",
                 "names": ["sonnet"],
             }
@@ -432,7 +433,7 @@ class TestTheNoticesADeliverySent:
         self, world
     ):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
 
         delivery = world.start_session(model="claude-nova-1")
 
@@ -470,7 +471,7 @@ class TestADeliveryInSeveralParts:
     def test_a_delegates_later_parts_name_the_delegate_as_their_writer(self, world):
         for name in ("a-rule", "b-rule"):
             world.rule(name, f"{name} " + "x" * 5990 + "\n")
-        world.manifest(DECLARED + "defaults: ['a-rule', 'b-rule']\n")
+        world.write_config(DECLARED + "defaults: a-rule b-rule\n")
         world.start_session()
 
         world.start_delegate("critic", agent_id="a1")
@@ -498,9 +499,8 @@ class TestTheDeliveryCheckRecomposesEachCountedDelivery:
 
     def test_the_check_recomposes_a_delegate_from_the_flags_and_state_its_record_names(self, world):
         world.rule("security-pass")
-        world.manifest(
-            DECLARED
-            + "flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['security-pass']\n"
+        world.write_config(
+            DECLARED + ("flags: strict\ndefaults:\nflag strict:\n  include: security-pass\n")
         )
         world.start_session()
         world.toggle_flags({"strict": "set"})
@@ -519,8 +519,8 @@ class TestTheDeliveryCheckPrintsOneLinePerDifference:
         declare_core_and_sorting(world)
         add_sorting_to_defaults(world)
         world.start_session()
-        world.manifest(
-            DECLARED + "defaults: ['core-rules', 'sorting']\nwhen:\n  - model opus: ['-sorting']\n"
+        world.write_config(
+            DECLARED + ("defaults: core-rules sorting\nmodel opus:\n  exclude: sorting\n")
         )
 
         result = world.delivery_check()
@@ -545,11 +545,11 @@ class TestTheDeliveryCheckPrintsOneLinePerDifference:
     ):
         for stem in ("voice", "voice@warm", "voice@terse"):
             world.rule(stem)
-        manifest = DECLARED + "defaults: []\nwhen:\n  - agent critic: ['{}']\n"
-        world.manifest(manifest.format("voice@warm"))
+        config = DECLARED + ("defaults:\nagent critic:\n  include: {}\n")
+        world.write_config(config.format("voice@warm"))
         world.start_session()
         world.start_delegate("critic", agent_id="a1")
-        world.manifest(manifest.format("voice@terse"))
+        world.write_config(config.format("voice@terse"))
 
         result = world.delivery_check()
 
@@ -559,9 +559,9 @@ class TestTheDeliveryCheckPrintsOneLinePerDifference:
     def test_a_rule_delivered_at_its_default_form_and_composed_at_a_variant_names_both(self, world):
         for stem in ("voice", "voice@terse"):
             world.rule(stem)
-        world.manifest(DECLARED + "defaults: ['voice']\n")
+        world.write_config(DECLARED + "defaults: voice\n")
         world.start_session()
-        world.manifest(DECLARED + "defaults: ['voice']\nwhen:\n  - model opus: ['voice@terse']\n")
+        world.write_config(DECLARED + ("defaults: voice\nmodel opus:\n  include: voice@terse\n"))
 
         result = world.delivery_check()
 
@@ -747,9 +747,9 @@ class TestTheLoadCheckConfirmsNoPoolRuleAutoLoads:
 
 
 class TestTheLoadCheckTakesRuleNamesFromThePool:
-    def test_a_manifest_that_is_not_valid_yaml_leaves_the_check_naming_the_path(self, world):
+    def test_a_config_that_is_not_valid_yaml_leaves_the_check_naming_the_path(self, world):
         world.rule("sorting")
-        world.manifest("models: ['opus'\ndefaults: [\n")
+        world.write_config("models: ['opus'\ndefaults: [\n")
         loaded = world.project / ".claude" / "rules" / "sorting.md"
         world.load(loaded, "session_start")
 
@@ -833,7 +833,7 @@ class TestDeliveriesListsWhatReachedEachContext:
         stems = [f"rule-{number:02d}" for number in range(1, 13)]
         for stem in stems:
             world.rule(stem)
-        world.manifest(DECLARED + "flags: ['voice-terse']\ndefaults: " + json.dumps(stems) + "\n")
+        world.write_config(DECLARED + "flags: voice-terse\ndefaults: " + " ".join(stems) + "\n")
         world.start_session(model=OPUS)
         world.toggle_flags({"voice-terse": "set"})
         world.spawn("critic", model="haiku")
@@ -851,10 +851,15 @@ class TestDeliveriesListsWhatReachedEachContext:
         world.rule("core-rules")
         for stem in ("opus-rules", "sonnet-rules", "haiku-a", "haiku-b"):
             world.rule(stem)
-        world.manifest(
-            "models: ['opus', 'sonnet', 'haiku']\ndefaults: ['core-rules']\n"
-            "when:\n  - model opus: ['opus-rules']\n  - model sonnet: ['sonnet-rules']\n"
-            "  - model haiku: ['haiku-a', 'haiku-b']\n"
+        world.write_config(
+            "models: opus sonnet haiku\n"
+            "defaults: core-rules\n"
+            "model opus:\n"
+            "  include: opus-rules\n"
+            "model sonnet:\n"
+            "  include: sonnet-rules\n"
+            "model haiku:\n"
+            "  include: haiku-a haiku-b\n"
         )
         world.start_session(model=OPUS)
         world.switch_model(SONNET, from_model=OPUS, prompt_id="p1")

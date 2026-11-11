@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Write a starter rulesets directory: a manifest, one example rule, and its render.
+"""Write a starter rulesets directory: a config, one example rule, and its render.
 
 Usage: scaffold.py [--root DIR]
 
-The root may be missing, empty, or the empty directory a first session creates, whose manifest
+The root may be missing, empty, or the empty directory a first session creates, whose config
 declares nothing and whose pool holds no rule. Any other directory is refused with exit 2 and
 left as it was.
 """
@@ -18,32 +18,32 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[3] / "lib"))
 from rulesets.locations import Locations
 from rulesets.render.tree import render_tree
 from rulesets.render.tree_writer import write_tree
+from rulesets.source.config import CONFIG_FILE, ConfigParseError, read_config
 from rulesets.source.directory import read_directory
-from rulesets.source.manifest import ManifestParseError, read_manifest
 from rulesets.source.pool import RENDER_DIRECTORY
 
 _USAGE_ERROR = 2
 
-_MANIFEST = 'models: []\nflags: []\ndefaults: ["all:*"]\n'
+_CONFIG = "models:\nflags:\ndefaults: all.*\n"
 
 _EXAMPLE = """\
 Replace this text with a rule of your own, and give the file the name you want the rule to have.
-Each file in this folder holds one rule, and the manifest decides which contexts receive it.
+Each file in this folder holds one rule, and the config decides which contexts receive it.
 """
 
 
 def _declares_nothing(root: pathlib.Path) -> bool:
     try:
-        manifest = read_manifest(root)
-    except ManifestParseError:
+        config = read_config(root)
+    except ConfigParseError:
         return False
     return not (
-        manifest.models
-        or manifest.flags
-        or (manifest.defaults and manifest.defaults.references)
-        or manifest.rulesets
-        or manifest.items
-        or manifest.problems
+        config.models
+        or config.flags
+        or (config.defaults and config.defaults.references)
+        or config.rulesets
+        or config.blocks
+        or config.problems
     )
 
 
@@ -57,8 +57,8 @@ def _empty(root: pathlib.Path) -> bool:
         return True
     rules = root / "rules"
     return (
-        entries <= {"manifest.yaml", "rules"}
-        and "manifest.yaml" in entries
+        entries <= {CONFIG_FILE, "rules"}
+        and CONFIG_FILE in entries
         and (not rules.exists() or (rules.is_dir() and not any(rules.iterdir())))
         and _declares_nothing(root)
     )
@@ -76,10 +76,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         return _USAGE_ERROR
     (root / "rules").mkdir(parents=True, exist_ok=True)
-    (root / "manifest.yaml").write_text(_MANIFEST, encoding="utf-8")
+    (root / CONFIG_FILE).write_text(_CONFIG, encoding="utf-8")
     (root / "rules" / "example.md").write_text(_EXAMPLE, encoding="utf-8")
     write_tree(root / RENDER_DIRECTORY, render_tree(read_directory(root)))
-    for path in ("manifest.yaml", "rules/example.md", f"{RENDER_DIRECTORY}/"):
+    for path in (CONFIG_FILE, "rules/example.md", f"{RENDER_DIRECTORY}/"):
         print(f"wrote {root / path}")
     return 0
 

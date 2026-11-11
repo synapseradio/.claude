@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A model identifier claims the declared name an item's `model` test will match.
 
-Serves the person who writes a manifest: they declare model names in `models`,
+Serves the person who writes a config: they declare model names in `models`,
 write `model opus-4-8` in a `when` key, and expect each identifier the harness
 reports to reach the right item. The table at the end of design.md "Models" is
 the first group below, row for row. Every case passes its own `models` list,
@@ -55,7 +55,7 @@ class TestTheIdentifierTable:
             "claude-opusx", "harness-reported"
         )
 
-    def test_an_undeclared_name_stays_unclaimed_until_the_manifest_lists_it(self):
+    def test_an_undeclared_name_stays_unclaimed_until_the_config_lists_it(self):
         assert isinstance(claim("claude-nova-1", DECLARED), model_fact.Unclaimed)
 
         assert claim("claude-nova-1", [*DECLARED, "nova"]) == model_fact.Claimed(
@@ -104,7 +104,7 @@ class TestTheManifestHoldsEveryName:
 
         assert outcome == model_fact.Unclaimed("claude-fable-1", "harness-reported")
 
-    def test_an_empty_manifest_claims_no_identifier(self):
+    def test_an_empty_config_claims_no_identifier(self):
         for identifier in ("claude-opus-5-5", "opus", "claude-haiku-4-5"):
             assert isinstance(claim(identifier, []), model_fact.Unclaimed)
 

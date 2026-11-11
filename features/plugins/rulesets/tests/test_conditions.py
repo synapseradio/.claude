@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""A `when` item's condition tests the facts of a context and nothing else.
+"""A block's condition tests the facts of a context and nothing else.
 
-The conditions module serves the engineer writing check and the fold: given the text an item
+The conditions module serves the engineer writing check and the fold: given the text a block
 is keyed on, they read back a tree of fact tests, learn from a precise error why a condition
 is no condition, and evaluate the tree over a context's facts without re-deriving operator
 precedence or what an absent fact means. Contexts are built in memory, so no case touches disk.
@@ -18,7 +18,9 @@ PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
+from rulesets.compose.composition import compose  # noqa: E402
 from rulesets.facts.context import ABSENT, Facts  # noqa: E402
+from rulesets.session.state import SessionState  # noqa: E402
 from rulesets.source.condition import (  # noqa: E402  (path must be set before this import)
     And,
     ConditionError,
@@ -30,6 +32,7 @@ from rulesets.source.condition import (  # noqa: E402  (path must be set before 
     fact_tests,
     parse_condition,
 )
+from rulesets.source.directory import read_directory  # noqa: E402
 
 
 def facts(*, model=None, agent=None, kind="session", flags=()):
@@ -256,11 +259,67 @@ class TestAConditionTestsFactsOnly:
         for fact in ("model", "agent", "kind", "flag"):
             assert fact in str(failure.value)
 
-    def test_a_kind_other_than_session_or_delegate_is_an_error_naming_it(self):
+    def test_a_kind_no_context_carries_is_an_error_naming_it_and_the_kinds(self):
         with pytest.raises(ConditionError) as failure:
-            parse_condition("kind subagent")
+            parse_condition("kind sometimes")
 
-        assert "subagent" in str(failure.value)
+        for named in ("sometimes", "session", "delegate", "any"):
+            assert named in str(failure.value)
+
+
+class TestSeveralValuesAfterOneFactTestAnyOfThem:
+    def test_two_agents_in_one_test_read_as_either(self):
+        assert parse_condition("agent critic thinkies") == Or(
+            AGENT_CRITIC, FactTest("agent", "thinkies")
+        )
+        assert holds("agent critic thinkies", agent="critic") is True
+        assert holds("agent critic thinkies", agent="thinkies") is True
+        assert holds("agent critic thinkies", agent="designer") is False
+
+    def test_a_block_keyed_on_two_agents_reaches_each_and_no_other(self, tmp_path):
+        root = tmp_path / "rulesets"
+        (root / "rules").mkdir(parents=True)
+        (root / "rules" / "security-pass.md").write_text("text\n", encoding="utf-8")
+        (root / "config.yaml").write_text(
+            "agent critic thinkies:\n  include: security-pass\n", encoding="utf-8"
+        )
+
+        def receives(agent):
+            context = facts(agent=agent, kind="delegate")
+            rules = compose(read_directory(root), context, SessionState()).rules
+            return [d.rule for d in rules]
+
+        assert receives("critic") == ["security-pass"]
+        assert receives("thinkies") == ["security-pass"]
+        assert receives("designer") == []
+
+    def test_not_applies_to_the_whole_group(self):
+        assert parse_condition("not model haiku sonnet") == Not(
+            Or(MODEL_HAIKU, FactTest("model", "sonnet"))
+        )
+        assert truth("not model haiku sonnet", model="sonnet") is Truth.FALSE
+        assert truth("not model haiku sonnet", model="opus") is Truth.TRUE
+
+    def test_and_joins_a_group_as_one_test(self):
+        assert parse_condition("agent critic auditor and flag strict") == And(
+            Or(AGENT_CRITIC, AGENT_AUDITOR), FLAG_STRICT
+        )
+
+    def test_a_fact_name_among_the_values_is_an_error_asking_for_an_operator(self):
+        with pytest.raises(ConditionError) as failure:
+            parse_condition("agent critic flag strict")
+
+        assert "`flag`" in str(failure.value)
+
+
+class TestKindAnyHoldsInEveryContext:
+    def test_kind_any_holds_in_a_session_and_in_a_delegate(self):
+        assert holds("kind any", kind="session") is True
+        assert holds("kind any", kind="delegate") is True
+
+    def test_kind_any_joined_to_a_model_test_follows_the_model(self):
+        assert holds("model haiku and kind any", model="haiku", kind="delegate") is True
+        assert holds("model haiku and kind any", model="opus", kind="delegate") is False
 
 
 class TestTextThatIsNoConditionIsAnError:

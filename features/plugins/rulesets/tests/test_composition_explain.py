@@ -33,13 +33,13 @@ from rulesets.session.state import SessionState  # noqa: E402
 from rulesets.source.directory import read_directory  # noqa: E402
 
 
-def build(tmp_path, manifest=None, stems=(), bodies=None):
-    """A rulesets directory with the manifest text, a file per stem, and any given bodies."""
+def build(tmp_path, config=None, stems=(), bodies=None):
+    """A rulesets directory with the config text, a file per stem, and any given bodies."""
 
     root = tmp_path / "rulesets"
     (root / "rules").mkdir(parents=True)
-    if manifest is not None:
-        (root / "manifest.yaml").write_text(manifest, encoding="utf-8")
+    if config is not None:
+        (root / "config.yaml").write_text(config, encoding="utf-8")
     texts = {stem: f"text of {stem}\n" for stem in stems} | (bodies or {})
     for stem, text in texts.items():
         (root / "rules" / f"{stem}.md").write_text(text, encoding="utf-8")
@@ -130,11 +130,12 @@ class TestExplainTracesOneRuleInOneContext:
     def test_lines_of_named_facts_are_listed_and_lines_of_unnamed_facts_are_not(self, tmp_path):
         root = build(
             tmp_path,
-            "models: ['haiku']\n"
-            "flags: ['strict']\n"
-            "when:\n"
-            "  - not flag strict: ['voice']\n"
-            "  - not agent eval-runner: ['-voice']\n",
+            "models: haiku\n"
+            "flags: strict\n"
+            "not flag strict:\n"
+            "  include: voice\n"
+            "not agent eval-runner:\n"
+            "  exclude: voice\n",
             ["voice"],
         )
 
@@ -150,7 +151,7 @@ class TestExplainTracesOneRuleInOneContext:
     ):
         root = build(
             tmp_path,
-            "defaults: ['voice']\nwhen:\n  - not kind delegate: ['-voice']\n",
+            "defaults: voice\nnot kind delegate:\n  exclude: voice\n",
             ["voice"],
         )
 
@@ -168,37 +169,41 @@ class TestExplainPrintsInclusionAndVariantEachOpeningWithTheWinner:
     def test_each_attribute_opens_with_its_winner_and_lists_the_lines_it_beat(self, tmp_path):
         root = build(
             tmp_path,
-            "models: ['haiku']\n"
-            "defaults: ['writing-prose']\n"
-            "when:\n"
-            "  - model haiku: ['writing-prose@haiku']\n"
-            "  - agent eval-runner: ['-writing-prose']\n",
+            "models: haiku\n"
+            "defaults: writing-prose\n"
+            "model haiku:\n"
+            "  include: writing-prose@haiku\n"
+            "agent eval-runner:\n"
+            "  exclude: writing-prose\n",
             ["writing-prose", "writing-prose@haiku"],
         )
-        manifest = f"{root}/manifest.yaml"
+        config = f"{root}/config.yaml"
 
         result = explain(root, "writing-prose", "--model", "haiku", "--agent", "eval-runner")
 
         assert result.returncode == 0
         assert attribute(result, "inclusion") == [
-            ["wins", f"{manifest}:5", "agent eval-runner", "-writing-prose", "names the rule"],
-            ["beat", f"{manifest}:2", "defaults", "writing-prose", "names the rule"],
-            ["beat", f"{manifest}:4", "model haiku", "writing-prose@haiku", "names the rule"],
+            ["wins", f"{config}:6", "agent eval-runner", "exclude writing-prose", "names the rule"],
+            ["beat", f"{config}:2", "defaults", "include writing-prose", "names the rule"],
+            [
+                "beat",
+                f"{config}:4",
+                "model haiku",
+                "include writing-prose@haiku",
+                "names the rule",
+            ],
         ]
         assert header(result, "inclusion") == "inclusion: off"
         assert header(result, "variant") == "variant: haiku"
         assert attribute(result, "variant") == [
-            ["wins", f"{manifest}:4", "model haiku", "writing-prose@haiku", "names the rule"],
+            ["wins", f"{config}:4", "model haiku", "include writing-prose@haiku", "names the rule"],
         ]
         assert "rank" not in result.stdout.lower()
 
     def test_a_block_that_does_not_apply_is_absent_from_the_output(self, tmp_path):
         root = build(
             tmp_path,
-            "models: ['opus', 'haiku']\n"
-            "defaults: ['writing-code']\n"
-            "when:\n"
-            "  - model haiku: ['-writing-code']\n",
+            "models: opus haiku\ndefaults: writing-code\nmodel haiku:\n  exclude: writing-code\n",
             ["writing-code"],
         )
 
@@ -206,18 +211,18 @@ class TestExplainPrintsInclusionAndVariantEachOpeningWithTheWinner:
 
         assert [row[2] for row in attribute(result, "inclusion")] == ["defaults"]
         assert "model haiku" not in result.stdout
-        assert "-writing-code" not in result.stdout
+        assert "exclude writing-code" not in result.stdout
 
 
 class TestEachLineGivesItsSourceAndReach:
     def test_a_line_reaching_the_rule_through_a_ruleset_names_the_ruleset(self, tmp_path):
         root = build(
             tmp_path,
-            "models: ['haiku']\n"
-            "rulesets:\n"
-            "  reviewer: ['report-format']\n"
-            "when:\n"
-            "  - model haiku: ['reviewer:*']\n",
+            "models: haiku\n"
+            "sets:\n"
+            "  reviewer: report-format\n"
+            "model haiku:\n"
+            "  include: reviewer.*\n",
             ["report-format"],
         )
 
@@ -226,9 +231,9 @@ class TestEachLineGivesItsSourceAndReach:
         assert attribute(result, "inclusion") == [
             [
                 "wins",
-                f"{root}/manifest.yaml:5",
+                f"{root}/config.yaml:5",
                 "model haiku",
-                "reviewer:*",
+                "include reviewer.*",
                 "through ruleset reviewer",
             ]
         ]
@@ -238,7 +243,7 @@ class TestEachLineGivesItsSourceAndReach:
     ):
         root = build(
             tmp_path,
-            "rulesets:\n  outer: ['inner:*']\n  inner: ['voice']\ndefaults: ['outer:*']\n",
+            "defaults: outer.*\nsets:\n  outer: inner.*\n  inner: voice\n",
             ["voice"],
         )
 
@@ -247,9 +252,9 @@ class TestEachLineGivesItsSourceAndReach:
         assert attribute(result, "inclusion") == [
             [
                 "wins",
-                f"{root}/manifest.yaml:4",
+                f"{root}/config.yaml:1",
                 "defaults",
-                "outer:*",
+                "include outer.*",
                 "through ruleset outer > inner",
             ]
         ]
@@ -257,11 +262,11 @@ class TestEachLineGivesItsSourceAndReach:
     def test_a_chain_of_three_rulesets_names_each_from_the_spread_one_down(self, tmp_path):
         root = build(
             tmp_path,
-            "rulesets:\n"
-            "  top: ['middle:*', 'sorting']\n"
-            "  middle: ['bottom:*']\n"
-            "  bottom: ['voice']\n"
-            "defaults: ['top:*']\n",
+            "defaults: top.*\n"
+            "sets:\n"
+            "  top: middle.* sorting\n"
+            "  middle: bottom.*\n"
+            "  bottom: voice\n",
             ["voice", "sorting"],
         )
 
@@ -272,40 +277,88 @@ class TestEachLineGivesItsSourceAndReach:
         ]
 
 
+class TestExplainQuotesEachLineAsTheConfigWritesIt:
+    def test_an_exclude_reads_with_its_key_its_set_and_its_line(self, tmp_path):
+        filler = "".join(f"# line {n}\n" for n in range(3, 39))
+        root = build(
+            tmp_path,
+            "sets:\n"
+            "  bash: shell-scripts\n" + filler + "kind session:\n"
+            "  exclude: bash.shell-scripts\n"
+            "defaults: all.*\n",
+            ["shell-scripts"],
+        )
+
+        result = explain(root, "shell-scripts", "--kind", "session")
+
+        assert attribute(result, "inclusion")[0][:4] == [
+            "wins",
+            f"{root}/config.yaml:40",
+            "kind session",
+            "exclude bash.shell-scripts",
+        ]
+        assert "manifest" not in result.stdout + result.stderr
+
+    def test_a_nested_block_reads_with_its_combined_condition_at_its_own_line(self, tmp_path):
+        root = build(
+            tmp_path,
+            "models: opus haiku\n"
+            "sets:\n"
+            "  planning: writing-plans\n"
+            "agent Plan:\n"
+            "  not model haiku:\n"
+            "    include: planning.*\n",
+            ["writing-plans"],
+        )
+
+        result = explain(root, "writing-plans", "--agent", "Plan", "--model", "opus")
+
+        assert attribute(result, "inclusion") == [
+            [
+                "wins",
+                f"{root}/config.yaml:6",
+                "agent Plan and not model haiku",
+                "include planning.*",
+                "through ruleset planning",
+            ]
+        ]
+        assert "manifest" not in result.stdout + result.stderr
+
+
 class TestExplainPlacesEachLineUnderInclusionVariantOrBoth:
     def test_a_bare_add_and_a_bare_remove_appear_under_inclusion_only(self, tmp_path):
         root = build(
             tmp_path,
-            "flags: ['a', 'b']\nwhen:\n  - flag a: ['voice']\n  - flag b: ['-sorting']\n",
+            "flags: a b\nflag a:\n  include: voice\nflag b:\n  exclude: sorting\n",
             ["voice", "sorting"],
         )
 
         added = explain(root, "voice", "--flag", "a", "--flag", "b")
         removed = explain(root, "sorting", "--flag", "a", "--flag", "b")
 
-        assert [row[3] for row in attribute(added, "inclusion")] == ["voice"]
+        assert [row[3] for row in attribute(added, "inclusion")] == ["include voice"]
         assert header(added, "variant") is not None
         assert attribute(added, "variant") == []
-        assert [row[3] for row in attribute(removed, "inclusion")] == ["-sorting"]
+        assert [row[3] for row in attribute(removed, "inclusion")] == ["exclude sorting"]
         assert header(removed, "variant") is not None
         assert attribute(removed, "variant") == []
 
     def test_an_add_at_a_variant_appears_under_inclusion_and_under_variant(self, tmp_path):
         root = build(
             tmp_path,
-            "flags: ['a']\nwhen:\n  - flag a: ['voice@terse']\n",
+            "flags: a\nflag a:\n  include: voice@terse\n",
             ["voice", "voice@terse"],
         )
 
         result = explain(root, "voice", "--flag", "a")
 
-        assert [row[3] for row in attribute(result, "inclusion")] == ["voice@terse"]
-        assert [row[3] for row in attribute(result, "variant")] == ["voice@terse"]
+        assert [row[3] for row in attribute(result, "inclusion")] == ["include voice@terse"]
+        assert [row[3] for row in attribute(result, "variant")] == ["include voice@terse"]
 
     def test_a_strike_appears_under_variant_only(self, tmp_path):
         root = build(
             tmp_path,
-            "flags: ['a']\nwhen:\n  - flag a: ['-voice@terse']\n",
+            "flags: a\nflag a:\n  exclude: voice@terse\n",
             ["voice", "voice@terse"],
         )
 
@@ -313,7 +366,7 @@ class TestExplainPlacesEachLineUnderInclusionVariantOrBoth:
 
         assert header(result, "inclusion") is not None
         assert attribute(result, "inclusion") == []
-        assert [row[3] for row in attribute(result, "variant")] == ["-voice@terse"]
+        assert [row[3] for row in attribute(result, "variant")] == ["exclude voice@terse"]
 
 
 class TestExplainStatesWhatNoLineSays:
@@ -322,10 +375,7 @@ class TestExplainStatesWhatNoLineSays:
     ):
         root = build(
             tmp_path,
-            "flags: ['voice-terse']\n"
-            "defaults: ['voice']\n"
-            "when:\n"
-            "  - flag voice-terse: ['voice@terse']\n",
+            "flags: voice-terse\ndefaults: voice\nflag voice-terse:\n  include: voice@terse\n",
             ["voice", "voice@terse"],
         )
 
@@ -335,7 +385,7 @@ class TestExplainStatesWhatNoLineSays:
         assert header(flagged, "variant") == "variant: terse"
         assert attribute(flagged, "variant")[0][:3] == [
             "wins",
-            f"{root}/manifest.yaml:4",
+            f"{root}/config.yaml:4",
             "flag voice-terse",
         ]
         assert "the default form is delivered" in header(unflagged, "variant")
@@ -345,7 +395,7 @@ class TestExplainStatesWhatNoLineSays:
     def test_a_rule_no_applying_line_includes_is_reported_as_never_reached(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['sorting']\nwhen:\n  - agent writer: ['voice']\n",
+            "defaults: sorting\nagent writer:\n  include: voice\n",
             ["sorting", "voice"],
         )
 
@@ -361,7 +411,7 @@ class TestExplainStatesWhatNoLineSays:
     ):
         root = build(
             tmp_path,
-            "defaults: ['voice', '-voice']\n",
+            "defaults:\n  include: voice\n  exclude: voice\n",
             ["voice", "sorting"],
         )
 
@@ -382,7 +432,7 @@ class TestExplainStatesWhatNoLineSays:
     ):
         root = build(
             tmp_path,
-            "defaults: ['big']\n",
+            "defaults: big\n",
             bodies={"big": "x" * 9001},
         )
 
@@ -409,23 +459,24 @@ class TestExplainLabelsEachVariantLineByWhatItDid:
     ):
         root = build(
             tmp_path,
-            "flags: ['f']\n"
-            "models: ['opus']\n"
-            "defaults: ['voice@dry']\n"
-            "when:\n"
-            "  - model opus: ['voice@terse']\n"
-            "  - flag f: ['-voice@terse']\n",
+            "models: opus\n"
+            "flags: f\n"
+            "defaults: voice@dry\n"
+            "model opus:\n"
+            "  include: voice@terse\n"
+            "flag f:\n"
+            "  exclude: voice@terse\n",
             ["voice", "voice@dry", "voice@terse"],
         )
-        manifest = f"{root}/manifest.yaml"
+        config = f"{root}/config.yaml"
 
         result = explain(root, "voice", "--model", "opus", "--flag", "f")
 
         assert header(result, "variant") == "variant: dry"
         assert attribute(result, "variant") == [
-            ["wins", f"{manifest}:3", "defaults", "voice@dry", "names the rule"],
-            ["struck", f"{manifest}:5", "model opus", "voice@terse", "names the rule"],
-            ["strikes", f"{manifest}:6", "flag f", "-voice@terse", "names the rule"],
+            ["wins", f"{config}:3", "defaults", "include voice@dry", "names the rule"],
+            ["struck", f"{config}:5", "model opus", "include voice@terse", "names the rule"],
+            ["strikes", f"{config}:7", "flag f", "exclude voice@terse", "names the rule"],
         ]
 
     def test_an_add_the_winner_outranked_is_beaten_and_a_strike_of_another_variant_strikes(
@@ -433,45 +484,47 @@ class TestExplainLabelsEachVariantLineByWhatItDid:
     ):
         root = build(
             tmp_path,
-            "flags: ['f']\n"
-            "models: ['opus']\n"
-            "defaults: ['voice@dry']\n"
-            "when:\n"
-            "  - model opus: ['voice@terse']\n"
-            "  - flag f: ['-voice@plain']\n",
+            "models: opus\n"
+            "flags: f\n"
+            "defaults: voice@dry\n"
+            "model opus:\n"
+            "  include: voice@terse\n"
+            "flag f:\n"
+            "  exclude: voice@plain\n",
             ["voice", "voice@dry", "voice@terse", "voice@plain"],
         )
-        manifest = f"{root}/manifest.yaml"
+        config = f"{root}/config.yaml"
 
         result = explain(root, "voice", "--model", "opus", "--flag", "f")
 
         assert header(result, "variant") == "variant: terse"
         assert attribute(result, "variant") == [
-            ["wins", f"{manifest}:5", "model opus", "voice@terse", "names the rule"],
-            ["beat", f"{manifest}:3", "defaults", "voice@dry", "names the rule"],
-            ["strikes", f"{manifest}:6", "flag f", "-voice@plain", "names the rule"],
+            ["wins", f"{config}:5", "model opus", "include voice@terse", "names the rule"],
+            ["beat", f"{config}:3", "defaults", "include voice@dry", "names the rule"],
+            ["strikes", f"{config}:7", "flag f", "exclude voice@plain", "names the rule"],
         ]
 
 
 class TestExplainNamesAConflictAndTheVariantDeliveryTakes:
     def test_both_conflicting_lines_are_listed_with_the_variant_delivery_takes(self, tmp_path):
-        manifest = (
-            "flags: ['a', 'b']\n"
-            "defaults: ['voice@plain']\n"
-            "when:\n"
-            "  - flag a: ['voice@terse']\n"
-            "  - flag b: ['voice@dry']\n"
+        config = (
+            "flags: a b\n"
+            "defaults: voice@plain\n"
+            "flag a:\n"
+            "  include: voice@terse\n"
+            "flag b:\n"
+            "  include: voice@dry\n"
         )
-        root = build(tmp_path, manifest, ["voice", "voice@plain", "voice@terse", "voice@dry"])
+        root = build(tmp_path, config, ["voice", "voice@plain", "voice@terse", "voice@dry"])
 
         result = explain(root, "voice", "--flag", "a", "--flag", "b")
 
-        file = f"{root}/manifest.yaml"
+        file = f"{root}/config.yaml"
         rows = attribute(result, "variant")
         assert [row[:3] for row in rows[:3]] == [
             ["wins", f"{file}:2", "defaults"],
             ["conflict", f"{file}:4", "flag a"],
-            ["conflict", f"{file}:5", "flag b"],
+            ["conflict", f"{file}:6", "flag b"],
         ]
         assert rows[3] == [
             "conflict: `voice@terse` and `voice@dry` set different variants at one position; "
@@ -487,7 +540,7 @@ class TestExplainNamesAConflictAndTheVariantDeliveryTakes:
 
 class TestExplainExitsNonZeroOnAnUnknownRule:
     def test_a_name_the_pool_does_not_hold_fails_and_is_named(self, tmp_path):
-        root = build(tmp_path, "defaults: ['voice']\n", ["voice"])
+        root = build(tmp_path, "defaults: voice\n", ["voice"])
 
         result = explain(root, "no-such-rule")
 
@@ -502,47 +555,37 @@ class TestCheckReportsEveryErrorAndWarningInOneRun:
     ):
         root = build(
             tmp_path,
-            "defaults: ['ghost']\n"
-            "rulesets:\n"
-            "  a: ['b:*']\n"
-            "  b: ['a:*']\n"
-            "when:\n"
-            "  - project amboss: ['voice']\n",
+            "defaults: ghost\nsets:\n  a: b.*\n  b: a.*\nproject amboss:\n  include: voice\n",
             ["voice"],
         )
-        manifest = str(root / "manifest.yaml")
+        config = str(root / "config.yaml")
 
         result = check(root)
 
         assert result.returncode != 0
         found = findings(result)
         assert sorted((f.file, f.line, f.severity, f.kind) for f in found) == [
-            (manifest, 1, "error", "undeclared-reference"),
-            (manifest, 3, "error", "ruleset-cycle"),
-            (manifest, 6, "error", "condition-invalid"),
+            (config, 1, "error", "undeclared-reference"),
+            (config, 3, "error", "ruleset-cycle"),
+            (config, 5, "error", "condition-invalid"),
         ]
         by_line = {f.line: f.message for f in found}
         assert "ghost" in by_line[1]
-        assert "project" in by_line[6]
+        assert "project" in by_line[5]
 
     def test_a_cycle_is_one_error_whose_subject_is_every_ruleset_in_it_at_the_first_one_written(
         self, tmp_path
     ):
         root = build(
             tmp_path,
-            "defaults: ['c:*']\n"
-            "rulesets:\n"
-            "  a: ['b:*']\n"
-            "  b: ['c:*']\n"
-            "  c: ['a:*', 'voice']\n"
-            "  d: ['a:*']\n",
+            "defaults: c.*\nsets:\n  a: b.*\n  b: c.*\n  c: a.* voice\n  d: a.*\n",
             ["voice"],
         )
 
         result = check(root)
 
         (found,) = findings(result)
-        assert (found.file, found.line) == (str(root / "manifest.yaml"), 3)
+        assert (found.file, found.line) == (str(root / "config.yaml"), 3)
         assert (found.severity, found.kind) == ("error", "ruleset-cycle")
         assert found.message.startswith("rulesets `a`, `b`, and `c`:")
         assert "`d`" not in found.message
@@ -552,7 +595,7 @@ class TestCheckReportsEveryErrorAndWarningInOneRun:
     ):
         root = build(
             tmp_path,
-            "defaults: ['report-format']\n",
+            "defaults: report-format\n",
             ["sorting"],
             {"report-format": "Follow `sorting` before you list items\n"},
         )
@@ -571,7 +614,7 @@ class TestCheckReportsEveryErrorAndWarningInOneRun:
         )
 
     def test_a_directory_with_no_error_and_no_warning_prints_nothing_and_exits_zero(self, tmp_path):
-        root = build(tmp_path, "defaults: ['all:*']\n", ["voice", "sorting"])
+        root = build(tmp_path, "defaults: all.*\n", ["voice", "sorting"])
 
         result = check(root)
 
@@ -584,7 +627,7 @@ class TestCheckWarnsOfARuleNoAddIncludes:
     ):
         root = build(
             tmp_path,
-            "flags: ['never-set']\nwhen:\n  - flag never-set: ['voice']\n",
+            "flags: never-set\nflag never-set:\n  include: voice\n",
             ["voice"],
         )
 
@@ -597,7 +640,7 @@ class TestCheckWarnsOfARuleNoAddIncludes:
     ):
         root = build(
             tmp_path,
-            "defaults: ['voice@a', 'voice@b']\n",
+            "defaults: voice@a voice@b\n",
             ["voice", "voice@a", "voice@b"],
         )
 
@@ -605,13 +648,13 @@ class TestCheckWarnsOfARuleNoAddIncludes:
 
         assert result.returncode != 0
         (finding,) = findings(result)
-        assert (finding.file, finding.line) == (str(root / "manifest.yaml"), 1)
+        assert (finding.file, finding.line) == (str(root / "config.yaml"), 1)
         assert (finding.severity, finding.kind) == ("error", "variant-conflict")
 
     def test_a_rule_only_a_ruleset_nothing_spreads_lists_draws_no_warning(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['sorting']\nrulesets:\n  team: ['voice']\n",
+            "defaults: sorting\nsets:\n  team: voice\n",
             ["voice", "sorting"],
         )
 
@@ -622,7 +665,9 @@ class TestCheckWarnsOfARuleNoAddIncludes:
     def test_a_rule_that_defaults_removes_and_no_list_adds_draws_a_warning_naming_rule_and_file(
         self, tmp_path
     ):
-        root = build(tmp_path, "defaults: ['voice', '-sorting']\n", ["voice", "sorting"])
+        root = build(
+            tmp_path, "defaults:\n  include: voice\n  exclude: sorting\n", ["voice", "sorting"]
+        )
 
         result = check(root)
 
@@ -636,26 +681,22 @@ class TestCheckWarnsOfARuleNoAddIncludes:
 
 class TestCheckReportsAnErrorForEachIllegalDeclarationReferenceOrCycle:
     def test_an_unknown_top_level_key_is_an_error_naming_the_key(self, tmp_path):
-        root = build(tmp_path, "defaults: ['voice']\nproject: amboss\n", ["voice"])
+        root = build(tmp_path, "defaults: voice\nproject: amboss\n", ["voice"])
 
         result = check(root)
 
         assert result.returncode != 0
         (finding,) = findings(result)
-        assert (finding.file, finding.line) == (str(root / "manifest.yaml"), 2)
-        assert (finding.severity, finding.kind) == ("error", "unknown-key")
+        assert (finding.file, finding.line) == (str(root / "config.yaml"), 2)
+        assert (finding.severity, finding.kind) == ("error", "block-shape")
         assert "`project`" in finding.message
 
 
 class TestCheckReportsAnErrorForEachIllegalBlock:
-    def test_a_block_whose_value_is_a_mapping_is_an_error_naming_the_block(self, tmp_path):
+    def test_a_block_whose_value_is_one_word_is_an_error_naming_the_block(self, tmp_path):
         root = build(
             tmp_path,
-            "models: ['opus']\n"
-            "flags: ['f']\n"
-            "when:\n"
-            "  - flag f: ['voice']\n"
-            "  - model opus: {rule: voice}\n",
+            "models: opus\nflags: f\nflag f:\n  include: voice\nmodel opus: voice\n",
             ["voice"],
         )
 
@@ -663,25 +704,24 @@ class TestCheckReportsAnErrorForEachIllegalBlock:
 
         assert result.returncode != 0
         (finding,) = [f for f in findings(result) if f.severity == "error"]
-        assert (finding.file, finding.line) == (str(root / "manifest.yaml"), 5)
-        assert (finding.severity, finding.kind) == ("error", "item-shape")
-        assert finding.message.startswith("item 2:")
-        assert "`model opus`" in finding.message
+        assert (finding.file, finding.line) == (str(root / "config.yaml"), 5)
+        assert (finding.severity, finding.kind) == ("error", "block-shape")
+        assert "block `model opus`" in finding.message
 
-    def test_an_item_with_no_single_condition_is_named_by_its_position(self, tmp_path):
+    def test_a_block_whose_value_is_words_says_they_belong_under_include(self, tmp_path):
         root = build(
             tmp_path,
-            "flags: ['f']\nwhen:\n  - flag f: ['voice']\n  - just text\n",
-            ["voice"],
+            "sets:\n  reasoning: voice\n  lookup: tone\nagent critic: reasoning.* lookup.*\n",
+            ["voice", "tone"],
         )
 
         result = check(root)
 
+        assert result.returncode != 0
         (finding,) = [f for f in findings(result) if f.severity == "error"]
-        assert (finding.file, finding.line) == (str(root / "manifest.yaml"), 4)
-        assert (finding.severity, finding.kind) == ("error", "item-shape")
-        assert finding.message.startswith("item 2:")
-        assert "just text" not in finding.message
+        assert (finding.line, finding.kind) == (4, "block-shape")
+        assert "block `agent critic`" in finding.message
+        assert "belong under `include`" in finding.message
 
 
 class TestCheckReportsCrossReferenceAndLayoutWarnings:
@@ -690,7 +730,7 @@ class TestCheckReportsCrossReferenceAndLayoutWarnings:
     ):
         root = build(
             tmp_path,
-            "defaults: ['all:*']\n",
+            "defaults: all.*\n",
             bodies={"voice": "<!-- rule: sorting -->\ntext\n"},
         )
 
@@ -708,7 +748,7 @@ class TestCheckWarnsWhereARuleNamesAnotherRule:
     ):
         root = build(
             tmp_path,
-            "defaults: ['all:*']\n",
+            "defaults: all.*\n",
             ["sorting"],
             {
                 "report-format": "Follow `sorting` before you list items\n",
@@ -730,7 +770,7 @@ class TestCheckWarnsWhereARuleNamesAnotherRule:
     ):
         root = build(
             tmp_path,
-            "defaults: ['all:*']\n",
+            "defaults: all.*\n",
             ["sorting", "voice"],
             {"voice@terse": "Be terse.\nBe brief.\nPrefer `sorting` here.\n`sorting` again\n"},
         )
@@ -747,7 +787,7 @@ class TestCheckMatchesARuleNameAsAWholeWordCaseSensitive:
     def test_a_name_inside_a_longer_word_or_in_another_case_draws_no_warning(self, tmp_path):
         root = build(
             tmp_path,
-            "defaults: ['all:*']\n",
+            "defaults: all.*\n",
             ["comments", "sorting"],
             {
                 "notes": "rule uncomments\nsorting-rules.md\nrule commentsection\n`Sorting`\n",
@@ -776,9 +816,7 @@ class TestDeliveryWithholdsARuleCarryingACheckError:
         world.rule("alpha")
         world.rule("beta")
         world.rule("gamma", "---\nmodel: opus\n---\ntext of gamma\n")
-        world.manifest(
-            DECLARED + "rulesets:\n  team: ['alpha', 'beta', 'gamma']\ndefaults: ['team:*']\n"
-        )
+        world.write_config(DECLARED + "defaults: team.*\nsets:\n  team: alpha beta gamma\n")
 
         delivery = world.start_session()
 
@@ -794,7 +832,7 @@ class TestDeliveryWithholdsARuleCarryingACheckError:
     ):
         world.rule("voice")
         world.rule("tone@dry", "dry tone text\n")
-        world.manifest(DECLARED + "defaults: ['voice', 'tone@dry']\n")
+        world.write_config(DECLARED + "defaults: voice tone@dry\n")
 
         delivery = world.start_session()
 
@@ -808,9 +846,8 @@ class TestDeliverySkipsEachCycleAndBlockThatCarriesAnError:
     def test_a_block_testing_an_env_fact_does_not_apply_while_the_other_blocks_do(self, world):
         for stem in ("alpha", "beta", "gamma"):
             world.rule(stem)
-        world.manifest(
-            DECLARED
-            + "defaults: ['alpha']\nwhen:\n  - env CI: ['beta']\n  - model opus: ['gamma']\n"
+        world.write_config(
+            DECLARED + "defaults: alpha\nenv CI:\n  include: beta\nmodel opus:\n  include: gamma\n"
         )
 
         delivery = world.start_session()
@@ -821,10 +858,12 @@ class TestDeliverySkipsEachCycleAndBlockThatCarriesAnError:
     def test_a_spread_of_a_ruleset_in_a_cycle_reaches_no_rule_and_other_lists_apply(self, world):
         for stem in ("alpha", "beta"):
             world.rule(stem)
-        world.manifest(
-            DECLARED
-            + "rulesets:\n  a: ['beta', 'b:*']\n  b: ['a:*']\n"
-            + "defaults: ['alpha']\nwhen:\n  - model opus: ['a:*']\n"
+        world.write_config(
+            DECLARED + "sets:\n"
+            "  a: beta b.*\n"
+            "  b: a.*\n" + "defaults: alpha\n"
+            "model opus:\n"
+            "  include: a.*\n"
         )
 
         delivery = world.start_session()
@@ -837,10 +876,12 @@ class TestDeliverySkipsEachCycleAndBlockThatCarriesAnError:
     ):
         for stem in ("alpha", "beta", "gamma"):
             world.rule(stem)
-        world.manifest(
-            DECLARED
-            + "defaults: ['alpha']\nwhen:\n"
-            + "  - not flag no-such-flag: ['beta']\n  - model opus: ['gamma']\n"
+        world.write_config(
+            DECLARED + "defaults: alpha\n"
+            "not flag no-such-flag:\n"
+            "  include: beta\n"
+            "model opus:\n"
+            "  include: gamma\n"
         )
 
         delivery = world.start_session()
@@ -849,15 +890,13 @@ class TestDeliverySkipsEachCycleAndBlockThatCarriesAnError:
         assert delivery.context == "text of alpha\ntext of gamma\n"
         assert withheld_rules(world) == []
 
-    def test_a_block_whose_value_is_a_mapping_applies_nowhere_while_the_other_blocks_apply(
+    def test_a_block_whose_words_sit_outside_include_applies_nowhere_while_the_others_apply(
         self, world
     ):
         for stem in ("alpha", "beta", "gamma"):
             world.rule(stem)
-        world.manifest(
-            DECLARED
-            + "defaults: ['alpha']\nwhen:\n"
-            + "  - model opus: {beta: null}\n  - model opus: ['gamma']\n"
+        world.write_config(
+            DECLARED + "defaults: alpha\nmodel opus: beta\nkind session:\n  include: gamma\n"
         )
 
         delivery = world.start_session()
@@ -870,7 +909,7 @@ class TestDeliverySkipsEachCycleAndBlockThatCarriesAnError:
 class TestDeliverySkipsUndeclaredReferencesReservedDeclarationsAndUnknownKeys:
     def test_an_unknown_top_level_key_is_ignored_and_the_rule_arrives_as_without_it(self, world):
         world.rule("sorting")
-        world.manifest(DECLARED + "project: amboss\nwhen:\n  - model opus: ['sorting']\n")
+        world.write_config(DECLARED + "project: amboss\nmodel opus:\n  include: sorting\n")
 
         delivery = world.start_session()
 
@@ -883,7 +922,7 @@ class TestAConflictAndAWarningWithholdNothing:
     def test_a_rule_drawing_only_a_cross_reference_warning_is_delivered(self, world):
         world.rule("report-format", "Follow sorting before you list items\n")
         world.rule("sorting")
-        world.manifest(DECLARED + "defaults: ['report-format', 'sorting']\n")
+        world.write_config(DECLARED + "defaults: report-format sorting\n")
 
         delivery = world.start_session()
 

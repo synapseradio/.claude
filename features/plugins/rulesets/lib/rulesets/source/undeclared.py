@@ -1,11 +1,11 @@
-"""The models and flags a condition tests that the manifest does not declare."""
+"""The models and flags a condition tests that the config does not declare."""
 
 from __future__ import annotations
 
 import dataclasses
 
 from rulesets.source.condition import Condition, fact_tests
-from rulesets.source.manifest import Manifest
+from rulesets.source.config import Config
 
 
 @dataclasses.dataclass(frozen=True)
@@ -20,8 +20,8 @@ class Undeclared:
         return bool(self.models or self.flags)
 
 
-def undeclared_names(condition: Condition, manifest: Manifest) -> Undeclared:
-    """The models and flags `condition` tests that `manifest` does not declare."""
+def undeclared_names(condition: Condition, config: Config) -> Undeclared:
+    """The models and flags `condition` tests that `config` does not declare."""
 
     tests = fact_tests(condition)
     return Undeclared(
@@ -29,14 +29,14 @@ def undeclared_names(condition: Condition, manifest: Manifest) -> Undeclared:
             dict.fromkeys(
                 test.value
                 for test in tests
-                if test.fact == "model" and test.value not in manifest.models
+                if test.fact == "model" and test.value not in config.models
             )
         ),
         tuple(
             dict.fromkeys(
                 test.value
                 for test in tests
-                if test.fact == "flag" and test.value not in manifest.flags
+                if test.fact == "flag" and test.value not in config.flags
             )
         ),
     )

@@ -15,12 +15,15 @@ import re
 import subprocess
 import sys
 
-import yaml
 from delivery_world import World
 from tier_corpus import FAMILIES, Corpus, define_agent
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 CLI = PLUGIN_ROOT / "lib" / "rulesets" / "cli.py"
+
+sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
+
+from rulesets.source.config import Config, read_config  # noqa: E402
 
 
 def run(*arguments):
@@ -55,7 +58,7 @@ class TestEjectWritesTheBaseContextAsPlainFiles:
         world.rule("writing-code", "write code\n")
         world.rule("core-rules", "core rules\n")
         world.rule("sorting", "sort things\n")
-        world.manifest("defaults: ['writing-code', 'core-rules', 'sorting']\n")
+        world.write_config("defaults: writing-code core-rules sorting\n")
         out = tmp_path / "ejected"
 
         result = eject(world, out)
@@ -81,12 +84,13 @@ class TestEjectWritesTheBaseContextAsPlainFiles:
         world.rule("voice", "plain voice\n")
         world.rule("voice@terse", "terse voice\n")
         world.rule("voice@warm", "warm voice\n")
-        world.manifest(
-            "flags: ['voice-terse']\n"
-            "defaults: ['voice']\n"
-            "when:\n"
-            "  - flag voice-terse: ['voice@terse']\n"
-            "  - not flag voice-terse: ['voice@warm']\n"
+        world.write_config(
+            "flags: voice-terse\n"
+            "defaults: voice\n"
+            "flag voice-terse:\n"
+            "  include: voice@terse\n"
+            "not flag voice-terse:\n"
+            "  include: voice@warm\n"
         )
         out = tmp_path / "ejected"
 
@@ -101,9 +105,7 @@ class TestEjectWritesTheBaseContextAsPlainFiles:
         world.rule("core-rules", "core rules\n")
         world.rule("voice", "plain voice\n")
         world.rule("voice@terse", "terse voice\n")
-        world.manifest(
-            "models: ['haiku']\ndefaults: ['core-rules']\nwhen:\n  - model haiku: ['voice']\n"
-        )
+        world.write_config("models: haiku\ndefaults: core-rules\nmodel haiku:\n  include: voice\n")
         (world.rulesets / "notes.txt").write_text("unrelated\n", encoding="utf-8")
         before = checksums(world.rulesets)
 
@@ -120,7 +122,7 @@ class TestEjectLeavesOutEachWithheldRule:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
         world.rule("scoped", "---\nwhen: model haiku\n---\nscoped text\n")
-        world.manifest("defaults: ['core-rules', 'scoped']\n")
+        world.write_config("defaults: core-rules scoped\n")
         out = tmp_path / "ejected"
 
         result = eject(world, out)
@@ -138,21 +140,16 @@ class TestEjectReportsWhatPlainFilesCannotCarry:
         world = World(tmp_path)
         world.rule("voice", "plain voice\n")
         world.rule("voice@terse", "terse voice\n")
-        world.manifest(
-            "models: ['haiku']\n"  # line 1
-            "defaults: ['voice']\n"  # line 2
-            "when:\n"  # line 3
-            "  - model haiku: ['-voice']\n"  # line 4
-        )
+        world.write_config("models: haiku\ndefaults: voice\nmodel haiku:\n  exclude: voice\n")
 
         result = eject(world, tmp_path / "ejected")
 
         assert result.returncode == 0, result.stderr
         lines = result.stdout.splitlines()
-        manifest_line = f"{world.rulesets / 'manifest.yaml'}:4:"
+        config_line = f"{world.rulesets / 'config.yaml'}:3:"
         variant_line = f"{world.rulesets / 'rules' / 'voice@terse.md'}:1:"
-        assert [line for line in lines if line.startswith(manifest_line)] == [
-            f"{manifest_line} block `model haiku` is not carried by plain files"
+        assert [line for line in lines if line.startswith(config_line)] == [
+            f"{config_line} block `model haiku` is not carried by plain files"
         ]
         assert [line for line in lines if line.startswith(variant_line)] == [
             f"{variant_line} variant `terse` of rule `voice` is not carried by plain files"
@@ -193,11 +190,12 @@ class TestRenderWritesOneContextsComposedText:
         world.rule("data-modeling", "model the data\n")
         world.rule("writing-prose", "default prose\n")
         world.rule("writing-prose@haiku", "haiku prose\n")
-        world.manifest(
-            "models: ['haiku', 'opus']\n"
-            "defaults: ['writing-prose', 'data-modeling', 'core-rules']\n"
-            "when:\n"
-            "  - model haiku: ['-data-modeling', 'writing-prose@haiku']\n"
+        world.write_config(
+            "models: haiku opus\n"
+            "defaults: writing-prose data-modeling core-rules\n"
+            "model haiku:\n"
+            "  include: writing-prose@haiku\n"
+            "  exclude: data-modeling\n"
         )
         haiku, opus = tmp_path / "haiku.md", tmp_path / "opus.md"
 
@@ -224,7 +222,7 @@ class TestRenderWritesOneContextsComposedText:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
         world.rule("scoped", "---\nwhen: model haiku\n---\nscoped text\n")
-        world.manifest("defaults: ['core-rules', 'scoped']\n")
+        world.write_config("defaults: core-rules scoped\n")
         out = tmp_path / "context.md"
 
         result = render_context(world, out)
@@ -240,7 +238,7 @@ class TestRenderMarksEachRulesTextInAContextRender:
         voice = b"plain voice\n\n"
         (world.rulesets / "rules" / "core-rules.md").write_bytes(core)
         (world.rulesets / "rules" / "voice.md").write_bytes(voice)
-        world.manifest("defaults: ['voice', 'core-rules']\n")
+        world.write_config("defaults: voice core-rules\n")
         out = tmp_path / "context.md"
 
         assert render_context(world, out).returncode == 0
@@ -253,11 +251,8 @@ class TestRenderMarksEachRulesTextInAContextRender:
         world = World(tmp_path)
         world.rule("voice", "plain voice\n")
         world.rule("voice@terse", "terse voice\n")
-        world.manifest(
-            "flags: ['voice-terse']\n"
-            "defaults: ['voice']\n"
-            "when:\n"
-            "  - flag voice-terse: ['voice@terse']\n"
+        world.write_config(
+            "flags: voice-terse\ndefaults: voice\nflag voice-terse:\n  include: voice@terse\n"
         )
         out = tmp_path / "context.md"
 
@@ -287,7 +282,7 @@ class TestRenderWritesRulesetRendersToAReservedFolder:
     ):
         world = World(tmp_path)
         world.rule("audit-method", "audit method\n")
-        world.manifest("defaults: ['audit-method']\n")
+        world.write_config("defaults: audit-method\n")
         folder = world.rulesets / "-render"
         folder.mkdir()
         (folder / "auditor.md").write_text("<!-- rule: audit-method -->\nold\n", encoding="utf-8")
@@ -305,7 +300,7 @@ class TestRenderWritesRulesetRendersToAReservedFolder:
         world.rule("writing-code", "write code\n")
         world.rule("voice", "plain voice\n")
         world.rule("voice@terse", "terse voice\n")
-        world.manifest("defaults: ['writing-code']\n")
+        world.write_config("defaults: writing-code\n")
         (world.rulesets / "notes.txt").write_text("unrelated\n", encoding="utf-8")
         (world.rulesets / "references").mkdir()
         (world.rulesets / "references" / "table.md").write_text("a table\n", encoding="utf-8")
@@ -325,7 +320,7 @@ class TestRendersCheckModeFailsOnAStaleTree:
         world = World(tmp_path)
         world.rule("writing-code", "write code\n")
         world.rule("core-rules", "core rules\n")
-        world.manifest("defaults: ['writing-code', 'core-rules']\n")
+        world.write_config("defaults: writing-code core-rules\n")
         assert render_tree(world).returncode == 0
         assert render_tree(world, "--check").returncode == 0
         (world.rulesets / "rules" / "writing-code.md").write_text("write c0de\n", encoding="utf-8")
@@ -363,12 +358,12 @@ class TestEachRenderInTheTreeHoldsItsRulesOnceSortedUnderMarkers:
         world = World(tmp_path)
         world.rule("writing-code", "write code\n")
         world.rule("data-modeling", "model data\n")
-        world.manifest(
-            "models: ['haiku']\n"
-            "rulesets:\n"
-            "  code: ['writing-code', 'data-modeling']\n"
-            "when:\n"
-            "  - model haiku: ['-data-modeling']\n"
+        world.write_config(
+            "models: haiku\n"
+            "sets:\n"
+            "  code: writing-code data-modeling\n"
+            "model haiku:\n"
+            "  exclude: data-modeling\n"
         )
 
         tree = render_written(world)
@@ -381,7 +376,7 @@ class TestEachRenderInTheTreeHoldsItsRulesOnceSortedUnderMarkers:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
         world.rule("scoped", "---\nwhen: model haiku\n---\nscoped text\n")
-        world.manifest("rulesets:\n  code: ['core-rules', 'scoped']\n")
+        world.write_config("sets:\n  code: core-rules scoped\n")
 
         tree = render_written(world)
 
@@ -396,11 +391,13 @@ class TestTheTreeHoldsARenderOfTheBaseContext:
         world.rule("core-rules", "core rules\n")
         world.rule("security-pass", "security pass\n")
         world.rule("writing-code", "write code\n")
-        world.manifest(
-            "flags: ['strict']\n"
-            "defaults: ['all:*', '-security-pass']\n"
-            "when:\n"
-            "  - flag strict: ['security-pass']\n"
+        world.write_config(
+            "flags: strict\n"
+            "defaults:\n"
+            "  include: all.*\n"
+            "  exclude: security-pass\n"
+            "flag strict:\n"
+            "  include: security-pass\n"
         )
 
         tree = render_written(world)
@@ -416,11 +413,13 @@ class TestTheTreeHoldsARenderOfTheWholePool:
         world.rule("security-pass", "security pass\n")
         world.rule("voice", "plain voice\n")
         world.rule("voice@terse", "terse voice\n")
-        world.manifest(
-            "flags: ['voice-terse']\n"
-            "defaults: ['all:*', '-security-pass']\n"
-            "when:\n"
-            "  - flag voice-terse: ['voice@terse']\n"
+        world.write_config(
+            "flags: voice-terse\n"
+            "defaults:\n"
+            "  include: all.*\n"
+            "  exclude: security-pass\n"
+            "flag voice-terse:\n"
+            "  include: voice@terse\n"
         )
 
         tree = render_written(world)
@@ -435,10 +434,8 @@ class TestTheTreeHoldsARenderForEachDeclaredRuleset:
         world = World(tmp_path)
         world.rule("writing-code", "write code\n")
         world.rule("data-modeling", "model data\n")
-        world.manifest(
-            "rulesets:\n"
-            "  review: ['code:*', 'writing-code']\n"
-            "  code: ['writing-code', 'data-modeling']\n"
+        world.write_config(
+            "sets:\n  review: code.* writing-code\n  code: writing-code data-modeling\n"
         )
 
         tree = render_written(world)
@@ -452,7 +449,7 @@ class TestTheTreeHoldsARenderForEachDeclaredRuleset:
         world.rule("audit-method", "audit method\n")
         world.rule("report-format", "report format\n")
         world.rule("report-format@table", "report as a table\n")
-        world.manifest("rulesets:\n  auditor: ['audit-method', 'report-format@table']\n")
+        world.write_config("sets:\n  auditor: audit-method report-format@table\n")
 
         tree = render_written(world)
 
@@ -471,11 +468,8 @@ class TestTheTreeHoldsAVariantRenderForEachVariantAnAddNames:
         world.rule("voice", "plain voice\n")
         world.rule("voice@terse", "terse voice\n")
         world.rule("voice@warm", "warm voice\n")
-        world.manifest(
-            "flags: ['voice-terse']\n"
-            "defaults: ['all:*']\n"
-            "when:\n"
-            "  - flag voice-terse: ['voice@terse']\n"
+        world.write_config(
+            "flags: voice-terse\ndefaults: all.*\nflag voice-terse:\n  include: voice@terse\n"
         )
 
         tree = render_written(world)
@@ -492,9 +486,7 @@ class TestTheTreeHoldsAVariantRenderForEachVariantAnAddNames:
         world = World(tmp_path)
         world.rule("report-format", "report format\n")
         world.rule("report-format@table", "report as a table\n")
-        world.manifest(
-            "defaults: ['report-format']\nrulesets:\n  auditor: ['report-format@table']\n"
-        )
+        world.write_config("defaults: report-format\nsets:\n  auditor: report-format@table\n")
 
         tree = render_written(world)
 
@@ -505,7 +497,7 @@ class TestTheTreeHoldsAVariantRenderForEachVariantAnAddNames:
         world = World(tmp_path)
         world.rule("voice", "plain voice\n")
         world.rule("voice@warm", "warm voice\n")
-        world.manifest("defaults: ['voice', '-voice@warm']\n")
+        world.write_config("defaults:\n  include: voice\n  exclude: voice@warm\n")
 
         tree = render_written(world)
 
@@ -517,7 +509,7 @@ class TestTheTreeLeavesOutRendersForTheReservedNamesNoneAndRules:
         world = World(tmp_path)
         world.rule("writing-code", "write code\n")
         world.rule("voice", "plain voice\n")
-        world.manifest("rulesets:\n  code: ['writing-code']\n  tone: ['voice']\n")
+        world.write_config("sets:\n  code: writing-code\n  tone: voice\n")
 
         tree = render_written(world)
 
@@ -544,7 +536,7 @@ class TestTheReverseSplitWritesEachSectionBackToItsSource:
         world.rule("core-rules", "core rules\n")
         world.rule("sorting", "sort things\n")
         world.rule("writing-code", "write code\n")
-        world.manifest("defaults: ['core-rules', 'sorting', 'writing-code']\n")
+        world.write_config("defaults: core-rules sorting writing-code\n")
         rendered = tmp_path / "context.md"
         assert render_context(world, rendered).returncode == 0
         before = checksums(world.rulesets)
@@ -571,11 +563,8 @@ class TestTheReverseSplitWritesEachSectionBackToItsSource:
         world = World(tmp_path)
         world.rule("voice", "plain voice\n")
         world.rule("voice@terse", "terse voice\n")
-        world.manifest(
-            "flags: ['voice-terse']\n"
-            "defaults: ['all:*']\n"
-            "when:\n"
-            "  - flag voice-terse: ['voice@terse']\n"
+        world.write_config(
+            "flags: voice-terse\ndefaults: all.*\nflag voice-terse:\n  include: voice@terse\n"
         )
         assert render_tree(world).returncode == 0
         rendered = world.rulesets / "-render" / "all+voice@terse.md"
@@ -600,7 +589,7 @@ class TestTheReverseSplitWritesEachSectionBackToItsSource:
         world = World(tmp_path)
         world.rule("writing-code", "write code\n")
         world.rule("data-modeling", "model data\n")
-        world.manifest("rulesets:\n  code: ['writing-code', 'data-modeling']\n")
+        world.write_config("sets:\n  code: writing-code data-modeling\n")
         assert render_tree(world).returncode == 0
         rendered = world.rulesets / "-render" / "code.md"
         before = outside_the_render_folder(world)
@@ -629,7 +618,7 @@ class TestTheReverseSplitChangesOnlyTheFilesWhoseSectionsWereEdited:
         world.rule("core-rules", "core rules\r\n\n")
         world.rule("voice", "plain voice\n\n")
         world.rule("last", "no trailing newline")
-        world.manifest("defaults: ['core-rules', 'voice', 'last']\n")
+        world.write_config("defaults: core-rules voice last\n")
         before = checksums(world.rulesets)
         rendered = tmp_path / "context.md"
 
@@ -645,13 +634,13 @@ class TestTheReverseSplitChangesOnlyTheFilesWhoseSectionsWereEdited:
         world.rule("voice", "plain voice")
         world.rule("voice@terse", "terse voice\n\n")
         world.rule("last", "no trailing newline")
-        world.manifest(
-            "flags: ['voice-terse']\n"
-            "defaults: ['all:*']\n"
-            "rulesets:\n"
-            "  tone: ['voice', 'last']\n"
-            "when:\n"
-            "  - flag voice-terse: ['voice@terse']\n"
+        world.write_config(
+            "flags: voice-terse\n"
+            "defaults: all.*\n"
+            "sets:\n"
+            "  tone: voice last\n"
+            "flag voice-terse:\n"
+            "  include: voice@terse\n"
         )
         before = checksums(world.rulesets)
 
@@ -671,7 +660,7 @@ class TestTheReverseSplitRefusesAMalformedRenderedFile:
     ):
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
-        world.manifest("defaults: ['core-rules']\n")
+        world.write_config("defaults: core-rules\n")
         rendered = tmp_path / "context.md"
         assert render_context(world, rendered).returncode == 0
         edit(rendered, "core rules\n", "edited rules\n\n<!-- rule: ghost-rule -->\nghost\n")
@@ -686,7 +675,7 @@ class TestTheReverseSplitRefusesAMalformedRenderedFile:
     def test_text_before_the_first_marker_makes_the_split_write_nothing(self, tmp_path):
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
-        world.manifest("defaults: ['core-rules']\n")
+        world.write_config("defaults: core-rules\n")
         rendered = tmp_path / "context.md"
         rendered.write_text("a stray line\n<!-- rule: core-rules -->\nedited\n", encoding="utf-8")
         before = checksums(world.rulesets)
@@ -707,14 +696,26 @@ def compare(source, directory, *expect):
     return run("compare", str(source), str(directory), *(f"--expect={e}" for e in expect))
 
 
-def manifest_of(out):
-    return yaml.safe_load((out / "manifest.yaml").read_text(encoding="utf-8"))
+def config_of(out) -> Config:
+    return read_config(out)
 
 
-def block(manifest, condition):
-    """The entries of the `when` item keyed `condition`, or None where no item has that key."""
+def defaults_of(out) -> list[str]:
+    config = config_of(out)
+    assert config.defaults is not None
+    return [reference.text for reference in config.defaults.references]
 
-    return next((item[condition] for item in manifest.get("when", []) if condition in item), None)
+
+def block(config: Config, condition: str) -> dict[str, list[str]] | None:
+    """The include and exclude words of the block keyed `condition`, or None where none is."""
+
+    found = next((b for b in config.blocks if b.condition == condition), None)
+    if found is None:
+        return None
+    return {
+        key: [r.text for r in found.references if r.remove is (key == "exclude")]
+        for key in ("include", "exclude")
+    }
 
 
 def different_lines(result):
@@ -773,7 +774,8 @@ class TestAdoptChangesNoSourceFile:
         }
         assert outside == before
         assert (out / "rules").is_dir()
-        assert (out / "manifest.yaml").is_file()
+        assert (out / "config.yaml").is_file()
+        assert not (out / "manifest.yaml").exists()
         assert (out / "-render").is_dir()
 
     def test_an_output_directory_inside_the_source_is_refused_with_nothing_written(self, tmp_path):
@@ -820,7 +822,8 @@ class TestAdoptMapsARulesFolderOrATierCorpusToARulesetsDirectory:
         assert result.returncode == 0, result.stderr
         assert (out / "rules" / "breaks.md").read_bytes() == b"breaks text\r\nsecond line\n"
         assert (out / "rules" / "claims.md").read_bytes() == b"claims text\n"
-        assert manifest_of(out)["defaults"] == ["all:*"]
+        assert defaults_of(out) == ["all.*"]
+        assert not (out / "manifest.yaml").exists()
         assert run("check", "--root", str(out)).returncode == 0
 
 
@@ -874,7 +877,7 @@ class TestAdoptMapsTheFilesOfATierCorpusToThePool:
         assert result.returncode == 0, result.stderr
         assert (out / "rules" / "writing-prose.md").read_text(encoding="utf-8") == default_text
         assert (out / "rules" / "writing-prose@haiku.md").read_text(encoding="utf-8") == haiku_text
-        assert "writing-prose@haiku" in block(manifest_of(out), "model haiku")
+        assert "writing-prose@haiku" in block(config_of(out), "model haiku")["include"]
 
     def test_a_stem_only_a_tier_holds_is_skipped_and_named_in_the_report(self, tmp_path):
         corpus = Corpus(tmp_path)
@@ -891,8 +894,8 @@ class TestAdoptMapsTheFilesOfATierCorpusToThePool:
         assert not [path for path in (out / "rules").iterdir() if path.name.startswith("extra")]
 
 
-class TestAdoptMapsTheEntriesOfATierCorpusToManifestBlocks:
-    def test_a_tiers_exclude_list_becomes_one_remove_per_stem_in_that_models_block(self, tmp_path):
+class TestAdoptMapsTheEntriesOfATierCorpusToConfigBlocks:
+    def test_a_tiers_exclude_list_becomes_that_models_excludes_one_per_line(self, tmp_path):
         corpus = Corpus(tmp_path, left_out={"sonnet": ["agent-delegation", "spawn-decision"]})
         for stem in ("agent-delegation", "spawn-decision", "core-rules", "sorting"):
             corpus.body("default", stem)
@@ -901,10 +904,12 @@ class TestAdoptMapsTheEntriesOfATierCorpusToManifestBlocks:
         result = adopt(corpus.root, out)
 
         assert result.returncode == 0, result.stderr
-        assert sorted(block(manifest_of(out), "model sonnet")) == [
-            "-agent-delegation",
-            "-spawn-decision",
-        ]
+        assert block(config_of(out), "model sonnet") == {
+            "include": [],
+            "exclude": ["agent-delegation", "spawn-decision"],
+        }
+        text = (out / "config.yaml").read_text(encoding="utf-8")
+        assert "model sonnet:\n  exclude:\n    agent-delegation\n    spawn-decision\n" in text
 
     def test_a_tier_that_includes_every_stem_becomes_a_defaults_spreading_every_rule(
         self, tmp_path
@@ -917,11 +922,12 @@ class TestAdoptMapsTheEntriesOfATierCorpusToManifestBlocks:
         result = adopt(corpus.root, out)
 
         assert result.returncode == 0, result.stderr
-        assert manifest_of(out)["defaults"] == ["all:*"]
+        assert defaults_of(out) == ["all.*"]
+        assert "model default" not in (out / "config.yaml").read_text(encoding="utf-8")
 
 
 class TestAdoptDeclaresAModelNameForEachTier:
-    def test_the_manifest_declares_one_model_name_per_tier_in_the_prefix_map(self, tmp_path):
+    def test_the_config_declares_one_model_name_per_tier_in_the_prefix_map(self, tmp_path):
         corpus = Corpus(tmp_path)
         corpus.body("default", "core-rules")
         out = tmp_path / "adopted"
@@ -929,7 +935,7 @@ class TestAdoptDeclaresAModelNameForEachTier:
         result = adopt(corpus.root, out)
 
         assert result.returncode == 0, result.stderr
-        assert sorted(manifest_of(out)["models"]) == sorted(FAMILIES)
+        assert sorted(config_of(out).models) == sorted(FAMILIES)
         assert sorted(FAMILIES) == ["fable", "haiku", "opus", "sonnet"]
 
     def test_a_tier_named_for_one_model_declares_the_name_without_its_prefix_and_no_block(
@@ -942,8 +948,8 @@ class TestAdoptDeclaresAModelNameForEachTier:
         result = adopt(corpus.root, out)
 
         assert result.returncode == 0, result.stderr
-        assert "opus-4-8" in manifest_of(out)["models"]
-        assert block(manifest_of(out), "model opus-4-8") is None
+        assert "opus-4-8" in config_of(out).models
+        assert block(config_of(out), "model opus-4-8") is None
 
 
 class TestAdoptSkipsPathScopedFiles:
@@ -968,7 +974,7 @@ class TestAdoptSkipsPathScopedFiles:
 
 
 class TestAdoptMapsAnAgentDefinitionsExclusionsToABlock:
-    def test_an_excluded_rule_becomes_a_remove_in_that_agents_block_and_the_definition_is_untouched(
+    def test_an_excluded_rule_becomes_an_exclude_in_that_agents_block_and_the_definition_is_untouched(
         self, tmp_path, monkeypatch
     ):
         config = tmp_path / "config"
@@ -984,7 +990,10 @@ class TestAdoptMapsAnAgentDefinitionsExclusionsToABlock:
 
         assert result.returncode == 0, result.stderr
         assert definition.read_bytes() == recorded
-        assert block(manifest_of(out), "agent eval-runner") == ["-writing-prose"]
+        assert block(config_of(out), "agent eval-runner") == {
+            "include": [],
+            "exclude": ["writing-prose"],
+        }
         delegate = delivered_to(out, tmp_path, "opus", "eval-runner")
         assert "writing-prose" not in delegate
         assert "core-rules" in delegate
@@ -1053,7 +1062,7 @@ class TestAdoptProvesEveryContextsTextUnchanged:
         world = World(tmp_path)
         world.rule("core-rules", core)
         world.rule("writing-code", code)
-        world.manifest("models: ['opus', 'sonnet', 'haiku', 'fable']\ndefaults: ['all:*']\n")
+        world.write_config("models: opus sonnet haiku fable\ndefaults: all.*\n")
 
         result = compare(corpus.root, world.rulesets)
 
@@ -1072,10 +1081,11 @@ class TestAdoptProvesEveryContextsTextUnchanged:
         world = World(tmp_path)
         world.rule("spawn-decision", default_text)
         world.rule("spawn-decision@opus", opus_text)
-        world.manifest(
-            "models: ['opus', 'sonnet', 'haiku', 'fable', 'opus-4-8']\n"
-            "defaults: ['all:*']\n"
-            "when:\n  - model opus: ['spawn-decision@opus']\n"
+        world.write_config(
+            "models: opus sonnet haiku fable opus-4-8\n"
+            "defaults: all.*\n"
+            "model opus:\n"
+            "  include: spawn-decision@opus\n"
         )
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(world.config))
         target = tmp_path / "context.md"
@@ -1104,10 +1114,11 @@ class TestAdoptProvesEveryContextsTextUnchanged:
         world = World(tmp_path)
         world.rule("spawn-decision", default_text)
         world.rule("spawn-decision@opus", opus_text)
-        world.manifest(
-            "models: ['opus', 'sonnet', 'haiku', 'fable']\n"
-            "defaults: ['all:*']\n"
-            "when:\n  - model opus: ['spawn-decision@opus']\n"
+        world.write_config(
+            "models: opus sonnet haiku fable\n"
+            "defaults: all.*\n"
+            "model opus:\n"
+            "  include: spawn-decision@opus\n"
         )
         target = tmp_path / "context.md"
         rendered = run(
@@ -1139,10 +1150,11 @@ class TestAdoptProvesEveryContextsTextUnchanged:
         world = World(tmp_path)
         world.rule("spawn-decision", default_text)
         world.rule("spawn-decision@opus", opus_text)
-        world.manifest(
-            "models: ['opus', 'sonnet', 'haiku', 'fable', 'opus-4-8']\n"
-            "defaults: ['all:*']\n"
-            "when:\n  - model opus: ['spawn-decision@opus']\n"
+        world.write_config(
+            "models: opus sonnet haiku fable opus-4-8\n"
+            "defaults: all.*\n"
+            "model opus:\n"
+            "  include: spawn-decision@opus\n"
         )
         world.start_session(model="claude-opus-4-8[1m]")
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(world.config))
@@ -1171,7 +1183,7 @@ class TestTheComparisonMatrixCrossesModelsAndAgents:
         define_agent(world.config, "auditor", [])
         corpus = Corpus(tmp_path)
         world.rule("core-rules", corpus.body("default", "core-rules"))
-        world.manifest("models: ['opus', 'sonnet', 'haiku', 'fable']\ndefaults: ['all:*']\n")
+        world.write_config("models: opus sonnet haiku fable\ndefaults: all.*\n")
         assert not world.record_files().exists()
 
         report = run_compare(

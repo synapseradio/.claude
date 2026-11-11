@@ -1,13 +1,16 @@
-"""Parse a `when` item's condition into a tree of fact tests, and evaluate it over a context.
+"""Parse a block's condition into a tree of fact tests, and evaluate it over a context.
 
-A condition tests facts with `model <name>`, `agent <name>`, `kind session|delegate`,
-`tools <Tool>`, `flag <name>`, and `session <id>`, and combines the tests with `and`, `or`,
-`not`, and parentheses. `not` binds tighter than `and`, and `and` tighter than `or`. A run of one operator groups to the left.
+A condition tests facts with `model <name>...`, `agent <name>...`, `kind session|delegate|any`,
+`tools <Tool>...`, `flag <name>...`, and `session <id>...`, and combines the tests with `and`,
+`or`, `not`, and parentheses. A test naming several values reads as those tests joined by `or`
+and grouped, so `not model small large` negates the whole group. `not` binds tighter than
+`and`, and `and` tighter than `or`. A run of one operator groups to the left.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import functools
 import re
 from collections.abc import Callable
 from enum import Enum
@@ -18,7 +21,8 @@ from rulesets.facts.context import Absent, Facts, Kind, NoClaim
 type Fact = Literal["model", "agent", "kind", "tools", "flag", "session"]
 
 FACTS: tuple[str, ...] = get_args(Fact.__value__)
-_KINDS: tuple[str, ...] = get_args(Kind.__value__)
+KIND_ANY = "any"
+_KIND_TESTS: tuple[str, ...] = (*get_args(Kind.__value__), KIND_ANY)
 _KEYWORDS = ("and", "or", "not")
 _TOKEN = re.compile(r"[()]|[^\s()]+")
 
@@ -55,6 +59,10 @@ class Or:
 
 
 type Condition = FactTest | Not | And | Or
+
+
+def _is_value(token: str | None) -> bool:
+    return token is not None and token not in _KEYWORDS and token not in ("(", ")")
 
 
 class _Reader:
@@ -123,13 +131,20 @@ class _Reader:
             raise ConditionError(f"`{token}` tests no fact; a condition tests {', '.join(FACTS)}")
         self._take()
         value = self._peek()
-        if value is None or value in _KEYWORDS or value in ("(", ")"):
+        if not _is_value(value):
             found = "the end of the condition" if value is None else f"`{value}`"
             raise ConditionError(f"`{token}` needs a name, found {found}")
-        self._take()
-        if token == "kind" and value not in _KINDS:
-            raise ConditionError(f"`kind {value}` is no kind; kind tests session or delegate")
-        return FactTest(token, value)
+        tests: list[Condition] = []
+        while _is_value(value := self._peek()):
+            if value in FACTS and tests and not (token == "kind" and value in _KIND_TESTS):
+                raise ConditionError(f"expected `and` or `or` before `{value}`")
+            self._take()
+            if token == "kind" and value not in _KIND_TESTS:
+                raise ConditionError(
+                    f"`kind {value}` is no kind; kind tests session, delegate, or any"
+                )
+            tests.append(FactTest(token, value))
+        return functools.reduce(Or, tests)
 
 
 def parse_condition(text: str) -> Condition:
@@ -205,7 +220,7 @@ def evaluate(condition: Condition, facts: Facts) -> Truth:
             case FactTest("agent", name):
                 return _known_equal(facts.agent, name)
             case FactTest("kind", name):
-                return _known_equal(facts.kind, name)
+                return Truth.TRUE if name == KIND_ANY else _known_equal(facts.kind, name)
             case FactTest("tools", name):
                 match facts.tools:
                     case Absent():

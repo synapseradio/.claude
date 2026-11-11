@@ -52,9 +52,9 @@ class Composition:
 
 
 def expander_of(directory: RulesetsDirectory) -> Expander:
-    match directory.manifest:
-        case Present(manifest):
-            lists = manifest.spreadable()
+    match directory.config:
+        case Present(config):
+            lists = config.spreadable()
         case _:
             lists = {}
     return Expander(lists, directory.pool.variants_by_rule())

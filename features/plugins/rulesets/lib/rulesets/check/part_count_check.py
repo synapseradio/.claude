@@ -11,6 +11,7 @@ from rulesets.delivery.rule_bodies import bodies_of
 from rulesets.facts.context import ABSENT, UNCLAIMED, Absent, Facts, Kind
 from rulesets.session.state import SessionState
 from rulesets.source.condition import ConditionError, fact_tests, parse_condition
+from rulesets.source.config import CONFIG_FILE
 from rulesets.source.directory import Present, RulesetsDirectory
 
 _KINDS: tuple[Kind, ...] = ("session", "delegate")
@@ -21,21 +22,21 @@ def check_part_count(directory: RulesetsDirectory) -> tuple[CheckWarning, ...]:
 
     The matrix crosses each declared model and the unclaimed model, each agent a condition
     names and no agent, each kind, and the flag sets none, each flag alone, and every flag.
-    A manifest that is missing or does not parse declares nothing, so its matrix is the
+    A config that is missing or does not parse declares nothing, so its matrix is the
     contexts that receive every rule.
     """
 
-    match directory.manifest:
-        case Present(manifest):
-            models, flags_declared, items = manifest.models, manifest.flags, manifest.items
-            where = manifest.path
+    match directory.config:
+        case Present(config):
+            models, flags_declared, blocks = config.models, config.flags, config.blocks
+            where = config.path
         case _:
-            models, flags_declared, items = (), (), ()
-            where = directory.root / "manifest.yaml"
+            models, flags_declared, blocks = (), (), ()
+            where = directory.root / CONFIG_FILE
     agents: list[str | Absent] = [ABSENT]
-    for item in items:
+    for block in blocks:
         try:
-            tests = fact_tests(parse_condition(item.condition))
+            tests = fact_tests(parse_condition(block.condition))
         except ConditionError:
             continue
         agents.extend(test.value for test in tests if test.fact == "agent")

@@ -65,7 +65,7 @@ class WithheldLine:
 
 @dataclasses.dataclass(frozen=True)
 class SkippedReferenceLine:
-    """A reference to an undeclared name, with the manifest file and line it stands on."""
+    """A reference to an undeclared name, with the config file and line it stands on."""
 
     file: str
     line: int
@@ -88,7 +88,7 @@ class SkippedReferenceLine:
 
 @dataclasses.dataclass(frozen=True)
 class SkippedBlockLine:
-    """A block keyed on undeclared models or flags, with the manifest file and line it stands on."""
+    """A block keyed on undeclared models or flags, with the config file and line it stands on."""
 
     file: str
     line: int

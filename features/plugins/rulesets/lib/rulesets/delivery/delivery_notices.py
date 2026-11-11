@@ -11,15 +11,17 @@ from rulesets.notices import (
     SHOWN,
     Notice,
     block_skipped_notice,
-    manifest_missing_notice,
-    manifest_unparsable_notice,
+    config_missing_notice,
+    config_unparsable_notice,
+    old_config_file_notice,
     reference_notice,
     scaffold_failed_notice,
     scaffolded_notice,
     variant_conflict_notice,
     withheld_notice,
 )
-from rulesets.source.directory import Missing as ManifestMissing
+from rulesets.source.config import CONFIG_FILE
+from rulesets.source.directory import Missing as ConfigMissing
 from rulesets.source.directory import Present, RulesetsDirectory, Unparsable
 from rulesets.source.scaffold import AlreadyPresent, Scaffolded, ScaffoldFailed
 
@@ -29,7 +31,7 @@ def directory_notices(
     directory: RulesetsDirectory,
     root: pathlib.Path,
 ) -> tuple[Notice, ...]:
-    """What the directory's state says: a scaffold's outcome, or why a manifest is not read."""
+    """What the directory's state says: a scaffold's outcome, or why a config is not read."""
 
     match scaffolded:
         case Scaffolded():
@@ -38,11 +40,13 @@ def directory_notices(
             return (scaffold_failed_notice(str(root), reason),)
         case AlreadyPresent():
             pass
-    match directory.manifest:
-        case ManifestMissing():
-            return (manifest_missing_notice(str(root / "manifest.yaml")),)
+    match directory.config:
+        case ConfigMissing(old_file=None):
+            return (config_missing_notice(str(root / CONFIG_FILE)),)
+        case ConfigMissing(old_file=old_file):
+            return (old_config_file_notice(str(old_file), str(root / CONFIG_FILE)),)
         case Unparsable(error=error):
-            return (manifest_unparsable_notice(str(error)),)
+            return (config_unparsable_notice(str(error)),)
         case Present():
             return ()
 

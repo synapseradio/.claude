@@ -14,7 +14,7 @@ CLI = PLUGIN_ROOT / "lib" / "rulesets" / "cli.py"
 
 OPUS = "claude-opus-5-5"
 HAIKU = "claude-haiku-4-5"
-DECLARED = "models: ['opus', 'haiku']\n"
+DECLARED = "models: opus haiku\n"
 
 # Variables the engine reads, which the developer's own shell may set.
 _ENGINE_PREFIXES = ("ANTHROPIC_", "CLAUDE_CODE_", "CLAUDE_CONTEXT_", "RULESETS_")
@@ -143,15 +143,15 @@ class World:
         path.write_text(f"text of {stem}\n" if text is None else text, encoding="utf-8")
         return path
 
-    def manifest(self, text: str) -> None:
-        (self.rulesets / "manifest.yaml").write_text(text, encoding="utf-8")
+    def write_config(self, text: str) -> None:
+        (self.rulesets / "config.yaml").write_text(text, encoding="utf-8")
 
     def toggle_flags(self, settings: dict[str, str], session_id: str = "s1") -> None:
         """The session state file a flag toggle leaves: each flag named `set` or `unset`."""
 
         path = self.config / ".tmp" / "rulesets-engine" / "session" / f"{session_id}.yaml"
         path.parent.mkdir(parents=True, exist_ok=True)
-        lines = ["flags:", *(f"  {flag}: {setting}" for flag, setting in settings.items())]
+        lines = ["flags:\n", *(f"  {flag}: {setting}" for flag, setting in settings.items())]
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     def state_file(self, session_id: str = "s1") -> pathlib.Path:

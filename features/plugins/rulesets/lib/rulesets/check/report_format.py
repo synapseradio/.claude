@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from rulesets.check.findings import (
+    BlockSubject,
     CheckError,
     CheckWarning,
+    ConfigSubject,
     ContextSubject,
     DirectorySubject,
     FlagSubject,
-    ItemSubject,
     KeySubject,
-    ManifestSubject,
     ModelSubject,
     ReferencesSubject,
     ReferenceSubject,
@@ -24,7 +24,7 @@ from rulesets.check.findings import (
 
 
 def _describe_subject(subject: Subject) -> str:
-    """The subject in outward words. Items count from 1 in the order they are written."""
+    """The subject in outward words."""
 
     match subject:
         case RuleSubject(name):
@@ -40,8 +40,8 @@ def _describe_subject(subject: Subject) -> str:
             if len(quoted) == 2:
                 return f"rulesets {quoted[0]} and {quoted[1]}"
             return f"rulesets {', '.join(quoted[:-1])}, and {quoted[-1]}"
-        case ItemSubject(index):
-            return f"item {index + 1}"
+        case BlockSubject(condition):
+            return f"block `{condition}`"
         case KeySubject(name):
             return f"key `{name}`"
         case ModelSubject(name):
@@ -52,8 +52,8 @@ def _describe_subject(subject: Subject) -> str:
             return f"reference `{text}`"
         case ReferencesSubject(members):
             return "references " + " and ".join(f"`{member.text}`" for member in members)
-        case ManifestSubject():
-            return "manifest"
+        case ConfigSubject():
+            return "config"
         case ContextSubject(facts):
             named = [
                 *([f"model {facts.model}"] if isinstance(facts.model, str) else []),

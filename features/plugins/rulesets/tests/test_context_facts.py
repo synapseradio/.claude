@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A context carries facts, and a block's condition tests them: known, false, or unknown.
 
-Serves the engineer who writes a manifest keyed on model, agent, flag, and session, and the
+Serves the engineer who writes a config keyed on model, agent, flag, and session, and the
 person whose sessions and delegates receive the result: a declared model name claims the
 identifiers it prefixes, a block takes the rank of its highest fact, an unclaimed model tests
 false, and a missing one tests unknown so that no block keyed on it applies. Integration cases
@@ -85,15 +85,22 @@ class TestFactKindsAndTheirRanks:
         stems = ["security-pass", "voice", "tone", "sorting"]
         for stem in stems:
             world.rule(stem)
-        world.manifest(
-            "models: ['haiku']\n"
-            "flags: ['strict']\n"
-            "defaults: ['-security-pass']\n"
-            "when:\n"
-            "  - model haiku: ['security-pass', '-voice']\n"
-            "  - agent critic: ['voice', '-tone']\n"
-            "  - flag strict: ['tone', '-sorting']\n"
-            "  - session abc123: ['sorting']\n"
+        world.write_config(
+            "models: haiku\n"
+            "flags: strict\n"
+            "defaults:\n"
+            "  exclude: security-pass\n"
+            "model haiku:\n"
+            "  include: security-pass\n"
+            "  exclude: voice\n"
+            "agent critic:\n"
+            "  include: voice\n"
+            "  exclude: tone\n"
+            "flag strict:\n"
+            "  include: tone\n"
+            "  exclude: sorting\n"
+            "session abc123:\n"
+            "  include: sorting\n"
         )
         pin_agent_model(world, "critic", "haiku")
         world.environment["RULESETS_FLAGS"] = "strict"
@@ -104,11 +111,12 @@ class TestFactKindsAndTheirRanks:
 
     def test_a_block_takes_the_rank_of_its_highest_fact(self, world):
         world.rule("security-pass")
-        world.manifest(
-            "models: ['haiku']\n"
-            "when:\n"
-            "  - model haiku: ['-security-pass']\n"
-            "  - model haiku and agent critic: ['security-pass']\n"
+        world.write_config(
+            "models: haiku\n"
+            "model haiku:\n"
+            "  exclude: security-pass\n"
+            "model haiku and agent critic:\n"
+            "  include: security-pass\n"
         )
         pin_agent_model(world, "critic", "haiku")
 
@@ -121,14 +129,17 @@ class TestFactKindsAndTheirRanks:
         stems = ["alpha", "beta"]
         for stem in stems:
             world.rule(stem)
-        world.manifest(
-            "models: ['haiku']\n"
-            "flags: ['strict']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - flag strict: ['beta']\n"
-            f"  - {test}: ['alpha', '-beta']\n"
-            "  - model haiku: ['-alpha']\n"
+        world.write_config(
+            "models: haiku\n"
+            "flags: strict\n"
+            "defaults:\n"
+            "flag strict:\n"
+            "  include: beta\n"
+            f"{test}:\n"
+            "  include: alpha\n"
+            "  exclude: beta\n"
+            "model haiku:\n"
+            "  exclude: alpha\n"
         )
         define_agent(world, "critic", "model: haiku\ntools: Bash")
         world.environment["RULESETS_FLAGS"] = "strict"
@@ -141,7 +152,7 @@ class TestFactKindsAndTheirRanks:
 class TestEachFactKindHasADefinedValue:
     def test_a_delegate_on_a_claimed_model_has_the_model_agent_and_kind_facts(self, world):
         world.rule("voice")
-        world.manifest("models: ['haiku']\ndefaults: ['voice']\n")
+        world.write_config("models: haiku\ndefaults: voice\n")
         pin_agent_model(world, "critic", "haiku")
 
         world.start_delegate("critic")
@@ -162,11 +173,11 @@ class TestEachFactKindHasADefinedValue:
 class TestConditionsCombineFactTests:
     def test_and_binds_tighter_than_or_so_a_critic_without_the_flag_receives_the_rule(self, world):
         world.rule("security-pass")
-        world.manifest(
-            "flags: ['strict']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - agent critic or agent auditor and flag strict: ['security-pass']\n"
+        world.write_config(
+            "flags: strict\n"
+            "defaults:\n"
+            "agent critic or agent auditor and flag strict:\n"
+            "  include: security-pass\n"
         )
 
         delivery = world.start_delegate("critic")
@@ -175,11 +186,11 @@ class TestConditionsCombineFactTests:
 
     def test_parentheses_group_so_a_critic_without_the_flag_does_not_apply(self, world):
         world.rule("security-pass")
-        world.manifest(
-            "flags: ['strict']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - (agent critic or agent auditor) and flag strict: ['security-pass']\n"
+        world.write_config(
+            "flags: strict\n"
+            "defaults:\n"
+            "(agent critic or agent auditor) and flag strict:\n"
+            "  include: security-pass\n"
         )
 
         delivery = world.start_delegate("critic")
@@ -194,7 +205,7 @@ class TestConditionsCombineFactTests:
 class TestConditionsTestFactsOnly:
     def test_a_project_test_is_a_check_error_and_the_block_applies_nowhere(self, world):
         world.rule("voice")
-        world.manifest("defaults: []\nwhen:\n  - project amboss: ['voice']\n")
+        world.write_config("defaults:\nproject amboss:\n  include: voice\n")
 
         report = report_for(world)
 
@@ -205,7 +216,7 @@ class TestConditionsTestFactsOnly:
 
     def test_an_environment_variable_test_is_a_check_error_naming_the_condition(self, world):
         world.rule("voice")
-        world.manifest("when:\n  - env CI: ['voice']\n")
+        world.write_config("env CI:\n  include: voice\n")
 
         report = report_for(world)
 
@@ -214,7 +225,7 @@ class TestConditionsTestFactsOnly:
 
     def test_unbalanced_parentheses_are_a_check_error_naming_the_condition(self, world):
         world.rule("voice")
-        world.manifest("when:\n  - (agent critic and flag strict: ['voice']\n")
+        world.write_config("(agent critic and flag strict:\n  include: voice\n")
 
         report = report_for(world)
 
@@ -228,12 +239,13 @@ class TestAConditionNamingAnUndeclaredModelOrFlagIsSkippedWithANotice:
     ):
         world.rule("voice")
         world.rule("tone")
-        world.manifest(
-            "models: ['haiku']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - model hiaku: ['tone']\n"
-            "  - model haiku: ['voice']\n"
+        world.write_config(
+            "models: haiku\n"
+            "defaults:\n"
+            "model hiaku:\n"
+            "  include: tone\n"
+            "model haiku:\n"
+            "  include: voice\n"
         )
 
         report = report_for(world)
@@ -250,18 +262,20 @@ class TestAConditionNamingAnUndeclaredModelOrFlagIsSkippedWithANotice:
 
     def test_an_agent_nobody_declares_is_no_check_error(self, world):
         world.rule("voice")
-        world.manifest("when:\n  - agent eval-runner: ['voice']\n")
+        world.write_config("agent eval-runner:\n  include: voice\n")
 
         assert check(world.rulesets).errors == ()
 
     def test_a_tool_and_a_session_identifier_nobody_declares_are_no_check_error(self, world):
         world.rule("voice")
-        world.manifest(
-            "defaults: []\n"
-            "when:\n"
-            "  - tools Bash: ['voice']\n"
-            "  - session abc123: ['voice']\n"
-            "  - not tools Edit and session xyz789: ['voice']\n"
+        world.write_config(
+            "defaults:\n"
+            "tools Bash:\n"
+            "  include: voice\n"
+            "session abc123:\n"
+            "  include: voice\n"
+            "not tools Edit and session xyz789:\n"
+            "  include: voice\n"
         )
 
         assert check(world.rulesets).errors == ()
@@ -297,7 +311,7 @@ class TestAnIdentifierEndingIn1mFollowsItsBaseNameUnlessA1mNameIsDeclared:
 class TestAModelNameDeclaredTwiceIsNotAnError:
     def test_a_name_declared_twice_draws_no_check_error_and_claims_as_once(self, world):
         world.rule("voice")
-        world.manifest("models: ['sonnet', 'sonnet']\ndefaults: ['voice']\n")
+        world.write_config("models: sonnet sonnet\ndefaults: voice\n")
 
         once = claim("claude-sonnet-5-5", ["sonnet"])
         twice = claim("claude-sonnet-5-5", ["sonnet", "sonnet"])
@@ -308,13 +322,13 @@ class TestAModelNameDeclaredTwiceIsNotAnError:
 
 
 class TestTheEngineHoldsNoModelName:
-    def test_a_manifest_declaring_no_model_claims_nothing(self):
+    def test_a_config_declaring_no_model_claims_nothing(self):
         for identifier in ("claude-opus-4-8", "claude-haiku-5"):
             assert isinstance(claim(identifier, []), model_fact.Unclaimed)
 
     def test_declaring_a_new_model_name_gives_sessions_on_it_the_rules_declared_for_it(self, world):
         world.rule("fresh")
-        world.manifest("models: ['opus-5']\ndefaults: []\nwhen:\n  - model opus-5: ['fresh']\n")
+        world.write_config("models: opus-5\ndefaults:\nmodel opus-5:\n  include: fresh\n")
 
         on_new = world.start_session(model="claude-opus-5-0")
         on_old = world.start_session(model="claude-opus-4-8", session_id="s2")
@@ -329,12 +343,13 @@ class TestAnUnclaimedIdentifierTestsFalseAndAMissingOneTestsUnknown:
         stems = ["writing-code", "security-pass", "voice"]
         for stem in stems:
             world.rule(stem)
-        world.manifest(
-            "models: ['haiku']\n"
-            "defaults: ['writing-code']\n"
-            "when:\n"
-            "  - model haiku: ['security-pass']\n"
-            "  - not model haiku: ['voice']\n"
+        world.write_config(
+            "models: haiku\n"
+            "defaults: writing-code\n"
+            "model haiku:\n"
+            "  include: security-pass\n"
+            "not model haiku:\n"
+            "  include: voice\n"
         )
 
         delivery = world.start_session(model="glm-5")
@@ -346,7 +361,7 @@ class TestAnUnclaimedIdentifierTestsFalseAndAMissingOneTestsUnknown:
 
     def test_a_claude_model_before_its_name_is_declared_draws_a_shown_notice(self, world):
         world.rule("writing-code")
-        world.manifest("models: ['haiku']\ndefaults: ['writing-code']\n")
+        world.write_config("models: haiku\ndefaults: writing-code\n")
 
         delivery = world.start_session(model="claude-nova-1")
 
@@ -367,7 +382,7 @@ class TestAMissingModelIdentifierMakesEveryModelTestUnknown:
         self, world
     ):
         world.rule("voice")
-        world.manifest(DECLARED + "defaults: []\nwhen:\n  - not model haiku: ['voice']\n")
+        world.write_config(DECLARED + ("defaults:\nnot model haiku:\n  include: voice\n"))
 
         delivery = world.start_session(model=None)
 
@@ -420,7 +435,7 @@ class TestAMissingModelIdentifierMakesEveryModelTestUnknown:
 class TestDeliveryCompletesWhenTheModelIsUnclaimedOrMissing:
     def test_a_block_testing_no_unknown_fact_applies_while_the_model_is_missing(self, world):
         world.rule("voice")
-        world.manifest("flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['voice']\n")
+        world.write_config("flags: strict\ndefaults:\nflag strict:\n  include: voice\n")
         world.environment["RULESETS_FLAGS"] = "strict"
 
         delivery = world.start_session(model=None)
@@ -434,7 +449,7 @@ def model_world(world, **variables):
     """A world declaring `opus`, `sonnet`, and `haiku`, with the given variables set."""
 
     world.rule("voice")
-    world.manifest("models: ['opus', 'sonnet', 'haiku']\ndefaults: ['voice']\n")
+    world.write_config("models: opus sonnet haiku\ndefaults: voice\n")
     world.environment.update(variables)
 
 
@@ -552,8 +567,8 @@ class TestTheAgentFactComesFromTheHarnessesAgentType:
         stems = ["voice", "tone"]
         for stem in stems:
             world.rule(stem)
-        world.manifest(
-            "defaults: []\nwhen:\n  - agent critic: ['voice']\n  - agent auditor: ['tone']\n"
+        world.write_config(
+            "defaults:\nagent critic:\n  include: voice\nagent auditor:\n  include: tone\n"
         )
 
         delivery = world.start_delegate("critic")
@@ -566,8 +581,8 @@ class TestTheAgentFactComesFromTheHarnessesAgentType:
         stems = ["voice", "tone"]
         for stem in stems:
             world.rule(stem)
-        world.manifest(
-            "defaults: []\nwhen:\n  - agent critic: ['voice']\n  - agent auditor: ['tone']\n"
+        world.write_config(
+            "defaults:\nagent critic:\n  include: voice\nagent auditor:\n  include: tone\n"
         )
 
         delivery = world.start_session(agent_type="critic")
@@ -580,7 +595,7 @@ class TestTheAgentFactComesFromTheHarnessesAgentType:
 class TestAPlainMainSessionCarriesNoAgentFact:
     def test_an_agent_test_evaluates_unknown_and_the_record_names_the_absence(self, world):
         world.rule("voice")
-        world.manifest("defaults: []\nwhen:\n  - agent eval-runner: ['voice']\n")
+        world.write_config("defaults:\nagent eval-runner:\n  include: voice\n")
 
         delivery = world.start_session()
 
@@ -593,11 +608,9 @@ class TestAPlainMainSessionCarriesNoAgentFact:
         assert absent["shown"] is False
         assert "agent fact is absent" in absent["subject"]
 
-    def test_a_manifest_that_tests_no_agent_draws_no_absence_notice(self, world):
+    def test_a_config_that_tests_no_agent_draws_no_absence_notice(self, world):
         world.rule("voice")
-        world.manifest(
-            "defaults: ['voice']\nflags: ['strict']\nwhen:\n  - flag strict: ['voice']\n"
-        )
+        world.write_config("flags: strict\ndefaults: voice\nflag strict:\n  include: voice\n")
 
         world.start_session()
 
@@ -608,7 +621,7 @@ class TestAPlainMainSessionCarriesNoAgentFact:
 class TestATestOverAnAbsentFactEvaluatesUnknown:
     def test_a_negation_over_an_absent_fact_stays_unknown_and_the_block_does_not_apply(self, world):
         world.rule("voice")
-        world.manifest("defaults: []\nwhen:\n  - not agent critic: ['voice']\n")
+        world.write_config("defaults:\nnot agent critic:\n  include: voice\n")
 
         delivery = world.start_session()
 
@@ -624,9 +637,9 @@ class TestConditionsCombineTrueFalseAndUnknownByThreeValuedLogic:
 
     def test_a_false_side_settles_an_and_inside_a_negation(self, world):
         world.rule("security-pass")
-        world.manifest(
+        world.write_config(
             DECLARED
-            + "defaults: []\nwhen:\n  - not (agent critic and model haiku): ['security-pass']\n"
+            + ("defaults:\nnot (agent critic and model haiku):\n  include: security-pass\n")
         )
 
         scout = world.start_delegate("scout", session_id="s1")
@@ -638,7 +651,7 @@ class TestConditionsCombineTrueFalseAndUnknownByThreeValuedLogic:
         assert truth("not (agent critic and model haiku)", agent="critic") == "UNKNOWN"
 
 
-TOOL_BLOCKS = "defaults: []\nwhen:\n  - tools Bash: ['voice']\n  - tools Edit: ['tone']\n"
+TOOL_BLOCKS = "defaults:\ntools Bash:\n  include: voice\ntools Edit:\n  include: tone\n"
 
 
 def define_agent(world, name, front):
@@ -658,7 +671,7 @@ def tools_of(world, name):
 def tools_world(world):
     for stem in ("voice", "tone"):
         world.rule(stem)
-    world.manifest(TOOL_BLOCKS)
+    world.write_config(TOOL_BLOCKS)
 
 
 class TestToolsComeFromTheAgentDefinition:
@@ -714,9 +727,9 @@ class TestAContextWithNoAgentDefinitionHasNoToolsFact:
         assert absent["shown"] is False
         assert "no definition file registers its agent type" in absent["subject"]
 
-    def test_a_manifest_that_tests_no_tools_draws_no_absence_notice(self, world):
+    def test_a_config_that_tests_no_tools_draws_no_absence_notice(self, world):
         world.rule("voice")
-        world.manifest("defaults: ['voice']\nwhen:\n  - agent critic: ['voice']\n")
+        world.write_config("defaults: voice\nagent critic:\n  include: voice\n")
 
         world.start_delegate("critic")
 
@@ -776,11 +789,8 @@ def haiku_rule_world(world):
 
     world.rule("voice")
     world.rule("terse")
-    world.manifest(
-        "models: ['opus', 'sonnet', 'haiku']\n"
-        "defaults: ['voice']\n"
-        "when:\n"
-        "  - model haiku: ['terse']\n"
+    world.write_config(
+        "models: opus sonnet haiku\ndefaults: voice\nmodel haiku:\n  include: terse\n"
     )
 
 
@@ -861,7 +871,7 @@ class TestSeveralMatchingPerSpawnRecordsNamingDifferentModels:
 class TestAPluginScopedAgentTypeReadsItsPluginsAgentsDirectory:
     def test_a_plugin_agent_reads_its_plugins_definition(self, world):
         world.rule("voice")
-        world.manifest("models: ['haiku']\ndefaults: []\nwhen:\n  - tools Read: ['voice']\n")
+        world.write_config("models: haiku\ndefaults:\ntools Read:\n  include: voice\n")
         install = world.config.parent / "installs" / "p@market"
         (install / "agents").mkdir(parents=True)
         (install / "agents" / "scout.md").write_text(
@@ -952,11 +962,8 @@ class TestADelegatesModelFactComesFromFourSourcesInOrder:
         self, world
     ):
         world.rule("writing-code")
-        world.manifest(
-            "models: ['sonnet', 'haiku']\n"
-            "defaults: ['writing-code']\n"
-            "when:\n"
-            "  - model haiku: ['-writing-code']\n"
+        world.write_config(
+            "models: sonnet haiku\ndefaults: writing-code\nmodel haiku:\n  exclude: writing-code\n"
         )
         define_agent(world, "builder", "model: sonnet")
         caller_names(world, "haiku", "builder", prompt_id="p1")
@@ -1046,12 +1053,13 @@ class TestAProjectDefinitionWinsOverTheHomeOne:
     def test_the_pin_and_the_tools_come_from_the_project_file(self, world):
         for stem in ("reading", "editing"):
             world.rule(stem)
-        world.manifest(
-            "models: ['opus', 'haiku']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - tools Read: ['reading']\n"
-            "  - tools Edit: ['editing']\n"
+        world.write_config(
+            "models: opus haiku\n"
+            "defaults:\n"
+            "tools Read:\n"
+            "  include: reading\n"
+            "tools Edit:\n"
+            "  include: editing\n"
         )
         define_agent(world, "scout", "model: opus\ntools: Edit")
         project = world.config.parent / "project"
@@ -1211,9 +1219,7 @@ class TestTheRecordNamesTheIdentifierAndTheNameThatClaimedIt:
 class TestTheRecordNamesTheAgentToolsAndFlagSources:
     def test_a_flag_a_toggle_set_names_toggle_as_its_source(self, world):
         world.rule("security-pass")
-        world.manifest(
-            "flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['security-pass']\n"
-        )
+        world.write_config("flags: strict\ndefaults:\nflag strict:\n  include: security-pass\n")
         world.start_session()
         world.toggle_flags({"strict": "set"})
 
@@ -1235,12 +1241,13 @@ class TestAnUnsetFlagTestsFalseNeverUnknown:
     ):
         world.rule("security-pass")
         world.rule("voice")
-        world.manifest(
-            "flags: ['strict']\n"
-            "defaults: []\n"
-            "when:\n"
-            "  - flag strict: ['security-pass']\n"
-            "  - not flag strict: ['voice']\n"
+        world.write_config(
+            "flags: strict\n"
+            "defaults:\n"
+            "flag strict:\n"
+            "  include: security-pass\n"
+            "not flag strict:\n"
+            "  include: voice\n"
         )
 
         delivery = world.start_session()
@@ -1253,7 +1260,7 @@ class TestAnUnsetFlagTestsFalseNeverUnknown:
 class TestAFlagNobodyDeclares:
     def test_check_reports_an_error_naming_the_condition_and_the_flag(self, world):
         world.rule("voice")
-        world.manifest("flags: ['strict']\ndefaults: []\nwhen:\n  - flag stirct: ['voice']\n")
+        world.write_config("flags: strict\ndefaults:\nflag stirct:\n  include: voice\n")
 
         report = report_for(world)
 
@@ -1264,9 +1271,7 @@ class TestAFlagNobodyDeclares:
     def test_delivery_skips_the_block_with_a_shown_notice_and_delivers_the_rest(self, world):
         world.rule("voice")
         world.rule("tone")
-        world.manifest(
-            "flags: ['strict']\ndefaults: ['tone']\nwhen:\n  - not flag stirct: ['voice']\n"
-        )
+        world.write_config("flags: strict\ndefaults: tone\nnot flag stirct:\n  include: voice\n")
 
         delivery = world.start_session()
 
@@ -1282,7 +1287,7 @@ class TestAFlagNobodyDeclares:
     def test_a_flag_a_toggle_sets_without_a_declaration_gives_its_block_to_no_delegate(self, world):
         world.rule("voice")
         world.rule("tone")
-        world.manifest("flags: ['strict']\ndefaults: ['tone']\nwhen:\n  - flag ghost: ['voice']\n")
+        world.write_config("flags: strict\ndefaults: tone\nflag ghost:\n  include: voice\n")
         world.toggle_flags({"ghost": "set"})
 
         delivery = world.start_delegate()
@@ -1297,9 +1302,7 @@ class TestAFlagNobodyDeclares:
 class TestALaunchFlagNobodyDeclares:
     def test_the_flag_is_dropped_changes_no_block_and_a_shown_notice_names_it(self, world):
         world.rule("security-pass")
-        world.manifest(
-            "flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['security-pass']\n"
-        )
+        world.write_config("flags: strict\ndefaults:\nflag strict:\n  include: security-pass\n")
         world.environment["RULESETS_FLAGS"] = "strict"
         control = world.start_session(session_id="control")
         world.environment["RULESETS_FLAGS"] = "stirct,strict"
@@ -1317,11 +1320,11 @@ class TestALaunchFlagNobodyDeclares:
 class TestALaunchFlagReachesTheFirstDelivery:
     def test_a_block_keyed_on_the_flag_removes_a_rule_from_the_first_delivery(self, world):
         world.rule("writing-code")
-        world.manifest(
-            "flags: ['without-writing-code']\n"
-            "defaults: ['writing-code']\n"
-            "when:\n"
-            "  - flag without-writing-code: ['-writing-code']\n"
+        world.write_config(
+            "flags: without-writing-code\n"
+            "defaults: writing-code\n"
+            "flag without-writing-code:\n"
+            "  exclude: writing-code\n"
         )
         control = world.start_session(session_id="control")
         world.environment["RULESETS_FLAGS"] = "without-writing-code"
@@ -1338,12 +1341,13 @@ class TestTwoLaunchFlags:
     ):
         for stem in ("voice", "voice@terse", "security-pass"):
             world.rule(stem)
-        world.manifest(
-            "flags: ['voice-terse', 'strict']\n"
-            "defaults: ['voice']\n"
-            "when:\n"
-            "  - flag voice-terse: ['voice@terse']\n"
-            "  - flag strict: ['security-pass']\n"
+        world.write_config(
+            "flags: voice-terse strict\n"
+            "defaults: voice\n"
+            "flag voice-terse:\n"
+            "  include: voice@terse\n"
+            "flag strict:\n"
+            "  include: security-pass\n"
         )
         world.environment["RULESETS_FLAGS"] = "voice-terse,strict"
 
@@ -1366,9 +1370,7 @@ class TestTwoLaunchFlags:
 class TestALaunchFlagReachesADelegate:
     def test_two_delegates_of_different_agent_types_both_hold_the_flag(self, world):
         world.rule("security-pass")
-        world.manifest(
-            "flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['security-pass']\n"
-        )
+        world.write_config("flags: strict\ndefaults:\nflag strict:\n  include: security-pass\n")
         world.environment["RULESETS_FLAGS"] = "strict"
 
         world.start_session()
@@ -1385,8 +1387,8 @@ class TestAToggleUnsetMidSession:
     ):
         world.rule("voice")
         world.rule("voice@terse")
-        world.manifest(
-            "flags: ['voice-terse']\ndefaults: ['voice']\nwhen:\n  - flag voice-terse: ['voice@terse']\n"
+        world.write_config(
+            "flags: voice-terse\ndefaults: voice\nflag voice-terse:\n  include: voice@terse\n"
         )
         world.environment["RULESETS_FLAGS"] = "voice-terse"
         world.start_session()
@@ -1403,9 +1405,7 @@ class TestAToggleUnsetMidSession:
 
     def test_a_toggle_set_flag_holds_for_the_next_delegate_with_source_toggle(self, world):
         world.rule("security-pass")
-        world.manifest(
-            "flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['security-pass']\n"
-        )
+        world.write_config("flags: strict\ndefaults:\nflag strict:\n  include: security-pass\n")
         world.start_session()
         world.toggle_flags({"strict": "set"})
 
@@ -1417,9 +1417,7 @@ class TestAToggleUnsetMidSession:
 
     def test_a_toggle_never_changes_the_main_sessions_flags(self, world):
         world.rule("security-pass")
-        world.manifest(
-            "flags: ['strict']\ndefaults: []\nwhen:\n  - flag strict: ['security-pass']\n"
-        )
+        world.write_config("flags: strict\ndefaults:\nflag strict:\n  include: security-pass\n")
         world.toggle_flags({"strict": "set"})
 
         session = world.start_session()
@@ -1430,7 +1428,7 @@ class TestAToggleUnsetMidSession:
 class TestAModelNamedForOneSpawnSetsNoFlag:
     def test_each_delegates_flags_are_exactly_the_launch_flag(self, world):
         world.rule("voice")
-        world.manifest("models: ['opus', 'haiku']\nflags: ['strict']\ndefaults: ['voice']\n")
+        world.write_config("models: opus haiku\nflags: strict\ndefaults: voice\n")
         world.environment["RULESETS_FLAGS"] = "strict"
         caller_names(world, "haiku", "critic")
 
@@ -1507,8 +1505,8 @@ class TestAModelSwitchsTargetIsTheNextDeliverysIdentifier:
     ):
         world.rule("core-rules")
         world.rule("opus-rules")
-        world.manifest(
-            DECLARED + "defaults: ['core-rules']\nwhen:\n  - model opus: ['opus-rules']\n"
+        world.write_config(
+            DECLARED + ("defaults: core-rules\nmodel opus:\n  include: opus-rules\n")
         )
         world.start_session()
 
