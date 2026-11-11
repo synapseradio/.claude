@@ -23,7 +23,8 @@ record (runtime reference, case 21).
 
 1. Run `RUN CLI explain NAME --root ROOT` with the context's facts.
 2. Report the two attributes it prints, inclusion and variant: the winning line, with file and
-   line, and the lines it beat.
+   line, and the lines it beat. Each line quotes its reference as the config writes it, as
+   `exclude bash.shell-scripts`, under the block's combined condition.
 3. Where explain shows the rule included and the context still lacks it, run
    `RUN CLI check --root ROOT`: delivery withholds a rule whose file carries an error.
 4. Where it exits 1, the pool holds no rule of that name.

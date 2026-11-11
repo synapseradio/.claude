@@ -1,11 +1,11 @@
 # Rule files
 
-Required reading: [The rulesets directory and manifest](../../../docs/manifest.md), the sections
+Required reading: [The rulesets directory and config](../../../docs/config.md), the sections
 "Words used here" and "The rulesets directory".
 
 Every case here runs inside the frame SKILL.md sets: "Before any edit" first, "After any change"
 last. A pool file delivers nothing by being there; a rule reaches a context only through a
-reference in the manifest.
+reference in the config.
 
 ## The form the engine holds a rule file to
 
@@ -29,9 +29,9 @@ reference in the manifest.
 ## 1. Add a rule
 
 1. Write `ROOT/rules/NAME.md` holding the rule's text, in the form above.
-2. Reference it. Where `defaults` holds `all:*` or `*`, every context already receives it.
-   Otherwise add `"NAME"` to the list that serves the contexts it belongs in: `defaults` for every
-   context, a named ruleset, or a `when` block (manifest reference, cases 12 and 13).
+2. Reference it. Where `defaults` includes `all.*`, every context already receives it.
+   Otherwise add `NAME` to the list that serves the contexts it belongs in: `defaults` for every
+   context, a named set, or a block (config reference, cases 12 and 13).
 3. In the impact diff, confirm `+ NAME` stands under each context it should reach and under no
    other.
 
@@ -54,14 +54,14 @@ text with `CLI render --out` (inspecting reference, case 15).
 
 1. Write `ROOT/rules/NAME@VARIANT.md` as a complete body, which replaces the default form wherever
    the variant is set. `NAME.md` must exist.
-2. Set it with `"NAME@VARIANT"` in the list of the block whose contexts should receive it (manifest
+2. Set it with `NAME@VARIANT` under `include` in the block whose contexts should receive it (config
    reference, case 11).
 3. Run `RUN CLI explain NAME --root ROOT` with the facts of one such context, and confirm the
    variant attribute names `VARIANT`.
 
 ## 4. Remove a rule or a variant
 
-1. Find every reference: search `ROOT/manifest.yaml` for `NAME`, `NAME@`, `-NAME`, and `rules:NAME`.
+1. Find every reference: search `ROOT/config.yaml` for `NAME`, `NAME@`, `.NAME`, and `rules.NAME`.
    For one variant, search for `NAME@VARIANT`.
 2. Confirm with the person before deleting any file.
 3. Remove each reference, then delete `ROOT/rules/NAME.md` and every `ROOT/rules/NAME@*.md`, or only
@@ -73,7 +73,7 @@ text with `CLI render --out` (inspecting reference, case 15).
 1. Confirm no `ROOT/rules/NEW.md` or `NEW@*.md` exists.
 2. Move `OLD.md` to `NEW.md` and each `OLD@VARIANT.md` to `NEW@VARIANT.md`, with `git mv` where
    the directory is tracked.
-3. Rewrite every manifest reference to `OLD`, in each form step 1 of case 4 lists.
+3. Rewrite every config reference to `OLD`, in each form step 1 of case 4 lists.
 4. In the impact diff, confirm `- OLD` and `+ NEW` stand under exactly the same contexts.
 
 ## 6. Split a rule over 9,000 characters

@@ -1,11 +1,11 @@
 ---
 name: rulesets
-description: Write, edit, inspect, and debug the rules a rulesets directory delivers to each session and delegate, and toggle what this session's next delegates receive. The directory holds a pool of rule files (rules/NAME.md, variants NAME@VARIANT.md) and a manifest.yaml of models, flags, named rulesets, defaults, and when blocks. Use it to add, edit, rename, split, or remove a rule or variant; give a rule to one model, agent, tool, or flag, or withhold it; clear check errors and warnings; explain why a context got or missed a rule; preview what an edit changes across contexts; gate a commit; turn a flag on or off for the delegates started next; launch with RULESETS_FLAGS; read what a session or delegate received; find why no rules arrive; set up a first rulesets directory, adopt an old rules folder, or eject to plain files. Use it whenever a request touches the rules pool, the manifest, a rule variant, a ruleset flag, or which rules a delegate gets, even where it never says "rulesets".
+description: Write, edit, inspect, and debug the rules a rulesets directory delivers to each session and delegate, and toggle what this session's next delegates receive. The directory holds a pool of rule files (rules/NAME.md, variants NAME@VARIANT.md) and a config.yaml of models, flags, defaults, named sets, and condition blocks. Use it to add, edit, rename, split, or remove a rule or variant; give a rule to one model, agent, tool, or flag, or withhold it; clear check errors and warnings; explain why a context got or missed a rule; preview what an edit changes across contexts; gate a commit; turn a flag on or off for the delegates started next; launch with RULESETS_FLAGS; read what a session or delegate received; find why no rules arrive; set up a first rulesets directory, adopt an old rules folder, or eject to plain files. Use it whenever a request touches the rules pool, the config, a rule variant, a ruleset flag, or which rules a delegate gets, even where it never says "rulesets".
 ---
 
 # Rulesets
 
-A rulesets directory holds a pool of rule files and one manifest. The manifest decides which rules
+A rulesets directory holds a pool of rule files and one config, `config.yaml`. The config decides which rules
 each context receives, a context being the main session or one delegate. The plugin's hooks deliver
 each context its rules and record what they delivered.
 
@@ -41,9 +41,9 @@ session's own rules, and every running delegate's, as they are.
 | --- | --- |
 | `all` | receive every rule in the pool |
 | `none` | receive no rule |
-| `flag NAME` | hold the flag `NAME`, which the manifest declares |
+| `flag NAME` | hold the flag `NAME`, which the config declares |
 | `unflag NAME` | do not hold the flag `NAME` |
-| `clear` | compose from the manifest and the launch flags alone |
+| `clear` | compose from the config and the launch flags alone |
 
 Read a plain request as its action: "turn on strict for my delegates" is `flag strict`, "stop giving
 delegates strict" is `unflag strict`, "give my delegates no rules" is `none`. Run the command with
@@ -69,12 +69,12 @@ ends every toggle.
 | 6 | Split a rule over 9,000 characters | [rules](references/rules.md) |
 | 7 | Clear `check` warnings | [rules](references/rules.md) |
 | 8 | Move a rule out of the harness's own rules folder into the pool | [rules](references/rules.md) |
-| 9 | Declare a model or a flag | [manifest](references/manifest.md) |
-| 10 | Create, edit, delete, or spread a named ruleset | [manifest](references/manifest.md) |
-| 11 | Add, edit, or remove a `when` block | [manifest](references/manifest.md) |
-| 12 | Give a rule to a context, withhold it, or set its variant for one context | [manifest](references/manifest.md) |
-| 13 | Change `defaults` | [manifest](references/manifest.md) |
-| 14 | A remove or a variant loses, or `check` reports a variant conflict | [manifest](references/manifest.md) |
+| 9 | Declare a model or a flag | [config](references/config.md) |
+| 10 | Create, edit, delete, or spread a named set | [config](references/config.md) |
+| 11 | Add, edit, nest, or remove a condition block | [config](references/config.md) |
+| 12 | Give a rule to a context, withhold it, or set its variant for one context | [config](references/config.md) |
+| 13 | Change `defaults` | [config](references/config.md) |
+| 14 | An exclude or a variant loses, or `check` reports a variant conflict | [config](references/config.md) |
 | 15 | Show one context's full set of rules | [inspecting](references/inspecting.md) |
 | 16 | Why a context got or missed a rule | [inspecting](references/inspecting.md) |
 | 17 | What an edit changes across every context | [inspecting](references/inspecting.md) |
@@ -88,12 +88,13 @@ ends every toggle.
 | 25 | First setup | [setup and migration](references/setup-and-migration.md) |
 | 26 | Adopt an old corpus or rules folder | [setup and migration](references/setup-and-migration.md) |
 | 27 | Eject to plain files | [setup and migration](references/setup-and-migration.md) |
+| 28 | A directory holds an older config file and no `config.yaml` | [setup and migration](references/setup-and-migration.md) |
 
 ## The files
 
 | Path | Role | Written by |
 | --- | --- | --- |
-| `ROOT/manifest.yaml` | which rules each context receives | you, `scaffold.py`, `CLI adopt` |
+| `ROOT/config.yaml` | which rules each context receives | you, `scaffold.py`, `CLI adopt` |
 | `ROOT/rules/` | the pool: `NAME.md` is a rule's default form, `NAME@VARIANT.md` a variant | you, `CLI split`, `scaffold.py`, `CLI adopt` |
 | `ROOT/references/` | files a rule may cite | you |
 | `ROOT/-render/` | composed renders for reading and editing, never read as rules | `CLI render`, `scaffold.py` |
@@ -101,7 +102,7 @@ ends every toggle.
 
 ## Before any edit
 
-1. Read `ROOT/manifest.yaml` and every file the edit touches, in full.
+1. Read `ROOT/config.yaml` and every file the edit touches, in full.
 2. Take a snapshot into a new directory, and keep its path for the diff:
    `RUN SCRIPTS/impact.py snapshot --root ROOT --out "$(mktemp -d)/before"`.
 

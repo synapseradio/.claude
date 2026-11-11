@@ -5,10 +5,10 @@ Required reading: [Commands](../../../docs/commands.md), the sections on `adopt`
 
 ## 25. First setup
 
-1. Run `RUN SCRIPTS/scaffold.py --root ROOT`. It writes `manifest.yaml` (`models: []`, `flags: []`,
-   `defaults: ["all:*"]`), `rules/example.md`, and the render, into a missing directory, an empty
+1. Run `RUN SCRIPTS/scaffold.py --root ROOT`. It writes `config.yaml` (empty `models` and `flags`,
+   and `defaults: all.*`), `rules/example.md`, and the render, into a missing directory, an empty
    one, or the empty directory a first session creates.
-2. Where it refuses with exit 2, the directory already holds a manifest that declares something,
+2. Where it refuses with exit 2, the directory already holds a config that declares something,
    or other files: leave it, and go to the case that fits the request.
 3. Replace the example: rename it (rules reference, case 5) and rewrite its text (case 2), or add
    the first real rule (case 1) and remove the example (case 4).
@@ -40,3 +40,18 @@ Required reading: [Commands](../../../docs/commands.md), the sections on `adopt`
    every such line to the person: those contexts lose those rules or variants once the plugin is
    gone.
 3. It changes no file under `ROOT`. Uninstalling the plugin is the person's own step.
+
+## 28. A directory holds an older config file and no `config.yaml`
+
+The engine reads only `config.yaml`. Where the directory holds an older config file and no
+`config.yaml`, delivery sends the default form of every rule and shows a notice naming
+`config.yaml`.
+
+1. Run `RUN CLI check --root ROOT`. The error names both files.
+2. Write `ROOT/config.yaml` in the layout of the config reference: `models`, `flags`, `defaults`,
+   and `sets` as keys, and every other key a condition block with its lists under `include` and
+   `exclude`. Run `check` again; each error it reports at a line still in an old form names the
+   form that replaces it.
+3. Run `RUN CLI explain NAME --root ROOT` for the rules each kind of context should receive, then
+   `RUN SCRIPTS/gate.py --root ROOT`. Remove the older file once both agree with what you meant to
+   write.

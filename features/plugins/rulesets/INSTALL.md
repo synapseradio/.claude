@@ -38,15 +38,15 @@ claude plugin install rulesets@claude-root
 ## 2. Let the first session scaffold the directory
 
 Start a session. Where `~/.claude/rulesets` does not exist, the first delivery of the session
-creates it, with an empty `rules/` pool and a manifest that declares nothing. It delivers no rules,
+creates it, with an empty `rules/` pool and a `config.yaml` that declares nothing. It delivers no rules,
 and it shows you a message saying where it scaffolded.
 
 An empty pool is legal. A `defaults` list that names nothing delivers nothing, so write your rules
 first.
 
-## 3. Add a rule and a manifest line
+## 3. Add a rule and a config line
 
-Write a rule as a markdown file in the pool, then reference it from the manifest. A rule file holds
+Write a rule as a markdown file in the pool, then reference it from `config.yaml`. A rule file holds
 the rule's text and no marker line; delivery writes the marker.
 
 ```text
@@ -54,11 +54,15 @@ the rule's text and no marker line; delivery writes the marker.
 ```
 
 ```yaml
-defaults: ["all:*"]
+defaults: all.*
 ```
 
-`all:*` spreads every rule in the pool to every context. See [the manifest page](docs/manifest.md) for
-variants, blocks, and flags.
+`all.*` spreads every rule in the pool to every context. See [the config page](docs/config.md) for
+variants, sets, blocks, and flags.
+
+The plugin reads `config.yaml` and no other file for its config. A rulesets directory that holds an
+older config file and no `config.yaml` delivers every rule's default form, shows a notice naming
+`config.yaml`, and draws a `check` error with the form to write for each old line.
 
 If you hold rules already, `adopt` maps a folder of rule files, or a tier corpus, into a new
 rulesets directory and compares what the source delivers with what the new directory delivers:
@@ -115,7 +119,7 @@ and, for a delegate, its identifier. A session with no record prints nothing and
 means no delivery reached it: check that the plugin is installed and enabled, then that
 Python 3.14 with PyYAML is available.
 
-To compare a record with what the manifest and the pool compose now:
+To compare a record with what the config and the pool compose now:
 
 ```bash
 python3.14 <plugin directory>/lib/rulesets/cli.py delivery-check --session <session id>

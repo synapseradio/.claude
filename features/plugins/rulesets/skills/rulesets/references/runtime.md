@@ -7,7 +7,7 @@ Case 19, the toggle, lives in SKILL.md under Toggle.
 
 ## 20. Launch with flags
 
-1. Confirm each flag is declared in `ROOT/manifest.yaml` (manifest reference, case 9).
+1. Confirm each flag is declared in `ROOT/config.yaml` (config reference, case 9).
 2. Set `RULESETS_FLAGS` in the environment that starts the session, a comma-separated list, as
    `RULESETS_FLAGS=strict,brief` before the launch command.
 3. A misspelled or undeclared flag is dropped, and the session start shows a notice naming it.
@@ -24,7 +24,7 @@ Case 19, the toggle, lives in SKILL.md under Toggle.
    - `deliveries`: one tab-separated line per delivery that reached a context: the scope
      (`session`, `delegate`, or `switch`), the model, the model's source, the rule count, the flags
      (or `-`), and the delegate identifier for a delegate.
-   - `delivery-check`: each rule a delivery sent that the manifest and pool would not compose now,
+   - `delivery-check`: each rule a delivery sent that the config and pool would not compose now,
      or composes now and the delivery lacked, or at a different variant, and each later part
      never sent or sent with other text. A line here means the directory changed since, or a
      delivery went wrong.
@@ -42,9 +42,10 @@ Work down the list, stopping at the first that explains it.
    the plugin is installed and enabled.
 2. Run `RUN --version`. Where it prints no version, no interpreter runs the engine: install PyYAML
    for Python 3.14 or later, or set `RULESETS_PYTHON` to an interpreter's path or name.
-3. Run `RUN CLI check --root ROOT`. A missing or unparsable manifest makes delivery send the
-   default form of every rule in the pool, with a notice.
-4. A rule count of 0: the manifest references no rule for that context. Run case 15 of the
+3. Run `RUN CLI check --root ROOT`. A missing or unparsable config makes delivery send the
+   default form of every rule in the pool, with a notice. A directory that holds an older config
+   file and no `config.yaml` is such a case (setup and migration reference, case 28).
+4. A rule count of 0: the config references no rule for that context. Run case 15 of the
    inspecting reference with its facts, then case 16 for the rule expected.
 5. Rules arrive, but not the expected one: go to case 16 of the inspecting reference.
 
@@ -56,10 +57,15 @@ Work down the list, stopping at the first that explains it.
 
 ## 24. Try another wording and compare
 
-1. Declare a flag for the trial, as `"try-terse"` (manifest reference, case 9).
+1. Declare a flag for the trial, as `try-terse` (config reference, case 9).
 2. Write the new wording as a variant, `ROOT/rules/NAME@VARIANT.md` (rules reference, case 3).
-3. Add a block that sets it under the flag: `- "flag try-terse": ["NAME@VARIANT"]` (manifest
-   reference, case 11). Run the gate.
+3. Add a block that sets it under the flag (config reference, case 11), then run the gate:
+
+   ```yaml
+   flag try-terse:
+     include: NAME@VARIANT
+   ```
+
 4. Ask the person to launch two sessions that differ only by the flag, one with
    `RULESETS_FLAGS=try-terse` and one without, to run the same task in each, and to give you both
    session identifiers.

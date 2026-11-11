@@ -63,6 +63,6 @@ message.
 - **A session that cannot start the engine.** Where no interpreter reports Python 3.14 with PyYAML,
   the session starts without the plugin's rules and you see a message naming the requirement.
 
-Where the manifest is missing or does not parse, delivery sends the default form of every rule in
+Where `config.yaml` is missing or does not parse, delivery sends the default form of every rule in
 the pool, with a notice. Where no rulesets directory exists, the first delivery creates an empty one
 and says where, at session start.
