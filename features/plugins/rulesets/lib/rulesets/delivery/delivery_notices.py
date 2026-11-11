@@ -13,6 +13,7 @@ from rulesets.notices import (
     block_skipped_notice,
     config_missing_notice,
     config_unparsable_notice,
+    key_skipped_notice,
     old_config_file_notice,
     reference_notice,
     scaffold_failed_notice,
@@ -20,7 +21,7 @@ from rulesets.notices import (
     variant_conflict_notice,
     withheld_notice,
 )
-from rulesets.source.config import CONFIG_FILE
+from rulesets.source.config import CONFIG_FILE, DuplicateKey
 from rulesets.source.directory import Missing as ConfigMissing
 from rulesets.source.directory import Present, RulesetsDirectory, Unparsable
 from rulesets.source.scaffold import AlreadyPresent, Scaffolded, ScaffoldFailed
@@ -47,8 +48,12 @@ def directory_notices(
             return (old_config_file_notice(str(old_file), str(root / CONFIG_FILE)),)
         case Unparsable(error=error):
             return (config_unparsable_notice(str(error)),)
-        case Present():
-            return ()
+        case Present(config=config):
+            return tuple(
+                key_skipped_notice(problem.key, problem.lines)
+                for problem in config.problems
+                if isinstance(problem, DuplicateKey)
+            )
 
 
 def composition_notices(composition: Composition) -> tuple[Notice, ...]:

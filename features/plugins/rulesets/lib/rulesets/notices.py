@@ -15,6 +15,7 @@ type NoticeKind = Literal[
     "delivery-failure",
     "directory-scaffolded",
     "earlier-rules-remain",
+    "key-skipped",
     "launch-flag-undeclared",
     "config-missing",
     "config-unparsable",
@@ -38,6 +39,7 @@ SHOWN: frozenset[NoticeKind] = frozenset(
         "block-skipped",
         "delivery-failure",
         "directory-scaffolded",
+        "key-skipped",
         "launch-flag-undeclared",
         "config-missing",
         "config-unparsable",
@@ -100,6 +102,17 @@ def block_skipped_notice(condition: str, undeclared: Undeclared) -> Notice:
     ]
     return Notice(
         "block-skipped", f"the block keyed `{condition}` is skipped: {'; '.join(reasons)}"
+    )
+
+
+def key_skipped_notice(key: str, lines: tuple[int, ...]) -> Notice:
+    """The notice for a key written more than once in one mapping of the config; every copy is skipped."""
+
+    at = ", ".join(str(line) for line in lines[:-1]) + f" and {lines[-1]}"
+    return Notice(
+        "key-skipped",
+        f"the config writes `{key}` at lines {at} of one mapping, so delivery skips every copy; "
+        "a second list under one condition goes under `then`",
     )
 
 

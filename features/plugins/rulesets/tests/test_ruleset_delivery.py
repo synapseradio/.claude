@@ -1843,3 +1843,23 @@ class TestTheEngineReadsOnlyConfigYaml:
         assert str(world.rulesets / "config.yaml") in delivery.message
         assert str(world.rulesets / "manifest.yaml") in delivery.message
         assert "reads only the config" in delivery.message
+
+
+class TestAConditionKeyWrittenTwiceAtDelivery:
+    def test_neither_block_delivers_and_a_shown_notice_names_the_key_and_both_lines(self, world):
+        world.rule("voice")
+        world.rule("tone")
+        world.write_config(
+            DECLARED + "defaults:\nmodel haiku:\n  include: voice\nmodel haiku:\n  include: tone\n"
+        )
+
+        delivery = world.start_session(model=HAIKU)
+
+        assert "text of voice" not in delivery.context
+        assert "text of tone" not in delivery.context
+        assert delivery.message is not None
+        assert "`model haiku` at lines 3 and 5" in delivery.message
+        assert "`then`" in delivery.message
+        (record,) = world.records()
+        (skipped,) = [n for n in record["notices"] if n["kind"] == "key-skipped"]
+        assert skipped["shown"] is True
