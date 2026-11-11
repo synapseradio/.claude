@@ -326,6 +326,7 @@ Keep `--no-verify` out of every command.
 
 The repository is public and others push to or review the branch ? open the PR from your fork.
 Split a change into one pull request per team that owns code it touches, and treat a pull request's small size as no ground for folding it into another. Give every line of work its own worktree.
+The teams' parts break apart ? one pull request, one commit per owning team holding all its files, scope naming the team, trailer naming its handle, shared part first.
 Before showing a pull request's title and body, a draft offered as an option or one a delegate wrote included, run `thinkies:communicate` over them, checking that they read concise, relatable, written for their reader and purpose, and at the right altitude.
 A stack is reordered, a branch moving below its former base ? run `gh pr edit <n> --base <new parent>` for every pull request whose parent changes, the new parent already on the remote -> push.
 A migration, import, or sweep meets a branch ? date it by its last commit -> the branch is more than three days old and other than the trunk ? take nothing from it.
