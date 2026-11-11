@@ -1,10 +1,10 @@
 {
   "name": "rulesets",
-  "version": "3.0.0",
-  "description": "Compose the rules each Claude Code session and delegate receives from a pool of rule files and a manifest of conditional blocks, with flags, toggles, notices, delivery records, check, explain, adopt, eject, and render.",
+  "version": "4.0.0",
+  "description": "Compose the rules each Claude Code session and delegate receives from a pool of rule files and a config.yaml of conditional blocks, with flags, toggles, notices, delivery records, check, explain, adopt, eject, and render.",
   "keywords": [
     "rules",
     "hooks",
-    "manifest"
+    "config"
   ]
 }
