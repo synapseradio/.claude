@@ -1069,7 +1069,7 @@ class TestAdoptProvesEveryContextsTextUnchanged:
         assert result.returncode == 0, result.stdout + result.stderr
         assert different_lines(result) == []
 
-    def test_the_model_named_tier_matches_the_corpus_when_the_manifest_declares_its_name(
+    def test_the_model_named_tier_matches_the_corpus_when_the_config_declares_its_name(
         self, tmp_path, monkeypatch
     ):
         from rulesets.compare.run import compare as run_compare
@@ -1107,7 +1107,7 @@ class TestAdoptProvesEveryContextsTextUnchanged:
         assert context.difference is None
         assert compare(corpus.root, world.rulesets).returncode == 0
 
-    def test_the_model_named_tier_takes_opus_when_the_manifest_lacks_its_name(self, tmp_path):
+    def test_the_model_named_tier_takes_opus_when_the_config_lacks_its_name(self, tmp_path):
         corpus = Corpus(tmp_path, extra_tiers=("claude-opus-4-8",))
         default_text = corpus.body("default", "spawn-decision")
         opus_text = corpus.body("opus", "spawn-decision")

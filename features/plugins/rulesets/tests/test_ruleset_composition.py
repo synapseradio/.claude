@@ -346,7 +346,7 @@ class TestAStrikeDecidesOnlyAgainstTheVariantItNames:
         assert received(root, context()) == {"voice": None}
 
 
-class TestTheManifestDeclaresFlags:
+class TestTheConfigDeclaresFlags:
     def test_a_flags_key_lists_the_declared_flags_and_check_reports_no_error(self, tmp_path):
         root = build(tmp_path, "flags: strict terse\ndefaults:\n", {})
 

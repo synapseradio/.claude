@@ -537,7 +537,7 @@ class TestTheActionsAllAndNoneSetTheSessionBandsList:
         assert second.context == CORE + "text of critic-rules\n"
 
 
-class TestTheFlagActionsCheckTheNameAgainstTheManifestsFlags:
+class TestTheFlagActionsCheckTheNameAgainstTheConfigsFlags:
     @pytest.mark.parametrize("action", ["flag", "unflag"])
     def test_an_undeclared_flag_name_is_named_refused_and_writes_nothing(self, world, action):
         declare_strict(world)
@@ -565,7 +565,7 @@ class TestTheFlagActionsCheckTheNameAgainstTheManifestsFlags:
 
 
 class TestTheActionClearRemovesTheSessionsState:
-    def test_clear_undoes_none_so_the_next_delegate_gets_the_manifests_rules(self, world):
+    def test_clear_undoes_none_so_the_next_delegate_gets_the_configs_rules(self, world):
         world.rule("core-rules")
         world.write_config(DECLARED + "defaults: core-rules\n")
         assert world.toggle("none").returncode == 0
@@ -576,7 +576,7 @@ class TestTheActionClearRemovesTheSessionsState:
         assert not world.state_file().exists()
         assert world.start_delegate().context == CORE
 
-    def test_clear_removes_a_state_file_no_toggle_could_read_and_the_next_delegate_gets_the_manifests_rules(
+    def test_clear_removes_a_state_file_no_toggle_could_read_and_the_next_delegate_gets_the_configs_rules(
         self, world
     ):
         world.rule("core-rules")
@@ -1033,7 +1033,7 @@ class TestADelegatesDeliveryWritesNoSessionFile:
         assert tree_of(world.rulesets) == rulesets
 
 
-class TestAMissingOrUnparsableManifestDeliversEveryRuleAtItsDefault:
+class TestAMissingOrUnparsableConfigDeliversEveryRuleAtItsDefault:
     def test_a_missing_config_delivers_each_default_form_sorted_and_the_notice_names_the_path(
         self, world
     ):

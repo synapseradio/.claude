@@ -92,7 +92,7 @@ class TestTheBoundary:
         assert isinstance(claim("opus-4-8-preview", ["opus", "opus-4-8"]), model_fact.Unclaimed)
 
 
-class TestTheManifestHoldsEveryName:
+class TestTheConfigHoldsEveryName:
     def test_a_name_declared_twice_claims_as_declared_once(self):
         twice = claim("claude-sonnet-5", ["sonnet", "sonnet"])
 
