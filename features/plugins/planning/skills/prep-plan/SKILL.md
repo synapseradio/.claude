@@ -20,7 +20,10 @@ Planning runs as a loop. Each pass below states when it is entered, what it does
 
 ## Standing through every pass
 
-Write for the executor.
+Write to the executor directly, as "you".
+Hold the executor, in every case, as a fresh instance holding only the plan file's content, with none of the conversation, the names it coined, or what you learned while planning.
+Define in the plan's Glossary each term, label, abbreviation, and piece of context the executor needs and the rest of the plan leaves unexplained.
+State each fact the executor acts on in the plan, or name the file that holds it by absolute path.
 Until approval, change only the plan file and the scratchpad.
 Replace each bracket in the templates below with what it describes.
 Write each pass's results into the readiness file as they arrive, so the file always shows which lines stay open.
@@ -40,14 +43,14 @@ Open the readiness file, and keep it in this form.
 - known: [what a source shows, with the source and date read]
 - assumed (needs verification before display to user): [what lacks a source, with the evidence to seek]
 - must verify: [a claim the plan rests on, with the check that settles it]
-- must ask: [a question only the user settles, open inferred decisions included]
+- must determine: [a question only the user settles, open inferred decisions included]
 ```
 
 Ends: the readiness file holds the intent line. Next: gather.
 
 ## The loop
 
-Loop reads, delegates, searches, and checks until no must verify or must ask line remains and every plan-changing fork is settled. Gather, settle, and ask repeat in that cycle; write the plan, verify readiness, and exit follow once it closes, and each sends the loop back where it meets an open line.
+Loop reads, delegates, searches, and checks until no must verify or must determine line remains and every plan-changing fork is settled. Gather, settle, and ask repeat in that cycle; write the plan, verify readiness, and exit follow once it closes, and each sends the loop back where it meets an open line.
 
 ### 1. Gather
 
@@ -65,28 +68,28 @@ Act: Settle every plan-changing fork by the guard below, and keep each out of In
 
 ```text
 settle unknown
-  | only the work observes it = a plan arm, with a must ask line for each act
+  | only the work observes it = a plan arm, with a must determine line for each act
       under it that only the user chooses or that stops the work
   | a source or a check settles it = a must verify line
-  | otherwise = a must ask line, its answer written in as a decision
+  | otherwise = a must determine line, its answer written in as a decision
 ```
 
 A must verify line whose check ran and left it open goes through the guard again, where neither a source nor a check settles it.
 
-Ends: every unknown met so far stands as a plan arm, a must verify line, or a must ask line. Next: a must verify line stands ? gather. Findings have yet to land, or a must ask line stands ? ask. Otherwise ? write the plan.
+Ends: every unknown met so far stands as a plan arm, a must verify line, or a must determine line. Next: a must verify line stands ? gather. Findings have yet to land, or a must determine line stands ? ask. Otherwise ? write the plan.
 
 ### 3. Ask
 
-Entered: settle ends with findings yet to land, or with a must ask line open.
+Entered: settle ends with findings yet to land, or with a must determine line open.
 
 Act: Land findings (evidence by path, open questions, approaches with tradeoffs) in a turn of their own -> stop -> write the plan on the framing the user picks.
-Ask must ask lines in grouped rounds, through an installed asking skill or plugin > AskUserQuestion.
+Ask must determine lines in grouped rounds, through an installed asking skill or plugin > AskUserQuestion.
 
-Ends: the answers arrive. Write each answer in as a decision line, confirmed, and clear its must ask line; write the framing the user picks in as a decision line. Next: an answer opens an unknown or contradicts a known line ? settle. A must ask line stands ? ask again. Otherwise ? write the plan.
+Ends: the answers arrive. Write each answer in as a decision line, confirmed, and clear its must determine line; write the framing the user picks in as a decision line. Next: an answer opens an unknown or contradicts a known line ? settle. A must determine line stands ? ask again. Otherwise ? write the plan.
 
 ### 4. Write the plan
 
-Entered: the user has picked a framing, no must verify or must ask line remains, and every plan-changing fork is settled.
+Entered: the user has picked a framing, no must verify or must determine line remains, and every plan-changing fork is settled.
 
 Act: Write the plan file in the form below, by the writing lines after it.
 
@@ -94,7 +97,7 @@ Ends: each work unit carries its entries or its document section and its check, 
 
 #### Form
 
-The plan delegates nothing and builds on no document of record ? short form (Target outcomes, entries, Verification) : brief form.
+The plan delegates nothing and builds on no document of record ? short form (Glossary, Target outcomes, entries, Verification) : brief form.
 Name once the absolute root that entry paths resolve against.
 
 ```markdown
@@ -109,6 +112,8 @@ Entries sharing a check form one table, the check beneath.
 Brief form, in order, empty parts left out:
 
 ```markdown
+## Glossary
+[each term, label, abbreviation, and piece of context the plan uses that a fresh reader lacks, one line each]
 ## Target outcomes
 [observable end states of the finished work; allowed early stops; the state changed, with evidence by path]
 ## Perspective
@@ -148,16 +153,16 @@ Keep critic rounds, fix slices, and per-case logs out of a plan, unless the user
 
 Entered: the plan file is written.
 
-Act: Reread each cited source at the head of the branch the work builds on, dating each read -> check open branches and pull requests for changes to the same paths -> read the readiness file for any must verify or must ask line and any plan-changing fork still open.
+Act: Reread each cited source at the head of the branch the work builds on, dating each read -> check open branches and pull requests for changes to the same paths -> read the readiness file for any must verify or must determine line and any plan-changing fork still open.
 
-Ends: each reread matches what the plan states, no open branch or pull request changes the same paths, and the readiness file holds no must verify or must ask line with every plan-changing fork settled. Next: a source changed, or an open branch or pull request changes the same paths ? gather, with the stale known lines turned back into must verify lines. A must verify line stands ? gather. A must ask line stands ? ask. Otherwise ? exit.
+Ends: each reread matches what the plan states, no open branch or pull request changes the same paths, and the readiness file holds no must verify or must determine line with every plan-changing fork settled. Next: a source changed, or an open branch or pull request changes the same paths ? gather, with the stale known lines turned back into must verify lines. A must verify line stands ? gather. A must determine line stands ? ask. Otherwise ? exit.
 
 ### 6. Exit
 
 Entered: verify readiness ends with nothing open.
 
-Act: Present the plan in the document register, with headers as labels and one idea per bullet -> enter plan mode only to call ExitPlanMode, planning's last step, once the readiness file holds no must verify or must ask line and every plan-changing fork is settled.
-Plan mode already holds ? settle every plan-changing fork and clear every must verify and must ask line before calling ExitPlanMode.
+Act: Present the plan in the document register, with headers as labels and one idea per bullet -> enter plan mode only to call ExitPlanMode, planning's last step, once the readiness file holds no must verify or must determine line and every plan-changing fork is settled.
+Plan mode already holds ? settle every plan-changing fork and clear every must verify and must determine line before calling ExitPlanMode.
 Ask for a plan's approval only through ExitPlanMode, with AskUserQuestion kept to the plan's open questions.
 
 Ends: ExitPlanMode returns. Approval ends the loop and lifts the limit on what you change. A rejection with feedback ? settle, with the feedback as the unknowns it raises.
