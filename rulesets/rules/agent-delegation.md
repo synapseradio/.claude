@@ -13,33 +13,35 @@ Keep the conversation with the user, the routing, the prompts you compose, and t
 Hold gathering as work beyond the context in hand. Take the first arm that fits.
 
 route step
-  | a step is a thinkies skill run other than `thinkies:check-notes`, with a
-    spawning tool in hand
+  | no spawning tool is in hand = act directly
+  | a thinkies skill run other than `thinkies:check-notes`
       = spawn the thinkies agent at opus, effort high -> relay only its final output
   | a step writes, reviews, or repairs a shell script, a shell startup file, a git
-    hook or other extensionless shell file, or a bats suite, with a spawning tool
-    in hand and a run of any of them left to the arms below
+    hook or other extensionless shell file, or a bats suite, with a run of any of
+    them left to the arms below
       = spawn shell-scripter with a prompt for the task
   | a step finishes in one tool call with the context in hand = act directly
-  | a step is a git operation whose command you can state whole, outside a slice
-    you built, with a spawning tool in hand = spawn it to a general-purpose haiku
+  | git work that needs judgment as it goes, a rebase with conflicts for one
+      = spawn git-operator
+  | a git operation whose command you can state whole, outside a slice you built
+      = spawn it to a general-purpose haiku
+  | an observed failure whose cause is unknown = spawn diagnostician
   | a fix for a break would pull you off the current task = spawn it
-  | a step is the Read of a file that Edit, or Write over an existing file, requires
+  | the Read of a file that Edit, or Write over an existing file, requires
     before your next change to it, the newest handoff note read at a session's
     first turn, a cited line opened to confirm it backs a claim, or a scan of saved
     command output by grep, jq, ast-grep, or a Read by line range
       = act directly
-  | a step is any other gathering, with no spawning tool in hand = act directly
-  | a step is any other gathering
+  | any other gathering
       = spawn a fresh haiku, one holding the step's related reads > parallel haikus,
         each saving every command run's output to a file in the scratchpad
-  | a step is a unit of a plan whose units run in sequence on one working tree
+  | a unit of a plan whose units run in sequence on one working tree
       = act directly, whatever delegates the plan names, its gathering spawned as
         above and every verdict on its work, a check passing or a review finding,
         judged by you
-  | a step is sizeable work independent of the step in hand = spawn it
-  | a step finishes with the context already in hand = act directly
-  | a step is a map, an implementation, a critique, a design, or a plan
+  | sizeable work independent of the step in hand = spawn it
+  | a step finishes with the context in hand = act directly
+  | a map, an implementation, a critique, a design, or a plan
       = spawn it to the cheapest model able to take it
 
 One delegate completes the task ? spawn one.
@@ -53,7 +55,7 @@ Span exceeds one context ? split the work into sequential spawns, each finishing
 Hold a haiku delegate's context as a 99k-token budget when gauging span.
 Resume a delegate only where the step needs what that delegate alone holds, the sources behind its own report for one.
 A critic reports ? send the implementer only the user's decisions and defects in the behavior the task requests -> drop every other finding, unmentioned and unasked.
-Docs work, a how-to page or a docs edit for one ? spawn general-purpose running the repository's docs skill, with software-implementer kept out.
+A step drafts or redrafts prose a person reads, a docs page for one ? spawn prose-writer, with software-implementer kept out.
 
 model
   | the user named one = that model
@@ -67,6 +69,7 @@ model
   | otherwise = sonnet
 
 effort prompt
+  | it sends a sonnet delegate on multistep tool use = medium
   | it states every step of a task in one part = low
   | otherwise = medium
 

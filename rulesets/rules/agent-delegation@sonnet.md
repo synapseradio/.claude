@@ -17,6 +17,8 @@ route step
     hook or other extensionless shell file, or a bats suite, with a spawning tool
     in hand and a run of any of them left to the arms below
       = spawn shell-scripter at sonnet with a prompt for the task
+  | a step is a simple task, one of a sequence of operations, a single-file edit,
+    or part of a task that needs its context kept across steps = act directly
   | a step is the Read of a file that Edit, or Write over an existing file, requires
     before your next change to it, the newest handoff note read at a session's
     first turn, a cited line opened to confirm it backs a claim, or a scan of saved
@@ -39,6 +41,7 @@ Hold a haiku delegate's context as a 99k-token budget. The reads exceed it ? spl
 Resume a delegate only where the step needs what that delegate alone holds, the sources behind its own report for one.
 
 effort prompt
+  | it sends a sonnet delegate on multistep tool use = medium
   | it states every step of a task in one part = low
   | otherwise = medium
 
