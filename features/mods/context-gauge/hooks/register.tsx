@@ -15,7 +15,7 @@ import { atom, read, update } from "claude-code";
 
 import type { MessageEstimates } from "../types";
 import { addCounts, rowEffect } from "./counting";
-import type { GlyphSet } from "./fallback";
+import type { GlyphSet, Run } from "./fallback";
 import { fallbackRuns, glyphSet, legendSample } from "./fallback";
 import type { LegendLine } from "./layout";
 import {
@@ -116,8 +116,7 @@ async function countRow(
 ): Promise<void> {
 	const effect = rowEffect(row);
 	if (effect.reset) {
-		await update($, estimates, () => addCounts(NO_ESTIMATES, effect.counts));
-		await compactWindow($);
+		await resetWindow($, () => addCounts(NO_ESTIMATES, effect.counts), null);
 		return;
 	}
 	if (effect.counts.length === 0) return;
@@ -127,7 +126,7 @@ async function countRow(
 			: effect.counts.reduce((sum, c) => sum + c.chars, 0);
 	await Promise.all([
 		update($, estimates, (e) => addCounts(e, effect.counts)),
-		update($, pending, (p) => p + chars),
+		chars > 0 ? update($, pending, (p) => p + chars) : undefined,
 	]);
 }
 
@@ -143,36 +142,32 @@ async function anchorOn(
 	await Promise.all([
 		update($, anchor, () => left),
 		update($, pending, (p) => p - sent),
-		update($, estimates, (e) =>
-			addCounts(e, [{ id: "thinking", chars: thinking }]),
-		),
+		thinking > 0
+			? update($, estimates, (e) =>
+					addCounts(e, [{ id: "thinking", chars: thinking }]),
+				)
+			: undefined,
+		refresh($),
 	]);
-	await refresh($);
 }
 
-/** The estimates a compaction leaves: its summary alone, which its own row sets. */
+/** The estimates a compaction leaves: its summary alone, which only its own row sets, so the summary stands whichever of the compaction's signals comes last. */
 function compacted(e: MessageEstimates): MessageEstimates {
 	return addCounts(NO_ESTIMATES, [{ id: "summary", chars: e.summary }]);
 }
 
-/** Starts the window over after a compaction, whichever of its signals comes first: every estimate but the summary cleared, no anchor, nothing pending, the breakdown read again. */
-async function compactWindow($: EngineInterface): Promise<void> {
+/** Starts the window over: the estimates as `estimatesAfter` leaves them, the anchor at `anchorAfter`, nothing pending, the breakdown read again. */
+async function resetWindow(
+	$: EngineInterface,
+	estimatesAfter: (e: MessageEstimates) => MessageEstimates,
+	anchorAfter: number | null,
+): Promise<void> {
 	await Promise.all([
-		update($, estimates, compacted),
-		update($, anchor, () => null),
+		update($, estimates, estimatesAfter),
+		update($, anchor, () => anchorAfter),
 		update($, pending, () => 0),
+		refresh($),
 	]);
-	await refresh($);
-}
-
-/** Empties the gauge after `/clear`: no estimates, no anchor, nothing pending, the breakdown read again. */
-async function clearWindow($: EngineInterface): Promise<void> {
-	await Promise.all([
-		update($, estimates, () => NO_ESTIMATES),
-		update($, anchor, () => null),
-		update($, pending, () => 0),
-	]);
-	await refresh($);
 }
 
 /** Blits the drawn bar its own source: a denial means the terminal draws the Image's alt, so the bar switches to the glyphs this terminal draws. */
@@ -199,27 +194,27 @@ function passThrough<E, R>(_$: EngineInterface, e: E, next: (e: E) => R): R {
 
 type Terminal = ElementTable<"terminal">;
 
-/** The bar: an Image of its runs, or their glyphs where the Image draws its alt; nothing without runs. */
-function bar(
+/** The bar as an Image of its pixels, one row high. */
+function barImage(ui: Terminal, source: Pixels): RenderElement {
+	const { Image } = ui;
+	return (
+		<Image
+			key={BAR_KEY}
+			source={source}
+			columns={source.width / PX_PER_CELL}
+			rows={1}
+			alt="context bar"
+		/>
+	);
+}
+
+/** The bar as its runs' glyphs, for a terminal where the Image draws its alt. */
+function barGlyphs(
 	ui: Terminal,
 	runs: readonly BarRun[],
-	fallback: GlyphSet | null,
-	source: Pixels,
-): RenderElement | null {
-	const { Box, Image, Text } = ui;
-	if (runs.length === 0) return null;
-	if (fallback === null) {
-		const cells = source.width / PX_PER_CELL;
-		return (
-			<Image
-				key={BAR_KEY}
-				source={source}
-				columns={cells}
-				rows={1}
-				alt="context bar"
-			/>
-		);
-	}
+	fallback: GlyphSet,
+): RenderElement {
+	const { Box, Text } = ui;
 	return (
 		<Box key={BAR_KEY} flexShrink={0}>
 			{fallbackRuns(runs, fallback).map((run, i) => (
@@ -229,6 +224,12 @@ function bar(
 			))}
 		</Box>
 	);
+}
+
+/** A legend key in glyphs: its run's text in its run's colour. */
+function glyphKey(ui: Terminal, run: Run): RenderElement {
+	const { Text } = ui;
+	return <Text color={run.color}>{run.text}</Text>;
 }
 
 /** The legend: each line's items, each a key, its label in its category's colour and its figure. */
@@ -244,13 +245,9 @@ function legend(
 				<Box key={`legend-${n}`} columnGap={LEGEND_GAP}>
 					{line.items.map(({ row, figure }) => {
 						const id = `${row.id}-${row.label}`;
-						const sample =
-							fallback === null
-								? null
-								: legendSample(row.id, SAMPLE_CELLS, fallback);
 						return (
 							<Box key={`item-${id}`} flexShrink={0}>
-								{sample === null ? (
+								{fallback === null ? (
 									<Image
 										key={`key-${id}`}
 										source={samplePixels(row.id, SAMPLE_CELLS)}
@@ -259,7 +256,7 @@ function legend(
 										alt={SPACE}
 									/>
 								) : (
-									<Text color={sample.color}>{sample.text}</Text>
+									glyphKey(ui, legendSample(row.id, SAMPLE_CELLS, fallback))
 								)}
 								<Text>{SPACE}</Text>
 								<Text weight="bold" color={CATEGORY_STYLES[row.id].swatch.hex}>
@@ -314,9 +311,12 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 	const lines = legendLines(rows, room);
 	const shape = barLine(widestLine(lines), room, percent, totals, rows.length);
 	const runs = barRuns(model, rows, Math.min(shape.cells, MAX_BAR_CELLS));
-	const source = barPixels(runs);
-	if (fallback === null && runs.length > 0) {
+	let barElement: RenderElement | null = null;
+	if (fallback !== null) barElement = barGlyphs(ui, runs, fallback);
+	else if (runs.length > 0) {
+		const source = barPixels(runs);
 		$.clock.after(0, () => checkBar($, e.requestId, source));
+		barElement = barImage(ui, source);
 	}
 
 	const totalsText = <Text weight="bold">{totals}</Text>;
@@ -326,7 +326,7 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 			<Box key="gauge">
 				<Text weight="bold">{percent}</Text>
 				<Text>{SPACE}</Text>
-				{bar(ui, runs, fallback, source)}
+				{barElement}
 				{shape.totalsWrap ? null : (
 					<>
 						<Text>{SPACE}</Text>
@@ -378,9 +378,7 @@ const resetOnCompact: Hook<"session.compact"> = async ($, e, next) => {
 	if (!onMain(e) || e.trigger === "precompute" || result.skip !== undefined) {
 		return result;
 	}
-	await compactWindow($);
-	const after = result.tokensAfter ?? null;
-	await update($, anchor, () => after);
+	await resetWindow($, compacted, result.tokensAfter ?? null);
 	return result;
 };
 
@@ -392,8 +390,8 @@ const resetOnCompact: Hook<"session.compact"> = async ($, e, next) => {
  */
 const resetOnStart: Hook<"classic.SessionStart"> = async ($, e, next) => {
 	const result = await next(e);
-	if (e.source === "clear") await clearWindow($);
-	if (e.source === "compact") await compactWindow($);
+	if (e.source === "clear") await resetWindow($, () => NO_ESTIMATES, null);
+	if (e.source === "compact") await resetWindow($, compacted, null);
 	return result;
 };
 
