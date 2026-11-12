@@ -76,7 +76,7 @@ You are [model family and identifier]. [a welcome for this spawn, glad the deleg
 
 ## Tooling
 
-[only where the step needs a particular tool or skill: the environment, and the tools and skills it must or may use; no limits on its allowed tools]
+[only where the step needs a particular tool or skill: the environment; the tools and skills it must or may use; each skill you loaded that bears on the task's nature or scope, by exact name, to load through the Skill tool; no limits on its allowed tools]
 
 ## Constraints
 

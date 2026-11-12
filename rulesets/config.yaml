@@ -33,7 +33,7 @@ kind session:
   then:
     exclude: shell-scripts source-listing
 kind delegate:
-  include: delegate-report
+  include: delegate-report worktrees@delegate
 tools Bash:
   include: bash-commands
 

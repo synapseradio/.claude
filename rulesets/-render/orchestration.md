@@ -15,35 +15,19 @@ Hold gathering as work beyond the context in hand. Take the first arm that fits.
 
 route step
   | no spawning tool is in hand = act directly
-  | a thinkies skill run other than `thinkies:check-notes`
-      = spawn the thinkies agent at opus, effort high -> relay only its final output
-  | a step writes, reviews, or repairs a shell script, a shell startup file, a git
-    hook or other extensionless shell file, or a bats suite, with a run of any of
-    them left to the arms below
-      = spawn shell-scripter with a prompt for the task
+  | a thinkies skill run other than `thinkies:check-notes` = spawn the thinkies agent at opus, effort high -> relay only its final output
+  | a step writes, reviews, or repairs a shell script, a shell startup file, a git hook or other extensionless shell file, or a bats suite, with a run of any of them left to the arms below = spawn shell-scripter with a prompt for the task
   | a step finishes in one tool call with the context in hand = act directly
-  | git work that needs judgment as it goes, a rebase with conflicts for one
-      = spawn git-operator
-  | a git operation whose command you can state whole, outside a slice you built
-      = spawn it to a general-purpose haiku
+  | git work that needs judgment as it goes, a rebase with conflicts for one = spawn git-operator
+  | a git operation whose command you can state whole, outside a slice you built = spawn it to a general-purpose haiku
   | an observed failure whose cause is unknown = spawn diagnostician
   | a fix for a break would pull you off the current task = spawn it
-  | the Read of a file that Edit, or Write over an existing file, requires
-    before your next change to it, the newest handoff note read at a session's
-    first turn, a cited line opened to confirm it backs a claim, or a scan of saved
-    command output by grep, jq, ast-grep, or a Read by line range
-      = act directly
-  | any other gathering
-      = spawn a fresh haiku, one holding the step's related reads > parallel haikus,
-        each saving every command run's output to a file in the scratchpad
-  | a unit of a plan whose units run in sequence on one working tree
-      = act directly, whatever delegates the plan names, its gathering spawned as
-        above and every verdict on its work, a check passing or a review finding,
-        judged by you
+  | the Read of a file that Edit, or Write over an existing file, requires before your next change to it, the newest handoff note read at a session's first turn, a cited line opened to confirm it backs a claim, or a scan of saved command output by grep, jq, ast-grep, or a Read by line range = act directly
+  | any other gathering = spawn a fresh haiku, one holding the step's related reads > parallel haikus, each saving every command run's output to a file in the scratchpad
+  | a unit of a plan whose units run in sequence on one working tree = act directly, whatever delegates the plan names, its gathering spawned as above and every verdict on its work, a check passing or a review finding, judged by you
   | sizeable work independent of the step in hand = spawn it
   | a step finishes with the context in hand = act directly
-  | a map, an implementation, a critique, a design, or a plan
-      = spawn it to the cheapest model able to take it
+  | a map, an implementation, a critique, a design, or a plan = spawn it to the cheapest model able to take it
 
 One delegate completes the task ? spawn one.
 Spawn a re-check of your own result only on the user's ask.
@@ -104,7 +88,7 @@ You are [model family and identifier]. [a welcome for this spawn, glad the deleg
 
 ## Tooling
 
-[only where the step needs a particular tool or skill: the environment, and the tools and skills it must or may use; no limits on its allowed tools]
+[only where the step needs a particular tool or skill: the environment; the tools and skills it must or may use; each skill you loaded that bears on the task's nature or scope, by exact name, to load through the Skill tool; no limits on its allowed tools]
 
 ## Constraints
 
@@ -128,10 +112,7 @@ If a step fails, report what broke, what it cost, and what it changes next.
 ```
 
 stateInPrompt model
-  | haiku
-      = every step, paths, exact constraints, the check to run and return, and a
-        read's return as cited facts, each a path:line beside its quoted line, in
-        place of a verdict, a classification, or a recommendation
+  | haiku = every step, paths, exact constraints, the check to run and return, and a read's return as cited facts, each a path:line beside its quoted line, in place of a verdict, a classification, or a recommendation
   | sonnet = the problem, the decisions, constraints by reference
   | opus = the problem, its constraints, the decisions made
 
@@ -144,16 +125,51 @@ Let agents edit each file one at a time.
 <!-- rule: worktrees -->
 ## worktrees
 
-For every git worktree you create, enter, list, merge, or remove, optimize for a worktree the wt CLI created, listed, merged, and removed, with its hooks and config run.
+For every piece of work that changes files in a git repository, every request that lands while such work runs, and every git worktree you create, enter, list, merge, or remove, optimize for work split into lanes that run at once without racing, each landing on the trunk as one commit through a worktree the wt CLI created, merged, and removed, with its hooks and config run.
 
-- wt: worktrunk, documented at https://worktrunk.dev, its config, hooks included, shown with each file's location by `wt config show`
+- wt: worktrunk, documented at <https://worktrunk.dev>, its config, hooks included, shown with each file's location by `wt config show`
+- lane: a unit of the work whose changed files no other running lane changes
+- trunk: the branch the work builds on, where every lane lands
+- primary checkout: the repository's main worktree, the directory holding the `.git` that `git rev-parse --path-format=absolute --git-common-dir` prints
+- provision: install what the lane's checks need to run in a fresh worktree, its dependencies for one
 
-Create with `wt --yes switch --create $branch --base $base`, naming as `$base` the branch the work builds on. List with `wt list`. Remove with `wt remove`. Merge back with `wt merge $target`, which rebases the branch onto `$target`, fast-forwards `$target`, then removes the worktree and deletes its branch. Answer a question about wt from its config file and docs.
-
+List with `wt list`. Remove with `wt remove`. Answer a question about wt from its config file and docs.
 Address files in a worktree by the absolute path wt prints.
-The branch of a worktree the current work created has merged ? run `git -C <path> status --short` -> uncommitted changes show ? report them and keep the worktree : remove it with `wt remove`.
 Leave every worktree and branch the current work neither created nor names untouched and unmentioned.
-A delegate works in its own worktree ? create that worktree with wt first, then name its absolute path in the delegate's prompt.
+A wt command stops because a project hook awaits approval ? stop the lane -> ask the user to review the hooks with `wt config approvals add`.
 
-Before merging, run `git fetch`, then `git rev-list --left-right --count "$target...$target@{upstream}"`.
-Both counts are above zero, meaning `$target` and its upstream have diverged ? stop and report both counts : merge.
+### Split
+
+Before work starts, and again whenever a new request lands mid-work, split the work into lanes.
+Work would change a file a running lane changes ? add it to that lane where you work the lane yourself or its agent has yet to start : hold it until that lane lands, then give it a lane of its own.
+
+### Create
+
+Give each lane its own worktree, created in the primary checkout with `wt --yes switch --create $branch --base $trunk --no-cd`.
+The repository's `.config/wt.toml` holds a pre-start hook ? let it provision the worktree : have the lane provision its worktree before its first commit -> propose once, in your next message, a pre-start hook for `.config/wt.toml` that provisions every new worktree.
+
+### Delegate
+
+Keep for yourself the lane that needs the conversation's context most -> give every other lane, whole, to an agent of its own, spawned in the background without the Agent tool's worktree isolation, in place of acting directly on it, whatever its size, and in place of splitting its steps among other agents -> work your lane while the agents run -> track every lane as a task.
+No spawning tool is in hand, or your routing keeps implementation work with you ? work every lane yourself, each in its own worktree, landing each before the next starts.
+Name in each lane agent's prompt the worktree's absolute path, its branch, the files it may change, the checks to run before each commit, how to provision the worktree where no pre-start hook does, and steps 3 to 5 under Land, written out.
+A lane's agent holds no Bash tool ? leave committing and landing out of its prompt -> commit its lane yourself once it reports.
+
+### Land
+
+The lane's own agent lands the lane once its checks pass, and you land your own lane and every lane whose agent holds no Bash tool, in these steps:
+
+1. Run `skill:simplify` over the lane's changes, unless the lane's agent ran it -> commit what it yields -> run `wt -C <worktree> step squash $trunk` -> confirm `git -C <worktree> log --oneline $trunk..HEAD` lists one commit.
+2. Run `git -C <worktree> fetch`, then `git -C <worktree> rev-list --left-right --count "$trunk...$trunk@{upstream}"`. Both counts are above zero, meaning the trunk and its upstream have diverged ? stop and report both counts.
+3. Run `wt -C <worktree> merge $trunk`, which rebases the branch onto the trunk, fast-forwards the trunk, then removes the worktree and deletes its branch.
+4. The merge stops because the trunk moved or the fast-forward was refused ? run it again, at most twice -> it still stops ? report the lane, its branch, and the last error. The merge stops on a rebase conflict ? resolve it in the worktree on its merits -> continue the rebase -> run the merge again, counting the run among the two.
+5. Confirm `git -C <primary checkout> log --oneline $trunk` lists the lane as one commit -> report that commit's SHA and subject.
+
+### Races
+
+A hook step you write or change shares a cache, lock, or output path with a step that may run at the same moment, in its own hook or another lane's ? run the two in sequence, as a pipeline, or give each its own state.
+
+### Finish
+
+After every lane lands, in the primary checkout run the work that needs every lane landed, a cleanup or a deletion across lanes for one -> run each test suite once on the trunk -> report each lane's landed SHA and subject.
+A worktree the current work created outlives its branch's merge ? run `git -C <path> status --short` -> uncommitted changes show ? report them and keep the worktree : remove it with `wt remove`.

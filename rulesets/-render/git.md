@@ -14,6 +14,7 @@ Commit once the work unit's checks pass, with no approval asked -> report what l
 A skill's step says review, then commit ? commit, then report the diff.
 Keep every push and every post to an external platform on its own approval.
 During a multi-step build, commit at each green checkpoint, each delegate committing only its own paths with `git commit -- <paths>`, and end every slice with `git status --short` empty.
+You work in a worktree made for the work ? commit with `git -C <worktree> commit -- <paths>`, naming the worktree by its absolute path, and leave `git -C <worktree> status --short` empty after each commit.
 Treat a pending review as no ground for holding work uncommitted. Carry the checkpoint instruction into every prompt for a delegate that edits files.
 Stage generated copies in the same commit as the source they derive from.
 Verify the staged set with `git diff --cached --name-only`, with a planning artifact in it only on the user's ask -> compose the message -> commit.
@@ -23,7 +24,7 @@ Keep `--no-verify` out of every command.
 ### Branches
 
 The repository is public and others push to or review the branch ? open the PR from your fork.
-Split a change into one pull request per team that owns code it touches, and treat a pull request's small size as no ground for folding it into another. Give every line of work its own worktree.
+Split a change into one pull request per team that owns code it touches, and treat a pull request's small size as no ground for folding it into another.
 The teams' parts break apart ? one pull request, one commit per owning team holding all its files, scope naming the team, trailer naming its handle, shared part first.
 Before showing a pull request's title and body, a draft offered as an option or one a delegate wrote included, run `thinkies:communicate` over them, checking that they read concise, relatable, written for their reader and purpose, and at the right altitude.
 A stack is reordered, a branch moving below its former base ? run `gh pr edit <n> --base <new parent>` for every pull request whose parent changes, the new parent already on the remote -> push.
