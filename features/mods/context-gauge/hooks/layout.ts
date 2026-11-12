@@ -45,9 +45,9 @@ export function largestRemainder(
 	return counts;
 }
 
-type Part = { id: BarRun["id"]; tokens: number };
+type RunTokens = { id: BarRun["id"]; tokens: number };
 
-/** The bar's runs, `width` cells: each used row at least one cell, the rest split by tokens against the window, free space last. */
+/** The bar's runs, `width` cells: each used row at least one cell where the width holds one per row, the rest split by tokens against the window, free space last. */
 export function barRuns(
 	model: UsageModel,
 	rows: readonly GaugeRow[],
@@ -55,13 +55,15 @@ export function barRuns(
 ): BarRun[] {
 	const used = rows.filter((r) => r.tokens > 0);
 	const parts = used
-		.map((r): Part => ({ id: r.id, tokens: r.tokens }))
+		.map((r): RunTokens => ({ id: r.id, tokens: r.tokens }))
 		.concat({ id: "free", tokens: Math.max(0, model.max - model.used) });
-	const floor = used.length <= width ? 1 : 0;
-	const floors = parts.map((p) => (p.id === "free" ? 0 : floor));
+	const everyRowFits = used.length <= width;
+	const floors = parts.map((p): number =>
+		everyRowFits && p.id !== "free" ? 1 : 0,
+	);
 	const shares = largestRemainder(
 		parts.map((p) => p.tokens),
-		width - floor * used.length,
+		width - floors.reduce((a, b) => a + b, 0),
 	);
 	return parts
 		.map((p, i) => ({ id: p.id, cells: (shares[i] ?? 0) + (floors[i] ?? 0) }))
@@ -103,12 +105,12 @@ export function legendLines(
 	return lines;
 }
 
-/** Cells the widest legend line takes, 0 for no lines. */
+/** Cells the widest legend line takes. */
 export function widestLine(lines: readonly LegendLine[]): number {
 	return lines.reduce((widest, line) => Math.max(widest, line.cells), 0);
 }
 
-/** Bar cells: the widest legend line less the percentage, the totals and two spaces, and never fewer than one cell per used category. */
+/** Bar cells that let the bar line span the widest legend line, never fewer than one per used category. */
 export function barCells(
 	widest: number,
 	percent: string,

@@ -43,6 +43,13 @@ const SEVEN: readonly GaugeRow[] = [
 	row("unattributed", 100),
 ];
 
+/** Legend items of 12, 12 and 14 cells: the first two with their gap take 26. */
+const THREE: readonly GaugeRow[] = [
+	row("system", 6000),
+	row("skills", 4000),
+	row("replies", 20_000),
+];
+
 describe("abbrev", () => {
 	test("a figure under a thousand reads in full", () => {
 		expect(abbrev(999)).toBe("999");
@@ -51,6 +58,12 @@ describe("abbrev", () => {
 	test("thousands read in k to one decimal, a whole number without its .0", () => {
 		expect(abbrev(1000)).toBe("1k");
 		expect(abbrev(1050)).toBe("1.1k");
+	});
+
+	// 1150 / 1000 is the double just below 1.15, which toFixed(1) rounds down:
+	// https://tc39.es/ecma262/#sec-number.prototype.tofixed
+	test("a figure halfway between tenths rounds up", () => {
+		expect(abbrev(1150)).toBe("1.2k");
 	});
 
 	test("a figure that rounds up to ten thousand reads 10k", () => {
@@ -100,17 +113,27 @@ describe("barRuns", () => {
 			row("skills", 40),
 			row("replies", 20_000),
 		];
-		for (let width = 3; width <= 60; width++) {
-			const runs = barRuns(windowOf(26_040, 100_000), rows, width);
+		const ids = rows.map((r) => r.id).join();
+		const misfits = Array.from({ length: 58 }, (_, i) => i + 3).filter(
+			(width) => {
+				const runs = barRuns(windowOf(26_040, 100_000), rows, width);
+				const leading = runs
+					.slice(0, 3)
+					.map((r) => r.id)
+					.join();
+				return (
+					runCells(runs) !== width ||
+					leading !== ids ||
+					runs.some((r) => r.cells < 1)
+				);
+			},
+		);
 
-			expect(runCells(runs)).toBe(width);
-			expect(runs.map((r) => r.id).slice(0, 3)).toEqual([
-				"system",
-				"skills",
-				"replies",
-			]);
-			expect(runs.every((r) => r.cells >= 1)).toBe(true);
-		}
+		expect(misfits).toEqual([]);
+	});
+
+	test("a bar narrower than its rows still fills exactly its width", () => {
+		expect(runCells(barRuns(windowOf(30_000, 100_000), THREE, 2))).toBe(2);
 	});
 
 	test("where the legend leaves fewer cells than rows, each row still takes one cell", () => {
@@ -139,15 +162,8 @@ describe("legendLines", () => {
 		]);
 	});
 
-	// Items of 12, 12 and 14 cells: the first two with their gap take 26.
-	const ROWS = [
-		row("system", 6000),
-		row("skills", 4000),
-		row("replies", 20_000),
-	];
-
 	test("a line takes the next item while it fits room exactly", () => {
-		const lines = legendLines(ROWS, 26);
+		const lines = legendLines(THREE, 26);
 
 		expect(lines.map((l) => l.items.map((i) => i.row.id))).toEqual([
 			["system", "skills"],
@@ -157,7 +173,7 @@ describe("legendLines", () => {
 	});
 
 	test("a line breaks where the next item would pass room", () => {
-		const lines = legendLines(ROWS, 25);
+		const lines = legendLines(THREE, 25);
 
 		expect(lines.map((l) => l.items.map((i) => i.row.id))).toEqual([
 			["system"],
@@ -168,14 +184,8 @@ describe("legendLines", () => {
 });
 
 describe("widestLine", () => {
-	test("the widest line's cells", () => {
-		const ROWS = [
-			row("system", 6000),
-			row("skills", 4000),
-			row("replies", 20_000),
-		];
-
-		expect(widestLine(legendLines(ROWS, 26))).toBe(26);
+	test("the widest of several lines sets the width", () => {
+		expect(widestLine(legendLines(THREE, 26))).toBe(26);
 	});
 
 	test("no lines take no cells", () => {
