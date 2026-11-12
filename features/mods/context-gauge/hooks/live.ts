@@ -11,7 +11,7 @@ import type { UsageModel } from "../types";
 
 const CHARS_PER_TOKEN = 4;
 
-/** The window as one response left it: input + cache read + cache creation + output tokens. */
+/** The window as one response left it, its own output included. */
 export function windowAfter(usage: ModelUsage): number {
 	return (
 		usage.input_tokens +
@@ -22,8 +22,8 @@ export function windowAfter(usage: ModelUsage): number {
 }
 
 /**
- * Thinking tokens one response spent: output tokens less the visible answer
- * and the tool calls, at four characters a token, never below 0.
+ * Thinking tokens one response spent: the output tokens its visible answer
+ * and tool calls leave unexplained.
  *
  * Why: the API bills the full thinking while the transcript keeps at most a
  * summary of it, so only `output_tokens` measures it
@@ -44,10 +44,10 @@ export function thinkingTokens(
 }
 
 /**
- * Why: the breakdown's `autoCompactThreshold` ignores
- * CLAUDE_AUTOCOMPACT_PCT_OVERRIDE, so the ceiling comes from the override, a
- * percentage of the window
- * (https://code.claude.com/docs/en/env-vars).
+ * Why: CLAUDE_AUTOCOMPACT_PCT_OVERRIDE sets the percentage of the window at
+ * which compaction runs (https://code.claude.com/docs/en/env-vars).
+ *
+ * Hazard: the breakdown's `autoCompactThreshold` leaves the override out.
  */
 function effectiveMax(
 	b: SessionContextBreakdown,
@@ -60,23 +60,23 @@ function effectiveMax(
 	return b.autoCompactThreshold ?? b.rawMaxTokens;
 }
 
-/** The gauge's model: used = anchor + pending / 4 once a response anchored it, else the breakdown's total; categories scaled to used; max from CLAUDE_AUTOCOMPACT_PCT_OVERRIDE or the breakdown. */
+/** The gauge's usage model, live from the last anchoring response, or null without a breakdown or a ceiling. */
 export function usageModel(
 	context: SessionContextUsage,
 	live: { anchor: number | null; pending: number },
 	pctRaw: string | undefined,
 ): UsageModel | null {
-	const b = context.breakdown;
-	if (b === undefined) return null;
-	const max = effectiveMax(b, pctRaw);
+	const breakdown = context.breakdown;
+	if (breakdown === undefined) return null;
+	const max = effectiveMax(breakdown, pctRaw);
 	if (max <= 0) return null;
 	const used =
 		live.anchor === null
-			? b.totalTokens
+			? breakdown.totalTokens
 			: Math.round(live.anchor + live.pending / CHARS_PER_TOKEN);
 	const percent = Math.max(0, Math.min(100, Math.round((used / max) * 100)));
-	const scale = b.totalTokens > 0 ? used / b.totalTokens : 1;
-	const categories = b.categories
+	const scale = breakdown.totalTokens > 0 ? used / breakdown.totalTokens : 1;
+	const categories = breakdown.categories
 		.filter((c) => c.kind === "used" && c.tokens > 0)
 		.map((c) => ({ name: c.name, tokens: Math.round(c.tokens * scale) }));
 	return { used, max, percent, categories };

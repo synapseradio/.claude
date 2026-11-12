@@ -17,7 +17,6 @@ function row(
 	return { name, tokens, color: "inactive", isDeferred: false, kind };
 }
 
-/** A response's usage: `input` uncached, `cacheRead` and `cacheCreation` from the prompt cache, `output` generated. */
 function responseUsage(
 	input: number,
 	cacheRead: number,
@@ -108,7 +107,7 @@ describe("thinking tokens", () => {
 			usage: turnUsage(1000),
 		};
 
-		expect(thinkingTokens(step)).toBe(1000 - (2 * 42) / 4);
+		expect(thinkingTokens(step)).toBe(979);
 	});
 
 	test("an answer longer than the output tokens cover leaves 0 thinking tokens", async () => {
@@ -206,13 +205,17 @@ describe("the usage model", () => {
 		expect(model?.percent).toBe(60);
 	});
 
-	test("an override outside 1 to 100 leaves the breakdown's ceiling", async () => {
-		const b = breakdown(100_000, 80_000);
+	for (const pctRaw of ["0", "150", "half"]) {
+		test(`an override of "${pctRaw}" leaves the breakdown's ceiling`, async () => {
+			const model = usageModel(
+				context(breakdown(100_000, 80_000)),
+				NO_ANCHOR,
+				pctRaw,
+			);
 
-		expect(usageModel(context(b), NO_ANCHOR, "0")?.max).toBe(80_000);
-		expect(usageModel(context(b), NO_ANCHOR, "150")?.max).toBe(80_000);
-		expect(usageModel(context(b), NO_ANCHOR, "half")?.max).toBe(80_000);
-	});
+			expect(model?.max).toBe(80_000);
+		});
+	}
 
 	test("the percentage stops at 100 past the ceiling", async () => {
 		const model = usageModel(
@@ -224,10 +227,14 @@ describe("the usage model", () => {
 		expect(model?.percent).toBe(100);
 	});
 
-	test("no breakdown, or an empty window, gives no model", async () => {
+	test("no breakdown gives no model", async () => {
 		expect(usageModel({ window: 100_000 }, NO_ANCHOR, undefined)).toBeNull();
+	});
+
+	test("an empty window gives no model", async () => {
 		const empty = breakdown(100_000);
 		empty.rawMaxTokens = 0;
+
 		expect(usageModel(context(empty), NO_ANCHOR, undefined)).toBeNull();
 	});
 });
