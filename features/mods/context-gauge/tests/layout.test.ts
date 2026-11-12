@@ -18,7 +18,7 @@ function row(id: CategoryId, tokens: number, estimated = false): GaugeRow {
 
 /** A window holding `used` of `max` tokens; the layout reads only those two. */
 function windowOf(used: number, max: number): UsageModel {
-	return { used, max, percent: Math.round((used / max) * 100), categories: [] };
+	return { used, max, percent: 0, categories: [] };
 }
 
 function total(cells: readonly number[]): number {
@@ -60,8 +60,6 @@ describe("abbrev", () => {
 		expect(abbrev(1050)).toBe("1.1k");
 	});
 
-	// 1150 / 1000 is the double just below 1.15, which toFixed(1) rounds down:
-	// https://tc39.es/ecma262/#sec-number.prototype.tofixed
 	test("a figure halfway between tenths rounds up", () => {
 		expect(abbrev(1150)).toBe("1.2k");
 	});
@@ -114,20 +112,20 @@ describe("barRuns", () => {
 			row("replies", 20_000),
 		];
 		const ids = rows.map((r) => r.id).join();
-		const misfits = Array.from({ length: 58 }, (_, i) => i + 3).filter(
-			(width) => {
-				const runs = barRuns(windowOf(26_040, 100_000), rows, width);
-				const leading = runs
-					.slice(0, 3)
-					.map((r) => r.id)
-					.join();
-				return (
+		const misfits = Array.from({ length: 58 }, (_, i) => i + 3)
+			.map((width) => ({
+				width,
+				runs: barRuns(windowOf(26_040, 100_000), rows, width),
+			}))
+			.filter(
+				({ width, runs }) =>
 					runCells(runs) !== width ||
-					leading !== ids ||
-					runs.some((r) => r.cells < 1)
-				);
-			},
-		);
+					runs
+						.slice(0, 3)
+						.map((r) => r.id)
+						.join() !== ids ||
+					runs.some((r) => r.cells < 1),
+			);
 
 		expect(misfits).toEqual([]);
 	});
@@ -141,9 +139,7 @@ describe("barRuns", () => {
 		const width = barCells(widest, PERCENT, TOTALS, SEVEN.length);
 		const runs = barRuns(windowOf(700, 1000), SEVEN, width);
 
-		expect(widest - PERCENT.length - TOTALS.length - 2).toBeLessThan(
-			SEVEN.length,
-		);
+		expect(width).toBe(SEVEN.length);
 		expect(runs.map((r) => r.id)).toEqual(SEVEN.map((r) => r.id));
 		expect(runs.every((r) => r.cells === 1)).toBe(true);
 	});

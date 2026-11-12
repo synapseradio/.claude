@@ -39,13 +39,15 @@ export function largestRemainder(
 	const counts = raw.map((r) => Math.floor(r));
 	const leftover = cells - counts.reduce((a, b) => a + b, 0);
 	const order = raw
-		.map((_, i) => i)
-		.sort((a, b) => ((raw[b] ?? 0) % 1) - ((raw[a] ?? 0) % 1));
-	for (const i of order.slice(0, leftover)) counts[i] = (counts[i] ?? 0) + 1;
+		.map((r, i) => ({ i, rest: r % 1 }))
+		.sort((a, b) => b.rest - a.rest);
+	for (const { i } of order.slice(0, leftover))
+		counts[i] = (counts[i] ?? 0) + 1;
 	return counts;
 }
 
-type RunTokens = { id: BarRun["id"]; tokens: number };
+/** A run before its cells are known: its tokens, and the cells it takes whatever its share. */
+type BarPart = { id: BarRun["id"]; tokens: number; floor: number };
 
 /** The bar's runs, `width` cells: each used row at least one cell where the width holds one per row, the rest split by tokens against the window, free space last. */
 export function barRuns(
@@ -54,19 +56,20 @@ export function barRuns(
 	width: number,
 ): BarRun[] {
 	const used = rows.filter((r) => r.tokens > 0);
+	const floor = used.length <= width ? 1 : 0;
 	const parts = used
-		.map((r): RunTokens => ({ id: r.id, tokens: r.tokens }))
-		.concat({ id: "free", tokens: Math.max(0, model.max - model.used) });
-	const everyRowFits = used.length <= width;
-	const floors = parts.map((p): number =>
-		everyRowFits && p.id !== "free" ? 1 : 0,
-	);
+		.map((r): BarPart => ({ id: r.id, tokens: r.tokens, floor }))
+		.concat({
+			id: "free",
+			tokens: Math.max(0, model.max - model.used),
+			floor: 0,
+		});
 	const shares = largestRemainder(
 		parts.map((p) => p.tokens),
-		width - floors.reduce((a, b) => a + b, 0),
+		width - floor * used.length,
 	);
 	return parts
-		.map((p, i) => ({ id: p.id, cells: (shares[i] ?? 0) + (floors[i] ?? 0) }))
+		.map((p, i) => ({ id: p.id, cells: (shares[i] ?? 0) + p.floor }))
 		.filter((run) => run.cells > 0);
 }
 
