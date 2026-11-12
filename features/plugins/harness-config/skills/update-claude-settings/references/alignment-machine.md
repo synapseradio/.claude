@@ -123,7 +123,7 @@ and stops the walk there. A path is exempt when any of these holds:
   `CREDENTIAL`, compared without regard to case.
 - Its value is a string carrying a credential shape: a known credential
   prefix such as `sk-`, `ghp_`, `github_pat_`, `xoxb-`, `AKIA`, `AIza`,
-  `glpat-`, `npm_`, `hf_`, or `Bearer`, or the form of a long opaque token,
+  `glpat-`, `npm_`, `hf_`, or `Bearer` followed by a space, or the form of a long opaque token,
   twenty or more characters from `[A-Za-z0-9_-]` followed by `.` and eight
   or more of the same.
 
