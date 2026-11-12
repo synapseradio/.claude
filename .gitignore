@@ -16,6 +16,10 @@
 !bun.lock
 !pyproject.toml
 !uv.lock
+!.yamlfmt.yaml
+!.yamllint.yaml
+!.taplo.toml
+!Brewfile
 
 !.claude-plugin/
 !.claude-plugin/**

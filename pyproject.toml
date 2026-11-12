@@ -1,11 +1,8 @@
 [project]
 name = "claude-config"
 version = "0.1.0"
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 dependencies = []
 
 [dependency-groups]
-dev = [
-    "ruff~=0.17.4",
-    "yamllint~=1.38.0",
-]
+dev = ["ruff~=0.17.4", "yamllint~=1.38.0"]

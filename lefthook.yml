@@ -1,37 +1,57 @@
+---
 pre-commit:
   jobs:
     - name: lint
       group:
-        parallel: true
+        parallel: false
         jobs:
+          - name: biome
+            glob: "*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,json,jsonc}"
+            run: node_modules/.bin/biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+            stage_fixed: true
           - name: markdownlint
             glob: "*.md"
-            run: bunx markdownlint-cli2 --fix {staged_files}
+            run: node_modules/.bin/markdownlint-cli2 --fix {staged_files}
             stage_fixed: true
           - name: ruff
             glob: "*.py"
-            run: ruff check --fix {staged_files} && ruff format {staged_files}
+            run: uv run --frozen ruff check --fix {staged_files} && uv run --frozen ruff format {staged_files}
+            stage_fixed: true
+          - name: yaml
+            glob: "*.{yaml,yml}"
+            run: yamlfmt {staged_files} && uv run --frozen yamllint --strict {staged_files}
+            stage_fixed: true
+          - name: taplo
+            glob: "*.toml"
+            run: taplo fmt {staged_files} && taplo check {staged_files}
             stage_fixed: true
           - name: shfmt
-            glob: "*.{sh,bash}"
+            glob: "*.{sh,bash,bats}"
             run: shfmt -i 2 -w {staged_files}
             stage_fixed: true
           - name: shellcheck
-            glob: "*.{sh,bash}"
+            glob: "*.{sh,bash,bats}"
             run: shellcheck {staged_files}
+
+    # tsc refuses file arguments beside a tsconfig.json, so it checks the
+    # whole project.
+    # https://github.com/microsoft/TypeScript/blob/main/tsc/internal/execute/tsc.go
+    - name: tsc-context-gauge
+      root: features/mods/context-gauge/
+      glob: "*.{ts,tsx,mts,cts}"
+      run: ../../../node_modules/.bin/tsc -p .
 
     - name: render-rulesets
       glob:
         - "rulesets/config.yaml"
         - "rulesets/rules/**"
       run: >-
-        python3.14 features/plugins/rulesets/lib/rulesets/cli.py render --root rulesets
-        && git add rulesets/-render
+        python3.15 features/plugins/rulesets/lib/rulesets/cli.py render --root rulesets && git add rulesets/-render
 
 pre-push:
   jobs:
     - name: shellcheck
-      glob: "*.{sh,bash}"
+      glob: "*.{sh,bash,bats}"
       run: shellcheck {push_files}
 
     # Ungated by glob: enabling a plugin stales a generated file while
@@ -43,12 +63,12 @@ pre-push:
     - name: sync-agent-configs
       only:
         - ref: main
-      run: |
+      run: |-
         set -e
-        python3.14 scripts/agent-configs/translate-for-pi.py
-        python3.14 scripts/agent-configs/translate-for-opencode.py
-        python3.14 scripts/agent-configs/own-opencode-key.py
-        python3.14 scripts/agent-configs/translate-for-pi.py --check
-        python3.14 scripts/agent-configs/translate-for-opencode.py --check
-        python3.14 scripts/agent-configs/own-opencode-key.py --check
-        python3.14 features/plugins/rulesets/lib/rulesets/cli.py check --root rulesets
+        python3.15 scripts/agent-configs/translate-for-pi.py
+        python3.15 scripts/agent-configs/translate-for-opencode.py
+        python3.15 scripts/agent-configs/own-opencode-key.py
+        python3.15 scripts/agent-configs/translate-for-pi.py --check
+        python3.15 scripts/agent-configs/translate-for-opencode.py --check
+        python3.15 scripts/agent-configs/own-opencode-key.py --check
+        python3.15 features/plugins/rulesets/lib/rulesets/cli.py check --root rulesets

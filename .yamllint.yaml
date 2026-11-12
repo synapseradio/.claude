@@ -1,0 +1,39 @@
+---
+# yamllint has no autofix; every rule here either holds on yamlfmt's output
+# (.yamlfmt.yaml) or flags a value error no formatter can repair.
+extends: default
+
+rules:
+  anchors:
+    forbid-undeclared-aliases: true
+    forbid-duplicated-anchors: true
+    forbid-unused-anchors: true
+  comments:
+    level: error
+    require-starting-space: true
+    ignore-shebangs: true
+    min-spaces-from-content: 2
+  comments-indentation:
+    level: error
+  document-start:
+    level: error
+    present: true
+  empty-lines:
+    max: 1
+    max-start: 0
+    max-end: 0
+  indentation:
+    spaces: 2
+    indent-sequences: true
+  key-duplicates:
+    forbid-duplicated-merge-keys: true
+  line-length: disable
+  new-lines:
+    type: unix
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
+  truthy:
+    level: error
+    allowed-values: ["true", "false"]
+    check-keys: true

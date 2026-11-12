@@ -1,53 +1,65 @@
 {
-  "config": {
-    "default": false,
+	"config": {
+		"default": false,
 
-    // Whitespace and structural normalization only — rules whose
-    // autofix never touches prose content (emphasis, code spans,
-    // heading text, link text, list numbering, capitalization).
-    // The .md files in this repo are instructional prose. Any rule
-    // whose fix interprets authorial meaning is the wrong kind of
-    // assistance and is left out by design.
-    "MD005": true, // list-indent (within-list consistency)
-    "MD007": true, // ul-indent (nesting depth times two spaces)
-    "MD009": true, // no-trailing-spaces
-    "MD010": true, // no-hard-tabs
-    "MD011": true, // no-reversed-links (fixes a syntax mistake, not prose)
-    "MD012": true, // no-multiple-blanks
-    "MD018": true, // no-missing-space-atx
-    "MD019": true, // no-multiple-space-atx
-    "MD020": true, // no-missing-space-closed-atx
-    "MD021": true, // no-multiple-space-closed-atx
-    "MD022": true, // blanks-around-headings
-    "MD023": true, // headings-start-left
-    "MD027": true, // no-multiple-space-blockquote
-    "MD031": true, // blanks-around-fences
-    "MD032": true, // blanks-around-lists
-    "MD039": true, // no-space-in-links
-    "MD047": true, // single-trailing-newline
-    "MD058": true // blanks-around-tables
-  },
-  "ignores": [
-    "node_modules/**",
-    "**/node_modules/**",
-    ".graphify/**",
-    "graphify-out/**",
-    "plugins/**",
-    "projects/**",
-    "plans/**",
-    "evals/**",
-    "agent-memory/**",
-    "agents/**",
-    "skills/**",
-    "workflows/**",
-    "shell-snapshots/**",
-    "session-env/**",
-    "cache/**",
-    ".thinkies/**",
+		// Every rule markdownlint 0.42.1 marks fixable, so the commit hook's
+		// --fix repairs what it reports.
+		// https://github.com/DavidAnson/markdownlint/blob/v0.42.1/doc/Rules.md
+		"MD004": true, // ul-style
+		"MD005": true, // list-indent
+		"MD007": true, // ul-indent
+		"MD009": true, // no-trailing-spaces
+		"MD010": true, // no-hard-tabs
+		"MD011": true, // no-reversed-links
+		"MD012": true, // no-multiple-blanks
+		"MD014": true, // commands-show-output
+		"MD018": true, // no-missing-space-atx
+		"MD019": true, // no-multiple-space-atx
+		"MD020": true, // no-missing-space-closed-atx
+		"MD021": true, // no-multiple-space-closed-atx
+		"MD022": true, // blanks-around-headings
+		"MD023": true, // heading-start-left
+		"MD026": true, // no-trailing-punctuation
+		"MD027": true, // no-multiple-space-blockquote
+		"MD029": true, // ol-prefix
+		"MD030": true, // list-marker-space
+		"MD031": true, // blanks-around-fences
+		"MD032": true, // blanks-around-lists
+		"MD034": true, // no-bare-urls
+		"MD037": true, // no-space-in-emphasis
+		"MD038": true, // no-space-in-code
+		"MD039": true, // no-space-in-links
+		"MD044": true, // proper-names
+		"MD047": true, // single-trailing-newline
+		"MD049": true, // emphasis-style
+		"MD050": true, // strong-style
+		"MD051": true, // link-fragments
+		"MD053": true, // link-image-reference-definitions
+		"MD054": true, // link-image-style
+		"MD058": true, // blanks-around-tables
+		"MD060": true // table-column-style
+	},
+	"ignores": [
+		"node_modules/**",
+		"**/node_modules/**",
+		".graphify/**",
+		"graphify-out/**",
+		"plugins/**",
+		"projects/**",
+		"plans/**",
+		"evals/**",
+		"agent-memory/**",
+		"agents/**",
+		"skills/**",
+		"workflows/**",
+		"shell-snapshots/**",
+		"session-env/**",
+		"cache/**",
+		".thinkies/**",
 
-    // Vendored upstream documents. These are somebody else's bytes, kept
-    // byte-for-byte so a checksum still verifies them against the source
-    // the commit message names. Normalizing whitespace here breaks that.
-    "references/sudolang-spec.md"
-  ]
+		// Vendored upstream documents. These are somebody else's bytes, kept
+		// byte-for-byte so a checksum still verifies them against the source
+		// the commit message names. Normalizing whitespace here breaks that.
+		"references/sudolang-spec.md"
+	]
 }
