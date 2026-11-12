@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.14
+#!/usr/bin/env python3.15
 """Project agent definitions and installed skills onto pi's own format.
 
 pi reads one context file per directory and offers no second mechanism for
@@ -57,7 +57,6 @@ def build_agents_markdown(claude_md: Path, rulesets_dir: Path) -> str:
     for carrying rules as separate files, so its copy holds the preamble and
     every rule concatenated, frontmatter stripped.
     """
-
     sections = [parse_document(claude_md.read_text(encoding="utf-8")).body]
     sections += [
         parse_document(rule.read_text(encoding="utf-8")).body
@@ -84,7 +83,6 @@ def _install_path(records: list[dict]) -> str | None:
     at once. Putting all of them on a skills path loads each skill twice
     under two versions, so the user-scoped record wins where one exists.
     """
-
     for record in records:
         if record.get("scope") == "user":
             return record.get("installPath")
@@ -141,7 +139,6 @@ def build_one_agent(name: str, targets: Targets = DEFAULT_TARGETS) -> Plan:
     pi's context file and the skill paths derive from no single agent, so a
     run scoped to one leaves both as they stand.
     """
-
     source = agent_source(targets.agents_dir, name)
     translated = translate_for_pi(read_agent(source))
     return Plan(

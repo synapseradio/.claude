@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.14
+#!/usr/bin/env python3.15
 """Own the `instructions` key inside opencode's hand-written `opencode.json`.
 
 opencode's `instructions` array lists rule files rather than holding their
@@ -32,7 +32,6 @@ def rule_instructions(rulesets_dir: Path) -> list[str]:
     Each names its canonical path under `~/.claude/rulesets/rules/`, so an
     edit to a rule reaches opencode with no run of this job.
     """
-
     return [home_relative(rule) for rule in default_rules(rulesets_dir)]
 
 

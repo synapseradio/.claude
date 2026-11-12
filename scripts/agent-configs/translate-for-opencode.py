@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.14
+#!/usr/bin/env python3.15
 """Project agent definitions onto opencode's own format.
 
 `AGENTS.md` carries the `CLAUDE.md` preamble alone: opencode reads the
@@ -56,7 +56,6 @@ OPENCODE_TOOL_NAMES = {
 
 def build_preamble(claude_md: Path) -> str:
     """`CLAUDE.md` alone, with its paths resolved."""
-
     return rewrite_paths(
         parse_document(claude_md.read_text(encoding="utf-8")).body.strip("\n") + "\n"
     )
@@ -97,7 +96,6 @@ def build_one_agent(name: str, targets: Targets = DEFAULT_TARGETS) -> Plan:
     The preamble derives from `CLAUDE.md` and from no single agent, so a run
     scoped to one leaves it as it stands.
     """
-
     source = agent_source(targets.agents_dir, name)
     translated = translate_for_opencode(read_agent(source))
     return Plan(
