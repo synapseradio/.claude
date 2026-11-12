@@ -27,7 +27,7 @@ A reading is fully searched once each of the three ways has run on it and your l
 
 ## Searching by syntax
 
-Search by syntax wherever a search turns on a construct, a call form, a declaration form, or a nesting relation, and aim every such search at a result that means what it says. `dump_syntax_tree` prints the AST of a snippet. `test_match_code_rule` runs a YAML rule against a snippet. `find_code` searches the codebase by pattern. `find_code_by_rule` searches the codebase by YAML rule.
+Search by syntax wherever a search turns on a construct, a call form, a declaration form, or a nesting relation, and aim every such search at a result that means what it says, through the `ast-grep` command-line program in Bash. `ast-grep run --lang $language -p '$snippet' --debug-query=ast` prints the AST of a snippet. `ast-grep scan --inline-rules '$rule' --stdin`, with the snippet piped to it, runs a YAML rule against a snippet. `ast-grep run --lang $language -p '$pattern'` searches the codebase by pattern. `ast-grep scan --inline-rules '$rule'` searches the codebase by YAML rule.
 
 search
   | the request asks for plain text, or the target sits in a comment, a string, or a filename
