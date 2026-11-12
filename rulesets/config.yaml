@@ -1,10 +1,8 @@
+---
 models: opus sonnet haiku fable opus-4-8
 defaults: core.*
 sets:
-  core:
-    core-rules sorting reporting reasoning-guidelines
-    ask-user-before-assuming user-approval user-out-of-artifacts
-    exact-edits scratchpad waiting-on-processes
+  core: core-rules sorting reporting reasoning-guidelines ask-user-before-assuming user-approval user-out-of-artifacts exact-edits scratchpad waiting-on-processes
   reasoning: claims
   lookup: search-tools
   prose: writing-prose unasked-asides
@@ -31,7 +29,7 @@ model haiku:
 kind session:
   include: all.*
   then:
-    exclude: shell-scripts
+    exclude: shell-scripts source-listing
 kind delegate:
   include: delegate-report
 tools Bash:
@@ -83,15 +81,15 @@ agent scout spider:
   include: lookup.*
 
 agent general-purpose:
-  include:
-    reasoning.* lookup.* prose.* git.*
-    resolving-input comments bash-commands
+  include: reasoning.* lookup.* prose.* git.* resolving-input comments bash-commands
   not model haiku:
     include: code.* dialogue.*
   model opus opus-4-8 fable:
     include: orchestration.*
 
-agent Explore claude-code-guide:
+agent Explore:
+  include: lookup.* bash-commands source-listing
+agent claude-code-guide:
   include: lookup.* bash-commands
 agent Plan:
   include: reasoning.* lookup.* bash-commands writing-code
