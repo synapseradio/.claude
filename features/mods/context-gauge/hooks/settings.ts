@@ -7,7 +7,7 @@ import type { CompactionSetting } from "../types";
 /** A window as a settings file writes it: tokens, or `auto` for the window tuned to the model. */
 export type Window = number | "auto";
 
-/** One settings file, reduced to the keys the gauge reads, each kept only where its value is usable. */
+/** One settings source, reduced to the keys the gauge reads, each kept only where its value is usable. */
 export type SettingsLayer = {
 	enabled?: boolean;
 	window?: Window;
@@ -82,7 +82,7 @@ function isObject(value: unknown): value is object {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** A window a settings file may hold: 100,000 to 1,000,000 tokens, or `auto`. */
+/** A window a settings source may hold: 100,000 to 1,000,000 tokens, or `auto`. */
 function settingsWindow(value: unknown): Window | undefined {
 	if (value === "auto") return value;
 	if (typeof value === "number" && value >= MIN_WINDOW && value <= MAX_WINDOW) {
@@ -91,17 +91,8 @@ function settingsWindow(value: unknown): Window | undefined {
 	return undefined;
 }
 
-function parseJson(text: string): unknown {
-	try {
-		return JSON.parse(text);
-	} catch {
-		return undefined;
-	}
-}
-
-/** Reads one settings file's text into its layer; a file that is missing, unparseable or no object gives an empty layer. */
-export function parseLayer(text: string | undefined): SettingsLayer {
-	const parsed = text === undefined ? undefined : parseJson(text);
+/** Reads one settings source into its layer; a value that is no object gives an empty layer. */
+export function parseLayer(parsed: unknown): SettingsLayer {
 	const layer: SettingsLayer = { modelWindows: {}, env: {} };
 	if (!isObject(parsed)) return layer;
 	const raw: RawSettings = parsed;

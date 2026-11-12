@@ -10,9 +10,9 @@ import {
 } from "../hooks/settings";
 import type { CompactionSetting } from "../types";
 
-/** A settings layer as its file holds it. */
+/** A settings layer as the engine reads its source. */
 function layer(content: unknown) {
-	return parseLayer(JSON.stringify(content));
+	return parseLayer(content);
 }
 
 /** A settings file whose `env` block sets `name` to `value`. */
@@ -78,19 +78,18 @@ describe("the window variable", () => {
 	});
 });
 
-describe("a settings file", () => {
-	test("an unset or unparseable file contributes nothing", async () => {
-		const empty = mergeSettings([], "m");
-		expect(
-			mergeSettings([parseLayer(undefined), parseLayer("{")], "m"),
-		).toEqual(empty);
+describe("a settings source", () => {
+	test("an unset source contributes nothing", async () => {
+		expect(mergeSettings([parseLayer(undefined)], "m")).toEqual(
+			mergeSettings([], "m"),
+		);
 	});
 
-	test("JSON that is not an object contributes nothing", async () => {
+	test("a value that is no object contributes nothing", async () => {
 		const empty = mergeSettings([], "m");
 		expect(
-			["[1]", "null", '"text"', "7"].map((text) =>
-				mergeSettings([parseLayer(text)], "m"),
+			[[1], null, "text", 7].map((value) =>
+				mergeSettings([parseLayer(value)], "m"),
 			),
 		).toEqual([empty, empty, empty, empty]);
 	});
