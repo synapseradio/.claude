@@ -143,7 +143,7 @@ export const register: Register = on => {
     await count($, 'hooks', hookChars(result))
     await refresh($)
     return result
-  }).catch(($, e, next) => next(e))
+  }).catch((_$, e, next) => next(e))
 
   // Only a person's own typing counts as user text: task notifications, peers
   // and scheduled triggers enter the window too, and stay in `replies`.
@@ -152,7 +152,7 @@ export const register: Register = on => {
     const typed = e.origin.kind === 'composer' || e.origin.kind === 'bridge'
     if (typed && !e.isMeta && result.drop === undefined) await count($, 'user', e.text.length)
     return result
-  }).catch(($, e, next) => next(e))
+  }).catch((_$, e, next) => next(e))
 
   // Only main-thread calls count; a subagent's calls and results fill its own window.
   on('tool.call', async ($, e, next) => {
@@ -162,16 +162,16 @@ export const register: Register = on => {
       await count($, e.tool === 'Read' ? 'read' : 'results', (result.deny ?? result.text ?? '').length)
     }
     return result
-  }).catch(($, e, next) => next(e))
+  }).catch((_$, e, next) => next(e))
 
-  on('classic.Setup', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
-  on('classic.UserPromptSubmit', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
-  on('classic.UserPromptExpansion', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
-  on('classic.PostToolUse', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
-  on('classic.PostToolUseFailure', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
-  on('classic.PostToolBatch', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
-  on('classic.Stop', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
-  on('classic.PostModelSwitch', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
+  on('classic.Setup', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch((_$, e, next) => next(e))
+  on('classic.UserPromptSubmit', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch((_$, e, next) => next(e))
+  on('classic.UserPromptExpansion', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch((_$, e, next) => next(e))
+  on('classic.PostToolUse', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch((_$, e, next) => next(e))
+  on('classic.PostToolUseFailure', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch((_$, e, next) => next(e))
+  on('classic.PostToolBatch', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch((_$, e, next) => next(e))
+  on('classic.Stop', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch((_$, e, next) => next(e))
+  on('classic.PostModelSwitch', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch((_$, e, next) => next(e))
 
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
     const model = await read($, usage)

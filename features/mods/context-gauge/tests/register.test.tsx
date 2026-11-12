@@ -62,6 +62,13 @@ function engine(on: On): void {
 
 const TYPED = { wait: false, origin: { kind: 'composer' } } as const
 
+type TextColors = { color?: unknown; backgroundColor?: unknown }
+
+/** The colour props of a drawn Text, none where the node is absent. */
+function colors(node: { props: TextColors } | undefined): TextColors {
+  return node?.props ?? {}
+}
+
 async function gaugeText($: Engine): Promise<string> {
   const ui = await $.ui.mount(HINT)
   const text = (await ui.find({ key: 'gauge' }))?.text ?? ''
@@ -94,10 +101,10 @@ describe('the gauge under the prompt', () => {
     const segments = await ui.findAll({ type: 'Text', text: /▓/ })
     await ui.unmount()
 
-    expect(chip?.props.backgroundColor).toBe(CATEGORY_SWATCHES.system.hex)
-    expect(chip?.props.color).toBe(CHIP_TEXT)
-    expect(segments[0]?.props.color).toBe(CATEGORY_SWATCHES.system.hex)
-    expect(percent?.props.backgroundColor).toBe(FILL_SWATCHES.low.hex)
+    expect(colors(chip).backgroundColor).toBe(CATEGORY_SWATCHES.system.hex)
+    expect(colors(chip).color).toBe(CHIP_TEXT)
+    expect(colors(segments[0]).color).toBe(CATEGORY_SWATCHES.system.hex)
+    expect(colors(percent).backgroundColor).toBe(FILL_SWATCHES.low.hex)
   })
 
   test('a submitted prompt shows as user text', async ($, on) => {
