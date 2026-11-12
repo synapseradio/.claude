@@ -11,8 +11,7 @@
 !.markdownlint-cli2.jsonc
 !.shellcheckrc
 !biome.json
-!tsconfig.json
-!tsconfig.base.json
+!tsconfig*.json
 !package.json
 !bun.lock
 !pyproject.toml
