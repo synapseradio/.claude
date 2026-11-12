@@ -33,11 +33,17 @@ import type { BarRun } from "./palette";
 import { CATEGORY_STYLES } from "./palette";
 import type { Pixels } from "./pixels";
 import { barPixels, PX_PER_CELL, samplePixels } from "./pixels";
+import { readCompaction } from "./read-settings";
 import { gaugeRows, NO_ESTIMATES } from "./rows";
 
 const context = atom(
 	{ plugin: "context-gauge", key: "context" } as const,
 	null as SessionContextUsage | null,
+);
+
+const compaction = atom(
+	{ plugin: "context-gauge", key: "compaction" } as const,
+	{ enabled: true, window: null, percent: null },
 );
 
 const estimates = atom(
@@ -84,13 +90,17 @@ function onMain(e: { readonly agentId?: string | undefined }): boolean {
 	return e.agentId === undefined;
 }
 
-/** Reads the breakdown into its atom; a breakdown that fails to read leaves the last one. */
+/** Reads the breakdown and where auto-compaction runs into their atoms; a breakdown that fails to read leaves the last of both. */
 async function refresh($: EngineInterface): Promise<void> {
-	const usage = await $.session
-		.usage({ breakdown: "summary" })
-		.catch(() => null);
+	const [usage, decided] = await Promise.all([
+		$.session.usage({ breakdown: "summary" }).catch(() => null),
+		readCompaction($),
+	]);
 	if (usage === null) return;
-	await update($, context, () => usage.context);
+	await Promise.all([
+		update($, context, () => usage.context),
+		update($, compaction, () => decided),
+	]);
 }
 
 /**
@@ -271,18 +281,26 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 	next,
 ) => {
 	if (e.surface !== "terminal") return next(e);
-	const [hint, breakdown, counted, anchorTokens, pendingChars, fallback] =
-		await Promise.all([
-			next(e),
-			read($, context),
-			read($, estimates),
-			read($, anchor),
-			read($, pending),
-			read($, glyphs),
-		]);
+	const [
+		hint,
+		breakdown,
+		decided,
+		counted,
+		anchorTokens,
+		pendingChars,
+		fallback,
+	] = await Promise.all([
+		next(e),
+		read($, context),
+		read($, compaction),
+		read($, estimates),
+		read($, anchor),
+		read($, pending),
+		read($, glyphs),
+	]);
 	if (breakdown === null) return hint;
 	const live = { anchor: anchorTokens, pending: pendingChars };
-	const model = usageModel(breakdown, live);
+	const model = usageModel(breakdown, live, decided);
 	if (model === null) return hint;
 
 	const ui = $.ui.resolve(e);

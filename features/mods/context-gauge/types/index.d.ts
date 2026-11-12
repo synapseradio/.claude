@@ -11,6 +11,15 @@ export type UsageModel = {
 	categories: UsageCategory[];
 };
 
+/** What settings files and environment variables decide about auto-compaction: whether it runs, the window it compacts at, and the share of that window that triggers it. */
+export type CompactionSetting = {
+	enabled: boolean;
+	/** Tokens, or null where nothing sets a window and the engine's own threshold stands. */
+	window: number | null;
+	/** A percentage from 1 to 100, or null where none applies. */
+	percent: number | null;
+};
+
 /** Characters the gauge has counted into each message category since the window last cleared or compacted. */
 export type MessageEstimates = {
 	summary: number;
@@ -31,6 +40,8 @@ declare module "claude-code" {
 		"context-gauge": {
 			/** The last breakdown read, or null before the first. */
 			context: SessionContextUsage | null;
+			/** What the settings files and environment decided about auto-compaction at the last read. */
+			compaction: CompactionSetting;
 			estimates: MessageEstimates;
 			/** The window as the last main-thread response left it, or null before one. */
 			anchor: number | null;

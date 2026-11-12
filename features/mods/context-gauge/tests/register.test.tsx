@@ -80,22 +80,25 @@ const ROWS: readonly ContextCategory[] = [
 	row("Messages", 20_000),
 ];
 
-/** A session's usage whose breakdown holds `rows` in a 100,000-token window. */
-function usageOf(rows: readonly ContextCategory[]): SessionUsage {
+/** A session's usage whose breakdown holds `rows` in a window of `window` tokens, 100,000 unless given. */
+function usageOf(
+	rows: readonly ContextCategory[],
+	window = 100_000,
+): SessionUsage {
 	const total = rows.reduce((sum, r) => sum + r.tokens, 0);
 	return {
 		startedAt: 0,
 		rateLimits: [],
 		context: {
 			tokens: total,
-			window: 100_000,
+			window,
 			breakdown: {
-				categories: rows.concat(row("Free space", 100_000 - total, "free")),
+				categories: rows.concat(row("Free space", window - total, "free")),
 				totalTokens: total,
-				maxTokens: 100_000,
-				rawMaxTokens: 100_000,
+				maxTokens: window,
+				rawMaxTokens: window,
 				autocompactSource: "model-default",
-				percentage: Math.round(total / 1000),
+				percentage: Math.round((total / window) * 100),
 				gridRows: [],
 				model: "test",
 				memoryFiles: [],
@@ -110,8 +113,18 @@ function usageOf(rows: readonly ContextCategory[]): SessionUsage {
 
 type Fixture = {
 	rows?: readonly ContextCategory[];
+	/** The window the breakdown measures against, in tokens; 100,000 by default. */
+	window?: number;
 	/** TERM_PROGRAM, the terminal the session runs in; unset by default. */
 	termProgram?: string;
+	/** The environment variables the session runs with, besides TERM_PROGRAM; none by default. */
+	variables?: readonly (readonly [name: string, value: string])[];
+	/** The files a read finds, by absolute path; a read of any other path rejects. Read at each read, so a test may change it. */
+	files?: Readonly<Record<string, string>>;
+	/** The session's project root; none by default, so a read of it rejects. */
+	root?: string;
+	/** The session's model id; none by default, so a read of it rejects. */
+	model?: string;
 	/** Each `$.session.usage` call's answer, by call number from 0. */
 	usage?: (call: number) => SessionUsage;
 	/** What every blit on the bar Image answers; by default, that it drew. */
@@ -124,14 +137,22 @@ type World = { session: MockSession; clock: MockClock };
 // holds 30,000 of 100,000 tokens, 20,000 of them messages, on a terminal that
 // draws Images.
 function engine(on: On, fixture: Fixture = {}): World {
-	const usage = fixture.usage ?? (() => usageOf(fixture.rows ?? ROWS));
+	const usage =
+		fixture.usage ?? (() => usageOf(fixture.rows ?? ROWS, fixture.window));
 	const blit = fixture.blit ?? {};
 	let calls = 0;
 	const terminal =
 		fixture.termProgram === undefined
 			? []
 			: [["TERM_PROGRAM", fixture.termProgram]];
-	mock.env(on, Object.fromEntries(terminal));
+	mock.env(on, Object.fromEntries([...terminal, ...(fixture.variables ?? [])]));
+	on("fs.read", (_, e) => {
+		const content = fixture.files?.[e.path];
+		return content === undefined ? { deny: "ENOENT" } : { value: content };
+	});
+	const { root, model } = fixture;
+	if (root !== undefined) on("session.root", () => ({ value: root }));
+	if (model !== undefined) on("session.model", () => ({ value: model }));
 	const clock = mock.clock(on);
 	const session = mock.session(on);
 	on("session.start", (_, e) => ({ cwd: e.cwd }));
@@ -613,6 +634,227 @@ describe("compaction and /clear", () => {
 		const legend = await legendText($);
 		expect(legend).not.toMatch(/user/u);
 		expect(legend).not.toMatch(/summary/u);
+	});
+});
+
+const MANAGED = "/Library/Application Support/ClaudeCode/managed-settings.json";
+
+/** A settings file's text. */
+function settings(content: unknown): string {
+	return JSON.stringify(content);
+}
+
+describe("the ceiling from settings", () => {
+	test("the user's settings file sets the window under HOME", async ($, on) => {
+		engine(on, {
+			window: 1_000_000,
+			variables: [["HOME", "/home/me"]],
+			files: {
+				"/home/me/.claude/settings.json": settings({
+					autoCompactWindow: 500_000,
+				}),
+			},
+		});
+		await startSession($);
+
+		expect(await gaugeText($)).toMatch(/30k\/500k$/u);
+	});
+
+	test("CLAUDE_CONFIG_DIR moves the user's settings file", async ($, on) => {
+		engine(on, {
+			window: 1_000_000,
+			variables: [
+				["HOME", "/home/me"],
+				["CLAUDE_CONFIG_DIR", "/work/config"],
+			],
+			files: {
+				"/home/me/.claude/settings.json": settings({
+					autoCompactWindow: 400_000,
+				}),
+				"/work/config/settings.json": settings({ autoCompactWindow: 500_000 }),
+			},
+		});
+		await startSession($);
+
+		expect(await gaugeText($)).toMatch(/30k\/500k$/u);
+	});
+
+	test("project, local and managed settings take precedence in that order", async ($, on) => {
+		const files: Record<string, string> = {
+			"/home/me/.claude/settings.json": settings({
+				autoCompactWindow: 700_000,
+			}),
+			"/repo/.claude/settings.json": settings({ autoCompactWindow: 600_000 }),
+		};
+		engine(on, {
+			window: 1_000_000,
+			variables: [["HOME", "/home/me"]],
+			root: "/repo",
+			files,
+		});
+		respond(on, usage(10_000, 19_000, 1000));
+		await startSession($);
+		expect(await gaugeText($)).toMatch(/30k\/600k$/u);
+
+		files["/repo/.claude/settings.local.json"] = settings({
+			autoCompactWindow: 500_000,
+		});
+		await step($);
+		expect(await gaugeText($)).toMatch(/30k\/500k$/u);
+
+		files[MANAGED] = settings({ autoCompactWindow: 400_000 });
+		await step($);
+		expect(await gaugeText($)).toMatch(/30k\/400k$/u);
+	});
+
+	test("a settings file that is missing or unparseable leaves the engine's threshold", async ($, on) => {
+		engine(on, {
+			variables: [["HOME", "/home/me"]],
+			root: "/repo",
+			files: { "/repo/.claude/settings.json": "{ not json" },
+		});
+		await startSession($);
+
+		expect(await gaugeText($)).toMatch(/30k\/100k$/u);
+	});
+
+	test("a window past the model's window stops at the model's window", async ($, on) => {
+		engine(on, {
+			variables: [["HOME", "/home/me"]],
+			files: {
+				"/home/me/.claude/settings.json": settings({
+					autoCompactWindow: 500_000,
+				}),
+			},
+		});
+		await startSession($);
+
+		expect(await gaugeText($)).toMatch(/30k\/100k$/u);
+	});
+
+	test("the model's modelSettings entry beats the top-level window", async ($, on) => {
+		engine(on, {
+			window: 1_000_000,
+			variables: [["HOME", "/home/me"]],
+			model: "claude-opus-5-5",
+			files: {
+				"/home/me/.claude/settings.json": settings({
+					autoCompactWindow: 500_000,
+					modelSettings: {
+						"claude-opus-5-5": { autoCompactWindow: 300_000 },
+						"claude-sonnet-5": { autoCompactWindow: 200_000 },
+					},
+				}),
+			},
+		});
+		await startSession($);
+
+		expect(await gaugeText($)).toMatch(/30k\/300k$/u);
+	});
+
+	test("CLAUDE_CODE_AUTO_COMPACT_WINDOW beats the settings window", async ($, on) => {
+		engine(on, {
+			window: 1_000_000,
+			variables: [
+				["HOME", "/home/me"],
+				["CLAUDE_CODE_AUTO_COMPACT_WINDOW", "200k"],
+			],
+			files: {
+				"/home/me/.claude/settings.json": settings({
+					autoCompactWindow: 500_000,
+				}),
+			},
+		});
+		await startSession($);
+
+		expect(await gaugeText($)).toMatch(/30k\/200k$/u);
+	});
+
+	test("a settings env block beats the shell's variable", async ($, on) => {
+		engine(on, {
+			window: 1_000_000,
+			variables: [
+				["HOME", "/home/me"],
+				["CLAUDE_CODE_AUTO_COMPACT_WINDOW", "200k"],
+			],
+			files: {
+				"/home/me/.claude/settings.json": settings({
+					env: Object.fromEntries([
+						["CLAUDE_CODE_AUTO_COMPACT_WINDOW", "300k"],
+					]),
+				}),
+			},
+		});
+		await startSession($);
+
+		expect(await gaugeText($)).toMatch(/30k\/300k$/u);
+	});
+
+	test("DISABLE_AUTO_COMPACT=1 makes the ceiling the model's window", async ($, on) => {
+		engine(on, {
+			window: 400_000,
+			variables: [
+				["HOME", "/home/me"],
+				["DISABLE_AUTO_COMPACT", "1"],
+			],
+			files: {
+				"/home/me/.claude/settings.json": settings({
+					autoCompactWindow: 200_000,
+				}),
+			},
+		});
+		await startSession($);
+
+		expect(await gaugeText($)).toMatch(/30k\/400k$/u);
+	});
+
+	test("autoCompactEnabled false in a settings file makes the ceiling the model's window", async ($, on) => {
+		engine(on, {
+			window: 400_000,
+			variables: [["HOME", "/home/me"]],
+			files: {
+				"/home/me/.claude/settings.json": settings({
+					autoCompactEnabled: false,
+					autoCompactWindow: 200_000,
+				}),
+			},
+		});
+		await startSession($);
+
+		expect(await gaugeText($)).toMatch(/30k\/400k$/u);
+	});
+
+	test("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE takes its share of the window", async ($, on) => {
+		engine(on, {
+			window: 400_000,
+			variables: [
+				["HOME", "/home/me"],
+				["CLAUDE_CODE_AUTO_COMPACT_WINDOW", "300k"],
+				["CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "50"],
+			],
+		});
+		await startSession($);
+
+		expect(await gaugeText($)).toMatch(/30k\/150k$/u);
+	});
+
+	test("a changed settings file takes effect at the next response", async ($, on) => {
+		const files: Record<string, string> = {
+			"/home/me/.claude/settings.json": settings({
+				autoCompactWindow: 500_000,
+			}),
+		};
+		engine(on, { window: 1_000_000, variables: [["HOME", "/home/me"]], files });
+		respond(on, usage(10_000, 19_000, 1000));
+		await startSession($);
+		expect(await gaugeText($)).toMatch(/30k\/500k$/u);
+
+		files["/home/me/.claude/settings.json"] = settings({
+			autoCompactWindow: 300_000,
+		});
+		await step($);
+
+		expect(await gaugeText($)).toMatch(/30k\/300k$/u);
 	});
 });
 

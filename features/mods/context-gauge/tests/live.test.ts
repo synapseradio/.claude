@@ -5,8 +5,8 @@ import type {
 	TurnUsage,
 } from "claude-code";
 import { describe, expect, test } from "claude-code/testing";
-
 import { thinkingTokens, usageModel, windowAfter } from "../hooks/live";
+import type { CompactionSetting } from "../types";
 
 function row(
 	name: string,
@@ -69,12 +69,20 @@ function breakdown(
 
 const NO_ANCHOR = { anchor: null, pending: 0 };
 
+/** Settings and environment that set nothing, leaving the engine's threshold to stand. */
+const NO_SETTINGS: CompactionSetting = {
+	enabled: true,
+	window: null,
+	percent: null,
+};
+
 /** The usage model of a session whose context carries breakdown `b`. */
 function modelFor(
 	b: SessionContextBreakdown,
 	live: Parameters<typeof usageModel>[1] = NO_ANCHOR,
+	compaction: CompactionSetting = NO_SETTINGS,
 ) {
-	return usageModel({ window: b.rawMaxTokens, breakdown: b }, live);
+	return usageModel({ window: b.rawMaxTokens, breakdown: b }, live, compaction);
 }
 
 describe("the window after a response", () => {
@@ -167,6 +175,30 @@ describe("the usage model", () => {
 		expect(modelFor(breakdown(100_000))?.max).toBe(100_000);
 	});
 
+	test("a settings window replaces the engine's threshold as the ceiling", async () => {
+		const settings = { ...NO_SETTINGS, window: 60_000 };
+
+		expect(modelFor(breakdown(100_000, 80_000), NO_ANCHOR, settings)?.max).toBe(
+			60_000,
+		);
+	});
+
+	test("settings that turn auto-compaction off make the ceiling the raw window", async () => {
+		const settings = { ...NO_SETTINGS, enabled: false };
+
+		expect(modelFor(breakdown(100_000, 80_000), NO_ANCHOR, settings)?.max).toBe(
+			100_000,
+		);
+	});
+
+	test("a percentage override lowers the ceiling", async () => {
+		const settings = { ...NO_SETTINGS, percent: 50 };
+
+		expect(modelFor(breakdown(100_000, 80_000), NO_ANCHOR, settings)?.max).toBe(
+			50_000,
+		);
+	});
+
 	test("the percentage divides used by the auto-compaction threshold, not the raw window", async () => {
 		const model = modelFor(breakdown(100_000, 40_000));
 
@@ -187,7 +219,7 @@ describe("the usage model", () => {
 	});
 
 	test("no breakdown gives no model", async () => {
-		expect(usageModel({ window: 100_000 }, NO_ANCHOR)).toBeNull();
+		expect(usageModel({ window: 100_000 }, NO_ANCHOR, NO_SETTINGS)).toBeNull();
 	});
 
 	test("an empty window gives no model", async () => {

@@ -6,7 +6,8 @@ import type {
 	TurnStepResult,
 } from "claude-code";
 
-import type { UsageModel } from "../types";
+import type { CompactionSetting, UsageModel } from "../types";
+import { ceiling } from "./settings";
 
 const CHARS_PER_TOKEN = 4;
 
@@ -42,14 +43,15 @@ export function thinkingTokens(
 	);
 }
 
-/** The gauge's usage model, live from the last anchoring response, or null without a breakdown or a ceiling; the ceiling is the auto-compaction threshold, or the raw window where auto-compaction is off. */
+/** The gauge's usage model, live from the last anchoring response, or null without a breakdown or a ceiling; the ceiling is where `compaction` says auto-compaction runs (see `ceiling`). */
 export function usageModel(
 	context: SessionContextUsage,
 	live: { anchor: number | null; pending: number },
+	compaction: CompactionSetting,
 ): UsageModel | null {
 	const breakdown = context.breakdown;
 	if (breakdown === undefined) return null;
-	const max = breakdown.autoCompactThreshold ?? breakdown.rawMaxTokens;
+	const max = ceiling(compaction, breakdown);
 	if (max <= 0) return null;
 	const used =
 		live.anchor === null
