@@ -1,6 +1,23 @@
 import { describe, expect, test } from "claude-code/testing";
 
 import { gaugeRows, NO_ESTIMATES } from "../hooks/rows";
+import type { MessageEstimates } from "../types";
+
+function estimates(chars: Partial<MessageEstimates>): MessageEstimates {
+	return {
+		summary: chars.summary ?? 0,
+		hooks: chars.hooks ?? 0,
+		attachments: chars.attachments ?? 0,
+		user: chars.user ?? 0,
+		commands: chars.commands ?? 0,
+		deliveries: chars.deliveries ?? 0,
+		calls: chars.calls ?? 0,
+		results: chars.results ?? 0,
+		read: chars.read ?? 0,
+		thinking: chars.thinking ?? 0,
+		replies: chars.replies ?? 0,
+	};
+}
 
 describe("gauge rows", () => {
 	test("engine rows are named in bar order, empty rows left out", async () => {
@@ -93,19 +110,10 @@ describe("gauge rows", () => {
 	});
 
 	test("messages the estimates fall short of show as an unattributed row of the difference", async () => {
-		const rows = gaugeRows([{ name: "Messages", tokens: 10_000 }], {
-			summary: 0,
-			hooks: 0,
-			attachments: 0,
-			user: 4000,
-			commands: 0,
-			deliveries: 0,
-			calls: 0,
-			results: 0,
-			read: 0,
-			thinking: 0,
-			replies: 8000,
-		});
+		const rows = gaugeRows(
+			[{ name: "Messages", tokens: 10_000 }],
+			estimates({ user: 4000, replies: 8000 }),
+		);
 
 		expect(rows.map((r) => [r.label, r.tokens, r.estimated])).toEqual([
 			["user", 1000, true],
@@ -115,19 +123,10 @@ describe("gauge rows", () => {
 	});
 
 	test("estimates larger than the messages row shrink to fit it, leaving nothing unattributed", async () => {
-		const rows = gaugeRows([{ name: "Messages", tokens: 1000 }], {
-			summary: 0,
-			hooks: 4000,
-			attachments: 0,
-			user: 0,
-			commands: 0,
-			deliveries: 0,
-			calls: 0,
-			results: 0,
-			read: 2000,
-			thinking: 0,
-			replies: 2000,
-		});
+		const rows = gaugeRows(
+			[{ name: "Messages", tokens: 1000 }],
+			estimates({ hooks: 4000, read: 2000, replies: 2000 }),
+		);
 
 		expect(rows.map((r) => [r.label, r.tokens])).toEqual([
 			["hooks", 500],

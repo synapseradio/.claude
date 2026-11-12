@@ -65,8 +65,7 @@ function splitMessages(tokens: number, chars: MessageEstimates): GaugeRow[] {
 	const counted = COUNTED.map((id) =>
 		named(id, Math.round((chars[id] / CHARS_PER_TOKEN) * scale), true),
 	);
-	const sum = counted.reduce((total, r) => total + r.tokens, 0);
-	const rest = scale < 1 ? 0 : Math.max(0, tokens - sum);
+	const rest = Math.max(0, Math.round(tokens - seen));
 	return counted.concat(named("unattributed", rest, false));
 }
 

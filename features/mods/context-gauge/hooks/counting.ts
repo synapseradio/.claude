@@ -101,6 +101,7 @@ export function addCounts(
 	e: MessageEstimates,
 	counts: readonly Counted[],
 ): MessageEstimates {
+	if (counts.length === 0) return e;
 	const added = (id: CountedId): number =>
 		counts.reduce((sum, c) => (c.id === id ? sum + c.chars : sum), e[id]);
 	return {
