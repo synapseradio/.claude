@@ -1,37 +1,17 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, SessionContextBreakdown, SessionContextUsage } from 'claude-code'
 
-import type { UsageModel } from '../types'
+import type { MessageEstimates, UsageModel } from '../types'
+import { CATEGORY_SWATCHES, CHIP_TEXT, fillSwatch } from './palette'
+import { gaugeRows } from './rows'
+import type { GaugeRow } from './rows'
 
 const usage = atom({ plugin: 'context-gauge', key: 'usage' } as const, null as UsageModel | null)
 
+const NO_ESTIMATES: MessageEstimates = { hooks: 0, user: 0, read: 0 }
+const estimates = atom({ plugin: 'context-gauge', key: 'estimates' } as const, NO_ESTIMATES)
+
 const BAR_CELLS = 14
-
-/** Icon and short label for each breakdown row, keyed by the row name /context prints. */
-const CATEGORY_TAGS: Readonly<Record<string, { icon: string; label: string }>> = {
-  'System prompt': { icon: '⊞', label: 'sys' },
-  'System tools': { icon: '⚙', label: 'tools' },
-  'MCP tools': { icon: '⇄', label: 'mcp' },
-  'MCP server instructions': { icon: '⇄', label: 'mcp info' },
-  'Custom agents': { icon: '◇', label: 'agents' },
-  'Memory files': { icon: '▤', label: 'memory' },
-  Skills: { icon: '✦', label: 'skills' },
-  Messages: { icon: '✉', label: 'msgs' },
-}
-
-function moon(percent: number): string {
-  if (percent <= 0) return '○'
-  if (percent < 25) return '◔'
-  if (percent < 50) return '◑'
-  if (percent < 75) return '◕'
-  return '●'
-}
-
-function moonColor(percent: number): string {
-  if (percent < 50) return 'success'
-  if (percent < 80) return 'warning'
-  return 'error'
-}
 
 function phrase(percent: number): string {
   if (percent <= 0) return 'fresh canvas'
@@ -52,11 +32,6 @@ function abbrev(n: number): string {
 
 function commas(n: number): string {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-}
-
-function tagFor(name: string): string {
-  const tag = CATEGORY_TAGS[name]
-  return tag ? `${tag.icon} ${tag.label}` : name.toLowerCase()
 }
 
 async function effectiveMax($: EngineInterface, b: SessionContextBreakdown): Promise<number> {
@@ -85,7 +60,7 @@ async function modelFrom($: EngineInterface, context: SessionContextUsage): Prom
   const scale = b.totalTokens > 0 ? used / b.totalTokens : 1
   const categories = b.categories
     .filter(c => c.kind === 'used' && c.tokens > 0)
-    .map(c => ({ label: c.name, tokens: Math.round(c.tokens * scale), color: c.color, kind: c.kind }))
+    .map(c => ({ name: c.name, tokens: Math.round(c.tokens * scale) }))
   return { used, max, percent, categories }
 }
 
@@ -95,18 +70,36 @@ async function refresh($: EngineInterface): Promise<void> {
   await update($, usage, () => model)
 }
 
-function barSegments(model: UsageModel): { color: string; chars: string }[] {
+async function count($: EngineInterface, field: keyof MessageEstimates, chars: number): Promise<void> {
+  if (chars > 0) await update($, estimates, e => ({ ...e, [field]: e[field] + chars }))
+}
+
+/** Characters a classic hook result hands the model: its context entries and its block reason. */
+function hookChars(result: { additionalContext?: readonly string[]; block?: string }): number {
+  const context = (result.additionalContext ?? []).reduce((sum, text) => sum + text.length, 0)
+  return context + (result.block?.length ?? 0)
+}
+
+/** Counts a main-thread hook result; a subagent's hooks fill the subagent's window. */
+async function countHooks<R extends { additionalContext?: readonly string[]; block?: string }>(
+  $: EngineInterface,
+  fromSubagent: boolean,
+  result: R,
+): Promise<R> {
+  if (!fromSubagent) await count($, 'hooks', hookChars(result))
+  return result
+}
+
+function barSegments(model: UsageModel, rows: readonly GaugeRow[]): { color: string; chars: string }[] {
   const total = Math.max(model.max, 1)
   const parts = [
-    ...model.categories.map(c => ({ tokens: c.tokens, char: '▓', color: c.color })),
+    ...rows.map(r => ({ tokens: r.tokens, char: '▓', color: CATEGORY_SWATCHES[r.id].hex })),
     { tokens: Math.max(0, model.max - model.used), char: '░', color: 'inactive' },
   ]
   const raw = parts.map(p => (p.tokens / total) * BAR_CELLS)
   const cells = raw.map(r => Math.floor(r))
-  let leftover = BAR_CELLS - cells.reduce((a, b) => a + b, 0)
-  const order = raw
-    .map((r, i) => i)
-    .sort((a, b) => ((raw[b] ?? 0) % 1) - ((raw[a] ?? 0) % 1))
+  const leftover = BAR_CELLS - cells.reduce((a, b) => a + b, 0)
+  const order = raw.map((_, i) => i).sort((a, b) => ((raw[b] ?? 0) % 1) - ((raw[a] ?? 0) % 1))
   for (let k = 0; k < leftover; k++) {
     const i = order[k % order.length]
     if (i !== undefined) cells[i] = (cells[i] ?? 0) + 1
@@ -132,43 +125,77 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // `/clear` ends the session without a `session.start` for the new one;
-  // the classic SessionStart event carries it as `source: 'clear'`.
+  // `/clear` ends the session without a `session.start` for the new one, and
+  // compaction replaces the messages the estimates counted; the classic
+  // SessionStart event carries both as its `source`.
   on('classic.SessionStart', async ($, e, next) => {
+    if (e.source === 'clear' || e.source === 'compact') await update($, estimates, () => NO_ESTIMATES)
+    const result = await next(e)
+    await count($, 'hooks', hookChars(result))
     await refresh($)
-    return next(e)
+    return result
   }).catch(($, e, next) => next(e))
+
+  // Only a person's own typing counts as user text: task notifications, peers
+  // and scheduled triggers enter the window too, and stay in `replies & tools`.
+  on('prompt.submit', async ($, e, next) => {
+    const result = await next(e)
+    const typed = e.origin.kind === 'composer' || e.origin.kind === 'bridge'
+    if (typed && !e.isMeta && result.drop === undefined) await count($, 'user', e.text.length)
+    return result
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', { tool: 'Read' }, async ($, e, next) => {
+    const result = await next(e)
+    const output = 'result' in result && !result.isError ? result.result : undefined
+    if (e.agentId === undefined && output?.type === 'text') await count($, 'read', output.file.content.length)
+    return result
+  }).catch(($, e, next) => next(e))
+
+  on('classic.Setup', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
+  on('classic.UserPromptSubmit', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
+  on('classic.UserPromptExpansion', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
+  on('classic.PostToolUse', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
+  on('classic.PostToolUseFailure', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
+  on('classic.PostToolBatch', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
+  on('classic.Stop', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
+  on('classic.PostModelSwitch', async ($, e, next) => countHooks($, e.agent_id !== undefined, await next(e))).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
     const model = await read($, usage)
     if (model === null) return next(e)
 
     const { Box, Text } = $.ui.resolve(e)
-    const top = [...model.categories].sort((a, b) => b.tokens - a.tokens).slice(0, 2)
+    const rows = gaugeRows(model.categories, await read($, estimates))
 
     return (
-      <Box>
-        <Text color={moonColor(model.percent)}>{moon(model.percent)}</Text>
-        <Text> </Text>
-        {barSegments(model).map((s, i) => (
-          <Text key={`s${i}`} color={s.color}>
-            {s.chars}
+      <Box flexDirection="column">
+        {await next(e)}
+        <Box key="gauge">
+          <Text color={CHIP_TEXT} backgroundColor={fillSwatch(model.percent).hex}>
+            {` ${model.percent}% `}
           </Text>
-        ))}
-        <Text> </Text>
-        <Text>{model.percent}%</Text>
-        <Text> </Text>
-        <Text>
-          {commas(model.used)}/{commas(model.max)}
-        </Text>
-        <Text> </Text>
-        <Text dimColor>{phrase(model.percent)}</Text>
-        {top.map((c, i) => (
-          <Text key={`c${i}`} dimColor>
-            {' '}· {tagFor(c.label)} {abbrev(c.tokens)}
+          <Text> </Text>
+          {barSegments(model, rows).map((s, i) => (
+            <Text key={`s${i}`} color={s.color}>
+              {s.chars}
+            </Text>
+          ))}
+          <Text>
+            {' '}
+            {commas(model.used)}/{commas(model.max)}{' '}
           </Text>
-        ))}
-        {e.props.hint ? <Text dimColor> · {e.props.hint}</Text> : null}
+          <Text dimColor>{phrase(model.percent)}</Text>
+          {rows.map(r => (
+            <Box key={`row-${r.id}-${r.label}`}>
+              <Text dimColor> · </Text>
+              <Text color={CHIP_TEXT} backgroundColor={CATEGORY_SWATCHES[r.id].hex}>
+                {` ${r.label} `}
+              </Text>
+              <Text> {`${r.estimated ? '~' : ''}${abbrev(r.tokens)}`}</Text>
+            </Box>
+          ))}
+        </Box>
       </Box>
     )
   })

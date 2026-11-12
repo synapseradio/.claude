@@ -1,8 +1,7 @@
+/** One breakdown row as the engine names it, its tokens scaled to the window's measured use. */
 export type UsageCategory = {
-  label: string
+  name: string
   tokens: number
-  color: string
-  kind: string
 }
 
 export type UsageModel = {
@@ -12,8 +11,15 @@ export type UsageModel = {
   categories: UsageCategory[]
 }
 
+/** Characters the gauge has seen enter the window since it last cleared or compacted. */
+export type MessageEstimates = {
+  hooks: number
+  user: number
+  read: number
+}
+
 declare module 'claude-code' {
   interface PluginState {
-    'context-gauge': { usage: UsageModel | null }
+    'context-gauge': { usage: UsageModel | null; estimates: MessageEstimates }
   }
 }
