@@ -46,13 +46,12 @@ BLOCK_FIRST_LINE = 2
 
 
 def _split(text: str) -> tuple[str, str] | None:
-    """The block between the fences and the text after the closing fence, or None.
+    r"""The block between the fences and the text after the closing fence, or None.
 
     A fence is a line of three dashes and any trailing whitespace, so a closing fence may end
     the text with no newline and a file may use Windows line endings. The block comes back
-    with `\\n` line endings.
+    with `\n` line endings.
     """
-
     lines = text.split("\n")
     if lines[0].rstrip() != FENCE:
         return None
@@ -69,7 +68,6 @@ def split_frontmatter(text: str) -> tuple[str, int] | None:
     The text carries a block where its first line is a fence and a later line is the closing
     fence. The block is the text between them, without either fence.
     """
-
     split = _split(text)
     return None if split is None else (split[0], BLOCK_FIRST_LINE)
 
@@ -100,7 +98,6 @@ def rewrite_paths(text: str) -> str:
     `$HOME`, which names the same directory on any account; every other byte
     survives.
     """
-
     text = MARKDOWN_LINK.sub(lambda m: _absolute_link_target(m.group(1)), text)
     return text.replace("~/", f"{HOME_VAR}/")
 
@@ -120,53 +117,12 @@ def restore_paths(text: str) -> str:
     `x`, and `~/.claude/x` onto one target, so this picks the `./` form,
     which is the one the sources carry.
     """
-
     text = MARKDOWN_LINK.sub(lambda m: _relative_link_target(m.group(1)), text)
     return text.replace(f"{HOME_VAR}/", "~/")
 
 
-def all_rules(rules_dir: Path) -> list[Path]:
-    """Every rule file, sorted by filename."""
-
-    return sorted(rules_dir.glob("*.md"))
-
-
-def unconditional_rules(rules_dir: Path) -> list[Path]:
-    """The rule files that load every session, carrying no frontmatter.
-
-    A rule carrying `paths:` frontmatter stays out. Claude Code loads one
-    only once a matching file enters play, and each adapter reproduces that
-    condition from the same frontmatter, so listing it here would put the
-    text in every prompt and a second copy in a matching one.
-    """
-
-    return [
-        rule
-        for rule in all_rules(rules_dir)
-        if parse_document(rule.read_text(encoding="utf-8")).frontmatter is None
-    ]
-
-
-def ordered_rules(rules_dir: Path, order: tuple[str, ...]) -> list[Path]:
-    """The unconditional rules in the given order.
-
-    Raises ValueError naming every stem the order and the directory disagree
-    on, so a new rule lands in the order before a run silently drops it.
-    """
-
-    present = {rule.stem: rule for rule in unconditional_rules(rules_dir)}
-    unlisted = sorted(set(present) - set(order))
-    absent = [stem for stem in order if stem not in present]
-    if unlisted or absent:
-        raise ValueError(
-            f"working rules order disagrees with {rules_dir}: unlisted {unlisted}, absent {absent}"
-        )
-    return [present[stem] for stem in order]
-
-
 def home_relative(path: Path) -> str:
     """`~/`-prefixed where the path sits under the home directory, absolute otherwise."""
-
     return f"~/{path.relative_to(HOME)}" if path.is_relative_to(HOME) else str(path)
 
 
@@ -176,7 +132,6 @@ def uncommitted(repo: Path, paths: list[Path]) -> list[str]:
     A directory outside any git repository reports none, so a run still
     works where nobody versions the configuration.
     """
-
     if not paths:
         return []
     finished = subprocess.run(
@@ -205,7 +160,6 @@ def refuse_uncommitted(repo: Path, paths: list[Path]) -> None:
     carrying an edit git has never seen loses that edit with no diff to
     recover it from.
     """
-
     changed = uncommitted(repo, paths)
     if changed:
         raise ValueError(
@@ -232,7 +186,6 @@ def write_or_check(files: tuple[GeneratedFile, ...], *, check: bool) -> int:
     writes nothing. Otherwise each differing file gets written and reported
     with the byte counts it moved between.
     """
-
     stale = 0
     for generated in files:
         current = _current(generated.path)
@@ -262,7 +215,6 @@ def summarize(stale: int, total: int, *, check: bool) -> int:
     so the pre-push gate reads one sentence whichever ran and a run that
     also owns JSON keys still prints one summary rather than two.
     """
-
     if check:
         print(f"{stale} of {total} generated outputs out of date")
         return 1 if stale else 0
