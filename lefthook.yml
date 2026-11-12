@@ -41,6 +41,37 @@ pre-commit:
       glob: "*.{ts,tsx,mts,cts}"
       run: ../../../node_modules/.bin/tsc -p .
 
+    # The engine's own static check of a plugin: everything it would refuse at
+    # load fails the commit.
+    # https://code.claude.com/docs/en/plugins-reference
+    - name: plugin-validate
+      group:
+        parallel: true
+        jobs:
+          - name: context-gauge
+            root: features/mods/context-gauge/
+            glob: "*"
+            run: claude plugin validate .
+          - name: epistemic-marks
+            root: features/plugins/epistemic-marks/
+            glob: "*"
+            run: claude plugin validate .
+          - name: harness-config
+            root: features/plugins/harness-config/
+            glob: "*"
+            run: claude plugin validate .
+          - name: rulesets
+            root: features/plugins/rulesets/
+            glob: "*"
+            run: claude plugin validate .
+          - name: warden
+            root: features/plugins/warden/
+            glob: "*"
+            run: claude plugin validate .
+          - name: marketplace
+            glob: ".claude-plugin/marketplace.json"
+            run: claude plugin validate .
+
     - name: render-rulesets
       glob:
         - "rulesets/config.yaml"
