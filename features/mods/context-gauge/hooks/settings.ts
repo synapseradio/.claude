@@ -207,24 +207,26 @@ export function resolveCompaction(
 }
 
 /**
- * The most tokens the gauge counts toward: where auto-compaction runs, or
- * the whole window where it is off, and never past the window.
+ * The most tokens the gauge counts toward.
  *
- * Why: the percentage takes its share of the window and can only lower the
- * threshold (https://code.claude.com/docs/en/env-vars); the engine's own
- * threshold stands where no window is set, since it holds the model's default.
+ * Where the engine reports a threshold, that value stands: the engine has
+ * already folded the window and the percentage into it. Where it reports none,
+ * one input decides, in this order: an off switch gives the raw window, then
+ * the window, then the percentage of the raw window, then the raw window.
+ *
+ * Why: the percentage only lowers the threshold the engine computes from the
+ * window, so applying it to a window as well would count it twice
+ * (https://code.claude.com/docs/en/env-vars).
  */
 export function ceiling(
 	setting: CompactionSetting,
 	b: Pick<SessionContextBreakdown, "rawMaxTokens" | "autoCompactThreshold">,
 ): number {
+	if (b.autoCompactThreshold !== undefined) return b.autoCompactThreshold;
 	if (!setting.enabled) return b.rawMaxTokens;
-	const threshold = setting.window ?? b.autoCompactThreshold ?? b.rawMaxTokens;
-	const share =
-		setting.percent === null
-			? threshold
-			: Math.floor(
-					((setting.window ?? b.rawMaxTokens) * setting.percent) / 100,
-				);
-	return Math.min(threshold, share, b.rawMaxTokens);
+	if (setting.window !== null) return Math.min(setting.window, b.rawMaxTokens);
+	if (setting.percent !== null) {
+		return Math.floor((b.rawMaxTokens * setting.percent) / 100);
+	}
+	return b.rawMaxTokens;
 }

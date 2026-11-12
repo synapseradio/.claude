@@ -359,59 +359,65 @@ function windowOf(
 const ON: CompactionSetting = { enabled: true, window: null, percent: null };
 
 describe("the ceiling", () => {
-	test("with nothing set, the ceiling is the engine's threshold", async () => {
+	test("the engine's threshold stands unchanged where it reports one", async () => {
 		expect(ceiling(ON, windowOf(1_000_000, 967_000))).toBe(967_000);
+	});
+
+	test("a 350,000 window and a 35 percent override leave the engine's threshold unchanged", async () => {
+		const setting = { ...ON, window: 350_000, percent: 35 };
+
+		expect(ceiling(setting, windowOf(1_000_000, 350_000))).toBe(350_000);
+	});
+
+	test("a settings window does not replace the engine's threshold", async () => {
+		const setting = { ...ON, window: 500_000 };
+
+		expect(ceiling(setting, windowOf(1_000_000, 967_000))).toBe(967_000);
+	});
+
+	test("switches that turn auto-compaction off do not change the engine's threshold", async () => {
+		const setting = { enabled: false, window: null, percent: null };
+
+		expect(ceiling(setting, windowOf(1_000_000, 967_000))).toBe(967_000);
+	});
+
+	test("with no engine threshold and auto-compaction off, the ceiling is the raw window", async () => {
+		const setting = { enabled: false, window: 300_000, percent: 50 };
+
+		expect(ceiling(setting, windowOf(1_000_000))).toBe(1_000_000);
+	});
+
+	test("with no engine threshold, the window sets the ceiling", async () => {
+		const setting = { ...ON, window: 500_000 };
+
+		expect(ceiling(setting, windowOf(1_000_000))).toBe(500_000);
+	});
+
+	test("with no engine threshold, a window and a percentage leave the window alone deciding", async () => {
+		const setting = { ...ON, window: 350_000, percent: 35 };
+
+		expect(ceiling(setting, windowOf(1_000_000))).toBe(350_000);
+	});
+
+	test("with no engine threshold and no window, the percentage takes its share of the raw window", async () => {
+		const setting = { ...ON, percent: 35 };
+
+		expect(ceiling(setting, windowOf(1_000_000))).toBe(350_000);
+	});
+
+	test("the percentage rounds down to a whole token", async () => {
+		const setting = { ...ON, percent: 33 };
+
+		expect(ceiling(setting, windowOf(100_001))).toBe(33_000);
 	});
 
 	test("with nothing set and no engine threshold, the ceiling is the raw window", async () => {
 		expect(ceiling(ON, windowOf(200_000))).toBe(200_000);
 	});
 
-	test("a settings window replaces the engine's threshold", async () => {
-		const setting = { ...ON, window: 500_000 };
-
-		expect(ceiling(setting, windowOf(1_000_000, 967_000))).toBe(500_000);
-	});
-
-	test("with auto-compaction off, the ceiling is the raw window, whatever the window says", async () => {
-		const setting = { enabled: false, window: 300_000, percent: 50 };
-
-		expect(ceiling(setting, windowOf(1_000_000, 967_000))).toBe(1_000_000);
-	});
-
-	test("the raw window caps a settings window", async () => {
+	test("the raw window caps a window", async () => {
 		const setting = { ...ON, window: 500_000 };
 
 		expect(ceiling(setting, windowOf(200_000))).toBe(200_000);
-	});
-
-	test("the percentage takes its share of the settings window", async () => {
-		const setting = { ...ON, window: 500_000, percent: 50 };
-
-		expect(ceiling(setting, windowOf(1_000_000))).toBe(250_000);
-	});
-
-	test("the percentage rounds down to a whole token", async () => {
-		const setting = { ...ON, window: 100_001, percent: 50 };
-
-		expect(ceiling(setting, windowOf(1_000_000))).toBe(50_000);
-	});
-
-	test("with no window set, the percentage takes its share of the raw window", async () => {
-		const setting = { ...ON, percent: 50 };
-
-		expect(ceiling(setting, windowOf(1_000_000, 967_000))).toBe(500_000);
-	});
-
-	test("the percentage cannot raise the ceiling past the engine's threshold", async () => {
-		const setting = { ...ON, percent: 100 };
-
-		expect(ceiling(setting, windowOf(1_000_000, 967_000))).toBe(967_000);
-	});
-
-	test("the percentage cannot raise a settings window", async () => {
-		const setting = { ...ON, window: 300_000, percent: 100 };
-
-		expect(ceiling(setting, windowOf(1_000_000))).toBe(300_000);
 	});
 });

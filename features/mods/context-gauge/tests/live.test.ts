@@ -175,28 +175,40 @@ describe("the usage model", () => {
 		expect(modelFor(breakdown(100_000))?.max).toBe(100_000);
 	});
 
-	test("a settings window replaces the engine's threshold as the ceiling", async () => {
+	test("a settings window leaves the engine's threshold as the ceiling", async () => {
 		const settings = { ...NO_SETTINGS, window: 60_000 };
 
 		expect(modelFor(breakdown(100_000, 80_000), NO_ANCHOR, settings)?.max).toBe(
-			60_000,
+			80_000,
 		);
 	});
 
-	test("settings that turn auto-compaction off make the ceiling the raw window", async () => {
-		const settings = { ...NO_SETTINGS, enabled: false };
+	test("with no engine threshold, a settings window is the ceiling", async () => {
+		const settings = { ...NO_SETTINGS, window: 60_000 };
 
-		expect(modelFor(breakdown(100_000, 80_000), NO_ANCHOR, settings)?.max).toBe(
+		expect(modelFor(breakdown(100_000), NO_ANCHOR, settings)?.max).toBe(60_000);
+	});
+
+	test("with no engine threshold, settings that turn auto-compaction off make the ceiling the raw window", async () => {
+		const settings = { ...NO_SETTINGS, enabled: false, window: 60_000 };
+
+		expect(modelFor(breakdown(100_000), NO_ANCHOR, settings)?.max).toBe(
 			100_000,
 		);
 	});
 
-	test("a percentage override lowers the ceiling", async () => {
+	test("a percentage override leaves the engine's threshold as the ceiling", async () => {
 		const settings = { ...NO_SETTINGS, percent: 50 };
 
 		expect(modelFor(breakdown(100_000, 80_000), NO_ANCHOR, settings)?.max).toBe(
-			50_000,
+			80_000,
 		);
+	});
+
+	test("with no engine threshold, a percentage override takes its share of the raw window", async () => {
+		const settings = { ...NO_SETTINGS, percent: 50 };
+
+		expect(modelFor(breakdown(100_000), NO_ANCHOR, settings)?.max).toBe(50_000);
 	});
 
 	test("the percentage divides used by the auto-compaction threshold, not the raw window", async () => {

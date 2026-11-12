@@ -857,17 +857,25 @@ describe("the ceiling from settings", () => {
 		expect(await gaugeText($)).toMatch(/\(30k\/400k\)/u);
 	});
 
-	test("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE takes its share of the window", async ($, on) => {
+	test("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE takes its share of the model's window where no window is set", async ($, on) => {
 		engine(on, {
 			window: 400_000,
-			variables: [
-				["CLAUDE_CODE_AUTO_COMPACT_WINDOW", "300k"],
-				["CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "50"],
-			],
+			variables: [["CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "50"]],
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/\(30k\/150k\)/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/200k\)/u);
+	});
+
+	test("a window and CLAUDE_AUTOCOMPACT_PCT_OVERRIDE leave the window alone deciding", async ($, on) => {
+		engine(on, {
+			window: 1_000_000,
+			variables: [["CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "35"]],
+			sources: { user: { autoCompactWindow: 350_000 } },
+		});
+		await startSession($);
+
+		expect(await gaugeText($)).toMatch(/\(30k\/350k\)/u);
 	});
 
 	test("a changed source takes effect at the next response", async ($, on) => {
