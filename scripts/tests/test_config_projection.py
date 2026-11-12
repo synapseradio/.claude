@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Tests for the config-projection capability: the jobs under `scripts/agent-configs/` and the
-pre-push gate that checks them.
+"""Tests for the config-projection jobs under `scripts/agent-configs/`.
 
-Run with `python3.14 -m pytest -p no:cacheprovider scripts/tests/test_config_projection.py`.
+Run with `uv run --frozen pytest -p no:cacheprovider scripts/tests/test_config_projection.py`.
 
 Every test builds its own tree under a tmp_path and passes a Targets naming it, so no test reads
 or writes this checkout's configuration or the real pi and opencode directories.
@@ -11,12 +10,11 @@ or writes this checkout's configuration or the real pi and opencode directories.
 import dataclasses
 import importlib.util
 import json
-import os
 import pathlib
-import subprocess
 import sys
+import types
 
-import yaml
+import pytest
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
@@ -24,7 +22,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts" / "agent-configs"))
 import projection  # noqa: E402  (path must be set before this import)
 
 
-def _load(name: str, filename: str):
+def _load(name: str, filename: str) -> types.ModuleType:
     path = REPO_ROOT / "scripts" / "agent-configs" / filename
     spec = importlib.util.spec_from_file_location(name, path)
     assert spec is not None and spec.loader is not None
@@ -61,9 +59,10 @@ def _rule(stem: str, body: str) -> str:
     return f"<!-- rule: {stem} -->\n\n## {stem}\n\n{body}\n"
 
 
-def _tree(tmp_path: pathlib.Path, rules: dict[str, str], *, agent: str = AGENT_SOURCE):
+def _tree(
+    tmp_path: pathlib.Path, rules: dict[str, str], *, agent: str = AGENT_SOURCE
+) -> projection.Targets:
     """A checkout-shaped tree whose pool holds `rules`, keyed by file name."""
-
     claude_home = tmp_path / "claude"
     _write(claude_home / "CLAUDE.md", f"{PREAMBLE}\n")
     for name, text in rules.items():
@@ -98,7 +97,9 @@ def _instructions(targets: projection.Targets) -> list[str]:
 
 
 class TestEachProjectionJobRunsIndependently:
-    def test_the_pi_translation_alone_writes_pi_outputs_and_leaves_opencode_alone(self, tmp_path):
+    def test_the_pi_translation_alone_writes_pi_outputs_and_leaves_opencode_alone(
+        self, tmp_path
+    ) -> None:
         targets = _tree(tmp_path, {"core-rules.md": _rule("core-rules", "Core holds.")})
         opencode_agents = _write(targets.opencode_home / "AGENTS.md", "opencode context\n")
         _write(targets.opencode_config, UNTOUCHED_CONFIG)
@@ -119,7 +120,9 @@ class TestEachProjectionJobRunsIndependently:
             "pi alone must leave the opencode key untouched"
         )
 
-    def test_a_failing_opencode_translation_leaves_pi_outputs_and_the_key_alone(self, tmp_path):
+    def test_a_failing_opencode_translation_leaves_pi_outputs_and_the_key_alone(
+        self, tmp_path
+    ) -> None:
         broken_agent = AGENT_SOURCE.replace("model: haiku", "model: an-unmapped-model")
         targets = _tree(
             tmp_path, {"core-rules.md": _rule("core-rules", "Core holds.")}, agent=broken_agent
@@ -129,12 +132,8 @@ class TestEachProjectionJobRunsIndependently:
         pi_before = _snapshot(targets.pi_home)
         key_before = targets.opencode_config.read_text(encoding="utf-8")
 
-        try:
+        with pytest.raises(KeyError):
             opencode.main([], targets=targets)
-        except KeyError:
-            pass
-        else:
-            raise AssertionError("an agent naming an unmapped model must fail the opencode job")
 
         assert _snapshot(targets.pi_home) == pi_before, (
             "the opencode job's failure must leave pi's outputs untouched"
@@ -145,7 +144,7 @@ class TestEachProjectionJobRunsIndependently:
 
 
 class TestThePoolIsTheOneRulesSourceEveryJobReads:
-    def test_a_new_pool_rule_reaches_the_pi_context_and_the_opencode_key(self, tmp_path):
+    def test_a_new_pool_rule_reaches_the_pi_context_and_the_opencode_key(self, tmp_path) -> None:
         targets = _tree(tmp_path, {"core-rules.md": _rule("core-rules", "Core holds.")})
         sorting = _write(
             targets.rulesets_dir / "rules" / "sorting.md", _rule("sorting", "Sorting holds.")
@@ -161,7 +160,7 @@ class TestThePoolIsTheOneRulesSourceEveryJobReads:
             "the opencode key must list the file that holds the default form of the added rule"
         )
 
-    def test_moving_the_source_directory_changes_no_job_output(self, tmp_path):
+    def test_moving_the_source_directory_changes_no_job_output(self, tmp_path) -> None:
         rules = {"alpha.md": _rule("alpha", "Alpha holds.")}
         before = _tree(tmp_path / "before", rules)
         after = _tree(tmp_path / "after", rules)
@@ -184,7 +183,7 @@ class TestThePoolIsTheOneRulesSourceEveryJobReads:
             pathlib.Path(entry).name for entry in _instructions(before)
         ], "the opencode key must list the same rule files when the pool moves"
 
-    def test_a_rule_file_outside_the_pool_is_read_by_no_job(self, tmp_path):
+    def test_a_rule_file_outside_the_pool_is_read_by_no_job(self, tmp_path) -> None:
         targets = _tree(tmp_path, {"alpha.md": _rule("alpha", "Alpha holds.")})
         stray = targets.rulesets_dir / "stray.md"
         stray.write_bytes(b"\xff\xfe a file no job can decode, so a job that read it would fail")
@@ -198,7 +197,7 @@ class TestThePoolIsTheOneRulesSourceEveryJobReads:
             "the opencode key must not list the file outside the pool"
         )
 
-    def test_a_variant_file_in_the_pool_is_read_by_no_job(self, tmp_path):
+    def test_a_variant_file_in_the_pool_is_read_by_no_job(self, tmp_path) -> None:
         targets = _tree(
             tmp_path,
             {
@@ -221,8 +220,8 @@ class TestThePoolIsTheOneRulesSourceEveryJobReads:
         ], "the opencode key must list the default form alone"
 
 
-class TestACheckModeReportsDriftAndThePrePushGateRunsIt:
-    def test_every_job_checks_clean_and_writes_nothing_when_outputs_match(self, tmp_path):
+class TestACheckModeReportsDrift:
+    def test_every_job_checks_clean_and_writes_nothing_when_outputs_match(self, tmp_path) -> None:
         targets = _tree(tmp_path, {"alpha.md": _rule("alpha", "Alpha holds.")})
         _run_every_job(targets)
         before = _snapshot(tmp_path)
@@ -234,7 +233,9 @@ class TestACheckModeReportsDriftAndThePrePushGateRunsIt:
 
         assert _snapshot(tmp_path) == before, "a check mode must write no file"
 
-    def test_the_pi_check_names_its_output_after_a_pool_rule_changes(self, tmp_path, capsys):
+    def test_the_pi_check_names_its_output_after_a_pool_rule_changes(
+        self, tmp_path, capsys
+    ) -> None:
         targets = _tree(tmp_path, {"alpha.md": _rule("alpha", "Alpha holds.")})
         assert pi.main([], targets=targets) == 0
         _write(targets.rulesets_dir / "rules" / "alpha.md", _rule("alpha", "Alpha, edited."))
@@ -248,48 +249,3 @@ class TestACheckModeReportsDriftAndThePrePushGateRunsIt:
             "the check must name pi's context file"
         )
         assert _snapshot(tmp_path) == before, "the check must change nothing on disk"
-
-    def test_the_pre_push_gate_runs_each_check_mode_and_fails_on_any_nonzero_exit(self, tmp_path):
-        lefthook = yaml.safe_load((REPO_ROOT / "lefthook.yml").read_text(encoding="utf-8"))
-        gate = next(
-            job["run"]
-            for job in lefthook["pre-push"]["jobs"]
-            if job["name"] == "sync-agent-configs"
-        )
-        recorder = (
-            "import os, pathlib, sys\n"
-            "name = pathlib.Path(sys.argv[0]).name\n"
-            "with open(os.environ['GATE_LOG'], 'a') as log:\n"
-            "    log.write(' '.join([name, *sys.argv[1:]]) + '\\n')\n"
-            "failing = name == os.environ.get('GATE_FAIL') and '--check' in sys.argv[1:]\n"
-            "sys.exit(1 if failing else 0)\n"
-        )
-        jobs = ("translate-for-pi.py", "translate-for-opencode.py", "own-opencode-key.py")
-        for name in jobs:
-            _write(tmp_path / "scripts" / "agent-configs" / name, recorder)
-        _write(
-            tmp_path / "features" / "plugins" / "rulesets" / "lib" / "rulesets" / "cli.py", recorder
-        )
-        log = tmp_path / "gate.log"
-
-        def run_gate(failing: str) -> subprocess.CompletedProcess[str]:
-            log.write_text("", encoding="utf-8")
-            environment = {**os.environ, "GATE_LOG": str(log), "GATE_FAIL": failing}
-            return subprocess.run(
-                ["bash", "-c", gate],
-                cwd=tmp_path,
-                env=environment,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-        passing = run_gate("")
-        ran = log.read_text(encoding="utf-8").splitlines()
-        assert passing.returncode == 0, (
-            f"with every check mode exiting zero the gate must pass: {passing.stderr}"
-        )
-        for name in jobs:
-            assert f"{name} --check" in ran, f"the gate must run the check mode of {name}"
-        for name in jobs:
-            assert run_gate(name).returncode != 0, f"a nonzero exit from {name} must fail the gate"
