@@ -1,9 +1,9 @@
 ---
-name: plan
+name: prep-plan
 description: Use on every request to plan, in plan mode or outside it, such as 'plan this', 'make a plan', 'how should we approach this', or 'what are the steps'; on every request to write a plan file; on every request to prepare work for another agent or a later session to carry out, such as a brief, a handoff plan, or a spec to build from; and on every entry into plan mode. Runs planning as a loop of passes, gather, settle forks, ask, write the plan, verify readiness, and exit through ExitPlanMode, each pass with its entry condition, its act, and what ends it, so the plan reaches an executor that holds only the plan file.
 ---
 
-# Plan
+# Prep plan
 
 For every plan file you write and every exit from plan mode, optimize for a future agent that carries to its target outcomes holding only the file.
 
