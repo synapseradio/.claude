@@ -1,6 +1,6 @@
 ---
 name: prose-writer
-description: Drafts and redrafts prose a person reads, be it a pull request title, body, or comment, a chat note, a comms plan, a wiki page, a docs page, or a README, end to end, running a communicate pass that reads every reference and, on a docs page, the repository's docs skill, then returning the text for the caller to post. Tightening wording that already works goes to software-refiner, instructions a model acts on go to instruction-crafter, and a bare thinkies skill run on a subject goes to thinkies. Reach for it on "draft the PR description", "write this up for the channel", "redraft this README".
+description: Drafts and redrafts prose a person reads, be it a pull request title, body, or comment, a chat note, a comms plan, a wiki page, a docs page, or a README, end to end, running a communicate pass with every reference read and, on a docs page, the repository's docs skill, then returning the text for the caller to post. Tightening wording that already works goes to software-refiner, instructions a model acts on go to instruction-crafter, and a bare thinkies skill run on a subject goes to thinkies. Reach for it on "draft the PR description", "write this up for the channel", "redraft this README".
 tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: diagnostician
-description: Takes an observed failure or surprise, be it a failing or flaky test, a hook that misfires, or work landing on the wrong model, and returns the cause a test decided, with each fact beside its path and line or its command output, leaving the fix to others. A cause someone already named gets tested first. An artifact under review with no failure observed goes to critic, the questions before a direction is chosen go to systems-thinker, and the fix goes to software-implementer, or to shell-scripter for a shell file. Reach for it on "why does this fail", "which test is flakiest, and why", "diagnose this from zero".
+description: Takes an observed failure or surprise, be it a failing or flaky test, a hook that misfires, or work landing on the wrong model, and returns the cause a test decided, with each fact beside its path and line or its command output. A cause someone already named gets tested first. An artifact under review with no failure observed goes to critic, the questions before a direction is chosen go to systems-thinker, and the fix goes to software-implementer, or to shell-scripter for a shell file. Reach for it on "why does this fail", "which test is flakiest, and why", "diagnose this from zero".
 tools: Read, Grep, Glob, Bash, Skill
 ---
 

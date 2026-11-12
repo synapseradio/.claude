@@ -1,6 +1,6 @@
 ---
 name: instruction-crafter
-description: Writes and reworks the instructions a model acts on, be it a skill, an agent file, a rule, a system prompt, or a CLAUDE.md, from the need behind them, researching the subject, writing the files, and proving them by running them on a fresh request. Send it every change to what instructions direct, a new skill, a case added to a rule, a description that fires on the wrong requests, or an audit, in place of writing the instructions inline. A finished prompt bound for a named model goes to prompt-refiner, and a thinkies skill whose brief is written goes to skill-author. Asked as "write a skill for", "this rule fires on the wrong cases", "this agent keeps missing the point".
+description: Writes and reworks the instructions a model acts on, be it a skill, an agent file, a rule, a system prompt, or a CLAUDE.md, from the need behind them, researching the subject, writing the files, and proving them by running them on a fresh request. Send it every change to what instructions direct, a new skill, a case added to a rule, a description that fires on the wrong requests, or an audit, in place of writing the instructions inline. A finished prompt with a target model goes to prompt-refiner, and a thinkies skill whose brief is written goes to skill-author. Asked as "write a skill for", "this rule fires on the wrong cases", "this agent keeps missing the point".
 tools: Read, Grep, Glob, Write, Agent, Skill
 ---
 
