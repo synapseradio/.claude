@@ -163,6 +163,27 @@ lefthook_runs() {
   assert_silent_in "${REPO}" 'claude mcp validate'
 }
 
+@test "helm lint is denied with a chart name that no hook passed" {
+  lefthook_runs 'helm lint'
+  assert_denies_in "${REPO}" 'helm lint mychart'
+  assert_denies_in "${REPO}" 'helm lint charts/a'
+}
+
+@test "terraform validate is denied with a directory name that no hook passed" {
+  lefthook_runs 'terraform validate'
+  assert_denies_in "${REPO}" 'terraform validate modules'
+}
+
+@test "docker build is denied with a context name that no hook passed" {
+  lefthook_runs 'docker build .'
+  assert_denies_in "${REPO}" 'docker build web'
+}
+
+@test "claude plugin test stays allowed with no arguments when a hook runs claude plugin validate" {
+  lefthook_runs 'claude plugin validate'
+  assert_silent_in "${REPO}" 'claude plugin test'
+}
+
 @test "a make target a hook runs is denied and other targets stay allowed" {
   lefthook_runs 'make lint'
   assert_denies_in "${REPO}" 'make lint'

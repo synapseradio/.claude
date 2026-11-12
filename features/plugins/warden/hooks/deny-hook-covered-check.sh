@@ -59,11 +59,6 @@ readonly GENERIC_PROGRAMS=' git echo cat printf grep egrep fgrep rg sed awk find
 # Programs that name a check only with a subcommand after them.
 readonly NEEDS_SUBCOMMAND=' make just task cargo go docker uv pip pip3 gradle mvn dotnet kubectl terraform gh helm brew '
 
-# Programs whose subcommands nest one level (`claude plugin validate`, `gh pr
-# checks`): their subcommand is the first two words, so two commands of one
-# group are two checks.
-readonly NESTED_SUBCOMMANDS=' claude gh docker kubectl helm terraform aws gcloud az '
-
 # Programs whose job is running tests. A test run stays allowed.
 readonly TEST_PROGRAMS=' jest vitest bats pytest mocha rstest playwright cypress rspec phpunit ava tap karma '
 
@@ -99,6 +94,30 @@ LOADED_OK=1
 #######################################
 in_list() {
   [[ "$1" == *" $2 "* ]]
+}
+
+#######################################
+# Succeed when a second word opens a group of nested subcommands, as `plugin`
+# does in `claude plugin validate` and `pr` in `gh pr checks`. Only inside a
+# group does the third word belong to the subcommand: `helm lint chart-a` is
+# the check `lint`, with a chart argument. For aws, gcloud, and az every second
+# word is a service or a command group, so any word opens one. Held as a case
+# statement because bash 3.2 has no associative arrays.
+# Arguments:
+#   $1 - the program's name.
+#   $2 - the second word.
+#######################################
+is_nested_group() {
+  case "$1" in
+  claude) in_list ' plugin mcp config ' "$2" ;;
+  gh) in_list ' alias attestation auth cache codespace config extension gist gpg-key issue label org pr project release repo ruleset run search secret ssh-key variable workflow ' "$2" ;;
+  docker) in_list ' builder buildx checkpoint compose config container context image manifest network node plugin secret service stack swarm system trust volume ' "$2" ;;
+  kubectl) in_list ' alpha auth certificate config plugin rollout set top ' "$2" ;;
+  helm) in_list ' dependency dep get plugin registry repo search show ' "$2" ;;
+  terraform) in_list ' providers state workspace ' "$2" ;;
+  aws | gcloud | az) return 0 ;;
+  *) return 1 ;;
+  esac
 }
 
 #######################################
@@ -236,9 +255,10 @@ script_signature() {
 #   - a package script: package manager, scope flags, and script name, so
 #     `bun run build` and `bun run build:check` differ;
 #   - a tool with a subcommand: the program and that subcommand, so
-#     `biome check` matches `biome check --staged`; for a program in
-#     NESTED_SUBCOMMANDS the subcommand is two words, so `claude plugin
-#     validate` and `claude plugin test` differ;
+#     `biome check` matches `biome check --staged`; when the subcommand
+#     opens a nested group (see is_nested_group) the subcommand is two words,
+#     so `claude plugin validate` and `claude plugin test` differ, while
+#     `helm lint a` and `helm lint b` are one check;
 #   - a tool without one: the program and its leading flags, minus the
 #     flags that only change how it runs, so `tsc --noEmit` needs --noEmit.
 #     Every run of that program with those flags matches, a file argument
@@ -282,7 +302,7 @@ command_signature() {
   sub="${WORDS[1]-}"
   if [[ "${sub}" =~ ^[a-z][a-z0-9-]*$ ]]; then
     is_test_name "${sub}" && return 1
-    if in_list "${NESTED_SUBCOMMANDS}" "${name}" &&
+    if is_nested_group "${name}" "${sub}" &&
       [[ "${WORDS[2]-}" =~ ^[a-z][a-z0-9-]*$ ]]; then
       is_test_name "${WORDS[2]}" && return 1
       sub+=" ${WORDS[2]}"
