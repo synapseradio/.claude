@@ -31,7 +31,7 @@ rulesets/
   some contexts, add it under `exclude:` in a block.
 
 The folder also holds the directories of the earlier tier layout, `default/`, `fable/`, `opus/`,
-`sonnet/`, `haiku/`, `claude-opus-4-8/`, and `renders/`. The engine reads none of them, and `check`
+`sonnet/`, `haiku/`, and `renders/`. The engine reads none of them, and `check`
 prints a stray-directory warning for each.
 
 Find which line decided a rule in a context:

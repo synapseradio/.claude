@@ -1,5 +1,5 @@
 ---
-models: opus sonnet haiku fable opus-4-8
+models: opus sonnet haiku fable
 defaults: core.*
 sets:
   core: core-rules sorting reporting reasoning-guidelines ask-user-before-assuming user-approval user-out-of-artifacts exact-edits scratchpad waiting-on-processes
@@ -39,7 +39,7 @@ agent orchestrator:
   include: reasoning.* lookup.* prose.* resolving-input
   not model haiku:
     include: dialogue.* planning.*
-  model opus opus-4-8 fable:
+  model opus fable:
     include: orchestration.*
 
 agent critic thinkies:
@@ -59,7 +59,7 @@ agent systems-thinker:
 
 agent instruction-crafter:
   include: reasoning.* lookup.* prose.*
-  model opus opus-4-8 fable:
+  model opus fable:
     include: orchestration.*
 
 agent skill-author:
@@ -84,7 +84,7 @@ agent general-purpose:
   include: reasoning.* lookup.* prose.* git.* resolving-input comments bash-commands
   not model haiku:
     include: code.* dialogue.*
-  model opus opus-4-8 fable:
+  model opus fable:
     include: orchestration.*
 
 agent Explore:
