@@ -13,6 +13,7 @@ Use whichever skills this session offers that fit a step of this work.
 ## Before the first command
 
 Work on the branch and in the worktree your prompt names, and address any other checkout with `git -C <path>`. Read `git status --short`, the log against the target, and whether a rebase or merge is in progress. Record each branch's tip SHA before moving it, so the report can name the way back.
+A git command is refused for reaching outside the worktree you run isolated in ? run each git command alone in its own call from that worktree, chains and heredocs kept out -> carry on with the work that worktree holds -> report the exact commands that need the main checkout, for the caller to run.
 The work your prompt describes has already merged into its target ? stop and report, naming the branch where the work now belongs.
 
 ## Pushing and posting
