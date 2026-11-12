@@ -658,7 +658,7 @@
 	"autoMemoryEnabled": true,
 	"autoCompactWindow": 350000,
 	"outputStyle": "Concise",
-	"cleanupPeriodDays": 3,
+	"cleanupPeriodDays": 30,
 	"askUserQuestionTimeout": "never",
 	"subagentPromptCacheTtl": "1h",
 	"tui": "fullscreen",
