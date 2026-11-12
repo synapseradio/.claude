@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Command line for the rulesets engine: `check`, `explain`, `adopt`, `compare`, `eject`, `render`, `split`, `toggle`, `delivery-check`, `load-check`, and `deliveries`.
+"""Command line for the rulesets engine: `check`, `explain`, `adopt`, `compare`, `eject`, `estimate`, `render`, `split`, `toggle`, `delivery-check`, `load-check`, and `deliveries`.
 
 This module parses arguments, prints, and sets the exit status. Every finding comes from
-`rulesets.check.run`, and every line's wording from `rulesets.check.report_format`. An explanation comes from `rulesets.explain`. A toggle's
+`rulesets.check.run`, and every line's wording from `rulesets.check.report_format`. An explanation comes from `rulesets.explain`, and
+a size estimate from `rulesets.estimate`. A toggle's
 change comes from `rulesets.session.toggle`, a delivery difference from
 `rulesets.audit.delivery_check`, a still auto-loading file from `rulesets.audit.load_check`, a
 delivery line from `rulesets.audit.deliveries`, ejected files from `rulesets.eject`, and a render
@@ -26,6 +27,7 @@ from rulesets.check.run import check
 from rulesets.compare.run import compare
 from rulesets.compose.composition import compose
 from rulesets.eject import eject
+from rulesets.estimate.run import read_baseline, rows, table
 from rulesets.explain import UnknownRule, explain, format_explanation
 from rulesets.facts.named_context import named_context
 from rulesets.locations import Locations
@@ -130,6 +132,20 @@ def _build_parser() -> argparse.ArgumentParser:
     ejecting.add_argument(
         "--root", type=pathlib.Path, help="the rulesets directory; the configured one by default"
     )
+    estimating = commands.add_parser(
+        "estimate",
+        help="print each context's characters, words, and estimated tokens; always exits 0. "
+        "Tokens are estimates for English prose; "
+        "https://platform.claude.com/docs/en/build-with-claude/token-counting gives exact counts",
+    )
+    estimating.add_argument(
+        "--root", type=pathlib.Path, help="the rulesets directory; the configured one by default"
+    )
+    estimating.add_argument(
+        "--baseline",
+        type=pathlib.Path,
+        help="an `impact.py snapshot` directory; adds the tokens it recorded and the change since",
+    )
     rendering = commands.add_parser(
         "render",
         help="write the composed text one named context receives to --out, or, with no --out, "
@@ -168,7 +184,6 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def _action(action: str, name: str | None) -> ToggleAction | None:
     """The toggle action the words name, or None where a flag name is missing or surplus."""
-
     match action, name:
         case "all", None:
             return SetBand(Band.ALL)
@@ -253,7 +268,6 @@ def _compare(arguments: argparse.Namespace) -> int:
 
 def _existing_root(root: pathlib.Path | None) -> pathlib.Path | None:
     """The rulesets directory `root` names, or the configured one; None, after saying so, where none stands."""
-
     chosen = root or Locations.from_environment(os.environ).rulesets
     if chosen.is_dir():
         return chosen
@@ -266,6 +280,21 @@ def _eject(arguments: argparse.Namespace) -> int:
     if root is None:
         return _USAGE_ERROR
     for line in eject(read_directory(root), arguments.out).lines():
+        print(line)
+    return 0
+
+
+def _estimate(arguments: argparse.Namespace) -> int:
+    root = _existing_root(arguments.root)
+    if root is None:
+        return _USAGE_ERROR
+    baseline = None
+    if arguments.baseline is not None:
+        baseline = read_baseline(arguments.baseline)
+        if baseline is None:
+            print(f"cli.py: {arguments.baseline} is no snapshot", file=sys.stderr)
+            return _USAGE_ERROR
+    for line in table(rows(read_directory(root), baseline), arguments.baseline is not None):
         print(line)
     return 0
 
@@ -336,6 +365,8 @@ def main(argv: list[str] | None = None) -> int:
         return _compare(arguments)
     if arguments.command == "eject":
         return _eject(arguments)
+    if arguments.command == "estimate":
+        return _estimate(arguments)
     if arguments.command == "render":
         return _render(arguments)
     if arguments.command == "split":

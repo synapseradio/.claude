@@ -9,6 +9,7 @@ requires it.
 | --- | --- |
 | `check` | Prints every error and warning of a rulesets directory. Exits 1 on an error only. |
 | `explain` | Prints which config lines decided one rule in one named context. |
+| `estimate` | Prints each context's characters, words, and estimated tokens, and the change since a snapshot. Always exits 0. |
 | `render` | Writes the composed text one context receives, or the whole render tree. |
 | `render --check` | Writes nothing. Exits 1 where the render tree on disk differs from what `render` writes. |
 | `split` | Writes each section of an edited render back to the rule file it came from. |
@@ -53,6 +54,24 @@ Prints two attributes of the rule, inclusion and variant. Each opens with the wi
 lists the lines it beat, with the file and line of each. A line gives the block's combined
 condition, or `defaults`, and the reference as the config writes it, as `exclude bash.shell-scripts`. It exits 1 and names the rule where the pool
 holds none.
+
+## estimate
+
+```bash
+$CLI estimate --root ~/.claude/rulesets --baseline ~/snapshots/before
+```
+
+Prints a header and one line for each context that `impact.py snapshot` composes for: the context
+name, its model, the characters and words of its composed text, and its estimated tokens. A last
+column reads `table` where the model has a figure of its own and `default` for a model the table
+lacks or a context with no model. `--baseline` takes a snapshot directory and adds the tokens that
+snapshot recorded for the same context and the change since, `0` where nothing changed and `-`
+where the snapshot holds no such context. The command exits 0 whatever the figures.
+
+Tokens are estimates for English prose: characters divided by 3.5, times 1.30 for Claude 4.7 and
+later models, per the [glossary](https://platform.claude.com/docs/en/about-claude/glossary.md). For
+exact counts, use [token counting](https://platform.claude.com/docs/en/build-with-claude/token-counting)
+with the model you plan to use.
 
 ## render
 

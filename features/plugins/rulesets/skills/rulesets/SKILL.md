@@ -57,6 +57,13 @@ Report the line it prints, in one sentence. Where it prints an error, the error 
 The later of `all` and `none` replaces the earlier, and a clear, a resume, or the session's close
 ends every toggle.
 
+## Estimate
+
+`RUN CLI estimate --root ROOT` prints each context's model, characters, words, and estimated tokens.
+Add `--baseline BEFORE`, a snapshot directory from `impact.py snapshot`, for the tokens it recorded
+and the change since. The tokens are estimates for English prose, and the command exits 0 whatever
+they are.
+
 ## Routing
 
 | # | Case | Reference |
@@ -89,6 +96,7 @@ ends every toggle.
 | 26 | Adopt an old corpus or rules folder | [setup and migration](references/setup-and-migration.md) |
 | 27 | Eject to plain files | [setup and migration](references/setup-and-migration.md) |
 | 28 | A directory holds an older config file and no `config.yaml` | [setup and migration](references/setup-and-migration.md) |
+| 29 | How many tokens each context's rules cost, and what an edit changes in them | [Estimate](#estimate) |
 
 ## The files
 

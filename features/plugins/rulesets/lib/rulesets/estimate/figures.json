@@ -1,0 +1,34 @@
+{
+	"default": {
+		"chars_per_token": 3.5,
+		"chars_source": "https://platform.claude.com/docs/en/about-claude/glossary.md",
+		"multiplier": 1.3,
+		"multiplier_source": "https://platform.claude.com/docs/en/about-claude/glossary.md"
+	},
+	"models": {
+		"opus": {
+			"chars_per_token": 3.5,
+			"chars_source": "https://platform.claude.com/docs/en/about-claude/glossary.md",
+			"multiplier": 1.3,
+			"multiplier_source": "https://platform.claude.com/docs/en/about-claude/glossary.md"
+		},
+		"sonnet": {
+			"chars_per_token": 3.5,
+			"chars_source": "https://platform.claude.com/docs/en/about-claude/glossary.md",
+			"multiplier": 1.3,
+			"multiplier_source": "https://platform.claude.com/docs/en/about-claude/glossary.md"
+		},
+		"haiku": {
+			"chars_per_token": 3.5,
+			"chars_source": "https://platform.claude.com/docs/en/about-claude/glossary.md",
+			"multiplier": 1.3,
+			"multiplier_source": "https://platform.claude.com/docs/en/about-claude/glossary.md"
+		},
+		"fable": {
+			"chars_per_token": 3.5,
+			"chars_source": "https://platform.claude.com/docs/en/about-claude/glossary.md",
+			"multiplier": 1.3,
+			"multiplier_source": "https://platform.claude.com/docs/en/about-claude/glossary.md"
+		}
+	}
+}
