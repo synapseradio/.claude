@@ -83,6 +83,52 @@ pre-commit:
       run: >-
         bash features/plugins/rulesets/hooks/with-python.sh features/plugins/rulesets/lib/rulesets/cli.py render --root rulesets && git add rulesets/-render
 
+    # One job per suite, gated by the files its scope reads, so a commit runs
+    # only the suites it touches. The jobs run concurrently, and each runner
+    # parallelises inside its suite: pytest-xdist for pytest, bats --jobs for
+    # bats (needs GNU parallel), one child process per file for the mod runner.
+    # Git hands a hook run from a linked worktree GIT_DIR and GIT_INDEX_FILE,
+    # which point at that worktree's repository. A suite's scratch repository
+    # (git init, git commit, git config) would then write into the real one,
+    # so every job unsets the variables that locate a repository.
+    # https://git-scm.com/docs/githooks
+    # https://pytest-xdist.readthedocs.io/en/stable/distribution.html
+    # https://bats-core.readthedocs.io/en/stable/usage.html
+    - name: tests
+      group:
+        parallel: true
+        jobs:
+          - name: test-rulesets
+            glob:
+              - "features/plugins/rulesets/**"
+              - "pyproject.toml"
+              - "uv.lock"
+            run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR uv run --frozen pytest features/plugins/rulesets/tests -q -n auto
+          - name: test-epistemic-marks
+            glob:
+              - "features/plugins/epistemic-marks/**"
+              - "pyproject.toml"
+              - "uv.lock"
+            run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR uv run --frozen pytest features/plugins/epistemic-marks/tests -q -n auto
+          - name: test-scripts
+            glob:
+              - "scripts/**"
+              - ".claude-plugin/marketplace.json"
+              - "settings.base.json"
+              - "features/*/*/.claude-plugin/plugin.json"
+              - "pyproject.toml"
+              - "uv.lock"
+            run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR uv run --frozen pytest scripts/tests scripts/arbiter/tests -q -n auto
+          - name: test-warden
+            glob: "features/plugins/warden/**"
+            run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR bats --jobs "$(getconf _NPROCESSORS_ONLN)" features/plugins/warden/tests
+          - name: test-harness-config
+            glob: "features/plugins/harness-config/**"
+            run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR bats --jobs "$(getconf _NPROCESSORS_ONLN)" features/plugins/harness-config/tests
+          - name: test-context-gauge
+            glob: "features/mods/context-gauge/**"
+            run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR claude plugin test features/mods/context-gauge
+
 pre-push:
   jobs:
     - name: shellcheck

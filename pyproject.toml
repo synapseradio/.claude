@@ -5,4 +5,9 @@ requires-python = ">=3.15"
 dependencies = []
 
 [dependency-groups]
-dev = ["pytest~=9.2.0", "ruff~=0.17.4", "yamllint~=1.38.0"]
+dev = [
+  "pytest~=9.2.0",
+  "pytest-xdist~=3.8.0",
+  "ruff~=0.17.4",
+  "yamllint~=1.38.0",
+]
