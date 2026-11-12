@@ -28,6 +28,18 @@ export type MessageEstimates = {
 
 declare module "claude-code" {
 	interface PluginState {
-		"context-gauge": { usage: UsageModel | null; estimates: MessageEstimates };
+		"context-gauge": {
+			/** The last breakdown read, or null before the first. */
+			context: SessionContextUsage | null;
+			/** CLAUDE_AUTOCOMPACT_PCT_OVERRIDE as read, or null where unset. */
+			override: string | null;
+			estimates: MessageEstimates;
+			/** The window as the last main-thread response left it, or null before one. */
+			anchor: number | null;
+			/** Characters appended to the main conversation since the anchor. */
+			pending: number;
+			/** The glyphs the bar draws in where its Image draws its alt, or null while the Image draws. */
+			glyphs: "sextant" | "bmp" | null;
+		};
 	}
 }
