@@ -756,6 +756,7 @@ Squash with `wt -C <worktree> step squash <target>`, naming as `<target>` the br
 The Skill tool is out of reach ? name the skipped `skill:simplify` pass in your report -> squash.
 Before any merge, run `git -C <worktree> fetch`, then `git -C <worktree> rev-list --left-right --count "<target>...<target>@{upstream}"`.
 Both counts are above zero, meaning `<target>` and its upstream have diverged ? stop and report both counts : merge.
+After the merge, run `wt -C <primary checkout> prune`, with the primary checkout your prompt names. Remove a worktree only through wt, with `wt prune` or by `wt merge`, and keep `git worktree remove`, `git worktree prune`, and `rm` off every worktree path.
 
 <!-- rule: writing-code -->
 ## writing-code

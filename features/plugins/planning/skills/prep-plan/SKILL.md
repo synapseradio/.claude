@@ -142,6 +142,7 @@ Lane block, one per lane:
   3. Run `git -C <worktree> fetch`, then `git -C <worktree> rev-list --left-right --count [trunk]...[trunk]@{upstream}`. Both counts above zero ? stop and report both counts.
   4. Run `wt -C <worktree> merge [trunk]`. The trunk moved or the fast-forward was refused ? repeat steps 3 and 4, at most twice more.
   5. Confirm `git -C [primary checkout] log --oneline -1 [trunk]` shows the lane's one commit.
+  6. Run `wt -C [primary checkout] prune`.
   The worker runs every step. A worker that cannot run git or wt runs `skill:simplify`, and the orchestrator runs every git and wt command in these steps.
 - work:
   [the lane's work units in order, each as entries or a document section]
