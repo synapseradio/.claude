@@ -1,0 +1,21 @@
+# Worktrunk project hooks for this repository.
+# https://worktrunk.dev/hook/
+
+# A new worktree lacks every ignored file the lefthook jobs read. pre-start
+# blocks until these finish, so the worktree can commit as soon as wt hands it
+# over. Each [[pre-start]] table is one pipeline step, so the steps run one
+# after another and never contend for a cache or a lock.
+
+# biome, markdownlint-cli2 and tsc run from node_modules/.bin.
+[[pre-start]]
+install = "bun install --frozen-lockfile"
+
+# uv run would create .venv on first use, inside the first commit's ruff,
+# yamllint and pytest jobs; syncing here builds it once with the dev group.
+[[pre-start]]
+sync = "uv sync --frozen"
+
+# tsc-context-gauge extends .claude-plugin/types/tsconfig.json, which the
+# engine generates and ignores; the primary checkout holds the current copy.
+[[pre-start]]
+gauge-types = "if [ -d {{ primary_worktree_path }}/features/mods/context-gauge/.claude-plugin/types ]; then cp -R {{ primary_worktree_path }}/features/mods/context-gauge/.claude-plugin/types {{ worktree_path }}/features/mods/context-gauge/.claude-plugin/; fi"

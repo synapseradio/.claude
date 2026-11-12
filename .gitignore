@@ -21,6 +21,9 @@
 !.taplo.toml
 !Brewfile
 
+!.config/
+!.config/wt.toml
+
 !.claude-plugin/
 !.claude-plugin/**
 
