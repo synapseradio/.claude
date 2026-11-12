@@ -1,3 +1,6 @@
 {
-	"extends": ["../../../tsconfig.json", "./.claude-plugin/types/tsconfig.json"]
+	"extends": [
+		"../../../tsconfig.base.json",
+		"./.claude-plugin/types/tsconfig.json"
+	]
 }
