@@ -1,6 +1,6 @@
 {
-	// The repository's TypeScript projects, one reference each, for editors to
-	// find which project owns a file; each project extends tsconfig.base.json.
+	// One reference per TypeScript project, so editors find the project that owns a file.
+	// An empty `files` keeps this file from compiling the referenced projects' sources a second time.
 	// https://www.typescriptlang.org/docs/handbook/project-references.html
 	"files": [],
 	"references": [{ "path": "./features/mods/context-gauge" }]
