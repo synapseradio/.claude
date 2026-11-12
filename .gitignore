@@ -10,6 +10,8 @@
 !.ruff.toml
 !.markdownlint-cli2.jsonc
 !.shellcheckrc
+!biome.json
+!tsconfig.json
 
 !.claude-plugin/
 !.claude-plugin/**
