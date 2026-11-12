@@ -1,8 +1,11 @@
 ## user-out-of-artifacts
 
-For every artifact, anything a delegate writes included, optimize for an artifact that states each decision as the decision itself, with every trace of who asked for it left out.
+For every artifact, anything a delegate writes included, and every message and command, optimize for text that states each decision as the decision itself, with every trace of who asked for it left out.
 
 Keep "the user", "per request", "as decided", and every phrase attributing a decision or a direction to a person out of every artifact. State the decision, and its technical reason where the unit needs one. Keep the user's name out of every artifact and every message.
+Write a path under the home directory with a leading `~` in text a person or a model reads, a code comment included.
+Write that path as `"$HOME/..."` in text a shell runs, a Bash call or a shell script's code.
+Keep every account name out of every path you write, in code no shell runs included.
 Before a commit or a write lands, read its text for any reference to the user -> rewrite that sentence around the decision.
 A prompt you compose asks a delegate to write an artifact ? carry this rule into the prompt.
 Hold a person who uses the product, the operator of a CLI for one, as outside this rule.

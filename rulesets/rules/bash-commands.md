@@ -4,7 +4,7 @@ For every Bash tool call, optimize for a command the session's allow rules match
 
 ### The shape
 
-Hold every part of a compound command as matched against the allow rules on its own, split at `&&`, `||`, `;`, `|`, `&`, and newlines. Give each call the fewest parts its step needs, two steps in one call only where they share shell state. Write every redirect target and every `tee` target as an absolute path, with a leading `~` kept out. Run git in another directory with `git -C <path> <subcommand>`, with `cd` kept out of every call that holds a git command.
+Hold every part of a compound command as matched against the allow rules on its own, split at `&&`, `||`, `;`, `|`, `&`, and newlines. Give each call the fewest parts its step needs, two steps in one call only where they share shell state. Write every redirect target and every `tee` target as an absolute path, rooted at `"$HOME"` under the home directory and at `/` elsewhere, with a leading `~` kept out. Run git in another directory with `git -C <path> <subcommand>`, with `cd` kept out of every call that holds a git command.
 
 ### Output size
 

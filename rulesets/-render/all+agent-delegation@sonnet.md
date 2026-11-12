@@ -151,7 +151,7 @@ For every Bash tool call, optimize for a command the session's allow rules match
 
 ### The shape
 
-Hold every part of a compound command as matched against the allow rules on its own, split at `&&`, `||`, `;`, `|`, `&`, and newlines. Give each call the fewest parts its step needs, two steps in one call only where they share shell state. Write every redirect target and every `tee` target as an absolute path, with a leading `~` kept out. Run git in another directory with `git -C <path> <subcommand>`, with `cd` kept out of every call that holds a git command.
+Hold every part of a compound command as matched against the allow rules on its own, split at `&&`, `||`, `;`, `|`, `&`, and newlines. Give each call the fewest parts its step needs, two steps in one call only where they share shell state. Write every redirect target and every `tee` target as an absolute path, rooted at `"$HOME"` under the home directory and at `/` elsewhere, with a leading `~` kept out. Run git in another directory with `git -C <path> <subcommand>`, with `cd` kept out of every call that holds a git command.
 
 ### Output size
 
@@ -666,9 +666,12 @@ Count a pull request's exact content as its title and description, and a push's 
 <!-- rule: user-out-of-artifacts -->
 ## user-out-of-artifacts
 
-For every artifact, anything a delegate writes included, optimize for an artifact that states each decision as the decision itself, with every trace of who asked for it left out.
+For every artifact, anything a delegate writes included, and every message and command, optimize for text that states each decision as the decision itself, with every trace of who asked for it left out.
 
 Keep "the user", "per request", "as decided", and every phrase attributing a decision or a direction to a person out of every artifact. State the decision, and its technical reason where the unit needs one. Keep the user's name out of every artifact and every message.
+Write a path under the home directory with a leading `~` in text a person or a model reads, a code comment included.
+Write that path as `"$HOME/..."` in text a shell runs, a Bash call or a shell script's code.
+Keep every account name out of every path you write, in code no shell runs included.
 Before a commit or a write lands, read its text for any reference to the user -> rewrite that sentence around the decision.
 A prompt you compose asks a delegate to write an artifact ? carry this rule into the prompt.
 Hold a person who uses the product, the operator of a CLI for one, as outside this rule.
