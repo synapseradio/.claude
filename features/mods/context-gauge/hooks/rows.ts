@@ -1,6 +1,7 @@
 /** The gauge's rows: the engine's breakdown rows named, merged and ordered, its Messages row split by the gauge's estimates. */
 
 import type { MessageEstimates, UsageCategory } from "../types";
+import type { CountedId } from "./counting";
 import type { CategoryId } from "./palette";
 import { BAR_ORDER } from "./palette";
 
@@ -19,23 +20,27 @@ const ROW_IDS: ReadonlyMap<string, NamedId> = new Map([
 	["Skills", "skills"],
 ]);
 
-/** The Messages row's estimated parts, in bar order. */
-const ESTIMATED: readonly (keyof MessageEstimates & NamedId)[] = [
-	"hooks",
-	"user",
-	"calls",
-	"results",
-	"read",
-];
-
 /** Estimates before anything is counted, and after `/clear` or compaction. */
 export const NO_ESTIMATES: MessageEstimates = {
+	summary: 0,
 	hooks: 0,
+	attachments: 0,
 	user: 0,
+	commands: 0,
+	deliveries: 0,
 	calls: 0,
 	results: 0,
 	read: 0,
+	thinking: 0,
+	replies: 0,
 };
+
+function isCounted(id: CategoryId): id is CountedId {
+	return id in NO_ESTIMATES;
+}
+
+/** The Messages row's counted parts, in bar order. */
+const COUNTED: readonly CountedId[] = BAR_ORDER.filter(isCounted);
 
 /** Each category's place in the bar. */
 const BAR_RANK: ReadonlyMap<string, number> = new Map(
@@ -53,16 +58,21 @@ function named(id: NamedId, tokens: number, estimated: boolean): GaugeRow {
 	return { id, label: id, tokens, estimated };
 }
 
-/** Splits the Messages row's tokens into the estimated rows and the remainder. */
+/**
+ * Splits the Messages row's tokens into the counted categories, each rounded
+ * once from its characters: scaled down to fit where they sum past the row,
+ * otherwise as counted with the difference as an unattributed row.
+ */
 function splitMessages(tokens: number, chars: MessageEstimates): GaugeRow[] {
 	const seen =
-		ESTIMATED.reduce((sum, id) => sum + chars[id], 0) / CHARS_PER_TOKEN;
+		COUNTED.reduce((sum, id) => sum + chars[id], 0) / CHARS_PER_TOKEN;
 	const scale = seen > tokens ? tokens / seen : 1;
-	const estimated = ESTIMATED.map((id) =>
+	const counted = COUNTED.map((id) =>
 		named(id, Math.round((chars[id] / CHARS_PER_TOKEN) * scale), true),
 	);
-	const rest = tokens - estimated.reduce((sum, r) => sum + r.tokens, 0);
-	return estimated.concat(named("replies", Math.max(0, rest), false));
+	const sum = counted.reduce((total, r) => total + r.tokens, 0);
+	const rest = scale < 1 ? 0 : Math.max(0, tokens - sum);
+	return counted.concat(named("unattributed", rest, false));
 }
 
 /** Sums the tokens of rows sharing an id and label, keeping the first one's place. */

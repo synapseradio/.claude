@@ -242,15 +242,15 @@ describe("the gauge under the prompt", () => {
 		expect(await legendText($)).not.toMatch(/user/u);
 	});
 
-	// The fixture's legend reads `system 6k`, `skills 4k`, `replies 20k` with
-	// 2-cell gaps between items: 9 + 2 + 9 + 2 + 11 = 33 cells.
+	// The fixture's legend reads `system 6k`, `skills 4k`, `unattributed 20k`
+	// with 2-cell gaps between items: 9 + 2 + 9 + 2 + 16 = 38 cells.
 	test("the bar line ends where the legend's last item ends, on the abbreviated totals", async ($, on) => {
 		engine(on);
 		await startSession($);
 
 		const { gauge, legend } = await drawn($);
 
-		expect(cells(gauge)).toBe(33);
+		expect(cells(gauge)).toBe(38);
 		expect(gauge.endsWith("30k/100k")).toBe(true);
 		expect(`${gauge}${legend}`).not.toMatch(/comfy/u);
 	});
@@ -270,13 +270,13 @@ describe("the gauge under the prompt", () => {
 		expect(items.map((item) => item.text)).toEqual([
 			"system 6k",
 			"skills 4k",
-			"replies 20k",
+			"unattributed 20k",
 		]);
 		expect(propsOf(line).columnGap).toBe(2);
 	});
 
 	// 30 columns leave 27 cells: `system 6k` and `skills 4k` take 20, and
-	// `replies 20k` would need 13 more.
+	// `unattributed 20k` would need 18 more.
 	test("the legend breaks onto a new line where the next item would not fit", async ($, on) => {
 		engine(on);
 		await startSession($);
@@ -290,7 +290,7 @@ describe("the gauge under the prompt", () => {
 		await ui.unmount();
 
 		expect(first?.text).toBe("system 6kskills 4k");
-		expect(second?.text).toBe("replies 20k");
+		expect(second?.text).toBe("unattributed 20k");
 	});
 
 	test("the bar clips at the row's edge where the row is narrower than measured", async ($, on) => {

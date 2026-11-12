@@ -11,13 +11,19 @@ export type UsageModel = {
 	categories: UsageCategory[];
 };
 
-/** Characters the gauge has seen enter the window since it last cleared or compacted. */
+/** Characters the gauge has counted into each message category since the window last cleared or compacted. */
 export type MessageEstimates = {
+	summary: number;
 	hooks: number;
+	attachments: number;
 	user: number;
+	commands: number;
+	deliveries: number;
 	calls: number;
 	results: number;
 	read: number;
+	thinking: number;
+	replies: number;
 };
 
 declare module "claude-code" {

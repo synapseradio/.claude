@@ -104,11 +104,17 @@ async function addChars(
 ): Promise<void> {
 	if (!Object.values(chars).some((n) => n > 0)) return;
 	await update($, estimates, (e) => ({
+		summary: e.summary + (chars.summary ?? 0),
 		hooks: e.hooks + (chars.hooks ?? 0),
+		attachments: e.attachments + (chars.attachments ?? 0),
 		user: e.user + (chars.user ?? 0),
+		commands: e.commands + (chars.commands ?? 0),
+		deliveries: e.deliveries + (chars.deliveries ?? 0),
 		calls: e.calls + (chars.calls ?? 0),
 		results: e.results + (chars.results ?? 0),
 		read: e.read + (chars.read ?? 0),
+		thinking: e.thinking + (chars.thinking ?? 0),
+		replies: e.replies + (chars.replies ?? 0),
 	}));
 }
 
