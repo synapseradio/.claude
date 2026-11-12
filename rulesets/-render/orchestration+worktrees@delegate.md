@@ -59,8 +59,9 @@ Spawn fable only on the user's ask, once per ask.
 
 effort prompt
   | the user asked for or permitted one = that effort
+  | a sonnet delegate's prompt states every step in one part = low
+  | the delegate runs on sonnet = medium
   | the step's route arm names one = that effort
-  | it sends a sonnet delegate on multistep tool use = medium
   | it states every step of a task in one part = low
   | otherwise = medium
 
