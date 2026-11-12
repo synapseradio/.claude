@@ -655,6 +655,7 @@
 	"autoUpdatesChannel": "latest",
 	"autoMemoryEnabled": true,
 	"autoCompactWindow": 350000,
+	"outputStyle": "Concise",
 	"cleanupPeriodDays": 3,
 	"askUserQuestionTimeout": "never",
 	"subagentPromptCacheTtl": "1h",
