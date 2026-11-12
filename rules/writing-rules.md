@@ -23,7 +23,7 @@ For every rules file, pool file, render, CLAUDE.md, skill file, and plugin you w
 - pool: `rulesets/rules/`, one file per rule, `<name>.md` its default form and `<name>@<variant>.md` a variant, each a complete body
 - rulesets config: `rulesets/config.yaml`, whose references deliver pool files: `defaults` to every context, a condition block, keyed by its condition as `model haiku:` is, to each context its condition on model, agent, kind, tools, flag, or session matches, and a named set under `sets:` wherever a reference spreads it
 - render: a file under `rulesets/-render/` that `render` writes, composed pool bodies each under its marker
-- `$CLI`: `python3.14 features/plugins/rulesets/lib/rulesets/cli.py`, run from the repository root, each command closing on `--root rulesets`
+- `$CLI`: `python3.15 features/plugins/rulesets/lib/rulesets/cli.py`, run from the repository root, each command closing on `--root rulesets`
 
 Order a rules file: marker, one blank line, `## stem`, opener, terms block, instructions. Keep `paths:` frontmatter above the marker on a path-scoped rule, its globs matching file paths. Write a condition clause, "When you are X" for one, as an arm. Keep the case for the rule out of every paragraph.
 Order a pool file as a rules file from `## stem` on, cutting the stem at any `@`. Keep the marker and frontmatter out of every pool file.

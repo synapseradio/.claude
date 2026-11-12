@@ -7,7 +7,7 @@ them, and its [commands page](../features/plugins/rulesets/docs/commands.md) eve
 below.
 
 The commands below run from the repository root. `$CLI` stands for
-`python3.14 features/plugins/rulesets/lib/rulesets/cli.py`.
+`python3.15 features/plugins/rulesets/lib/rulesets/cli.py`.
 
 ## Where rules live
 
