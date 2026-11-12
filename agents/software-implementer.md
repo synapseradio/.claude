@@ -1,6 +1,6 @@
 ---
 name: software-implementer
-description: Turns a settled design, plan, or brief into committed code or config, one behavior at a time, and runs a spike where the decision calls for one. Each implementation slice, integration, or applied change comes here rather than to general-purpose. It starts where designer's decision ends and stops at the source, with tests going to software-tester and shell files to shell-scripter; its account names what they still need to cover. Reach for it on "implement this", "build what the plan says", "write the code for", "apply this change".
+description: Turns a settled design, plan, or brief into committed code or config, one behavior at a time, and runs a spike where the decision calls for one. Each implementation slice, integration, or applied change comes here rather than to general-purpose. It starts where designer's decision ends and stops at the source, with tests going to software-tester, shell files to shell-scripter, and rebasing or landing the branch to git-operator; its account names the tests still needed. Reach for it on "implement this", "build what the plan says", "write the code for", "apply this change".
 tools: Read, Grep, Glob, Bash, Edit, Write, Skill, TodoWrite, mcp__hindsight__retain, mcp__ast-grep__find_code, mcp__ast-grep__find_code_by_rule, mcp__ast-grep__dump_syntax_tree, mcp__ast-grep__test_match_code_rule
 ---
 

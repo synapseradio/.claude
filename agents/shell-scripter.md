@@ -1,6 +1,6 @@
 ---
 name: shell-scripter
-description: Takes every shell job end to end, writing, reviewing, or repairing a shell script, a shell startup file (.bashrc, .bash_profile, .zshrc, .zshenv, .zprofile, .profile, and kin), a git hook or other extensionless shell file, or a bats suite, holding the shell style guide so the caller need not read it, and commits the paths it changed. Route even a one-line edit to a .sh, .bash, .zsh, or .bats file here. Code in another language goes to software-implementer, its tests to software-tester, and a review of anything but shell to critic. Asked as "fix this bash", "my .zshrc breaks", "this hook script fails", "add a bats test for".
+description: Takes every shell job end to end, writing, reviewing, or repairing a shell script, a shell startup file (.bashrc, .bash_profile, .zshrc, .zshenv, .zprofile, .profile, and kin), a git hook or other extensionless shell file, or a bats suite, holding the shell style guide so the caller need not read it, and commits the paths it changed. Route even a one-line edit to a .sh, .bash, .zsh, or .bats file here. Code in another language goes to software-implementer, its tests to software-tester, a review of anything but shell to critic, git work on a branch to git-operator, and a failure not yet traced to a shell file to diagnostician. Asked as "fix this bash", "my .zshrc breaks", "this hook script fails", "add a bats test for".
 tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 ---
 

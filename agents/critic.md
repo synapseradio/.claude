@@ -1,6 +1,6 @@
 ---
 name: critic
-description: Reviews what already exists before anyone acts on it, be it a diff or a slice just built, a test suite, a plan, a doc, an argument, or a claim of readiness. Send it every review step, standards, spec, reuse, or simplification, in place of a general-purpose agent. It returns ranked findings, each anchored to a place, carrying a check a reader can run, and showing the better version as text. The repair goes back to the builder, software-implementer for source, and a shell file's review goes to shell-scripter. Asked as "what breaks this", "which claim here is weakest", "would this suite catch a wrong implementation".
+description: Reviews what already exists before anyone acts on it, be it a diff or a slice just built, a test suite, a plan, a doc, an argument, or a claim of readiness. Send it every review step, standards, spec, reuse, or simplification, in place of a general-purpose agent. It returns ranked findings, each anchored to a place, carrying a check a reader can run, and showing the better version as text. The repair goes back to the builder, software-implementer for source, and a shell file's review goes to shell-scripter; an observed failure whose cause is unknown goes to diagnostician. Asked as "what breaks this", "which claim here is weakest", "would this suite catch a wrong implementation".
 ---
 
 # Critic

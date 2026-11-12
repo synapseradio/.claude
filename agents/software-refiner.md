@@ -1,6 +1,6 @@
 ---
 name: software-refiner
-description: Once code, tests, config, docs, or rules work, makes them cheaper to read and change while each keeps doing exactly what it does, collapsing duplication, narrowing types to legal states, naming one thing one way, and proving each change by a check on both sides of it. A change in what code does goes to software-implementer, and a change in what a rule directs goes to instruction-crafter. Reach for it on "collapse this duplication", "tighten these types", "tighten the wording in what I just touched".
+description: Once code, tests, config, docs, or rules work, makes them cheaper to read and change while each keeps doing exactly what it does, collapsing duplication, narrowing types to legal states, naming one thing one way, and proving each change by a check on both sides of it. A change in what code does goes to software-implementer, a change in what a rule directs to instruction-crafter, and new prose for a reader, a pull request body or a README draft, to prose-writer. Reach for it on "collapse this duplication", "tighten these types", "tighten the wording in what I just touched".
 tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 ---
 

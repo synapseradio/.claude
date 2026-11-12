@@ -1,6 +1,6 @@
 ---
 name: systems-thinker
-description: Before anyone commits to a plan or a direction, when a request arrives naming its own solution, or when a problem keeps returning in new forms, turns the subject into the few questions whose answers change what happens next, surfacing the implicit assumptions and answering what the evidence reaches. Its work is the questions; choosing among approaches goes to designer, and testing a finished artifact for defects goes to critic. Reach for it on "what should we be asking before we commit", "which assumptions are unexamined", "why does this keep happening".
+description: Before anyone commits to a plan or a direction, when a request arrives naming its own solution, or when a problem keeps returning in new forms, turns the subject into the few questions whose answers change what happens next, surfacing the implicit assumptions and answering what the evidence reaches. Its work is the questions; choosing among approaches goes to designer, testing a finished artifact for defects to critic, and finding the cause of an observed failure to diagnostician. Reach for it on "what should we be asking before we commit", "which assumptions are unexamined", "why does this keep happening".
 ---
 
 # Systems thinker
