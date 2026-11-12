@@ -146,6 +146,23 @@ lefthook_runs() {
   assert_silent_in "${REPO}" 'uv run pytest'
 }
 
+@test "a nested subcommand a hook runs is denied with other arguments" {
+  lefthook_runs 'claude plugin validate .'
+  assert_denies_in "${REPO}" 'claude plugin validate some/plugin'
+}
+
+@test "claude plugin test stays allowed when a hook runs claude plugin validate" {
+  lefthook_runs 'claude plugin validate .'
+  assert_silent_in "${REPO}" 'claude plugin test some/plugin'
+}
+
+@test "another nested subcommand of the same group stays allowed" {
+  lefthook_runs 'claude plugin validate .'
+  assert_silent_in "${REPO}" 'claude plugin list'
+  assert_silent_in "${REPO}" 'claude plugin'
+  assert_silent_in "${REPO}" 'claude mcp validate'
+}
+
 @test "a make target a hook runs is denied and other targets stay allowed" {
   lefthook_runs 'make lint'
   assert_denies_in "${REPO}" 'make lint'

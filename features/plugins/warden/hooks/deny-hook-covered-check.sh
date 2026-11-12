@@ -59,6 +59,11 @@ readonly GENERIC_PROGRAMS=' git echo cat printf grep egrep fgrep rg sed awk find
 # Programs that name a check only with a subcommand after them.
 readonly NEEDS_SUBCOMMAND=' make just task cargo go docker uv pip pip3 gradle mvn dotnet kubectl terraform gh helm brew '
 
+# Programs whose subcommands nest one level (`claude plugin validate`, `gh pr
+# checks`): their subcommand is the first two words, so two commands of one
+# group are two checks.
+readonly NESTED_SUBCOMMANDS=' claude gh docker kubectl helm terraform aws gcloud az '
+
 # Programs whose job is running tests. A test run stays allowed.
 readonly TEST_PROGRAMS=' jest vitest bats pytest mocha rstest playwright cypress rspec phpunit ava tap karma '
 
@@ -71,15 +76,13 @@ readonly PM_BUILTINS=' install i add a remove rm uninstall update upgrade up lin
 readonly DENIAL_REASON_HEAD="The repository's git hooks run this check on commit or push. Commit, and let the hook run it."
 
 # The signature of the program under inspection, set by command_signature:
-# SIG_HEAD names the program or package script, SIG_SUB its subcommand (empty
-# when the signature covers every run of the program), SIG_FLAGS the flags a
-# matching run must carry, and SIG_WORDS and SIG_SECOND the words and the
-# second word of the run itself.
+# SIG_HEAD names the program or package script, SIG_SUB its subcommand path
+# (empty when the signature covers every run of the program), SIG_FLAGS the
+# flags a matching run must carry, and SIG_WORDS the words of the run itself.
 SIG_HEAD=''
 SIG_SUB=''
 SIG_FLAGS=''
 SIG_WORDS=''
-SIG_SECOND=''
 
 # The signatures the current repository's hooks produce, one per line, each
 # "head<US>sub<US>flags<US>source<US>command". LOADED_DIR is the directory they
@@ -233,7 +236,9 @@ script_signature() {
 #   - a package script: package manager, scope flags, and script name, so
 #     `bun run build` and `bun run build:check` differ;
 #   - a tool with a subcommand: the program and that subcommand, so
-#     `biome check` matches `biome check --staged`;
+#     `biome check` matches `biome check --staged`; for a program in
+#     NESTED_SUBCOMMANDS the subcommand is two words, so `claude plugin
+#     validate` and `claude plugin test` differ;
 #   - a tool without one: the program and its leading flags, minus the
 #     flags that only change how it runs, so `tsc --noEmit` needs --noEmit.
 #     Every run of that program with those flags matches, a file argument
@@ -242,7 +247,7 @@ script_signature() {
 # A generic program, a test run, and a program name holding a shell
 # expansion have no signature.
 # Globals:
-#   SIG_HEAD, SIG_SUB, SIG_FLAGS, SIG_WORDS, SIG_SECOND
+#   SIG_HEAD, SIG_SUB, SIG_FLAGS, SIG_WORDS
 # Arguments:
 #   The program's name, then its arguments.
 # Returns:
@@ -255,13 +260,11 @@ command_signature() {
   SIG_SUB=''
   SIG_FLAGS=''
   SIG_WORDS=''
-  SIG_SECOND=''
   WORDS=("$@")
 
   while ((${#WORDS[@]} > 0)) && strip_runner; do :; done
   ((${#WORDS[@]} > 0)) || return 1
   SIG_WORDS=" ${WORDS[*]} "
-  SIG_SECOND="${WORDS[1]-}"
   name="${WORDS[0]##*/}"
 
   [[ "${name}" =~ ^[A-Za-z0-9._@-][A-Za-z0-9._@+-]*$ ]] || return 1
@@ -279,6 +282,11 @@ command_signature() {
   sub="${WORDS[1]-}"
   if [[ "${sub}" =~ ^[a-z][a-z0-9-]*$ ]]; then
     is_test_name "${sub}" && return 1
+    if in_list "${NESTED_SUBCOMMANDS}" "${name}" &&
+      [[ "${WORDS[2]-}" =~ ^[a-z][a-z0-9-]*$ ]]; then
+      is_test_name "${WORDS[2]}" && return 1
+      sub+=" ${WORDS[2]}"
+    fi
     SIG_HEAD="tool:${name}"
     SIG_SUB="${sub}"
     return 0
@@ -487,7 +495,7 @@ load_hook_signatures() {
 #   HOOK_SIGS
 # Arguments:
 #   $1 - the program's SIG_HEAD.
-#   $2 - its SIG_SECOND.
+#   $2 - its SIG_SUB.
 #   $3 - its SIG_WORDS.
 # Outputs:
 #   "source<US>command" of the first match on stdout.
@@ -495,7 +503,7 @@ load_hook_signatures() {
 #   0 on a match, 1 otherwise.
 #######################################
 find_covering_hook() {
-  local want_head="$1" second="$2" padded_words="$3"
+  local want_head="$1" want_sub="$2" padded_words="$3"
   local entry head sub rest flags flag
   local -a required
   while IFS= read -r entry; do
@@ -505,7 +513,7 @@ find_covering_hook() {
     rest="${entry#*"${UNIT}"}"
     sub="${rest%%"${UNIT}"*}"
     rest="${rest#*"${UNIT}"}"
-    [[ -z "${sub}" || "${sub}" == "${second}" ]] || continue
+    [[ -z "${sub}" || "${sub}" == "${want_sub}" ]] || continue
     flags="${rest%%"${UNIT}"*}"
     rest="${rest#*"${UNIT}"}"
     required=()
@@ -567,7 +575,7 @@ cd_target() {
 }
 
 main() {
-  local input command cwd dir line moved covering head second padded
+  local input command cwd dir line moved covering head sub padded
   local -a words
 
   input="$(cat)"
@@ -588,10 +596,10 @@ main() {
     command_signature ${words[@]+"${words[@]}"} || continue
     # Reading the hooks reuses the signature globals, so keep this command's.
     head="${SIG_HEAD}"
-    second="${SIG_SECOND}"
+    sub="${SIG_SUB}"
     padded="${SIG_WORDS}"
     load_hook_signatures "${dir}" || continue
-    if covering="$(find_covering_hook "${head}" "${second}" "${padded}")"; then
+    if covering="$(find_covering_hook "${head}" "${sub}" "${padded}")"; then
       deny "${covering}"
       return 0
     fi
