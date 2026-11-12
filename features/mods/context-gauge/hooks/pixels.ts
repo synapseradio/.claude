@@ -45,23 +45,14 @@ function textureOn(texture: Texture, runX: number, row: number): boolean {
 	}
 }
 
-type Paint = {
-	swatch: Swatch;
-	rows: Rows;
-	alpha: (runX: number, row: number) => number;
-};
+type Paint = { swatch: Swatch; rows: Rows; texture: Texture };
 
 function paintOf(id: BarRun["id"]): Paint {
 	if (id === "free") {
-		return { swatch: FREE_SWATCH, rows: FREE_LINE, alpha: () => ON_ALPHA };
+		return { swatch: FREE_SWATCH, rows: FREE_LINE, texture: "solid" };
 	}
 	const { swatch, texture } = CATEGORY_STYLES[id];
-	return {
-		swatch,
-		rows: BAND,
-		alpha: (runX, row) =>
-			textureOn(texture, runX, row) ? ON_ALPHA : OFF_ALPHA,
-	};
+	return { swatch, rows: BAND, texture };
 }
 
 /** The bar as RGBA: each run in its category's colour and texture inside a centred band, a 1-pixel transparent seam where one run meets the next, free space as a thin centred line in FREE_SWATCH. */
@@ -70,19 +61,19 @@ export function barPixels(runs: readonly BarRun[]): Pixels {
 	const px = new Uint8Array(width * PX_HEIGHT * 4);
 	let start = 0;
 	for (const run of runs) {
-		const { swatch, rows, alpha } = paintOf(run.id);
-		const r = Number.parseInt(swatch.hex.slice(1, 3), 16);
-		const g = Number.parseInt(swatch.hex.slice(3, 5), 16);
-		const b = Number.parseInt(swatch.hex.slice(5, 7), 16);
+		const { swatch, rows, texture } = paintOf(run.id);
+		const rgb = Number.parseInt(swatch.hex.slice(1), 16);
 		const end = start + run.cells * PX_PER_CELL;
 		const drawFrom = start === 0 ? start : start + 1;
 		for (let x = drawFrom; x < end; x++) {
 			for (let y = rows.top; y < rows.bottom; y++) {
 				const offset = (y * width + x) * 4;
-				px[offset] = r;
-				px[offset + 1] = g;
-				px[offset + 2] = b;
-				px[offset + 3] = alpha(x - start, y);
+				px[offset] = rgb >> 16;
+				px[offset + 1] = (rgb >> 8) & 255;
+				px[offset + 2] = rgb & 255;
+				px[offset + 3] = textureOn(texture, x - start, y)
+					? ON_ALPHA
+					: OFF_ALPHA;
 			}
 		}
 		start = end;

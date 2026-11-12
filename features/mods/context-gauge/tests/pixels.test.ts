@@ -72,18 +72,13 @@ function columnBytes(img: Decoded, from: number, to: number): number[] {
 	);
 }
 
-type Span = { id: BarRun["id"]; start: number; end: number; seamed: boolean };
+type Span = { id: BarRun["id"]; start: number; end: number };
 
 function spans(runs: readonly BarRun[]): Span[] {
 	return runs.map((run, i) => {
 		const start =
 			runs.slice(0, i).reduce((n, r) => n + r.cells, 0) * PX_PER_CELL;
-		return {
-			id: run.id,
-			start,
-			end: start + run.cells * PX_PER_CELL,
-			seamed: i > 0,
-		};
+		return { id: run.id, start, end: start + run.cells * PX_PER_CELL };
 	});
 }
 
@@ -128,7 +123,7 @@ describe("bar pixels", () => {
 		const img = decode(barPixels(RUNS));
 		for (const span of CATEGORY_SPANS) {
 			for (const x of range(
-				span.seamed ? span.start + 1 : span.start,
+				span.start > 0 ? span.start + 1 : span.start,
 				span.end,
 			)) {
 				expect({ id: span.id, x, rows: visibleRows(img, x) }).toEqual({
