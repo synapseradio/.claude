@@ -18,10 +18,10 @@ For every rules file, pool file, render, CLAUDE.md, skill file, and plugin you w
 - marker: `<!-- rule: stem -->` alone on its line at column 0
 - opener: one sentence, "For every X" or "In every context and every turn", X the rule's whole scope, then "optimize for" one quality in one clause
 - terms block: `- term: gloss` lines, each term with one sense, each gloss self-contained, its warrant left out
-- shared term: a term the core-rules body glosses, the body the manifest's `defaults` give every context
+- shared term: a term the core-rules body glosses, the body the rulesets config's `defaults` give every context
 - halt: a sentence bounding its paragraph's or section's acts: the act in place of the excluded one, as "Move a branch ref with `git reset --soft`."; "X only on Y."; "Keep X out of Y."; or "Treat X as no ground for Y."
 - pool: `rulesets/rules/`, one file per rule, `<name>.md` its default form and `<name>@<variant>.md` a variant, each a complete body
-- manifest: `rulesets/manifest.yaml`, whose references deliver pool files: `defaults` to every context, a `when` block to each context its condition on model, agent, kind, tools, or flag matches, and a ruleset under `rulesets:` wherever a reference spreads it
+- rulesets config: `rulesets/config.yaml`, whose references deliver pool files: `defaults` to every context, a condition block, keyed by its condition as `model haiku:` is, to each context its condition on model, agent, kind, tools, flag, or session matches, and a named set under `sets:` wherever a reference spreads it
 - render: a file under `rulesets/-render/` that `render` writes, composed pool bodies each under its marker
 - `$CLI`: `python3.14 features/plugins/rulesets/lib/rulesets/cli.py`, run from the repository root, each command closing on `--root rulesets`
 
@@ -48,13 +48,13 @@ A term a body coins collides with a shared term or with a term another body coin
 Route content before writing it.
 
 placing content
-  | an invariant every context holds = a pool file the manifest's `defaults` reach
+  | an invariant every context holds = a pool file the rulesets config's `defaults` reach
   | a term or notation two or more bodies lean on = the core-rules terms block
   | an invariant for one kind of file = a path-scoped file under `rules/`
   | differs by model or another context fact = a variant file in the pool,
-      a complete body, set by a `when` block testing that fact
+      a complete body, set by a condition block testing that fact
   | an invariant some contexts hold = a pool file, referenced from the
-      ruleset or `when` block whose contexts hold it
+      named set or condition block whose contexts hold it
   | a catalog = `references/`
   | an instruction only one tool's workflow acts on = that tool's own config,
       in the slot whose reader acts when it applies, chosen after reading
@@ -79,13 +79,13 @@ Treat a line's apparent idleness as no ground for removing it. Remove a line onl
 
 ### Syncing the render
 
-Hold a variant file as the body replacing its default form in each context a manifest block sets that variant for, and the default form as the body every other context receives. Leave CLAUDE.md unmarked. Edit whichever side is in hand, a pool file or its section of a render, keeping the render's marker lines. Edit a render only to `split` it back.
+Hold a variant file as the body replacing its default form in each context the rulesets config sets that variant for, and the default form as the body every other context receives. Leave CLAUDE.md unmarked. Edit whichever side is in hand, a pool file or its section of a render, keeping the render's marker lines. Edit a render only to `split` it back.
 The edit landed in a render ? run `$CLI split <render>` before any `render` run.
 `split` refuses ? repair the marker lines its message names -> run again.
-A pool or manifest edit finished ? run `$CLI render` -> run `$CLI check` -> clear every error it reports.
+A pool or rulesets config edit finished ? run `$CLI render` -> run `$CLI check` -> clear every error it reports.
 A full-pass rewrite finished ? account for every line the diff against HEAD removes, before regenerating.
 Edit a rules file one tool call per step.
-Adding or removing a pool rule ? update the manifest's references to it in the same change -> confirm with `$CLI explain <name>`, given each served context's `--model`, `--agent`, and `--kind`, that the manifest delivers it there.
+Adding or removing a pool rule ? update the rulesets config's references to it in the same change -> confirm with `$CLI explain <name>`, given each served context's `--model`, `--agent`, and `--kind`, that the rulesets config delivers it there.
 Renaming a rules file or a section another file cites ? sweep the citations in the same change.
 
 ### Skills and plugins
