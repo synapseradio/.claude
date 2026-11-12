@@ -15,6 +15,8 @@ export type UsageModel = {
 export type MessageEstimates = {
   hooks: number
   user: number
+  calls: number
+  results: number
   read: number
 }
 

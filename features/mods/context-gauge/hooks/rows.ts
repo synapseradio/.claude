@@ -1,4 +1,4 @@
-/** The gauge's rows: the engine's breakdown rows named and ordered, its Messages row split by the gauge's estimates. */
+/** The gauge's rows: the engine's breakdown rows named, merged and ordered, its Messages row split by the gauge's estimates. */
 
 import type { MessageEstimates, UsageCategory } from '../types'
 import { CATEGORY_SWATCHES } from './palette'
@@ -6,51 +6,61 @@ import type { CategoryId } from './palette'
 
 const CHARS_PER_TOKEN = 4
 
-const ROW_IDS: Readonly<Record<string, Exclude<CategoryId, 'other'>>> = {
-  'System prompt': 'sysPrompt',
-  'System tools': 'sysTools',
-  'MCP tools': 'mcpTools',
-  'MCP server instructions': 'mcpInfo',
+type NamedId = Exclude<CategoryId, 'other'>
+
+const ROW_IDS: Readonly<Record<string, NamedId>> = {
+  'System prompt': 'system',
+  'System tools': 'system',
+  'MCP tools': 'mcp',
+  'MCP server instructions': 'mcp',
   'Custom agents': 'agents',
   'Memory files': 'memory',
   Skills: 'skills',
 }
 
-const LABELS: Readonly<Record<Exclude<CategoryId, 'other'>, string>> = {
-  sysPrompt: 'sys prompt',
-  sysTools: 'sys tools',
-  mcpTools: 'mcp tools',
-  mcpInfo: 'mcp info',
+const LABELS: Readonly<Record<NamedId, string>> = {
+  system: 'system',
+  mcp: 'mcp',
   agents: 'agents',
   memory: 'memory',
   skills: 'skills',
   hooks: 'hooks',
   user: 'user',
+  calls: 'calls',
+  results: 'results',
   read: 'read',
-  replies: 'replies & tools',
+  replies: 'replies',
 }
+
+/** The Messages row's estimated parts, in bar order. */
+const ESTIMATED: readonly (keyof MessageEstimates & NamedId)[] = ['hooks', 'user', 'calls', 'results', 'read']
 
 const BAR_ORDER = Object.keys(CATEGORY_SWATCHES) as CategoryId[]
 
 export type GaugeRow = { id: CategoryId; label: string; tokens: number; estimated: boolean }
 
-function named(id: Exclude<CategoryId, 'other'>, tokens: number, estimated: boolean): GaugeRow {
+function named(id: NamedId, tokens: number, estimated: boolean): GaugeRow {
   return { id, label: LABELS[id], tokens, estimated }
 }
 
-/** Splits the Messages row's tokens into estimated hook, user and Read rows and the remainder. */
+/** Splits the Messages row's tokens into the estimated rows and the remainder. */
 function splitMessages(tokens: number, chars: MessageEstimates): GaugeRow[] {
-  const seen = (chars.hooks + chars.user + chars.read) / CHARS_PER_TOKEN
+  const seen = ESTIMATED.reduce((sum, id) => sum + chars[id], 0) / CHARS_PER_TOKEN
   const scale = seen > tokens ? tokens / seen : 1
-  const hooks = Math.round((chars.hooks / CHARS_PER_TOKEN) * scale)
-  const user = Math.round((chars.user / CHARS_PER_TOKEN) * scale)
-  const read = Math.round((chars.read / CHARS_PER_TOKEN) * scale)
-  return [
-    named('hooks', hooks, true),
-    named('user', user, true),
-    named('read', read, true),
-    named('replies', Math.max(0, tokens - hooks - user - read), false),
-  ]
+  const estimated = ESTIMATED.map(id => named(id, Math.round((chars[id] / CHARS_PER_TOKEN) * scale), true))
+  const rest = tokens - estimated.reduce((sum, r) => sum + r.tokens, 0)
+  return [...estimated, named('replies', Math.max(0, rest), false)]
+}
+
+/** Sums the tokens of rows sharing an id and label, keeping the first one's place. */
+function merged(rows: readonly GaugeRow[]): GaugeRow[] {
+  const byKey = new Map<string, GaugeRow>()
+  for (const r of rows) {
+    const key = `${r.id}\u0000${r.label}`
+    const seen = byKey.get(key)
+    byKey.set(key, seen ? { ...seen, tokens: seen.tokens + r.tokens } : r)
+  }
+  return [...byKey.values()]
 }
 
 /** The rows the gauge draws, in bar order, each with tokens. */
@@ -60,5 +70,7 @@ export function gaugeRows(categories: readonly UsageCategory[], chars: MessageEs
     const id = ROW_IDS[c.name]
     return [id ? named(id, c.tokens, false) : { id: 'other', label: c.name.toLowerCase(), tokens: c.tokens, estimated: false }]
   })
-  return rows.filter(r => r.tokens > 0).sort((a, b) => BAR_ORDER.indexOf(a.id) - BAR_ORDER.indexOf(b.id))
+  return merged(rows)
+    .filter(r => r.tokens > 0)
+    .sort((a, b) => BAR_ORDER.indexOf(a.id) - BAR_ORDER.indexOf(b.id))
 }

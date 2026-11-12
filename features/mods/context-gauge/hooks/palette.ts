@@ -12,15 +12,15 @@ export type Swatch = { hue: string; shade: number; hex: string }
  * Hexes: https://github.com/yeun/open-color/blob/v1.9.1/open-color.json
  */
 export const CATEGORY_SWATCHES = {
-  sysPrompt: { hue: 'indigo', shade: 5, hex: '#5c7cfa' },
-  sysTools: { hue: 'orange', shade: 8, hex: '#e8590c' },
-  mcpTools: { hue: 'cyan', shade: 7, hex: '#1098ad' },
-  mcpInfo: { hue: 'pink', shade: 6, hex: '#e64980' },
+  system: { hue: 'indigo', shade: 5, hex: '#5c7cfa' },
+  mcp: { hue: 'cyan', shade: 7, hex: '#1098ad' },
   agents: { hue: 'lime', shade: 9, hex: '#5c940d' },
   memory: { hue: 'violet', shade: 4, hex: '#9775fa' },
   skills: { hue: 'teal', shade: 8, hex: '#099268' },
   hooks: { hue: 'grape', shade: 5, hex: '#cc5de8' },
-  user: { hue: 'green', shade: 8, hex: '#2f9e44' },
+  user: { hue: 'orange', shade: 8, hex: '#e8590c' },
+  calls: { hue: 'green', shade: 8, hex: '#2f9e44' },
+  results: { hue: 'pink', shade: 6, hex: '#e64980' },
   read: { hue: 'blue', shade: 6, hex: '#228be6' },
   replies: { hue: 'red', shade: 7, hex: '#f03e3e' },
   other: { hue: 'gray', shade: 6, hex: '#868e96' },

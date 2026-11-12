@@ -8,7 +8,7 @@ import type { GaugeRow } from './rows'
 
 const usage = atom({ plugin: 'context-gauge', key: 'usage' } as const, null as UsageModel | null)
 
-const NO_ESTIMATES: MessageEstimates = { hooks: 0, user: 0, read: 0 }
+const NO_ESTIMATES: MessageEstimates = { hooks: 0, user: 0, calls: 0, results: 0, read: 0 }
 const estimates = atom({ plugin: 'context-gauge', key: 'estimates' } as const, NO_ESTIMATES)
 
 const BAR_CELLS = 14

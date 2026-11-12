@@ -89,14 +89,14 @@ describe('the gauge under the prompt', () => {
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
 
     const ui = await $.ui.mount(HINT)
-    const chip = await ui.find({ type: 'Text', text: 'sys prompt' })
+    const chip = await ui.find({ type: 'Text', text: 'system' })
     const percent = await ui.find({ type: 'Text', text: '30%' })
     const segments = await ui.findAll({ type: 'Text', text: /▓/ })
     await ui.unmount()
 
-    expect(chip?.props.backgroundColor).toBe(CATEGORY_SWATCHES.sysPrompt.hex)
+    expect(chip?.props.backgroundColor).toBe(CATEGORY_SWATCHES.system.hex)
     expect(chip?.props.color).toBe(CHIP_TEXT)
-    expect(segments[0]?.props.color).toBe(CATEGORY_SWATCHES.sysPrompt.hex)
+    expect(segments[0]?.props.color).toBe(CATEGORY_SWATCHES.system.hex)
     expect(percent?.props.backgroundColor).toBe(FILL_SWATCHES.low.hex)
   })
 
