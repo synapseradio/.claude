@@ -2,7 +2,7 @@ import type { ContextCategory, On } from "claude-code";
 import type { Engine } from "claude-code/testing";
 import { describe, expect, test } from "claude-code/testing";
 
-import { CATEGORY_SWATCHES, FILL_SWATCHES } from "../hooks/palette";
+import { CATEGORY_STYLES } from "../hooks/palette";
 
 /** A bar cell: the sextant filling a cell's middle third, U+1FB0B. */
 const BAR_CELL = /\u{1FB0B}/u;
@@ -139,13 +139,13 @@ describe("the gauge under the prompt", () => {
 		const segments = await ui.findAll({ type: "Text", text: BAR_CELL });
 		await ui.unmount();
 
-		expect(propsOf(label).color).toBe(CATEGORY_SWATCHES.system.hex);
+		expect(propsOf(label).color).toBe(CATEGORY_STYLES.system.swatch.hex);
 		expect(propsOf(label).backgroundColor).toBeUndefined();
 		expect(propsOf(label).weight).toBe("bold");
-		expect(propsOf(segments[0]).color).toBe(CATEGORY_SWATCHES.system.hex);
+		expect(propsOf(segments[0]).color).toBe(CATEGORY_STYLES.system.swatch.hex);
 	});
 
-	test("the percentage, the totals and every legend figure are bold, the percentage in its fill colour", async ($, on) => {
+	test("the percentage, the totals and every legend figure are bold in the terminal's own colour", async ($, on) => {
 		engine(on);
 		await startSession($);
 
@@ -155,7 +155,7 @@ describe("the gauge under the prompt", () => {
 		const figures = await ui.findAll({ type: "Text", text: /^\d+k$/u });
 		await ui.unmount();
 
-		expect(propsOf(percent).color).toBe(FILL_SWATCHES.low.hex);
+		expect(propsOf(percent).color).toBeUndefined();
 		expect(propsOf(percent).backgroundColor).toBeUndefined();
 		expect(propsOf(percent).weight).toBe("bold");
 		expect(propsOf(totals).weight).toBe("bold");

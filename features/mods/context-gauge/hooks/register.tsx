@@ -9,7 +9,7 @@ import type {
 import { atom, read, update } from "claude-code";
 
 import type { MessageEstimates, UsageModel } from "../types";
-import { CATEGORY_SWATCHES, fillSwatch } from "./palette";
+import { CATEGORY_STYLES } from "./palette";
 import type { GaugeRow } from "./rows";
 import { gaugeRows, NO_ESTIMATES } from "./rows";
 
@@ -188,7 +188,10 @@ function barSegments(
 ): Segment[] {
 	const used = rows
 		.filter((r) => r.tokens > 0)
-		.map((r) => ({ tokens: r.tokens, color: CATEGORY_SWATCHES[r.id].hex }));
+		.map((r) => ({
+			tokens: r.tokens,
+			color: CATEGORY_STYLES[r.id].swatch.hex,
+		}));
 	const parts = used.concat({
 		tokens: Math.max(0, model.max - model.used),
 		color: "inactive",
@@ -324,9 +327,7 @@ export const register: Register = (on) => {
 				{hint}
 				<Box key="gauge">
 					<Box flexShrink={0}>
-						<Text weight="bold" color={fillSwatch(model.percent).hex}>
-							{percent}
-						</Text>
+						<Text weight="bold">{percent}</Text>
 						<Text>{SPACE}</Text>
 					</Box>
 					<Box key="bar" flexShrink={1} overflow="hidden" height={1}>
@@ -346,7 +347,7 @@ export const register: Register = (on) => {
 						<Box key={`legend-${n}`} columnGap={LEGEND_GAP}>
 							{line.rows.map((r) => (
 								<Box key={`item-${r.id}-${r.label}`} flexShrink={0}>
-									<Text weight="bold" color={CATEGORY_SWATCHES[r.id].hex}>
+									<Text weight="bold" color={CATEGORY_STYLES[r.id].swatch.hex}>
 										{r.label}
 									</Text>
 									<Text>{SPACE}</Text>

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "claude-code/testing";
 import type { Swatch } from "../hooks/palette";
-import { CATEGORY_SWATCHES, FILL_SWATCHES } from "../hooks/palette";
+import { BAR_ORDER, CATEGORY_STYLES, FREE_SWATCH } from "../hooks/palette";
+import { deficientDistance, normalDistance } from "./colour-vision";
 
 // Open Color 1.9.1, https://github.com/yeun/open-color/blob/v1.9.1/open-color.json
 const OPEN_COLOR: Readonly<Record<string, readonly string[]>> = {
@@ -169,13 +170,15 @@ function contrast(a: string, b: string): number {
 	return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
 }
 
-const swatches: [string, Swatch][] = [
-	...Object.entries(CATEGORY_SWATCHES),
-	...Object.entries(FILL_SWATCHES).map(([k, s]): [string, Swatch] => [
-		`fill ${k}`,
-		s,
-	]),
-];
+const swatches: [string, Swatch][] = Object.entries(CATEGORY_STYLES)
+	.map(([id, style]): [string, Swatch] => [id, style.swatch])
+	.concat([["free space", FREE_SWATCH]]);
+
+/** Each category's style, in bar order. */
+const styles = BAR_ORDER.map((id) => ({ id, ...CATEGORY_STYLES[id] }));
+
+/** Every pair of categories, each pair once. */
+const pairs = styles.flatMap((a, i) => styles.slice(i + 1).map((b) => [a, b]));
 
 describe("palette", () => {
 	test("every swatch is the Open Color shade it names", async () => {
@@ -186,13 +189,46 @@ describe("palette", () => {
 		}
 	});
 
-	test("every category colour, as bar cells and as bold label text, stands at 3:1 or more on light and dark surfaces", async () => {
-		for (const [name, s] of Object.entries(CATEGORY_SWATCHES)) {
+	test("every colour, as bar pixels and as bold label text, stands at 3:1 or more on light and dark surfaces", async () => {
+		for (const [name, s] of swatches) {
 			for (const surface of SURFACES) {
 				expect(`${name} on ${surface} ${contrast(s.hex, surface) >= 3}`).toBe(
 					`${name} on ${surface} true`,
 				);
 			}
 		}
+	});
+
+	test("no two categories share both a colour and a texture", async () => {
+		for (const [a, b] of pairs) {
+			const same = a?.swatch.hex === b?.swatch.hex && a?.texture === b?.texture;
+			expect(`${a?.id} ${b?.id} ${same ? "alike" : "apart"}`).toBe(
+				`${a?.id} ${b?.id} apart`,
+			);
+		}
+	});
+
+	test("neighbours in the bar differ in both colour and texture", async () => {
+		styles.slice(1).forEach((b, i) => {
+			const a = styles[i];
+			const differ = a?.swatch.hex !== b.swatch.hex && a?.texture !== b.texture;
+			expect(`${a?.id} ${b.id} ${differ}`).toBe(`${a?.id} ${b.id} true`);
+		});
+	});
+
+	// Floors from the dataviz palette validator: ΔE ×100 of 15 under normal
+	// vision and 6 under simulated protanopia and deuteranopia, every pair of
+	// colours rather than neighbours alone, so any two categories stay apart.
+	test("any two category colours stay apart to normal and colour-deficient vision", async () => {
+		const hexes = Array.from(new Set(styles.map((s) => s.swatch.hex)));
+		hexes.forEach((a, i) => {
+			for (const b of hexes.slice(i + 1)) {
+				const normal = normalDistance(a, b);
+				const deficient = deficientDistance(a, b);
+				expect(`${a} ${b} ${normal >= 15 && deficient >= 6}`).toBe(
+					`${a} ${b} true`,
+				);
+			}
+		});
 	});
 });

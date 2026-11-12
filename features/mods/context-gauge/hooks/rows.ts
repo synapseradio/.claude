@@ -2,7 +2,7 @@
 
 import type { MessageEstimates, UsageCategory } from "../types";
 import type { CategoryId } from "./palette";
-import { CATEGORY_SWATCHES } from "./palette";
+import { BAR_ORDER } from "./palette";
 
 const CHARS_PER_TOKEN = 4;
 
@@ -37,9 +37,9 @@ export const NO_ESTIMATES: MessageEstimates = {
 	read: 0,
 };
 
-/** Each category's place in the bar, the swatch table's key order. */
+/** Each category's place in the bar. */
 const BAR_RANK: ReadonlyMap<string, number> = new Map(
-	Object.keys(CATEGORY_SWATCHES).map((id, rank) => [id, rank]),
+	BAR_ORDER.map((id, rank) => [id, rank]),
 );
 
 export type GaugeRow = {
