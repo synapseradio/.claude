@@ -6,7 +6,7 @@ is keyed on, they read back a tree of fact tests, learn from a precise error why
 is no condition, and evaluate the tree over a context's facts without re-deriving operator
 precedence or what an absent fact means. Contexts are built in memory, so no case touches disk.
 
-Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_conditions.py`.
+Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_conditions.py`.
 """
 
 import pathlib
@@ -35,7 +35,7 @@ from rulesets.source.condition import (  # noqa: E402  (path must be set before 
 from rulesets.source.directory import read_directory  # noqa: E402
 
 
-def facts(*, model=None, agent=None, kind="session", flags=()):
+def facts(*, model=None, agent=None, kind="session", flags=()) -> Facts:
     return Facts(
         model=ABSENT if model is None else model,
         agent=ABSENT if agent is None else agent,
@@ -44,11 +44,11 @@ def facts(*, model=None, agent=None, kind="session", flags=()):
     )
 
 
-def truth(text, **context):
+def truth(text, **context) -> Truth:
     return evaluate(parse_condition(text), facts(**context))
 
 
-def holds(text, **context):
+def holds(text, **context) -> bool:
     return truth(text, **context) is Truth.TRUE
 
 
@@ -69,56 +69,56 @@ class TestEachFactTestNamesAFactAndAValue:
             ("flag voice-terse", FactTest("flag", "voice-terse")),
         ],
     )
-    def test_each_fact_kind_parses_to_a_test(self, text, expected):
+    def test_each_fact_kind_parses_to_a_test(self, text, expected) -> None:
         assert parse_condition(text) == expected
 
-    def test_a_model_name_may_hold_digits_and_brackets(self):
+    def test_a_model_name_may_hold_digits_and_brackets(self) -> None:
         assert parse_condition("model opus-4-8[1m]") == FactTest("model", "opus-4-8[1m]")
 
-    def test_a_name_may_hold_underscores_and_dots(self):
+    def test_a_name_may_hold_underscores_and_dots(self) -> None:
         assert parse_condition("flag no_color.v2") == FactTest("flag", "no_color.v2")
 
-    def test_any_run_of_whitespace_separates_the_words(self):
+    def test_any_run_of_whitespace_separates_the_words(self) -> None:
         assert parse_condition("  agent \t critic  ") == AGENT_CRITIC
 
-    def test_a_test_matches_on_its_value_exactly(self):
+    def test_a_test_matches_on_its_value_exactly(self) -> None:
         assert holds("agent critic", agent="critic") is True
         assert holds("agent critic", agent="critic-2") is False
         assert holds("agent critic", agent="Critic") is False
 
-    def test_a_kind_test_matches_the_context_kind(self):
+    def test_a_kind_test_matches_the_context_kind(self) -> None:
         assert holds("kind delegate", kind="delegate") is True
         assert holds("kind delegate", kind="session") is False
 
-    def test_a_model_test_matches_the_claimed_model_name(self):
+    def test_a_model_test_matches_the_claimed_model_name(self) -> None:
         assert holds("model haiku", model="haiku") is True
         assert holds("model haiku", model="opus") is False
 
-    def test_a_flag_test_is_true_where_the_flag_is_in_force(self):
+    def test_a_flag_test_is_true_where_the_flag_is_in_force(self) -> None:
         assert holds("flag strict", flags=["strict", "other"]) is True
 
 
 class TestTestsCombineWithAndOrNotAndParentheses:
-    def test_and_needs_both_tests(self):
+    def test_and_needs_both_tests(self) -> None:
         assert holds("agent critic and flag strict", agent="critic", flags=["strict"]) is True
         assert holds("agent critic and flag strict", agent="critic") is False
         assert holds("agent critic and flag strict", flags=["strict"]) is False
 
-    def test_or_needs_either_test(self):
+    def test_or_needs_either_test(self) -> None:
         assert holds("agent critic or flag strict", agent="critic") is True
         assert holds("agent critic or flag strict", flags=["strict"]) is True
         assert holds("agent critic or flag strict") is False
 
-    def test_not_inverts_a_test(self):
+    def test_not_inverts_a_test(self) -> None:
         assert holds("not agent critic", agent="critic") is False
         assert holds("not agent critic", agent="auditor") is True
 
-    def test_not_may_repeat(self):
+    def test_not_may_repeat(self) -> None:
         assert parse_condition("not not flag strict") == Not(Not(FLAG_STRICT))
         assert holds("not not flag strict", flags=["strict"]) is True
         assert holds("not not flag strict") is False
 
-    def test_a_run_of_ands_and_a_run_of_ors_group_to_the_left(self):
+    def test_a_run_of_ands_and_a_run_of_ors_group_to_the_left(self) -> None:
         assert parse_condition("agent a and agent b and agent c") == And(
             And(FactTest("agent", "a"), FactTest("agent", "b")), FactTest("agent", "c")
         )
@@ -128,77 +128,79 @@ class TestTestsCombineWithAndOrNotAndParentheses:
 
 
 class TestOperatorPrecedence:
-    def test_and_binds_tighter_than_or(self):
+    def test_and_binds_tighter_than_or(self) -> None:
         parsed = parse_condition("agent critic or agent auditor and flag strict")
 
         assert parsed == Or(AGENT_CRITIC, And(AGENT_AUDITOR, FLAG_STRICT))
 
-    def test_and_binds_tighter_than_or_when_or_comes_second(self):
+    def test_and_binds_tighter_than_or_when_or_comes_second(self) -> None:
         parsed = parse_condition("agent auditor and flag strict or agent critic")
 
         assert parsed == Or(And(AGENT_AUDITOR, FLAG_STRICT), AGENT_CRITIC)
 
-    def test_a_critic_without_the_flag_passes_where_or_is_the_looser_operator(self):
+    def test_a_critic_without_the_flag_passes_where_or_is_the_looser_operator(self) -> None:
         text = "agent critic or agent auditor and flag strict"
 
         assert holds(text, agent="critic") is True
         assert holds(text, agent="auditor") is False
         assert holds(text, agent="auditor", flags=["strict"]) is True
 
-    def test_not_binds_tighter_than_and(self):
+    def test_not_binds_tighter_than_and(self) -> None:
         parsed = parse_condition("not agent critic and flag strict")
 
         assert parsed == And(Not(AGENT_CRITIC), FLAG_STRICT)
 
-    def test_a_critic_without_the_flag_fails_where_not_binds_one_test(self):
+    def test_a_critic_without_the_flag_fails_where_not_binds_one_test(self) -> None:
         text = "not agent critic and flag strict"
 
         assert holds(text, agent="critic") is False
         assert holds(text, agent="auditor", flags=["strict"]) is True
         assert holds(text, agent="critic", flags=["strict"]) is False
 
-    def test_not_binds_tighter_than_or(self):
+    def test_not_binds_tighter_than_or(self) -> None:
         assert parse_condition("not agent critic or flag strict") == Or(
             Not(AGENT_CRITIC), FLAG_STRICT
         )
 
 
 class TestParenthesesGroup:
-    def test_parentheses_override_precedence(self):
+    def test_parentheses_override_precedence(self) -> None:
         parsed = parse_condition("(agent critic or agent auditor) and flag strict")
 
         assert parsed == And(Or(AGENT_CRITIC, AGENT_AUDITOR), FLAG_STRICT)
 
-    def test_a_critic_with_the_flag_not_in_force_is_false(self):
+    def test_a_critic_with_the_flag_not_in_force_is_false(self) -> None:
         text = "(agent critic or agent auditor) and flag strict"
 
         assert holds(text, agent="critic") is False
         assert holds(text, agent="critic", flags=["strict"]) is True
 
-    def test_not_over_a_group_inverts_the_group(self):
+    def test_not_over_a_group_inverts_the_group(self) -> None:
         text = "not (agent critic or agent auditor)"
 
         assert parse_condition(text) == Not(Or(AGENT_CRITIC, AGENT_AUDITOR))
         assert holds(text, agent="auditor") is False
         assert holds(text, agent="writer") is True
 
-    def test_parentheses_need_no_space_beside_them(self):
+    def test_parentheses_need_no_space_beside_them(self) -> None:
         assert parse_condition("(agent critic)and(flag strict)") == And(AGENT_CRITIC, FLAG_STRICT)
 
-    def test_parentheses_nest(self):
+    def test_parentheses_nest(self) -> None:
         text = "((agent critic))"
 
         assert parse_condition(text) == AGENT_CRITIC
 
 
 class TestATestOverAnAbsentFactIsUnknownAndSoIsItsNegation:
-    def test_a_model_test_with_no_model_is_unknown(self):
+    def test_a_model_test_with_no_model_is_unknown(self) -> None:
         assert truth("model haiku", model=None) is Truth.UNKNOWN
 
-    def test_a_negated_model_test_with_no_model_is_unknown(self):
+    def test_a_negated_model_test_with_no_model_is_unknown(self) -> None:
         assert truth("not model haiku", model=None) is Truth.UNKNOWN
 
-    def test_an_unknown_model_test_leaves_a_block_unapplied_unless_the_rest_decides_false(self):
+    def test_an_unknown_model_test_leaves_a_block_unapplied_unless_the_rest_decides_false(
+        self,
+    ) -> None:
         text = "agent critic and not model haiku"
 
         assert truth(text, agent="critic", model=None) is Truth.UNKNOWN
@@ -206,21 +208,21 @@ class TestATestOverAnAbsentFactIsUnknownAndSoIsItsNegation:
         assert truth(text, agent="critic", model="opus") is Truth.TRUE
         assert truth(text, agent="critic", model="haiku") is Truth.FALSE
 
-    def test_an_agent_test_in_a_plain_main_session_is_unknown(self):
+    def test_an_agent_test_in_a_plain_main_session_is_unknown(self) -> None:
         assert truth("agent critic", agent=None) is Truth.UNKNOWN
 
-    def test_a_negated_agent_test_in_a_plain_main_session_is_unknown(self):
+    def test_a_negated_agent_test_in_a_plain_main_session_is_unknown(self) -> None:
         assert truth("not agent critic", agent=None) is Truth.UNKNOWN
 
 
 class TestFlagsAreNeverAbsent:
-    def test_a_flag_not_in_force_is_false(self):
+    def test_a_flag_not_in_force_is_false(self) -> None:
         assert holds("flag strict", flags=[]) is False
 
-    def test_a_negated_flag_not_in_force_is_true(self):
+    def test_a_negated_flag_not_in_force_is_true(self) -> None:
         assert holds("not flag strict", flags=[]) is True
 
-    def test_a_misspelled_flag_is_false_in_every_context(self):
+    def test_a_misspelled_flag_is_false_in_every_context(self) -> None:
         for context in (
             {},
             {"flags": ["strict"]},
@@ -229,7 +231,7 @@ class TestFlagsAreNeverAbsent:
         ):
             assert holds("flag stirct", **context) is False
 
-    def test_a_negated_flag_in_force_is_false(self):
+    def test_a_negated_flag_in_force_is_false(self) -> None:
         assert holds("not flag strict", flags=["strict"]) is False
 
 
@@ -246,20 +248,20 @@ class TestAConditionTestsFactsOnly:
             ("not env CI", "env"),
         ],
     )
-    def test_a_test_of_anything_but_a_fact_is_an_error_naming_it(self, text, named):
+    def test_a_test_of_anything_but_a_fact_is_an_error_naming_it(self, text, named) -> None:
         with pytest.raises(ConditionError) as failure:
             parse_condition(text)
 
         assert named in str(failure.value)
 
-    def test_the_error_lists_the_facts_a_condition_can_test(self):
+    def test_the_error_lists_the_facts_a_condition_can_test(self) -> None:
         with pytest.raises(ConditionError) as failure:
             parse_condition("project amboss")
 
         for fact in ("model", "agent", "kind", "flag"):
             assert fact in str(failure.value)
 
-    def test_a_kind_no_context_carries_is_an_error_naming_it_and_the_kinds(self):
+    def test_a_kind_no_context_carries_is_an_error_naming_it_and_the_kinds(self) -> None:
         with pytest.raises(ConditionError) as failure:
             parse_condition("kind sometimes")
 
@@ -268,7 +270,7 @@ class TestAConditionTestsFactsOnly:
 
 
 class TestSeveralValuesAfterOneFactTestAnyOfThem:
-    def test_two_agents_in_one_test_read_as_either(self):
+    def test_two_agents_in_one_test_read_as_either(self) -> None:
         assert parse_condition("agent critic thinkies") == Or(
             AGENT_CRITIC, FactTest("agent", "thinkies")
         )
@@ -276,7 +278,7 @@ class TestSeveralValuesAfterOneFactTestAnyOfThem:
         assert holds("agent critic thinkies", agent="thinkies") is True
         assert holds("agent critic thinkies", agent="designer") is False
 
-    def test_a_block_keyed_on_two_agents_reaches_each_and_no_other(self, tmp_path):
+    def test_a_block_keyed_on_two_agents_reaches_each_and_no_other(self, tmp_path) -> None:
         root = tmp_path / "rulesets"
         (root / "rules").mkdir(parents=True)
         (root / "rules" / "security-pass.md").write_text("text\n", encoding="utf-8")
@@ -284,7 +286,7 @@ class TestSeveralValuesAfterOneFactTestAnyOfThem:
             "agent critic thinkies:\n  include: security-pass\n", encoding="utf-8"
         )
 
-        def receives(agent):
+        def receives(agent) -> list[str]:
             context = facts(agent=agent, kind="delegate")
             rules = compose(read_directory(root), context, SessionState()).rules
             return [d.rule for d in rules]
@@ -293,19 +295,19 @@ class TestSeveralValuesAfterOneFactTestAnyOfThem:
         assert receives("thinkies") == ["security-pass"]
         assert receives("designer") == []
 
-    def test_not_applies_to_the_whole_group(self):
+    def test_not_applies_to_the_whole_group(self) -> None:
         assert parse_condition("not model haiku sonnet") == Not(
             Or(MODEL_HAIKU, FactTest("model", "sonnet"))
         )
         assert truth("not model haiku sonnet", model="sonnet") is Truth.FALSE
         assert truth("not model haiku sonnet", model="opus") is Truth.TRUE
 
-    def test_and_joins_a_group_as_one_test(self):
+    def test_and_joins_a_group_as_one_test(self) -> None:
         assert parse_condition("agent critic auditor and flag strict") == And(
             Or(AGENT_CRITIC, AGENT_AUDITOR), FLAG_STRICT
         )
 
-    def test_a_fact_name_among_the_values_is_an_error_asking_for_an_operator(self):
+    def test_a_fact_name_among_the_values_is_an_error_asking_for_an_operator(self) -> None:
         with pytest.raises(ConditionError) as failure:
             parse_condition("agent critic flag strict")
 
@@ -313,11 +315,11 @@ class TestSeveralValuesAfterOneFactTestAnyOfThem:
 
 
 class TestKindAnyHoldsInEveryContext:
-    def test_kind_any_holds_in_a_session_and_in_a_delegate(self):
+    def test_kind_any_holds_in_a_session_and_in_a_delegate(self) -> None:
         assert holds("kind any", kind="session") is True
         assert holds("kind any", kind="delegate") is True
 
-    def test_kind_any_joined_to_a_model_test_follows_the_model(self):
+    def test_kind_any_joined_to_a_model_test_follows_the_model(self) -> None:
         assert holds("model haiku and kind any", model="haiku", kind="delegate") is True
         assert holds("model haiku and kind any", model="opus", kind="delegate") is False
 
@@ -347,11 +349,11 @@ class TestTextThatIsNoConditionIsAnError:
             "agent critic, flag strict",
         ],
     )
-    def test_each_malformed_text_raises(self, text):
+    def test_each_malformed_text_raises(self, text) -> None:
         with pytest.raises(ConditionError):
             parse_condition(text)
 
-    def test_an_error_carries_a_message_a_person_can_act_on(self):
+    def test_an_error_carries_a_message_a_person_can_act_on(self) -> None:
         with pytest.raises(ConditionError) as failure:
             parse_condition("(agent critic and flag strict")
 
@@ -359,13 +361,13 @@ class TestTextThatIsNoConditionIsAnError:
         assert "(agent critic and flag strict" not in failure.value.reason
         assert str(failure.value) == failure.value.reason
 
-    def test_an_unbalanced_open_parenthesis_says_so(self):
+    def test_an_unbalanced_open_parenthesis_says_so(self) -> None:
         with pytest.raises(ConditionError) as failure:
             parse_condition("(agent critic and flag strict")
 
         assert "parenthes" in failure.value.reason
 
-    def test_an_empty_condition_says_so(self):
+    def test_an_empty_condition_says_so(self) -> None:
         with pytest.raises(ConditionError) as failure:
             parse_condition("")
 
@@ -373,7 +375,7 @@ class TestTextThatIsNoConditionIsAnError:
 
 
 class TestFactTestsListWhatACheckMustVerify:
-    def test_every_test_in_the_condition_comes_back_in_reading_order(self):
+    def test_every_test_in_the_condition_comes_back_in_reading_order(self) -> None:
         parsed = parse_condition(
             "agent critic and not (model haiku or flag strict) or kind delegate"
         )
@@ -385,10 +387,10 @@ class TestFactTestsListWhatACheckMustVerify:
             FactTest("kind", "delegate"),
         )
 
-    def test_a_single_test_lists_itself(self):
+    def test_a_single_test_lists_itself(self) -> None:
         assert fact_tests(parse_condition("model hiaku")) == (FactTest("model", "hiaku"),)
 
-    def test_a_test_written_twice_comes_back_twice(self):
+    def test_a_test_written_twice_comes_back_twice(self) -> None:
         parsed = parse_condition("model haiku or not model haiku")
 
         assert fact_tests(parsed) == (MODEL_HAIKU, MODEL_HAIKU)

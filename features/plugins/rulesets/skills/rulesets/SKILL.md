@@ -30,7 +30,7 @@ The references write these placeholders. Expand each to its value here when you 
 
 `RUN CLI check --root ROOT` expands to
 `bash "${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh" "${CLAUDE_PLUGIN_ROOT}/lib/rulesets/cli.py" check --root "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/rulesets"`.
-The launcher finds an interpreter that runs the engine, Python 3.14 or later with PyYAML.
+The launcher finds an interpreter that runs the engine, Python 3.15 or later with PyYAML.
 
 ## Toggle
 

@@ -7,7 +7,7 @@ and strikes it states, and which references it could not resolve, without re-der
 reference forms, the reserved rulesets, or the rule that removes follow adds. Each case
 builds its pool and config under `tmp_path`.
 
-Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_references.py`.
+Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_references.py`.
 """
 
 import pathlib
@@ -23,7 +23,7 @@ from rulesets.check.run import check  # noqa: E402  (path must be set before thi
 from rulesets.compose.composition import compose  # noqa: E402
 from rulesets.facts.context import ABSENT, Facts  # noqa: E402
 from rulesets.session.state import SessionState  # noqa: E402
-from rulesets.source.config import parse_config  # noqa: E402
+from rulesets.source.config import Config, parse_config  # noqa: E402
 from rulesets.source.directory import read_directory  # noqa: E402
 from rulesets.source.expansion import (  # noqa: E402
     Expander,
@@ -46,9 +46,8 @@ from rulesets.source.reference import (  # noqa: E402
 PATH = pathlib.Path("config.yaml")
 
 
-def world(tmp_path, config_text, *stems):
+def world(tmp_path, config_text, *stems) -> tuple[Config, Expander]:
     """The parsed config and an expander over a pool holding a file for each stem."""
-
     root = tmp_path / "rulesets"
     (root / "rules").mkdir(parents=True)
     for stem in stems:
@@ -58,7 +57,7 @@ def world(tmp_path, config_text, *stems):
     return parsed, Expander(parsed.spreadable(), pool.variants_by_rule())
 
 
-def build(tmp_path, config_text, *stems):
+def build(tmp_path, config_text, *stems) -> pathlib.Path:
     root = tmp_path / "rulesets"
     (root / "rules").mkdir(parents=True)
     (root / "config.yaml").write_text(config_text, encoding="utf-8")
@@ -67,19 +66,18 @@ def build(tmp_path, config_text, *stems):
     return root
 
 
-def received(root):
+def received(root) -> dict[str, str | None]:
     """What a main session receives, as a mapping of rule name to variant (None: default form)."""
-
     facts = Facts(model=ABSENT, agent=ABSENT, kind="session", flags=frozenset(), session=ABSENT)
     composition = compose(read_directory(root), facts, SessionState())
     return {d.rule: d.variant for d in composition.rules}
 
 
-def pairs(entries):
+def pairs(entries) -> list[tuple[str, str | None]]:
     return [(entry.rule, entry.variant) for entry in entries]
 
 
-def removed(removals):
+def removed(removals) -> list[tuple[str, str | None]]:
     return [(removal.rule, removal.variant) for removal in removals]
 
 
@@ -98,14 +96,14 @@ class TestReferenceForms:
             ("rules.*", SpreadTarget("rules")),
         ],
     )
-    def test_each_form_names_what_it_means(self, text, target):
+    def test_each_form_names_what_it_means(self, text, target) -> None:
         reference = parse_reference(text, 7)
 
         assert reference.target == target
         assert reference.remove is False
         assert (reference.text, reference.line) == (text, 7)
 
-    def test_a_reference_under_exclude_removes_and_is_quoted_with_its_key(self):
+    def test_a_reference_under_exclude_removes_and_is_quoted_with_its_key(self) -> None:
         reference = parse_reference("bash.shell-scripts", 3, remove=True)
 
         assert reference.target == RuleTarget("shell-scripts", None, "bash")
@@ -128,13 +126,13 @@ class TestReferenceForms:
             "voice@a@b",
         ],
     )
-    def test_text_that_is_no_form_is_malformed_and_says_so(self, text):
+    def test_text_that_is_no_form_is_malformed_and_says_so(self, text) -> None:
         reference = parse_reference(text, 1)
 
         assert isinstance(reference.target, MalformedTarget)
         assert reference.target.reason
 
-    def test_a_dash_inside_a_name_is_part_of_the_name(self):
+    def test_a_dash_inside_a_name_is_part_of_the_name(self) -> None:
         assert parse_reference("writing-code-review", 1).target == RuleTarget(
             "writing-code-review", None
         )
@@ -148,7 +146,7 @@ class TestReferenceForms:
             ("-voice", "`voice` belongs under `exclude`"),
         ],
     )
-    def test_an_old_form_names_the_form_that_replaces_it(self, text, advice):
+    def test_an_old_form_names_the_form_that_replaces_it(self, text, advice) -> None:
         target = parse_reference(text, 1).target
 
         assert isinstance(target, OldFormTarget)
@@ -156,7 +154,7 @@ class TestReferenceForms:
 
 
 class TestTheOldReferenceFormsAreSkipped:
-    def test_an_old_form_spread_is_skipped_and_named_while_the_rest_apply(self, tmp_path):
+    def test_an_old_form_spread_is_skipped_and_named_while_the_rest_apply(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path,
             "sets:\n  reasoning: voice\nflag a:\n  include: reasoning:* sorting\n",
@@ -171,7 +169,7 @@ class TestTheOldReferenceFormsAreSkipped:
         assert isinstance(problem, OldFormReference)
         assert "`reasoning.*`" in problem.advice
 
-    def test_a_remove_sign_is_skipped_and_points_to_exclude(self, tmp_path):
+    def test_a_remove_sign_is_skipped_and_points_to_exclude(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path, "flag a:\n  include: -voice sorting\n", "voice", "sorting"
         )
@@ -185,7 +183,7 @@ class TestTheOldReferenceFormsAreSkipped:
 
 
 class TestASetQualifiedReference:
-    def test_a_qualified_rule_carries_its_sets_variant(self, tmp_path):
+    def test_a_qualified_rule_carries_its_sets_variant(self, tmp_path) -> None:
         text = "sets:\n  auditor: report-format@table\nflag a:\n  include: auditor.report-format\n"
         parsed, expander = world(tmp_path, text, "report-format", "report-format@table")
 
@@ -193,7 +191,7 @@ class TestASetQualifiedReference:
             ("report-format", "table")
         ]
 
-    def test_a_qualified_rule_with_its_own_variant_takes_that_variant(self, tmp_path):
+    def test_a_qualified_rule_with_its_own_variant_takes_that_variant(self, tmp_path) -> None:
         text = (
             "sets:\n  auditor: report-format@table\n"
             "flag a:\n  include: auditor.report-format@list\n"
@@ -206,7 +204,7 @@ class TestASetQualifiedReference:
             ("report-format", "list")
         ]
 
-    def test_a_rule_outside_the_named_set_is_skipped_and_named(self, tmp_path):
+    def test_a_rule_outside_the_named_set_is_skipped_and_named(self, tmp_path) -> None:
         text = "sets:\n  code: writing-code\nflag a:\n  include: code.resolving-input voice\n"
         parsed, expander = world(tmp_path, text, "writing-code", "resolving-input", "voice")
 
@@ -217,7 +215,7 @@ class TestASetQualifiedReference:
         assert isinstance(problem, RuleOutsideRuleset)
         assert (problem.ruleset, problem.rule) == ("code", "resolving-input")
 
-    def test_a_qualified_exclude_removes_the_rule_at_every_variant(self, tmp_path):
+    def test_a_qualified_exclude_removes_the_rule_at_every_variant(self, tmp_path) -> None:
         text = (
             "sets:\n  prose: writing-prose\n"
             "flag a:\n  include: writing-prose@haiku\n  exclude: prose.writing-prose\n"
@@ -229,7 +227,7 @@ class TestASetQualifiedReference:
         assert expansion.entries == ()
         assert removed(expansion.removals) == [("writing-prose", None)]
 
-    def test_a_bare_name_outside_every_set_still_names_the_rule(self, tmp_path):
+    def test_a_bare_name_outside_every_set_still_names_the_rule(self, tmp_path) -> None:
         text = "sets:\n  code: writing-code\nflag a:\n  include: bash-commands\n"
         parsed, expander = world(tmp_path, text, "writing-code", "bash-commands")
 
@@ -239,7 +237,7 @@ class TestASetQualifiedReference:
 
 
 class TestAListIncludesAndExcludes:
-    def test_a_list_including_and_excluding_one_rule_keeps_the_rest(self, tmp_path):
+    def test_a_list_including_and_excluding_one_rule_keeps_the_rest(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "defaults:\n  include: tone voice@terse\n  exclude: tone\n",
@@ -250,7 +248,7 @@ class TestAListIncludesAndExcludes:
 
         assert received(root) == {"voice": "terse"}
 
-    def test_a_set_excluding_one_rule_of_a_spread_reaches_every_other(self, tmp_path):
+    def test_a_set_excluding_one_rule_of_a_spread_reaches_every_other(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "sets:\n"
@@ -267,7 +265,7 @@ class TestAListIncludesAndExcludes:
 
         assert received(root) == {"tone": None, "sorting": None}
 
-    def test_every_reference_form_in_every_list_draws_no_error(self, tmp_path):
+    def test_every_reference_form_in_every_list_draws_no_error(self, tmp_path) -> None:
         forms = (
             "    include: voice prose.voice voice@terse prose.voice@terse prose.*\n"
             "    exclude: tone\n"
@@ -286,7 +284,7 @@ class TestAListIncludesAndExcludes:
 
 
 class TestReservedRulesetsCarryFixedMeanings:
-    def test_all_spreads_every_pool_rule_without_a_variant(self, tmp_path):
+    def test_all_spreads_every_pool_rule_without_a_variant(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path, "defaults: all.*\n", "voice", "voice@terse", "sorting", "writing-code"
         )
@@ -299,7 +297,7 @@ class TestReservedRulesetsCarryFixedMeanings:
             ("writing-code", None),
         ]
 
-    def test_excluding_all_takes_every_rule_the_list_adds(self, tmp_path):
+    def test_excluding_all_takes_every_rule_the_list_adds(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path,
             ("defaults:\n  include: voice sorting\n  exclude: all.*\n"),
@@ -312,7 +310,7 @@ class TestReservedRulesetsCarryFixedMeanings:
         assert expansion.entries == ()
         assert removed(expansion.removals) == [("sorting", None), ("voice", None)]
 
-    def test_all_inside_a_ruleset_is_spread_with_the_ruleset(self, tmp_path):
+    def test_all_inside_a_ruleset_is_spread_with_the_ruleset(self, tmp_path) -> None:
         text = (
             "sets:\n"
             "  everything:\n"
@@ -327,7 +325,7 @@ class TestReservedRulesetsCarryFixedMeanings:
 
         assert pairs(expansion.entries) == [("sorting", None)]
 
-    def test_rules_spreads_the_pool_too(self, tmp_path):
+    def test_rules_spreads_the_pool_too(self, tmp_path) -> None:
         parsed, expander = world(tmp_path, "defaults: rules.*\n", "voice", "sorting")
 
         assert pairs(expander.expand(parsed.defaults.references).entries) == [
@@ -335,7 +333,7 @@ class TestReservedRulesetsCarryFixedMeanings:
             ("voice", None),
         ]
 
-    def test_none_holds_no_rule(self, tmp_path):
+    def test_none_holds_no_rule(self, tmp_path) -> None:
         parsed, expander = world(tmp_path, "defaults: none.*\n", "voice")
 
         expansion = expander.expand(parsed.defaults.references)
@@ -343,7 +341,7 @@ class TestReservedRulesetsCarryFixedMeanings:
         assert expansion.entries == ()
         assert expansion.problems == ()
 
-    def test_a_reserved_name_declared_leaves_its_reserved_meaning(self, tmp_path):
+    def test_a_reserved_name_declared_leaves_its_reserved_meaning(self, tmp_path) -> None:
         text = "defaults: all.*\nsets:\n  all: voice\n"
         parsed, expander = world(tmp_path, text, "voice", "sorting")
 
@@ -353,7 +351,7 @@ class TestReservedRulesetsCarryFixedMeanings:
 
     def test_defaults_spreads_as_the_top_level_list_even_where_declared_under_rulesets(
         self, tmp_path
-    ):
+    ) -> None:
         text = "defaults: voice\nsets:\n  defaults: sorting\nflag a:\n  include: defaults.*\n"
         parsed, expander = world(tmp_path, text, "voice", "sorting")
 
@@ -361,7 +359,7 @@ class TestReservedRulesetsCarryFixedMeanings:
 
         assert pairs(expansion.entries) == [("voice", None)]
 
-    def test_a_rule_and_a_ruleset_may_share_a_name(self, tmp_path):
+    def test_a_rule_and_a_ruleset_may_share_a_name(self, tmp_path) -> None:
         text = (
             "sets:\n"
             "  reviewer: report-format\n"
@@ -380,7 +378,7 @@ class TestReservedRulesetsCarryFixedMeanings:
 
 
 class TestARulesetGroupsRulesByReference:
-    def test_a_rule_in_two_rulesets_arrives_once(self, tmp_path):
+    def test_a_rule_in_two_rulesets_arrives_once(self, tmp_path) -> None:
         text = (
             "sets:\n"
             "  reviewer: report-format\n"
@@ -394,7 +392,7 @@ class TestARulesetGroupsRulesByReference:
             ("report-format", None)
         ]
 
-    def test_a_spread_reaches_through_nested_rulesets(self, tmp_path):
+    def test_a_spread_reaches_through_nested_rulesets(self, tmp_path) -> None:
         text = (
             "sets:\n"
             "  code: writing-code data-modeling\n"
@@ -410,7 +408,7 @@ class TestARulesetGroupsRulesByReference:
             ("report-format", None),
         ]
 
-    def test_a_variant_in_a_ruleset_travels_with_the_spread(self, tmp_path):
+    def test_a_variant_in_a_ruleset_travels_with_the_spread(self, tmp_path) -> None:
         text = "sets:\n  auditor: report-format@table\nflag a:\n  include: auditor.*\n"
         parsed, expander = world(tmp_path, text, "report-format", "report-format@table")
 
@@ -418,7 +416,9 @@ class TestARulesetGroupsRulesByReference:
             ("report-format", "table")
         ]
 
-    def test_a_member_nobody_declares_is_skipped_and_named_while_the_rest_apply(self, tmp_path):
+    def test_a_member_nobody_declares_is_skipped_and_named_while_the_rest_apply(
+        self, tmp_path
+    ) -> None:
         text = "sets:\n  tone: voise sorting\nflag a:\n  include: tone.*\n"
         parsed, expander = world(tmp_path, text, "voice", "sorting")
 
@@ -432,7 +432,7 @@ class TestARulesetGroupsRulesByReference:
         assert pairs(spread.entries) == [("sorting", None)]
         assert spread.problems == ()
 
-    def test_a_spread_of_a_ruleset_nobody_declares_is_skipped_and_named(self, tmp_path):
+    def test_a_spread_of_a_ruleset_nobody_declares_is_skipped_and_named(self, tmp_path) -> None:
         parsed, expander = world(tmp_path, "defaults: nope.* voice\n", "voice")
 
         expansion = expander.expand(parsed.defaults.references)
@@ -442,7 +442,7 @@ class TestARulesetGroupsRulesByReference:
         assert isinstance(expansion.problems[0], UnknownRuleset)
         assert expansion.problems[0].ruleset == "nope"
 
-    def test_a_variant_nobody_declares_is_skipped_and_named(self, tmp_path):
+    def test_a_variant_nobody_declares_is_skipped_and_named(self, tmp_path) -> None:
         parsed, expander = world(tmp_path, "defaults: voice@brisk sorting\n", "voice", "sorting")
 
         expansion = expander.expand(parsed.defaults.references)
@@ -452,7 +452,7 @@ class TestARulesetGroupsRulesByReference:
         assert isinstance(expansion.problems[0], UnknownVariant)
         assert (expansion.problems[0].rule, expansion.problems[0].variant) == ("voice", "brisk")
 
-    def test_a_reference_that_is_no_form_is_skipped_and_named(self, tmp_path):
+    def test_a_reference_that_is_no_form_is_skipped_and_named(self, tmp_path) -> None:
         parsed, expander = world(tmp_path, "defaults: foo:bar voice\n", "voice")
 
         expansion = expander.expand(parsed.defaults.references)
@@ -462,7 +462,7 @@ class TestARulesetGroupsRulesByReference:
         assert isinstance(expansion.problems[0], MalformedReference)
         assert expansion.problems[0].reason
 
-    def test_a_rule_with_only_variants_is_still_a_declared_rule(self, tmp_path):
+    def test_a_rule_with_only_variants_is_still_a_declared_rule(self, tmp_path) -> None:
         parsed, expander = world(tmp_path, "defaults: tone@dry tone\n", "tone@dry")
 
         expansion = expander.expand(parsed.defaults.references)
@@ -470,7 +470,7 @@ class TestARulesetGroupsRulesByReference:
         assert pairs(expansion.entries) == [("tone", "dry"), ("tone", None)]
         assert expansion.problems == ()
 
-    def test_an_entry_names_the_reference_it_came_from(self, tmp_path):
+    def test_an_entry_names_the_reference_it_came_from(self, tmp_path) -> None:
         text = "defaults: tone.* sorting\nsets:\n  tone: voice\n"
         parsed, expander = world(tmp_path, text, "voice", "sorting")
 
@@ -481,55 +481,55 @@ class TestARulesetGroupsRulesByReference:
 
 
 class TestARulesetCycle:
-    def test_a_spread_of_either_ruleset_in_a_cycle_reaches_no_rule(self, tmp_path):
+    def test_a_spread_of_either_ruleset_in_a_cycle_reaches_no_rule(self, tmp_path) -> None:
         text = "sets:\n  a: b.*\n  b: a.*\nflag x:\n  include: a.*\nflag y:\n  include: b.*\n"
         parsed, expander = world(tmp_path, text, "voice")
 
         for item in parsed.blocks:
             assert expander.expand(item.references).entries == ()
 
-    def test_a_ruleset_in_a_cycle_reaches_none_of_its_own_rules_either(self, tmp_path):
+    def test_a_ruleset_in_a_cycle_reaches_none_of_its_own_rules_either(self, tmp_path) -> None:
         text = "sets:\n  a: b.* voice\n  b: a.*\nflag x:\n  include: a.*\n"
         parsed, expander = world(tmp_path, text, "voice")
 
         assert expander.expand(parsed.blocks[0].references).entries == ()
 
-    def test_a_ruleset_spreading_into_a_cycle_keeps_its_other_rules(self, tmp_path):
+    def test_a_ruleset_spreading_into_a_cycle_keeps_its_other_rules(self, tmp_path) -> None:
         text = "sets:\n  a: b.*\n  b: a.*\n  c: a.* sorting\nflag x:\n  include: c.*\n"
         parsed, expander = world(tmp_path, text, "sorting")
 
         assert pairs(expander.expand(parsed.blocks[0].references).entries) == [("sorting", None)]
         assert expander.cycle_of("c") == ()
 
-    def test_a_ruleset_spreading_itself_is_a_cycle(self, tmp_path):
+    def test_a_ruleset_spreading_itself_is_a_cycle(self, tmp_path) -> None:
         text = "sets:\n  a: a.* voice\nflag x:\n  include: a.*\n"
         parsed, expander = world(tmp_path, text, "voice")
 
         assert expander.expand(parsed.blocks[0].references).entries == ()
         assert expander.cycle_of("a") == ("a",)
 
-    def test_a_cycle_through_a_remove_is_a_cycle(self, tmp_path):
+    def test_a_cycle_through_a_remove_is_a_cycle(self, tmp_path) -> None:
         text = "sets:\n  a:\n    exclude: b.*\n  b: a.*\nflag x:\n  include: a.*\n"
         parsed, expander = world(tmp_path, text, "voice")
 
         assert expander.expand(parsed.blocks[0].references).entries == ()
         assert expander.cycle_of("a") == expander.cycle_of("b") == ("a", "b")
 
-    def test_a_cycle_through_defaults_holds_defaults_and_the_ruleset(self, tmp_path):
+    def test_a_cycle_through_defaults_holds_defaults_and_the_ruleset(self, tmp_path) -> None:
         text = "defaults: loop.* voice\nsets:\n  loop: defaults.*\n"
         parsed, expander = world(tmp_path, text, "voice")
 
         assert pairs(expander.expand(parsed.defaults.references).entries) == [("voice", None)]
         assert expander.cycle_of("defaults") == expander.cycle_of("loop") == ("defaults", "loop")
 
-    def test_a_longer_cycle_names_every_member(self, tmp_path):
+    def test_a_longer_cycle_names_every_member(self, tmp_path) -> None:
         text = "sets:\n  a: b.*\n  b: c.*\n  c: a.*\n  d: a.*\n"
         _, expander = world(tmp_path, text, "voice")
 
         assert expander.cycle_of("b") == ("a", "b", "c")
         assert expander.cycle_of("d") == ()
 
-    def test_rulesets_in_no_cycle_report_none(self, tmp_path):
+    def test_rulesets_in_no_cycle_report_none(self, tmp_path) -> None:
         _, expander = world(tmp_path, ("sets:\n  a: b.*\n  b: voice\n"), "voice")
 
         assert expander.cycle_of("a") == expander.cycle_of("b") == ()
@@ -537,7 +537,7 @@ class TestARulesetCycle:
 
 
 class TestWithinAListRemovesApplyAfterAdds:
-    def test_a_remove_before_an_add_yields_what_the_other_order_yields(self, tmp_path):
+    def test_a_remove_before_an_add_yields_what_the_other_order_yields(self, tmp_path) -> None:
         before, expander_before = world(
             tmp_path / "x", ("defaults:\n  include: all.*\n  exclude: voice\n"), "voice", "sorting"
         )
@@ -552,7 +552,7 @@ class TestWithinAListRemovesApplyAfterAdds:
             ("sorting", None)
         ]
 
-    def test_a_remove_before_a_named_add_still_removes_it(self, tmp_path):
+    def test_a_remove_before_a_named_add_still_removes_it(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path,
             ("defaults:\n  include: voice sorting\n  exclude: voice\n"),
@@ -562,7 +562,7 @@ class TestWithinAListRemovesApplyAfterAdds:
 
         assert pairs(expander.expand(parsed.defaults.references).entries) == [("sorting", None)]
 
-    def test_a_remove_of_a_rule_takes_every_variant_entry_for_it(self, tmp_path):
+    def test_a_remove_of_a_rule_takes_every_variant_entry_for_it(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path,
             ("defaults:\n  include: voice@terse voice@warm voice\n  exclude: voice\n"),
@@ -573,7 +573,7 @@ class TestWithinAListRemovesApplyAfterAdds:
 
         assert expander.expand(parsed.defaults.references).entries == ()
 
-    def test_a_remove_of_a_variant_keeps_the_rule_and_sets_no_variant(self, tmp_path):
+    def test_a_remove_of_a_variant_keeps_the_rule_and_sets_no_variant(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path,
             ("defaults:\n  include: voice voice@terse\n  exclude: voice@terse\n"),
@@ -583,7 +583,7 @@ class TestWithinAListRemovesApplyAfterAdds:
 
         assert pairs(expander.expand(parsed.defaults.references).entries) == [("voice", None)]
 
-    def test_a_remove_of_the_only_variant_added_keeps_the_rule_bare(self, tmp_path):
+    def test_a_remove_of_the_only_variant_added_keeps_the_rule_bare(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path,
             ("defaults:\n  include: voice@terse\n  exclude: voice@terse\n"),
@@ -593,7 +593,7 @@ class TestWithinAListRemovesApplyAfterAdds:
 
         assert pairs(expander.expand(parsed.defaults.references).entries) == [("voice", None)]
 
-    def test_a_remove_of_a_variant_leaves_a_different_variant_in_place(self, tmp_path):
+    def test_a_remove_of_a_variant_leaves_a_different_variant_in_place(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path,
             ("defaults:\n  include: voice@terse\n  exclude: voice@warm\n"),
@@ -604,7 +604,9 @@ class TestWithinAListRemovesApplyAfterAdds:
 
         assert pairs(expander.expand(parsed.defaults.references).entries) == [("voice", "terse")]
 
-    def test_a_remove_of_a_spread_removes_each_rule_it_reaches_with_its_variants(self, tmp_path):
+    def test_a_remove_of_a_spread_removes_each_rule_it_reaches_with_its_variants(
+        self, tmp_path
+    ) -> None:
         text = (
             "defaults:\n"
             "  include: all.* voice@warm\n"
@@ -620,19 +622,19 @@ class TestWithinAListRemovesApplyAfterAdds:
             ("writing-code", None)
         ]
 
-    def test_a_remove_that_names_nothing_the_list_added_removes_nothing(self, tmp_path):
+    def test_a_remove_that_names_nothing_the_list_added_removes_nothing(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path, ("defaults:\n  include: voice\n  exclude: sorting\n"), "voice", "sorting"
         )
 
         assert pairs(expander.expand(parsed.defaults.references).entries) == [("voice", None)]
 
-    def test_the_same_rule_added_twice_is_one_entry(self, tmp_path):
+    def test_the_same_rule_added_twice_is_one_entry(self, tmp_path) -> None:
         parsed, expander = world(tmp_path, "defaults: voice rules.voice all.*\n", "voice")
 
         assert pairs(expander.expand(parsed.defaults.references).entries) == [("voice", None)]
 
-    def test_a_bare_add_and_a_variant_add_stay_two_entries(self, tmp_path):
+    def test_a_bare_add_and_a_variant_add_stay_two_entries(self, tmp_path) -> None:
         parsed, expander = world(tmp_path, "defaults: voice voice@terse\n", "voice", "voice@terse")
 
         assert pairs(expander.expand(parsed.defaults.references).entries) == [
@@ -642,7 +644,7 @@ class TestWithinAListRemovesApplyAfterAdds:
 
 
 class TestARemoveIsAStatementOutsideASpreadRuleset:
-    def test_a_remove_states_an_exclusion_of_its_rule(self, tmp_path):
+    def test_a_remove_states_an_exclusion_of_its_rule(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path, ("model haiku:\n  exclude: writing-code\n"), "writing-code"
         )
@@ -652,7 +654,7 @@ class TestARemoveIsAStatementOutsideASpreadRuleset:
         assert removed(expansion.removals) == [("writing-code", None)]
         assert expansion.removals[0].source == parsed.blocks[0].references[0]
 
-    def test_a_remove_at_a_variant_states_a_strike(self, tmp_path):
+    def test_a_remove_at_a_variant_states_a_strike(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path, ("flag a:\n  exclude: voice@terse\n"), "voice", "voice@terse"
         )
@@ -661,7 +663,9 @@ class TestARemoveIsAStatementOutsideASpreadRuleset:
             ("voice", "terse")
         ]
 
-    def test_a_remove_of_a_spread_states_an_exclusion_for_each_rule_it_reaches(self, tmp_path):
+    def test_a_remove_of_a_spread_states_an_exclusion_for_each_rule_it_reaches(
+        self, tmp_path
+    ) -> None:
         text = "sets:\n  code: writing-code data-modeling\nmodel haiku:\n  exclude: code.*\n"
         parsed, expander = world(tmp_path, text, "writing-code", "data-modeling")
 
@@ -670,7 +674,9 @@ class TestARemoveIsAStatementOutsideASpreadRuleset:
         assert removed(expansion.removals) == [("writing-code", None), ("data-modeling", None)]
         assert expansion.entries == ()
 
-    def test_a_remove_the_list_also_adds_against_still_stands_as_a_statement(self, tmp_path):
+    def test_a_remove_the_list_also_adds_against_still_stands_as_a_statement(
+        self, tmp_path
+    ) -> None:
         parsed, expander = world(
             tmp_path, ("defaults:\n  include: voice\n  exclude: voice\n"), "voice"
         )
@@ -680,7 +686,9 @@ class TestARemoveIsAStatementOutsideASpreadRuleset:
         assert expansion.entries == ()
         assert removed(expansion.removals) == [("voice", None)]
 
-    def test_a_remove_inside_a_spread_ruleset_only_subtracts_from_its_entries(self, tmp_path):
+    def test_a_remove_inside_a_spread_ruleset_only_subtracts_from_its_entries(
+        self, tmp_path
+    ) -> None:
         text = (
             "defaults: voice\n"
             "sets:\n"
@@ -697,7 +705,7 @@ class TestARemoveIsAStatementOutsideASpreadRuleset:
         assert pairs(expansion.entries) == [("sorting", None), ("writing-code", None)]
         assert expansion.removals == ()
 
-    def test_a_remove_that_names_nothing_declared_is_skipped_and_named(self, tmp_path):
+    def test_a_remove_that_names_nothing_declared_is_skipped_and_named(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path, ("defaults:\n  include: all.*\n  exclude: voise voice@brisk\n"), "voice"
         )
@@ -710,7 +718,7 @@ class TestARemoveIsAStatementOutsideASpreadRuleset:
 
 
 class TestAListNamingTwoVariantsOfOneRule:
-    def test_the_two_references_that_set_them_are_a_conflict(self, tmp_path):
+    def test_the_two_references_that_set_them_are_a_conflict(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path,
             ("flag a:\n  include: voice@terse voice@warm report-format\n"),
@@ -727,7 +735,7 @@ class TestAListNamingTwoVariantsOfOneRule:
         assert [entry.source.text for entry in conflict.entries] == ["voice@terse", "voice@warm"]
         assert pairs(expansion.without_conflicts) == [("report-format", None)]
 
-    def test_two_sets_that_agree_are_no_conflict(self, tmp_path):
+    def test_two_sets_that_agree_are_no_conflict(self, tmp_path) -> None:
         text = "sets:\n  tone: voice@terse\nflag a:\n  include: tone.* voice@terse\n"
         parsed, expander = world(tmp_path, text, "voice", "voice@terse")
 
@@ -736,7 +744,7 @@ class TestAListNamingTwoVariantsOfOneRule:
         assert expansion.conflicts == ()
         assert pairs(expansion.entries) == [("voice", "terse")]
 
-    def test_a_struck_variant_is_no_conflict(self, tmp_path):
+    def test_a_struck_variant_is_no_conflict(self, tmp_path) -> None:
         parsed, expander = world(
             tmp_path,
             ("defaults:\n  include: voice@terse voice@warm\n  exclude: voice@warm\n"),
@@ -750,7 +758,9 @@ class TestAListNamingTwoVariantsOfOneRule:
         assert expansion.conflicts == ()
         assert pairs(expansion.entries) == [("voice", "terse"), ("voice", None)]
 
-    def test_a_conflict_through_a_spread_names_the_spreads_entry_for_the_rule(self, tmp_path):
+    def test_a_conflict_through_a_spread_names_the_spreads_entry_for_the_rule(
+        self, tmp_path
+    ) -> None:
         text = "sets:\n  tone: voice@terse sorting\nflag a:\n  include: tone.* voice@warm\n"
         parsed, expander = world(tmp_path, text, "voice", "voice@terse", "voice@warm", "sorting")
 
@@ -764,13 +774,13 @@ class TestAListNamingTwoVariantsOfOneRule:
         ]
         assert pairs(expansion.without_conflicts) == [("sorting", None)]
 
-    def test_statements_in_different_lists_are_no_conflict(self, tmp_path):
+    def test_statements_in_different_lists_are_no_conflict(self, tmp_path) -> None:
         text = "flag a:\n  include: voice@terse\nflag b:\n  include: voice@warm\n"
         parsed, expander = world(tmp_path, text, "voice", "voice@terse", "voice@warm")
 
         assert all(expander.expand(item.references).conflicts == () for item in parsed.blocks)
 
-    def test_a_ruleset_holding_a_conflict_spreads_without_it(self, tmp_path):
+    def test_a_ruleset_holding_a_conflict_spreads_without_it(self, tmp_path) -> None:
         text = "sets:\n  tone: voice@terse voice@warm sorting\nflag a:\n  include: tone.*\n"
         parsed, expander = world(tmp_path, text, "voice", "voice@terse", "voice@warm", "sorting")
 

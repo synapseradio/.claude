@@ -41,7 +41,7 @@ Work down the list, stopping at the first that explains it.
 1. Run case 21. A `deliveries` section with no line means no delivery reached the session: confirm
    the plugin is installed and enabled.
 2. Run `RUN --version`. Where it prints no version, no interpreter runs the engine: install PyYAML
-   for Python 3.14 or later, or set `RULESETS_PYTHON` to an interpreter's path or name.
+   for Python 3.15 or later, or set `RULESETS_PYTHON` to an interpreter's path or name.
 3. Run `RUN CLI check --root ROOT`. A missing or unparsable config makes delivery send the
    default form of every rule in the pool, with a notice. A directory that holds an older config
    file and no `config.yaml` is such a case (setup and migration reference, case 28).

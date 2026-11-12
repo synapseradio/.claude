@@ -5,18 +5,18 @@ directory; the rules stay yours to write or to move in.
 
 ## Before you start
 
-The hooks and the command line need Python 3.14 or later with PyYAML. Check the interpreter:
+The hooks and the command line need Python 3.15 or later with PyYAML. Check the interpreter:
 
 ```bash
-python3.14 --version
+python3.15 --version
 ```
 
-The hook launcher tries `python3.14`, `python3.15`, and `python3`, and runs the first that reports
-3.14 or later and imports `yaml`. Where none does, a session starts without the plugin's rules and
+The hook launcher tries `python3.15` and `python3`, and runs the first that reports
+3.15 or later and imports `yaml`. Where none does, a session starts without the plugin's rules and
 shows you a message naming the requirement. To name a particular interpreter, set `RULESETS_PYTHON`
 to its path or name.
 
-Install PyYAML for that interpreter, for example with `python3.14 -m pip install pyyaml`, or with
+Install PyYAML for that interpreter, for example with `python3.15 -m pip install pyyaml`, or with
 your usual Python package tool.
 
 ## 1. Install the plugin
@@ -68,7 +68,7 @@ If you hold rules already, `adopt` maps a folder of rule files, or a tier corpus
 rulesets directory and compares what the source delivers with what the new directory delivers:
 
 ```bash
-python3.14 <plugin directory>/lib/rulesets/cli.py adopt --from ~/old-rules --out ~/new-rulesets
+python3.15 <plugin directory>/lib/rulesets/cli.py adopt --from ~/old-rules --out ~/new-rulesets
 ```
 
 `--out` must be an empty directory. Adopt leaves the source as it was.
@@ -79,7 +79,7 @@ python3.14 <plugin directory>/lib/rulesets/cli.py adopt --from ~/old-rules --out
 when it finds an error.
 
 ```bash
-python3.14 <plugin directory>/lib/rulesets/cli.py check --root ~/.claude/rulesets
+python3.15 <plugin directory>/lib/rulesets/cli.py check --root ~/.claude/rulesets
 ```
 
 A clean directory prints nothing and exits 0. A line reads
@@ -105,7 +105,7 @@ delivery skipped, withheld, or showed.
 To read the record as one line per delivery:
 
 ```bash
-python3.14 <plugin directory>/lib/rulesets/cli.py deliveries --session <session id>
+python3.15 <plugin directory>/lib/rulesets/cli.py deliveries --session <session id>
 ```
 
 For a session that received two rules on an opus model, the line reads, tab-separated:
@@ -117,12 +117,12 @@ session  opus  harness-reported  2  -
 The columns are the scope, the model, the model's source, the rule count, the flags set (or `-`),
 and, for a delegate, its identifier. A session with no record prints nothing and exits 0, which
 means no delivery reached it: check that the plugin is installed and enabled, then that
-Python 3.14 with PyYAML is available.
+Python 3.15 with PyYAML is available.
 
 To compare a record with what the config and the pool compose now:
 
 ```bash
-python3.14 <plugin directory>/lib/rulesets/cli.py delivery-check --session <session id>
+python3.15 <plugin directory>/lib/rulesets/cli.py delivery-check --session <session id>
 ```
 
 It prints nothing and exits 0 where every delivery matches, and exits 1 after printing a line for

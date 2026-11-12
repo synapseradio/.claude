@@ -7,7 +7,7 @@ its file and line, in the words the engine uses outward, and the exit status say
 error stands. Each case builds its rulesets directory under `tmp_path` and runs `cli.py` as a
 script, as the skill and the job do.
 
-Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_cli_check.py`.
+Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_cli_check.py`.
 """
 
 import pathlib
@@ -18,9 +18,8 @@ PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 CLI = PLUGIN_ROOT / "lib" / "rulesets" / "cli.py"
 
 
-def build(tmp_path, config=None, stems=(), bodies=None):
+def build(tmp_path, config=None, stems=(), bodies=None) -> pathlib.Path:
     """A rulesets directory with the config text, a file per stem, and any given bodies."""
-
     root = tmp_path / "rulesets"
     (root / "rules").mkdir(parents=True)
     if config is not None:
@@ -31,7 +30,7 @@ def build(tmp_path, config=None, stems=(), bodies=None):
     return root
 
 
-def run(*arguments):
+def run(*arguments) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(CLI), *arguments],
         capture_output=True,
@@ -41,17 +40,16 @@ def run(*arguments):
     )
 
 
-def check(root):
+def check(root) -> subprocess.CompletedProcess[str]:
     return run("check", "--root", str(root))
 
 
-def lines_of(result):
+def lines_of(result) -> list[str]:
     return result.stdout.splitlines()
 
 
-def findings_of(result):
+def findings_of(result) -> list[tuple[str, str, str]]:
     """Each printed line as its location, severity, and kind."""
-
     found = []
     for line in lines_of(result):
         location, rest = line.split(": ", 1)
@@ -61,7 +59,7 @@ def findings_of(result):
 
 
 class TestSeveralProblemsAtOnce:
-    def test_every_error_of_the_run_is_printed_and_the_exit_is_non_zero(self, tmp_path):
+    def test_every_error_of_the_run_is_printed_and_the_exit_is_non_zero(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "defaults: ghost\nsets:\n  a: b.*\n  b: a.*\nproject amboss:\n  include: voice\n",
@@ -78,7 +76,7 @@ class TestSeveralProblemsAtOnce:
             (f"{config}:5", "error", "condition-invalid"),
         ]
 
-    def test_each_finding_sits_on_one_line_with_its_file_and_line(self, tmp_path):
+    def test_each_finding_sits_on_one_line_with_its_file_and_line(self, tmp_path) -> None:
         root = build(tmp_path, "defaults: ghost\n")
 
         result = check(root)
@@ -87,7 +85,7 @@ class TestSeveralProblemsAtOnce:
         assert line.startswith(f"{root / 'config.yaml'}:1: error [undeclared-reference]")
         assert "ghost" in line
 
-    def test_errors_are_printed_before_warnings(self, tmp_path):
+    def test_errors_are_printed_before_warnings(self, tmp_path) -> None:
         root = build(tmp_path, "defaults:\nproject x:\n  include: voice\n", stems=["voice", "tone"])
 
         severities = [severity for _, severity, _ in findings_of(check(root))]
@@ -96,7 +94,7 @@ class TestSeveralProblemsAtOnce:
 
 
 class TestWarningsOnly:
-    def test_both_warnings_are_printed_and_the_exit_is_zero(self, tmp_path):
+    def test_both_warnings_are_printed_and_the_exit_is_zero(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "defaults: voice\n",
@@ -112,14 +110,14 @@ class TestWarningsOnly:
         assert "[never-included]" in result.stdout
         assert "[cross-reference]" in result.stdout
 
-    def test_a_finding_without_a_line_names_the_file_alone(self, tmp_path):
+    def test_a_finding_without_a_line_names_the_file_alone(self, tmp_path) -> None:
         root = build(tmp_path, "defaults:\n", stems=["voice"])
 
         (line,) = lines_of(check(root))
 
         assert line.startswith(f"{root / 'rules' / 'voice.md'}: warning [never-included]")
 
-    def test_a_warning_with_a_line_names_it(self, tmp_path):
+    def test_a_warning_with_a_line_names_it(self, tmp_path) -> None:
         root = build(tmp_path, bodies={"voice": "<!-- rule: sorting -->\ntext\n"})
 
         (line,) = lines_of(check(root))
@@ -130,14 +128,14 @@ class TestWarningsOnly:
 
 
 class TestACleanRulesetsDirectory:
-    def test_nothing_is_printed_and_the_exit_is_zero(self, tmp_path):
+    def test_nothing_is_printed_and_the_exit_is_zero(self, tmp_path) -> None:
         root = build(tmp_path, "defaults: all.*\n", stems=["voice", "voice@terse"])
 
         result = check(root)
 
         assert (result.returncode, result.stdout, result.stderr) == (0, "", "")
 
-    def test_a_directory_with_no_config_and_no_rules_is_clean(self, tmp_path):
+    def test_a_directory_with_no_config_and_no_rules_is_clean(self, tmp_path) -> None:
         root = tmp_path / "empty"
         root.mkdir()
 
@@ -147,7 +145,7 @@ class TestACleanRulesetsDirectory:
 
 
 class TestAConfigThatDoesNotParse:
-    def test_the_failure_is_printed_with_its_line_and_the_exit_is_non_zero(self, tmp_path):
+    def test_the_failure_is_printed_with_its_line_and_the_exit_is_non_zero(self, tmp_path) -> None:
         root = build(tmp_path, "defaults: [voice]\nmodels: [opus-4-8[1m]]\n", stems=["voice"])
 
         result = check(root)
@@ -158,7 +156,7 @@ class TestAConfigThatDoesNotParse:
 
 
 class TestARuleFileThatIsNotUtf8:
-    def test_the_file_is_printed_as_an_error_and_the_exit_is_non_zero(self, tmp_path):
+    def test_the_file_is_printed_as_an_error_and_the_exit_is_non_zero(self, tmp_path) -> None:
         root = build(tmp_path, stems=["other"])
         (root / "rules" / "voice.md").write_bytes(b"Speak \xff plainly.\n")
 
@@ -172,7 +170,7 @@ class TestARuleFileThatIsNotUtf8:
 
 
 class TestTheOutwardVocabulary:
-    def test_a_variant_with_no_default_form_names_the_rule_and_the_variant(self, tmp_path):
+    def test_a_variant_with_no_default_form_names_the_rule_and_the_variant(self, tmp_path) -> None:
         root = build(tmp_path, stems=["tone@dry"])
 
         (line,) = lines_of(check(root))
@@ -181,7 +179,7 @@ class TestTheOutwardVocabulary:
         assert "variant `dry`" in line
         assert "default form" in line
 
-    def test_no_message_names_a_tier_a_stem_or_an_internal_type(self, tmp_path):
+    def test_no_message_names_a_tier_a_stem_or_an_internal_type(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "defaults: ghost voice@terse voice@warm\n"
@@ -207,7 +205,7 @@ class TestTheOutwardVocabulary:
         for word in ("tier", "stem", "Subject", "Target", "Expansion", "PoolFile", "Config("):
             assert word not in output
 
-    def test_a_block_is_called_a_block_and_names_its_file_and_line(self, tmp_path):
+    def test_a_block_is_called_a_block_and_names_its_file_and_line(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "flags: a\nflag a:\n  include: voice\nenv CI:\n  include: voice\n",
@@ -220,14 +218,14 @@ class TestTheOutwardVocabulary:
             f"{root / 'config.yaml'}:4: error [condition-invalid] block `env CI`"
         )
 
-    def test_a_rule_error_is_called_a_rule(self, tmp_path):
+    def test_a_rule_error_is_called_a_rule(self, tmp_path) -> None:
         root = build(tmp_path, bodies={"voice": "---\nmodel: haiku\n---\ntext\n"})
 
         (line,) = lines_of(check(root))
 
         assert f"{root / 'rules' / 'voice.md'}:2: error [rule-condition] rule `voice`" in line
 
-    def test_a_ruleset_and_a_key_are_called_a_ruleset_and_a_key(self, tmp_path):
+    def test_a_ruleset_and_a_key_are_called_a_ruleset_and_a_key(self, tmp_path) -> None:
         root = build(tmp_path, "sets:\n  none:\nwhen: x\n")
 
         first, second = lines_of(check(root))
@@ -237,7 +235,7 @@ class TestTheOutwardVocabulary:
 
     def test_a_qualified_reference_is_quoted_as_the_config_writes_it_at_its_own_line(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "sets:\n"
@@ -258,7 +256,7 @@ class TestTheOutwardVocabulary:
         assert ":*" not in check(root).stdout
         assert " `-" not in check(root).stdout
 
-    def test_a_variant_conflict_names_both_references(self, tmp_path):
+    def test_a_variant_conflict_names_both_references(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "defaults: voice@terse voice@warm\n",
@@ -272,7 +270,7 @@ class TestTheOutwardVocabulary:
 
 
 class TestUsage:
-    def test_a_root_that_is_no_directory_exits_two_and_names_it(self, tmp_path):
+    def test_a_root_that_is_no_directory_exits_two_and_names_it(self, tmp_path) -> None:
         missing = tmp_path / "nowhere"
 
         result = check(missing)
@@ -281,25 +279,25 @@ class TestUsage:
         assert str(missing) in result.stderr
         assert result.stdout == ""
 
-    def test_a_root_that_is_a_file_exits_two(self, tmp_path):
+    def test_a_root_that_is_a_file_exits_two(self, tmp_path) -> None:
         file = tmp_path / "file.txt"
         file.write_text("x", encoding="utf-8")
 
         assert check(file).returncode == 2
 
-    def test_check_without_a_root_exits_two(self):
+    def test_check_without_a_root_exits_two(self) -> None:
         result = run("check")
 
         assert result.returncode == 2
         assert "--root" in result.stderr
 
-    def test_an_unknown_command_exits_two(self, tmp_path):
+    def test_an_unknown_command_exits_two(self, tmp_path) -> None:
         assert run("frobnicate", "--root", str(tmp_path)).returncode == 2
 
-    def test_no_command_exits_two(self):
+    def test_no_command_exits_two(self) -> None:
         assert run().returncode == 2
 
-    def test_the_command_runs_from_any_working_directory(self, tmp_path):
+    def test_the_command_runs_from_any_working_directory(self, tmp_path) -> None:
         root = build(tmp_path, "defaults: ghost\n")
 
         result = subprocess.run(
@@ -315,7 +313,7 @@ class TestUsage:
 
 
 class TestAManifestYamlWithNoConfigYaml:
-    def test_check_reports_an_error_naming_both_files_and_exits_non_zero(self, tmp_path):
+    def test_check_reports_an_error_naming_both_files_and_exits_non_zero(self, tmp_path) -> None:
         root = build(tmp_path, stems=["voice"])
         (root / "manifest.yaml").write_text("defaults: ['voice']\n", encoding="utf-8")
 

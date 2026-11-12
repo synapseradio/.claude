@@ -6,7 +6,7 @@ definition reader all open a file the same way, so a file ending its block with 
 newline, with Windows line endings, or with spaces after the fence reads as having
 frontmatter in all of them or in none. Each case builds its text inline.
 
-Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_documents.py`.
+Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_documents.py`.
 """
 
 import pathlib
@@ -29,17 +29,17 @@ FENCE_VARIANTS = {
 
 
 class TestSplitFrontmatter:
-    def test_the_block_comes_back_with_the_file_line_it_opens_on(self):
+    def test_the_block_comes_back_with_the_file_line_it_opens_on(self) -> None:
         assert split_frontmatter("---\nname: scout\nmodel: haiku\n---\nBody\n") == (
             "name: scout\nmodel: haiku",
             2,
         )
 
     @pytest.mark.parametrize("text", FENCE_VARIANTS.values(), ids=FENCE_VARIANTS.keys())
-    def test_a_fence_written_four_ways_yields_the_same_block(self, text):
+    def test_a_fence_written_four_ways_yields_the_same_block(self, text) -> None:
         assert split_frontmatter(text) == ("name: scout", 2)
 
-    def test_a_block_between_adjacent_fences_is_empty(self):
+    def test_a_block_between_adjacent_fences_is_empty(self) -> None:
         assert split_frontmatter("---\n---\nBody\n") == ("", 2)
 
     @pytest.mark.parametrize(
@@ -52,13 +52,13 @@ class TestSplitFrontmatter:
         ],
         ids=["empty", "fence mid-file", "unclosed", "text after the dashes"],
     )
-    def test_a_file_without_a_closed_block_at_its_first_line_has_none(self, text):
+    def test_a_file_without_a_closed_block_at_its_first_line_has_none(self, text) -> None:
         assert split_frontmatter(text) is None
 
 
 class TestParseDocument:
     @pytest.mark.parametrize("text", FENCE_VARIANTS.values(), ids=FENCE_VARIANTS.keys())
-    def test_a_fence_written_four_ways_parses_the_same_frontmatter(self, text):
+    def test_a_fence_written_four_ways_parses_the_same_frontmatter(self, text) -> None:
         assert parse_document(text).frontmatter == {"name": "scout"}
 
     @pytest.mark.parametrize(
@@ -73,10 +73,10 @@ class TestParseDocument:
     )
     def test_the_body_is_what_follows_the_closing_fence_without_the_blank_separator(
         self, text, body
-    ):
+    ) -> None:
         assert parse_document(text).body == body
 
-    def test_a_file_without_a_block_is_all_body(self):
+    def test_a_file_without_a_block_is_all_body(self) -> None:
         text = "Some prose\n\n---\n\nmore prose\n"
 
         document = parse_document(text)
@@ -84,5 +84,5 @@ class TestParseDocument:
         assert (document.frontmatter, document.body) == (None, text)
 
     @pytest.mark.parametrize("text", ["---\n\n---\nBody\n", "---\n---\nBody\n"])
-    def test_a_block_that_holds_nothing_is_an_empty_mapping(self, text):
+    def test_a_block_that_holds_nothing_is_an_empty_mapping(self, text) -> None:
         assert parse_document(text).frontmatter == {}

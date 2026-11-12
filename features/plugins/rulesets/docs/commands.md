@@ -1,7 +1,7 @@
 # Commands
 
 Each command runs through the plugin's `cli.py`. In the examples, `$CLI` stands for
-`python3.14 <plugin directory>/lib/rulesets/cli.py`, and `--root` names the rulesets directory.
+`python3.15 <plugin directory>/lib/rulesets/cli.py`, and `--root` names the rulesets directory.
 Where a command accepts `--root` and you omit it, the command reads `~/.claude/rulesets`; `check`
 requires it.
 

@@ -60,7 +60,7 @@ message.
 - **Agent definitions and spawn prompts.** Delivery reads an agent definition for its model pin and
   its tools, and writes into neither the definition nor the prompt.
 - **Text already delivered.** No toggle and no model switch retracts a rule already in a context.
-- **A session that cannot start the engine.** Where no interpreter reports Python 3.14 with PyYAML,
+- **A session that cannot start the engine.** Where no interpreter reports Python 3.15 with PyYAML,
   the session starts without the plugin's rules and you see a message naming the requirement.
 
 Where `config.yaml` is missing or does not parse, delivery sends the default form of every rule in

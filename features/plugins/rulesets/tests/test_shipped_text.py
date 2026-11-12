@@ -6,7 +6,7 @@ readme, and install guide: an example in the old layout would teach a form check
 version serves the installer, who sees a new major version for a release that reads only
 config.yaml.
 
-Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_shipped_text.py`.
+Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_shipped_text.py`.
 """
 
 import json
@@ -30,7 +30,7 @@ SHIPPED = sorted(
 
 class TestTheShippedTextHoldsNoOldFileNameOrNotation:
     @pytest.mark.parametrize("old", ["manifest.yaml", "when:", ":*"])
-    def test_no_shipped_file_holds_the_old_form(self, old):
+    def test_no_shipped_file_holds_the_old_form(self, old) -> None:
         holding = [
             str(path.relative_to(PLUGIN_ROOT))
             for path in SHIPPED
@@ -40,13 +40,13 @@ class TestTheShippedTextHoldsNoOldFileNameOrNotation:
         assert SHIPPED
         assert holding == []
 
-    def test_the_skill_and_docs_name_config_yaml(self):
+    def test_the_skill_and_docs_name_config_yaml(self) -> None:
         for path in (SKILL / "SKILL.md", PLUGIN_ROOT / "README.md", PLUGIN_ROOT / "INSTALL.md"):
             assert "config.yaml" in path.read_text(encoding="utf-8"), path.name
 
 
 class TestThePluginFileReads400:
-    def test_the_plugin_file_reads_4_0_0(self):
+    def test_the_plugin_file_reads_4_0_0(self) -> None:
         plugin = json.loads(
             (PLUGIN_ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
         )

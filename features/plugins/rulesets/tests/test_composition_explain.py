@@ -7,7 +7,7 @@ before trusting a delivery. Each case builds its rulesets directory under `tmp_p
 and reads what they print or receive. Expected values come from the specs and the fixture files,
 never from the engine's own composition.
 
-Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_composition_explain.py`.
+Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_composition_explain.py`.
 """
 
 import pathlib
@@ -33,9 +33,8 @@ from rulesets.session.state import SessionState  # noqa: E402
 from rulesets.source.directory import read_directory  # noqa: E402
 
 
-def build(tmp_path, config=None, stems=(), bodies=None):
+def build(tmp_path, config=None, stems=(), bodies=None) -> pathlib.Path:
     """A rulesets directory with the config text, a file per stem, and any given bodies."""
-
     root = tmp_path / "rulesets"
     (root / "rules").mkdir(parents=True)
     if config is not None:
@@ -46,7 +45,7 @@ def build(tmp_path, config=None, stems=(), bodies=None):
     return root
 
 
-def explain(root, rule, *options):
+def explain(root, rule, *options) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(CLI), "explain", rule, "--root", str(root), *options],
         capture_output=True,
@@ -56,7 +55,7 @@ def explain(root, rule, *options):
     )
 
 
-def check(root):
+def check(root) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(CLI), "check", "--root", str(root)],
         capture_output=True,
@@ -79,9 +78,8 @@ _FINDING = re.compile(
 )
 
 
-def findings(result):
+def findings(result) -> list[Finding]:
     """Each line check printed as its file, line, severity, kind, and message."""
-
     found = []
     for text in result.stdout.splitlines():
         parts = _FINDING.fullmatch(text)
@@ -99,13 +97,12 @@ def findings(result):
     return found
 
 
-def attribute(result, name):
+def attribute(result, name) -> list[list[str]]:
     """The rows printed under the attribute `name`, each as its cells.
 
     A cell ends where two or more spaces begin. The attribute's own header line is the first cell
     row's predecessor and is not returned; use `header` for it.
     """
-
     rows: list[list[str]] = []
     inside = False
     for line in result.stdout.splitlines():
@@ -117,9 +114,8 @@ def attribute(result, name):
     return rows
 
 
-def header(result, name):
+def header(result, name) -> str | None:
     """The line that opens the attribute `name`, or None where the output has none."""
-
     return next(
         (line for line in result.stdout.splitlines() if line.startswith(f"{name}:")),
         None,
@@ -127,7 +123,9 @@ def header(result, name):
 
 
 class TestExplainTracesOneRuleInOneContext:
-    def test_lines_of_named_facts_are_listed_and_lines_of_unnamed_facts_are_not(self, tmp_path):
+    def test_lines_of_named_facts_are_listed_and_lines_of_unnamed_facts_are_not(
+        self, tmp_path
+    ) -> None:
         root = build(
             tmp_path,
             "models: haiku\n"
@@ -148,7 +146,7 @@ class TestExplainTracesOneRuleInOneContext:
 
     def test_a_kind_left_unnamed_is_unknown_so_a_block_testing_its_negation_does_not_apply(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "defaults: voice\nnot kind delegate:\n  exclude: voice\n",
@@ -166,7 +164,9 @@ class TestExplainTracesOneRuleInOneContext:
 
 
 class TestExplainPrintsInclusionAndVariantEachOpeningWithTheWinner:
-    def test_each_attribute_opens_with_its_winner_and_lists_the_lines_it_beat(self, tmp_path):
+    def test_each_attribute_opens_with_its_winner_and_lists_the_lines_it_beat(
+        self, tmp_path
+    ) -> None:
         root = build(
             tmp_path,
             "models: haiku\n"
@@ -200,7 +200,7 @@ class TestExplainPrintsInclusionAndVariantEachOpeningWithTheWinner:
         ]
         assert "rank" not in result.stdout.lower()
 
-    def test_a_block_that_does_not_apply_is_absent_from_the_output(self, tmp_path):
+    def test_a_block_that_does_not_apply_is_absent_from_the_output(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "models: opus haiku\ndefaults: writing-code\nmodel haiku:\n  exclude: writing-code\n",
@@ -215,7 +215,7 @@ class TestExplainPrintsInclusionAndVariantEachOpeningWithTheWinner:
 
 
 class TestEachLineGivesItsSourceAndReach:
-    def test_a_line_reaching_the_rule_through_a_ruleset_names_the_ruleset(self, tmp_path):
+    def test_a_line_reaching_the_rule_through_a_ruleset_names_the_ruleset(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "models: haiku\n"
@@ -240,7 +240,7 @@ class TestEachLineGivesItsSourceAndReach:
 
     def test_a_line_reaching_the_rule_through_nested_rulesets_names_the_chain_down_to_the_holder(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "defaults: outer.*\nsets:\n  outer: inner.*\n  inner: voice\n",
@@ -259,7 +259,7 @@ class TestEachLineGivesItsSourceAndReach:
             ]
         ]
 
-    def test_a_chain_of_three_rulesets_names_each_from_the_spread_one_down(self, tmp_path):
+    def test_a_chain_of_three_rulesets_names_each_from_the_spread_one_down(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "defaults: top.*\n"
@@ -278,7 +278,7 @@ class TestEachLineGivesItsSourceAndReach:
 
 
 class TestExplainQuotesEachLineAsTheConfigWritesIt:
-    def test_an_exclude_reads_with_its_key_its_set_and_its_line(self, tmp_path):
+    def test_an_exclude_reads_with_its_key_its_set_and_its_line(self, tmp_path) -> None:
         filler = "".join(f"# line {n}\n" for n in range(3, 39))
         root = build(
             tmp_path,
@@ -299,7 +299,9 @@ class TestExplainQuotesEachLineAsTheConfigWritesIt:
         ]
         assert "manifest" not in result.stdout + result.stderr
 
-    def test_a_nested_block_reads_with_its_combined_condition_at_its_own_line(self, tmp_path):
+    def test_a_nested_block_reads_with_its_combined_condition_at_its_own_line(
+        self, tmp_path
+    ) -> None:
         root = build(
             tmp_path,
             "models: opus haiku\n"
@@ -326,7 +328,7 @@ class TestExplainQuotesEachLineAsTheConfigWritesIt:
 
 
 class TestExplainPlacesEachLineUnderInclusionVariantOrBoth:
-    def test_a_bare_add_and_a_bare_remove_appear_under_inclusion_only(self, tmp_path):
+    def test_a_bare_add_and_a_bare_remove_appear_under_inclusion_only(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "flags: a b\nflag a:\n  include: voice\nflag b:\n  exclude: sorting\n",
@@ -343,7 +345,7 @@ class TestExplainPlacesEachLineUnderInclusionVariantOrBoth:
         assert header(removed, "variant") is not None
         assert attribute(removed, "variant") == []
 
-    def test_an_add_at_a_variant_appears_under_inclusion_and_under_variant(self, tmp_path):
+    def test_an_add_at_a_variant_appears_under_inclusion_and_under_variant(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "flags: a\nflag a:\n  include: voice@terse\n",
@@ -355,7 +357,7 @@ class TestExplainPlacesEachLineUnderInclusionVariantOrBoth:
         assert [row[3] for row in attribute(result, "inclusion")] == ["include voice@terse"]
         assert [row[3] for row in attribute(result, "variant")] == ["include voice@terse"]
 
-    def test_a_strike_appears_under_variant_only(self, tmp_path):
+    def test_a_strike_appears_under_variant_only(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "flags: a\nflag a:\n  exclude: voice@terse\n",
@@ -372,7 +374,7 @@ class TestExplainPlacesEachLineUnderInclusionVariantOrBoth:
 class TestExplainStatesWhatNoLineSays:
     def test_a_flag_keyed_variant_leads_with_the_flag_and_the_default_form_is_stated_without_it(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "flags: voice-terse\ndefaults: voice\nflag voice-terse:\n  include: voice@terse\n",
@@ -392,7 +394,7 @@ class TestExplainStatesWhatNoLineSays:
         assert header(unflagged, "variant") is not None
         assert attribute(unflagged, "variant") == []
 
-    def test_a_rule_no_applying_line_includes_is_reported_as_never_reached(self, tmp_path):
+    def test_a_rule_no_applying_line_includes_is_reported_as_never_reached(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "defaults: sorting\nagent writer:\n  include: voice\n",
@@ -408,7 +410,7 @@ class TestExplainStatesWhatNoLineSays:
 
     def test_a_rule_that_is_excluded_or_unreached_is_not_said_to_deliver_its_default_form(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "defaults:\n  include: voice\n  exclude: voice\n",
@@ -429,7 +431,7 @@ class TestExplainStatesWhatNoLineSays:
 
     def test_an_included_rule_that_is_withheld_is_not_said_to_deliver_its_default_form(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "defaults: big\n",
@@ -443,7 +445,9 @@ class TestExplainStatesWhatNoLineSays:
         assert "default form is delivered" not in result.stdout
         assert any(line.startswith("withheld:") for line in result.stdout.splitlines())
 
-    def test_a_rule_with_only_a_variant_file_is_stated_as_withheld_with_its_error(self, tmp_path):
+    def test_a_rule_with_only_a_variant_file_is_stated_as_withheld_with_its_error(
+        self, tmp_path
+    ) -> None:
         root = build(tmp_path, None, bodies={"tone@dry": "dry tone\n"})
 
         result = explain(root, "tone")
@@ -456,7 +460,7 @@ class TestExplainStatesWhatNoLineSays:
 class TestExplainLabelsEachVariantLineByWhatItDid:
     def test_a_strike_above_the_winner_strikes_and_the_add_it_removed_is_struck_not_beaten(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "models: opus\n"
@@ -481,7 +485,7 @@ class TestExplainLabelsEachVariantLineByWhatItDid:
 
     def test_an_add_the_winner_outranked_is_beaten_and_a_strike_of_another_variant_strikes(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "models: opus\n"
@@ -506,7 +510,9 @@ class TestExplainLabelsEachVariantLineByWhatItDid:
 
 
 class TestExplainNamesAConflictAndTheVariantDeliveryTakes:
-    def test_both_conflicting_lines_are_listed_with_the_variant_delivery_takes(self, tmp_path):
+    def test_both_conflicting_lines_are_listed_with_the_variant_delivery_takes(
+        self, tmp_path
+    ) -> None:
         config = (
             "flags: a b\n"
             "defaults: voice@plain\n"
@@ -539,7 +545,7 @@ class TestExplainNamesAConflictAndTheVariantDeliveryTakes:
 
 
 class TestExplainExitsNonZeroOnAnUnknownRule:
-    def test_a_name_the_pool_does_not_hold_fails_and_is_named(self, tmp_path):
+    def test_a_name_the_pool_does_not_hold_fails_and_is_named(self, tmp_path) -> None:
         root = build(tmp_path, "defaults: voice\n", ["voice"])
 
         result = explain(root, "no-such-rule")
@@ -552,7 +558,7 @@ class TestExplainExitsNonZeroOnAnUnknownRule:
 class TestCheckReportsEveryErrorAndWarningInOneRun:
     def test_a_cycle_a_bad_condition_and_a_missing_rule_are_all_reported_with_file_and_line(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "defaults: ghost\nsets:\n  a: b.*\n  b: a.*\nproject amboss:\n  include: voice\n",
@@ -575,7 +581,7 @@ class TestCheckReportsEveryErrorAndWarningInOneRun:
 
     def test_a_cycle_is_one_error_whose_subject_is_every_ruleset_in_it_at_the_first_one_written(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "defaults: c.*\nsets:\n  a: b.*\n  b: c.*\n  c: a.* voice\n  d: a.*\n",
@@ -592,7 +598,7 @@ class TestCheckReportsEveryErrorAndWarningInOneRun:
 
     def test_warnings_alone_are_reported_with_file_and_line_and_the_exit_status_is_zero(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "defaults: report-format\n",
@@ -613,7 +619,9 @@ class TestCheckReportsEveryErrorAndWarningInOneRun:
             1,
         )
 
-    def test_a_directory_with_no_error_and_no_warning_prints_nothing_and_exits_zero(self, tmp_path):
+    def test_a_directory_with_no_error_and_no_warning_prints_nothing_and_exits_zero(
+        self, tmp_path
+    ) -> None:
         root = build(tmp_path, "defaults: all.*\n", ["voice", "sorting"])
 
         result = check(root)
@@ -624,7 +632,7 @@ class TestCheckReportsEveryErrorAndWarningInOneRun:
 class TestCheckWarnsOfARuleNoAddIncludes:
     def test_a_rule_included_only_by_a_block_keyed_on_a_flag_never_set_draws_no_warning(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "flags: never-set\nflag never-set:\n  include: voice\n",
@@ -637,7 +645,7 @@ class TestCheckWarnsOfARuleNoAddIncludes:
 
     def test_a_rule_added_by_two_conflicting_variant_adds_draws_the_conflict_and_no_warning(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "defaults: voice@a voice@b\n",
@@ -651,7 +659,7 @@ class TestCheckWarnsOfARuleNoAddIncludes:
         assert (finding.file, finding.line) == (str(root / "config.yaml"), 1)
         assert (finding.severity, finding.kind) == ("error", "variant-conflict")
 
-    def test_a_rule_only_a_ruleset_nothing_spreads_lists_draws_no_warning(self, tmp_path):
+    def test_a_rule_only_a_ruleset_nothing_spreads_lists_draws_no_warning(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "defaults: sorting\nsets:\n  team: voice\n",
@@ -664,7 +672,7 @@ class TestCheckWarnsOfARuleNoAddIncludes:
 
     def test_a_rule_that_defaults_removes_and_no_list_adds_draws_a_warning_naming_rule_and_file(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path, "defaults:\n  include: voice\n  exclude: sorting\n", ["voice", "sorting"]
         )
@@ -680,7 +688,7 @@ class TestCheckWarnsOfARuleNoAddIncludes:
 
 
 class TestCheckReportsAnErrorForEachIllegalDeclarationReferenceOrCycle:
-    def test_an_unknown_top_level_key_is_an_error_naming_the_key(self, tmp_path):
+    def test_an_unknown_top_level_key_is_an_error_naming_the_key(self, tmp_path) -> None:
         root = build(tmp_path, "defaults: voice\nproject: amboss\n", ["voice"])
 
         result = check(root)
@@ -693,7 +701,7 @@ class TestCheckReportsAnErrorForEachIllegalDeclarationReferenceOrCycle:
 
 
 class TestCheckReportsAnErrorForEachIllegalBlock:
-    def test_a_block_whose_value_is_one_word_is_an_error_naming_the_block(self, tmp_path):
+    def test_a_block_whose_value_is_one_word_is_an_error_naming_the_block(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "models: opus\nflags: f\nflag f:\n  include: voice\nmodel opus: voice\n",
@@ -708,7 +716,7 @@ class TestCheckReportsAnErrorForEachIllegalBlock:
         assert (finding.severity, finding.kind) == ("error", "block-shape")
         assert "block `model opus`" in finding.message
 
-    def test_a_block_whose_value_is_words_says_they_belong_under_include(self, tmp_path):
+    def test_a_block_whose_value_is_words_says_they_belong_under_include(self, tmp_path) -> None:
         root = build(
             tmp_path,
             "sets:\n  reasoning: voice\n  lookup: tone\nagent critic: reasoning.* lookup.*\n",
@@ -727,7 +735,7 @@ class TestCheckReportsAnErrorForEachIllegalBlock:
 class TestCheckReportsCrossReferenceAndLayoutWarnings:
     def test_a_body_opening_with_a_marker_for_another_rule_is_a_misnamed_body_warning(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "defaults: all.*\n",
@@ -745,7 +753,7 @@ class TestCheckReportsCrossReferenceAndLayoutWarnings:
 class TestCheckWarnsWhereARuleNamesAnotherRule:
     def test_one_rules_text_holding_anothers_name_warns_naming_both_and_a_self_name_draws_none(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "defaults: all.*\n",
@@ -767,7 +775,7 @@ class TestCheckWarnsWhereARuleNamesAnotherRule:
 
     def test_the_warning_names_the_holder_then_the_named_rule_with_the_variant_file_and_line(
         self, tmp_path
-    ):
+    ) -> None:
         root = build(
             tmp_path,
             "defaults: all.*\n",
@@ -784,7 +792,9 @@ class TestCheckWarnsWhereARuleNamesAnotherRule:
 
 
 class TestCheckMatchesARuleNameAsAWholeWordCaseSensitive:
-    def test_a_name_inside_a_longer_word_or_in_another_case_draws_no_warning(self, tmp_path):
+    def test_a_name_inside_a_longer_word_or_in_another_case_draws_no_warning(
+        self, tmp_path
+    ) -> None:
         root = build(
             tmp_path,
             "defaults: all.*\n",
@@ -801,18 +811,18 @@ class TestCheckMatchesARuleNameAsAWholeWordCaseSensitive:
 
 
 @pytest.fixture
-def world(tmp_path):
+def world(tmp_path) -> World:
     return World(tmp_path)
 
 
-def withheld_rules(world):
+def withheld_rules(world) -> list[str]:
     return [w["rule"] for record in world.records() for w in record["withheld"]]
 
 
 class TestDeliveryWithholdsARuleCarryingACheckError:
     def test_a_rule_with_a_metadata_condition_is_withheld_while_its_ruleset_siblings_deliver(
         self, world
-    ):
+    ) -> None:
         world.rule("alpha")
         world.rule("beta")
         world.rule("gamma", "---\nmodel: opus\n---\ntext of gamma\n")
@@ -829,7 +839,7 @@ class TestDeliveryWithholdsARuleCarryingACheckError:
 
     def test_a_variant_with_no_default_form_delivers_no_text_and_a_shown_notice_names_it(
         self, world
-    ):
+    ) -> None:
         world.rule("voice")
         world.rule("tone@dry", "dry tone text\n")
         world.write_config(DECLARED + "defaults: voice tone@dry\n")
@@ -843,7 +853,9 @@ class TestDeliveryWithholdsARuleCarryingACheckError:
 
 
 class TestDeliverySkipsEachCycleAndBlockThatCarriesAnError:
-    def test_a_block_testing_an_env_fact_does_not_apply_while_the_other_blocks_do(self, world):
+    def test_a_block_testing_an_env_fact_does_not_apply_while_the_other_blocks_do(
+        self, world
+    ) -> None:
         for stem in ("alpha", "beta", "gamma"):
             world.rule(stem)
         world.write_config(
@@ -855,7 +867,9 @@ class TestDeliverySkipsEachCycleAndBlockThatCarriesAnError:
         assert delivery.context == "text of alpha\ntext of gamma\n"
         assert withheld_rules(world) == []
 
-    def test_a_spread_of_a_ruleset_in_a_cycle_reaches_no_rule_and_other_lists_apply(self, world):
+    def test_a_spread_of_a_ruleset_in_a_cycle_reaches_no_rule_and_other_lists_apply(
+        self, world
+    ) -> None:
         for stem in ("alpha", "beta"):
             world.rule(stem)
         world.write_config(
@@ -873,7 +887,7 @@ class TestDeliverySkipsEachCycleAndBlockThatCarriesAnError:
 
     def test_a_block_keyed_on_an_undeclared_flag_is_skipped_while_the_other_blocks_apply(
         self, world
-    ):
+    ) -> None:
         for stem in ("alpha", "beta", "gamma"):
             world.rule(stem)
         world.write_config(
@@ -892,7 +906,7 @@ class TestDeliverySkipsEachCycleAndBlockThatCarriesAnError:
 
     def test_a_block_whose_words_sit_outside_include_applies_nowhere_while_the_others_apply(
         self, world
-    ):
+    ) -> None:
         for stem in ("alpha", "beta", "gamma"):
             world.rule(stem)
         world.write_config(
@@ -907,7 +921,9 @@ class TestDeliverySkipsEachCycleAndBlockThatCarriesAnError:
 
 
 class TestDeliverySkipsUndeclaredReferencesReservedDeclarationsAndUnknownKeys:
-    def test_an_unknown_top_level_key_is_ignored_and_the_rule_arrives_as_without_it(self, world):
+    def test_an_unknown_top_level_key_is_ignored_and_the_rule_arrives_as_without_it(
+        self, world
+    ) -> None:
         world.rule("sorting")
         world.write_config(DECLARED + "project: amboss\nmodel opus:\n  include: sorting\n")
 
@@ -919,7 +935,7 @@ class TestDeliverySkipsUndeclaredReferencesReservedDeclarationsAndUnknownKeys:
 
 
 class TestAConflictAndAWarningWithholdNothing:
-    def test_a_rule_drawing_only_a_cross_reference_warning_is_delivered(self, world):
+    def test_a_rule_drawing_only_a_cross_reference_warning_is_delivered(self, world) -> None:
         world.rule("report-format", "Follow sorting before you list items\n")
         world.rule("sorting")
         world.write_config(DECLARED + "defaults: report-format sorting\n")

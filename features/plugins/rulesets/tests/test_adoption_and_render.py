@@ -6,7 +6,7 @@ current render tree. Each case builds a rulesets directory under `tmp_path`, run
 `render` subcommand as a script, and reads the files and the lines it prints. Expected values come
 from the specs and the fixture files, never from the engine's own composition.
 
-Run with `python3.14 -m pytest features/plugins/rulesets/tests/test_adoption_and_render.py`.
+Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_adoption_and_render.py`.
 """
 
 import hashlib
@@ -26,7 +26,7 @@ sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 from rulesets.source.config import Config, read_config  # noqa: E402
 
 
-def run(*arguments):
+def run(*arguments) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(CLI), *arguments],
         capture_output=True,
@@ -36,9 +36,8 @@ def run(*arguments):
     )
 
 
-def checksums(root):
+def checksums(root) -> dict[pathlib.Path, str]:
     """The SHA-256 of every file under `root`, by its path relative to `root`."""
-
     return {
         path.relative_to(root): hashlib.sha256(path.read_bytes()).hexdigest()
         for path in sorted(root.rglob("*"))
@@ -46,14 +45,14 @@ def checksums(root):
     }
 
 
-def eject(world, out):
+def eject(world, out) -> subprocess.CompletedProcess[str]:
     return run("eject", "--out", str(out), "--root", str(world.rulesets))
 
 
 class TestEjectWritesTheBaseContextAsPlainFiles:
     def test_file_names_sort_into_delivery_sequence_and_each_file_holds_its_rules_text(
         self, tmp_path
-    ):
+    ) -> None:
         world = World(tmp_path)
         world.rule("writing-code", "write code\n")
         world.rule("core-rules", "core rules\n")
@@ -79,7 +78,7 @@ class TestEjectWritesTheBaseContextAsPlainFiles:
 
     def test_a_rule_only_a_flag_set_block_gives_a_variant_is_ejected_at_its_default_form(
         self, tmp_path
-    ):
+    ) -> None:
         world = World(tmp_path)
         world.rule("voice", "plain voice\n")
         world.rule("voice@terse", "terse voice\n")
@@ -100,7 +99,7 @@ class TestEjectWritesTheBaseContextAsPlainFiles:
         assert [path.name for path in out.iterdir()] == ["voice.md"]
         assert (out / "voice.md").read_text(encoding="utf-8") == "plain voice\n"
 
-    def test_no_file_in_the_rulesets_directory_changes(self, tmp_path):
+    def test_no_file_in_the_rulesets_directory_changes(self, tmp_path) -> None:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
         world.rule("voice", "plain voice\n")
@@ -118,7 +117,7 @@ class TestEjectWritesTheBaseContextAsPlainFiles:
 class TestEjectLeavesOutEachWithheldRule:
     def test_a_rule_withheld_by_a_check_error_gets_no_file_and_is_named_with_its_error(
         self, tmp_path
-    ):
+    ) -> None:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
         world.rule("scoped", "---\nwhen: model haiku\n---\nscoped text\n")
@@ -136,7 +135,9 @@ class TestEjectLeavesOutEachWithheldRule:
 
 
 class TestEjectReportsWhatPlainFilesCannotCarry:
-    def test_the_report_lists_each_block_and_each_variant_with_its_file_and_line(self, tmp_path):
+    def test_the_report_lists_each_block_and_each_variant_with_its_file_and_line(
+        self, tmp_path
+    ) -> None:
         world = World(tmp_path)
         world.rule("voice", "plain voice\n")
         world.rule("voice@terse", "terse voice\n")
@@ -156,13 +157,12 @@ class TestEjectReportsWhatPlainFilesCannotCarry:
         ]
 
 
-def render_context(world, out, *context):
+def render_context(world, out, *context) -> subprocess.CompletedProcess[str]:
     return run("render", *context, "--out", str(out), "--root", str(world.rulesets))
 
 
-def explained(world, rule, model):
+def explained(world, rule, model) -> str:
     """What explain reports for `rule` in a context on `model`: `off`, `default`, or the variant."""
-
     result = run("explain", rule, "--model", model, "--root", str(world.rulesets))
     assert result.returncode == 0, result.stderr
     lines = result.stdout.splitlines()
@@ -172,9 +172,8 @@ def explained(world, rule, model):
     return variant.removeprefix("variant: ") if "none set" not in variant else "default"
 
 
-def sections(rendered):
+def sections(rendered) -> list[tuple[str, str]]:
     """The rule and variant named by each marker line of a render, in file order."""
-
     found = []
     for line in rendered.splitlines():
         if line.startswith("<!-- rule: ") and line.endswith(" -->"):
@@ -184,7 +183,9 @@ def sections(rendered):
 
 
 class TestRenderWritesOneContextsComposedText:
-    def test_two_contexts_on_different_models_each_get_their_own_rules_and_variants(self, tmp_path):
+    def test_two_contexts_on_different_models_each_get_their_own_rules_and_variants(
+        self, tmp_path
+    ) -> None:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
         world.rule("data-modeling", "model the data\n")
@@ -218,7 +219,7 @@ class TestRenderWritesOneContextsComposedText:
 
     def test_a_rule_the_context_receives_and_check_withholds_gets_no_marker_and_no_text(
         self, tmp_path
-    ):
+    ) -> None:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
         world.rule("scoped", "---\nwhen: model haiku\n---\nscoped text\n")
@@ -232,7 +233,7 @@ class TestRenderWritesOneContextsComposedText:
 
 
 class TestRenderMarksEachRulesTextInAContextRender:
-    def test_a_marker_line_precedes_the_exact_bytes_of_each_rules_file(self, tmp_path):
+    def test_a_marker_line_precedes_the_exact_bytes_of_each_rules_file(self, tmp_path) -> None:
         world = World(tmp_path)
         core = b"core rules\r\n\xc3\xa9cole\n"
         voice = b"plain voice\n\n"
@@ -247,7 +248,9 @@ class TestRenderMarksEachRulesTextInAContextRender:
             b"<!-- rule: core-rules -->\n" + core + b"\n<!-- rule: voice -->\n" + voice
         )
 
-    def test_the_marker_names_a_set_variant_and_the_text_is_that_variants_file(self, tmp_path):
+    def test_the_marker_names_a_set_variant_and_the_text_is_that_variants_file(
+        self, tmp_path
+    ) -> None:
         world = World(tmp_path)
         world.rule("voice", "plain voice\n")
         world.rule("voice@terse", "terse voice\n")
@@ -264,11 +267,11 @@ class TestRenderMarksEachRulesTextInAContextRender:
         )
 
 
-def render_tree(world, *options):
+def render_tree(world, *options) -> subprocess.CompletedProcess[str]:
     return run("render", *options, "--root", str(world.rulesets))
 
 
-def outside_the_render_folder(world):
+def outside_the_render_folder(world) -> dict[pathlib.Path, str]:
     return {
         path: digest
         for path, digest in checksums(world.rulesets).items()
@@ -279,7 +282,7 @@ def outside_the_render_folder(world):
 class TestRenderWritesRulesetRendersToAReservedFolder:
     def test_a_render_of_a_ruleset_no_longer_declared_is_removed_from_the_reserved_folder(
         self, tmp_path
-    ):
+    ) -> None:
         world = World(tmp_path)
         world.rule("audit-method", "audit method\n")
         world.write_config("defaults: audit-method\n")
@@ -295,7 +298,7 @@ class TestRenderWritesRulesetRendersToAReservedFolder:
 
     def test_no_file_outside_the_reserved_folder_changes_and_none_is_added_or_removed(
         self, tmp_path
-    ):
+    ) -> None:
         world = World(tmp_path)
         world.rule("writing-code", "write code\n")
         world.rule("voice", "plain voice\n")
@@ -316,7 +319,7 @@ class TestRenderWritesRulesetRendersToAReservedFolder:
 class TestRendersCheckModeFailsOnAStaleTree:
     def test_check_mode_passes_on_a_fresh_tree_and_fails_naming_the_render_after_a_byte_change(
         self, tmp_path
-    ):
+    ) -> None:
         world = World(tmp_path)
         world.rule("writing-code", "write code\n")
         world.rule("core-rules", "core rules\n")
@@ -340,21 +343,22 @@ class TestRendersCheckModeFailsOnAStaleTree:
         assert checksums(world.rulesets) == before
 
 
-def tree_of(world):
+def tree_of(world) -> dict[str, str]:
     """The text of each file in the render folder, by file name."""
-
     folder = world.rulesets / "-render"
     return {path.name: path.read_text(encoding="utf-8") for path in folder.iterdir()}
 
 
-def render_written(world):
+def render_written(world) -> dict[str, str]:
     result = render_tree(world)
     assert result.returncode == 0, result.stderr
     return tree_of(world)
 
 
 class TestEachRenderInTheTreeHoldsItsRulesOnceSortedUnderMarkers:
-    def test_a_ruleset_render_holds_its_rules_sorted_and_no_block_changes_it(self, tmp_path):
+    def test_a_ruleset_render_holds_its_rules_sorted_and_no_block_changes_it(
+        self, tmp_path
+    ) -> None:
         world = World(tmp_path)
         world.rule("writing-code", "write code\n")
         world.rule("data-modeling", "model data\n")
@@ -372,7 +376,7 @@ class TestEachRenderInTheTreeHoldsItsRulesOnceSortedUnderMarkers:
             "<!-- rule: data-modeling -->\nmodel data\n\n<!-- rule: writing-code -->\nwrite code\n"
         )
 
-    def test_a_ruleset_render_leaves_out_a_rule_withheld_by_a_check_error(self, tmp_path):
+    def test_a_ruleset_render_leaves_out_a_rule_withheld_by_a_check_error(self, tmp_path) -> None:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
         world.rule("scoped", "---\nwhen: model haiku\n---\nscoped text\n")
@@ -386,7 +390,7 @@ class TestEachRenderInTheTreeHoldsItsRulesOnceSortedUnderMarkers:
 class TestTheTreeHoldsARenderOfTheBaseContext:
     def test_defaults_holds_every_pool_rule_but_the_one_it_removes_and_no_flag_block_adds_it(
         self, tmp_path
-    ):
+    ) -> None:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
         world.rule("security-pass", "security pass\n")
@@ -408,7 +412,7 @@ class TestTheTreeHoldsARenderOfTheBaseContext:
 
 
 class TestTheTreeHoldsARenderOfTheWholePool:
-    def test_the_pool_render_holds_every_rule_at_its_default_form(self, tmp_path):
+    def test_the_pool_render_holds_every_rule_at_its_default_form(self, tmp_path) -> None:
         world = World(tmp_path)
         world.rule("security-pass", "security pass\n")
         world.rule("voice", "plain voice\n")
@@ -430,7 +434,9 @@ class TestTheTreeHoldsARenderOfTheWholePool:
 
 
 class TestTheTreeHoldsARenderForEachDeclaredRuleset:
-    def test_nested_rulesets_flatten_into_a_render_holding_each_rule_once_sorted(self, tmp_path):
+    def test_nested_rulesets_flatten_into_a_render_holding_each_rule_once_sorted(
+        self, tmp_path
+    ) -> None:
         world = World(tmp_path)
         world.rule("writing-code", "write code\n")
         world.rule("data-modeling", "model data\n")
@@ -444,7 +450,7 @@ class TestTheTreeHoldsARenderForEachDeclaredRuleset:
             "<!-- rule: data-modeling -->\nmodel data\n\n<!-- rule: writing-code -->\nwrite code\n"
         )
 
-    def test_a_ruleset_render_marks_a_rule_the_ruleset_lists_at_a_variant(self, tmp_path):
+    def test_a_ruleset_render_marks_a_rule_the_ruleset_lists_at_a_variant(self, tmp_path) -> None:
         world = World(tmp_path)
         world.rule("audit-method", "audit method\n")
         world.rule("report-format", "report format\n")
@@ -462,7 +468,7 @@ class TestTheTreeHoldsARenderForEachDeclaredRuleset:
 class TestTheTreeHoldsAVariantRenderForEachVariantAnAddNames:
     def test_the_base_context_and_the_pool_each_get_a_render_at_the_variant_a_block_names(
         self, tmp_path
-    ):
+    ) -> None:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
         world.rule("voice", "plain voice\n")
@@ -482,7 +488,9 @@ class TestTheTreeHoldsAVariantRenderForEachVariantAnAddNames:
         assert tree["all+voice@terse.md"] == expected
         assert not [name for name, text in tree.items() if "warm" in name or "warm" in text]
 
-    def test_no_variant_render_exists_where_the_ruleset_already_holds_that_variant(self, tmp_path):
+    def test_no_variant_render_exists_where_the_ruleset_already_holds_that_variant(
+        self, tmp_path
+    ) -> None:
         world = World(tmp_path)
         world.rule("report-format", "report format\n")
         world.rule("report-format@table", "report as a table\n")
@@ -493,7 +501,7 @@ class TestTheTreeHoldsAVariantRenderForEachVariantAnAddNames:
         assert "auditor+report-format@table.md" not in tree
         assert "defaults+report-format@table.md" in tree
 
-    def test_a_variant_only_a_remove_names_gets_no_render(self, tmp_path):
+    def test_a_variant_only_a_remove_names_gets_no_render(self, tmp_path) -> None:
         world = World(tmp_path)
         world.rule("voice", "plain voice\n")
         world.rule("voice@warm", "warm voice\n")
@@ -505,7 +513,7 @@ class TestTheTreeHoldsAVariantRenderForEachVariantAnAddNames:
 
 
 class TestTheTreeLeavesOutRendersForTheReservedNamesNoneAndRules:
-    def test_the_tree_holds_all_and_no_render_for_none_or_for_rules(self, tmp_path):
+    def test_the_tree_holds_all_and_no_render_for_none_or_for_rules(self, tmp_path) -> None:
         world = World(tmp_path)
         world.rule("writing-code", "write code\n")
         world.rule("voice", "plain voice\n")
@@ -518,20 +526,20 @@ class TestTheTreeLeavesOutRendersForTheReservedNamesNoneAndRules:
         assert "all.md" in tree
 
 
-def edit(path, before, after):
+def edit(path, before, after) -> None:
     text = path.read_text(encoding="utf-8")
     assert before in text
     path.write_text(text.replace(before, after), encoding="utf-8")
 
 
-def split(world, file):
+def split(world, file) -> subprocess.CompletedProcess[str]:
     return run("split", str(file), "--root", str(world.rulesets))
 
 
 class TestTheReverseSplitWritesEachSectionBackToItsSource:
     def test_an_edit_to_one_section_of_a_context_render_goes_to_that_rules_file_only(
         self, tmp_path
-    ):
+    ) -> None:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
         world.rule("sorting", "sort things\n")
@@ -559,7 +567,7 @@ class TestTheReverseSplitWritesEachSectionBackToItsSource:
         assert render_context(world, again).returncode == 0
         assert "<!-- rule: core-rules -->\nedited rules\n" in again.read_text(encoding="utf-8")
 
-    def test_an_edited_variant_section_goes_to_the_variant_file_only(self, tmp_path):
+    def test_an_edited_variant_section_goes_to_the_variant_file_only(self, tmp_path) -> None:
         world = World(tmp_path)
         world.rule("voice", "plain voice\n")
         world.rule("voice@terse", "terse voice\n")
@@ -585,7 +593,9 @@ class TestTheReverseSplitWritesEachSectionBackToItsSource:
         unedited = {path for path in after if path.name != "voice@terse.md"}
         assert {path: after[path] for path in unedited} == {path: before[path] for path in unedited}
 
-    def test_an_edited_section_in_a_ruleset_render_goes_to_that_rules_file_only(self, tmp_path):
+    def test_an_edited_section_in_a_ruleset_render_goes_to_that_rules_file_only(
+        self, tmp_path
+    ) -> None:
         world = World(tmp_path)
         world.rule("writing-code", "write code\n")
         world.rule("data-modeling", "model data\n")
@@ -613,7 +623,7 @@ class TestTheReverseSplitWritesEachSectionBackToItsSource:
 class TestTheReverseSplitChangesOnlyTheFilesWhoseSectionsWereEdited:
     def test_a_context_render_followed_by_an_unedited_split_leaves_the_pool_as_it_was(
         self, tmp_path
-    ):
+    ) -> None:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\r\n\n")
         world.rule("voice", "plain voice\n\n")
@@ -628,7 +638,9 @@ class TestTheReverseSplitChangesOnlyTheFilesWhoseSectionsWereEdited:
         assert result.returncode == 0, result.stderr
         assert checksums(world.rulesets) == before
 
-    def test_the_split_over_every_render_in_the_tree_leaves_the_pool_as_it_was(self, tmp_path):
+    def test_the_split_over_every_render_in_the_tree_leaves_the_pool_as_it_was(
+        self, tmp_path
+    ) -> None:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
         world.rule("voice", "plain voice")
@@ -657,7 +669,7 @@ class TestTheReverseSplitChangesOnlyTheFilesWhoseSectionsWereEdited:
 class TestTheReverseSplitRefusesAMalformedRenderedFile:
     def test_a_marker_naming_a_rule_the_pool_lacks_makes_the_split_write_nothing_and_name_it(
         self, tmp_path
-    ):
+    ) -> None:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
         world.write_config("defaults: core-rules\n")
@@ -672,7 +684,7 @@ class TestTheReverseSplitRefusesAMalformedRenderedFile:
         assert "ghost-rule" in result.stdout + result.stderr
         assert checksums(world.rulesets) == before
 
-    def test_text_before_the_first_marker_makes_the_split_write_nothing(self, tmp_path):
+    def test_text_before_the_first_marker_makes_the_split_write_nothing(self, tmp_path) -> None:
         world = World(tmp_path)
         world.rule("core-rules", "core rules\n")
         world.write_config("defaults: core-rules\n")
@@ -686,13 +698,13 @@ class TestTheReverseSplitRefusesAMalformedRenderedFile:
         assert checksums(world.rulesets) == before
 
 
-def adopt(source, out, *expect):
+def adopt(source, out, *expect) -> subprocess.CompletedProcess[str]:
     return run(
         "adopt", "--from", str(source), "--out", str(out), *(f"--expect={e}" for e in expect)
     )
 
 
-def compare(source, directory, *expect):
+def compare(source, directory, *expect) -> subprocess.CompletedProcess[str]:
     return run("compare", str(source), str(directory), *(f"--expect={e}" for e in expect))
 
 
@@ -708,7 +720,6 @@ def defaults_of(out) -> list[str]:
 
 def block(config: Config, condition: str) -> dict[str, list[str]] | None:
     """The include and exclude words of the block keyed `condition`, or None where none is."""
-
     found = next((b for b in config.blocks if b.condition == condition), None)
     if found is None:
         return None
@@ -718,16 +729,15 @@ def block(config: Config, condition: str) -> dict[str, list[str]] | None:
     }
 
 
-def different_lines(result):
+def different_lines(result) -> list[str]:
     return [line for line in result.stdout.splitlines() if line.startswith("different")]
 
 
 _MARKER_LINE = re.compile(r"^<!-- rule: (\S+)(?: variant: (\S+))? -->\n", re.MULTILINE)
 
 
-def rendered_rules(path):
+def rendered_rules(path) -> dict[str, str]:
     """The text of each rule in a context render, by rule name."""
-
     text = path.read_text(encoding="utf-8")
     found = list(_MARKER_LINE.finditer(text))
     rules = {}
@@ -738,9 +748,8 @@ def rendered_rules(path):
     return rules
 
 
-def delivered_to(out, tmp_path, model, agent=None):
+def delivered_to(out, tmp_path, model, agent=None) -> dict[str, str]:
     """The rules and text a context receives from the rulesets directory `out`."""
-
     target = tmp_path / f"render-{model}-{agent}.md"
     context = ["--model", model, *(["--agent", agent, "--kind", "delegate"] if agent else [])]
     result = run("render", *context, "--out", str(target), "--root", str(out))
@@ -751,7 +760,7 @@ def delivered_to(out, tmp_path, model, agent=None):
 class TestAdoptChangesNoSourceFile:
     def test_a_successful_adopt_leaves_every_source_unchanged_and_writes_only_the_output_directory(
         self, tmp_path, monkeypatch
-    ):
+    ) -> None:
         config = tmp_path / "config"
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(config))
         corpus = Corpus(tmp_path, left_out={"sonnet": ["spawn-decision"]})
@@ -778,7 +787,9 @@ class TestAdoptChangesNoSourceFile:
         assert not (out / "manifest.yaml").exists()
         assert (out / "-render").is_dir()
 
-    def test_an_output_directory_inside_the_source_is_refused_with_nothing_written(self, tmp_path):
+    def test_an_output_directory_inside_the_source_is_refused_with_nothing_written(
+        self, tmp_path
+    ) -> None:
         corpus = Corpus(tmp_path)
         corpus.body("default", "core-rules")
         out = corpus.root / "adopted"
@@ -791,7 +802,9 @@ class TestAdoptChangesNoSourceFile:
         assert checksums(corpus.root) == before
         assert not out.exists()
 
-    def test_an_output_directory_holding_a_file_is_refused_and_keeps_only_that_file(self, tmp_path):
+    def test_an_output_directory_holding_a_file_is_refused_and_keeps_only_that_file(
+        self, tmp_path
+    ) -> None:
         rules = tmp_path / "rules"
         rules.mkdir()
         (rules / "claims.md").write_text("claims text\n", encoding="utf-8")
@@ -810,7 +823,7 @@ class TestAdoptChangesNoSourceFile:
 class TestAdoptMapsARulesFolderOrATierCorpusToARulesetsDirectory:
     def test_a_rules_folder_becomes_a_pool_of_unchanged_files_with_defaults_spreading_every_rule(
         self, tmp_path
-    ):
+    ) -> None:
         rules = tmp_path / "rules"
         rules.mkdir()
         (rules / "breaks.md").write_bytes(b"breaks text\r\nsecond line\n")
@@ -828,7 +841,7 @@ class TestAdoptMapsARulesFolderOrATierCorpusToARulesetsDirectory:
 
 
 class TestAdoptMapsTheFilesOfATierCorpusToThePool:
-    def test_a_default_file_lands_in_the_pool_with_the_same_text(self, tmp_path):
+    def test_a_default_file_lands_in_the_pool_with_the_same_text(self, tmp_path) -> None:
         corpus = Corpus(tmp_path)
         text = corpus.body("default", "core-rules", "core rules\r\n")
         out = tmp_path / "adopted"
@@ -840,7 +853,7 @@ class TestAdoptMapsTheFilesOfATierCorpusToThePool:
 
     def test_a_source_files_own_marker_and_the_blank_line_after_it_stay_out_of_the_pool(
         self, tmp_path
-    ):
+    ) -> None:
         corpus = Corpus(tmp_path)
         marker = "<!-- rule: core-rules -->\n\n"
         corpus.raw("default", "core-rules", marker + "default text\n")
@@ -855,7 +868,7 @@ class TestAdoptMapsTheFilesOfATierCorpusToThePool:
 
     def test_an_opening_line_that_is_not_the_files_own_marker_stays_and_the_context_differs(
         self, tmp_path
-    ):
+    ) -> None:
         corpus = Corpus(tmp_path)
         corpus.raw("default", "voice", "<!-- rule: sorting -->\nvoice text\n")
         out = tmp_path / "adopted"
@@ -866,7 +879,7 @@ class TestAdoptMapsTheFilesOfATierCorpusToThePool:
         assert result.returncode != 0
         assert any("voice" in line for line in different_lines(result))
 
-    def test_a_tiers_own_text_becomes_a_variant_that_the_models_block_adds(self, tmp_path):
+    def test_a_tiers_own_text_becomes_a_variant_that_the_models_block_adds(self, tmp_path) -> None:
         corpus = Corpus(tmp_path)
         default_text = corpus.body("default", "writing-prose")
         haiku_text = corpus.body("haiku", "writing-prose")
@@ -879,7 +892,7 @@ class TestAdoptMapsTheFilesOfATierCorpusToThePool:
         assert (out / "rules" / "writing-prose@haiku.md").read_text(encoding="utf-8") == haiku_text
         assert "writing-prose@haiku" in block(config_of(out), "model haiku")["include"]
 
-    def test_a_stem_only_a_tier_holds_is_skipped_and_named_in_the_report(self, tmp_path):
+    def test_a_stem_only_a_tier_holds_is_skipped_and_named_in_the_report(self, tmp_path) -> None:
         corpus = Corpus(tmp_path)
         corpus.body("default", "core-rules")
         corpus.body("haiku", "extra")
@@ -895,7 +908,7 @@ class TestAdoptMapsTheFilesOfATierCorpusToThePool:
 
 
 class TestAdoptMapsTheEntriesOfATierCorpusToConfigBlocks:
-    def test_a_tiers_exclude_list_becomes_that_models_excludes_one_per_line(self, tmp_path):
+    def test_a_tiers_exclude_list_becomes_that_models_excludes_one_per_line(self, tmp_path) -> None:
         corpus = Corpus(tmp_path, left_out={"sonnet": ["agent-delegation", "spawn-decision"]})
         for stem in ("agent-delegation", "spawn-decision", "core-rules", "sorting"):
             corpus.body("default", stem)
@@ -913,7 +926,7 @@ class TestAdoptMapsTheEntriesOfATierCorpusToConfigBlocks:
 
     def test_a_tier_that_includes_every_stem_becomes_a_defaults_spreading_every_rule(
         self, tmp_path
-    ):
+    ) -> None:
         corpus = Corpus(tmp_path)
         corpus.body("default", "core-rules")
         corpus.body("default", "sorting")
@@ -927,7 +940,7 @@ class TestAdoptMapsTheEntriesOfATierCorpusToConfigBlocks:
 
 
 class TestAdoptDeclaresAModelNameForEachTier:
-    def test_the_config_declares_one_model_name_per_tier_in_the_prefix_map(self, tmp_path):
+    def test_the_config_declares_one_model_name_per_tier_in_the_prefix_map(self, tmp_path) -> None:
         corpus = Corpus(tmp_path)
         corpus.body("default", "core-rules")
         out = tmp_path / "adopted"
@@ -940,7 +953,7 @@ class TestAdoptDeclaresAModelNameForEachTier:
 
     def test_a_tier_named_for_one_model_declares_the_name_without_its_prefix_and_no_block(
         self, tmp_path
-    ):
+    ) -> None:
         corpus = Corpus(tmp_path, extra_tiers=("claude-opus-4-8",))
         corpus.body("default", "core-rules")
         out = tmp_path / "adopted"
@@ -955,7 +968,7 @@ class TestAdoptDeclaresAModelNameForEachTier:
 class TestAdoptSkipsPathScopedFiles:
     def test_a_path_scoped_rule_file_stays_out_of_the_pool_and_is_named_in_the_report(
         self, tmp_path
-    ):
+    ) -> None:
         rules = tmp_path / "rules"
         rules.mkdir()
         (rules / "testing.md").write_text(
@@ -976,7 +989,7 @@ class TestAdoptSkipsPathScopedFiles:
 class TestAdoptMapsAnAgentDefinitionsExclusionsToABlock:
     def test_an_excluded_rule_becomes_an_exclude_in_that_agents_block_and_the_definition_is_untouched(
         self, tmp_path, monkeypatch
-    ):
+    ) -> None:
         config = tmp_path / "config"
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(config))
         corpus = Corpus(tmp_path)
@@ -1002,7 +1015,7 @@ class TestAdoptMapsAnAgentDefinitionsExclusionsToABlock:
 class TestAdoptProvesEveryContextsTextUnchanged:
     def test_adopt_exits_zero_and_every_context_receives_the_rules_and_text_the_corpus_delivers(
         self, tmp_path, monkeypatch
-    ):
+    ) -> None:
         config = tmp_path / "config"
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(config))
         corpus = Corpus(tmp_path, left_out={"sonnet": ["agent-delegation"]})
@@ -1034,7 +1047,7 @@ class TestAdoptProvesEveryContextsTextUnchanged:
                 }
                 assert delivered_to(out, tmp_path, model, agent) == expected, (model, agent)
 
-    def test_a_corpus_whose_files_carry_their_markers_is_reported_equal(self, tmp_path):
+    def test_a_corpus_whose_files_carry_their_markers_is_reported_equal(self, tmp_path) -> None:
         corpus = Corpus(tmp_path)
         corpus.raw("default", "core-rules", "<!-- rule: core-rules -->\n\ncore text\n")
         corpus.raw("haiku", "core-rules", "<!-- rule: core-rules -->\n\nhaiku core text\n")
@@ -1045,7 +1058,7 @@ class TestAdoptProvesEveryContextsTextUnchanged:
         assert result.returncode == 0, result.stdout + result.stderr
         assert different_lines(result) == []
 
-    def test_a_corpus_file_with_no_marker_is_reported_different(self, tmp_path):
+    def test_a_corpus_file_with_no_marker_is_reported_different(self, tmp_path) -> None:
         corpus = Corpus(tmp_path)
         corpus.raw("default", "core-rules", "core text\n")
         out = tmp_path / "adopted"
@@ -1055,7 +1068,9 @@ class TestAdoptProvesEveryContextsTextUnchanged:
         assert result.returncode != 0
         assert any("core-rules" in line for line in different_lines(result))
 
-    def test_a_context_delivering_rules_in_another_sequence_is_reported_equal(self, tmp_path):
+    def test_a_context_delivering_rules_in_another_sequence_is_reported_equal(
+        self, tmp_path
+    ) -> None:
         corpus = Corpus(tmp_path, order=["writing-code", "core-rules"])
         core = corpus.body("default", "core-rules")
         code = corpus.body("default", "writing-code")
@@ -1071,7 +1086,7 @@ class TestAdoptProvesEveryContextsTextUnchanged:
 
     def test_the_model_named_tier_matches_the_corpus_when_the_config_declares_its_name(
         self, tmp_path, monkeypatch
-    ):
+    ) -> None:
         from rulesets.compare.run import compare as run_compare
         from rulesets.locations import Locations
 
@@ -1107,7 +1122,7 @@ class TestAdoptProvesEveryContextsTextUnchanged:
         assert context.difference is None
         assert compare(corpus.root, world.rulesets).returncode == 0
 
-    def test_the_model_named_tier_takes_opus_when_the_config_lacks_its_name(self, tmp_path):
+    def test_the_model_named_tier_takes_opus_when_the_config_lacks_its_name(self, tmp_path) -> None:
         corpus = Corpus(tmp_path, extra_tiers=("claude-opus-4-8",))
         default_text = corpus.body("default", "spawn-decision")
         opus_text = corpus.body("opus", "spawn-decision")
@@ -1143,7 +1158,7 @@ class TestAdoptProvesEveryContextsTextUnchanged:
 
     def test_an_expected_difference_is_listed_while_the_comparison_exits_zero(
         self, tmp_path, monkeypatch
-    ):
+    ) -> None:
         corpus = Corpus(tmp_path, extra_tiers=("claude-opus-4-8",))
         default_text = corpus.body("default", "spawn-decision")
         opus_text = corpus.body("opus", "spawn-decision")
@@ -1173,7 +1188,7 @@ class TestAdoptProvesEveryContextsTextUnchanged:
 class TestTheComparisonMatrixCrossesModelsAndAgents:
     def test_an_identifier_passed_with_expect_joins_the_matrix_for_each_agent_and_for_no_agent(
         self, tmp_path, monkeypatch
-    ):
+    ) -> None:
         from rulesets.compare.run import compare as run_compare
         from rulesets.locations import Locations
 
@@ -1201,7 +1216,7 @@ class TestTheComparisonMatrixCrossesModelsAndAgents:
 class TestTheComparisonReportNamesEachContextThatDiffers:
     def test_the_report_names_a_differing_delegate_context_and_its_first_differing_rule_and_variant(
         self, tmp_path, monkeypatch
-    ):
+    ) -> None:
         config = tmp_path / "config"
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(config))
         corpus = Corpus(tmp_path)
@@ -1223,7 +1238,7 @@ class TestTheComparisonReportNamesEachContextThatDiffers:
 
 
 class TestTheComparisonRunsAloneAsCompare:
-    def test_compare_catches_an_edit_made_to_a_variant_after_adoption(self, tmp_path):
+    def test_compare_catches_an_edit_made_to_a_variant_after_adoption(self, tmp_path) -> None:
         corpus = Corpus(tmp_path)
         corpus.body("default", "writing-prose")
         corpus.body("haiku", "writing-prose")
