@@ -97,7 +97,7 @@ pre-commit:
               - "features/plugins/epistemic-marks/tests/test_*.py"
               - "scripts/tests/test_*.py"
               - "scripts/hooks/test_*.py"
-            run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR uv run --frozen pytest {staged_files} -q -n auto
+            run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR uv run --frozen pytest {staged_files} -q -n auto -p no:cacheprovider
           - name: bats
             glob:
               - "features/plugins/warden/tests/*.bats"
@@ -119,9 +119,14 @@ pre-push:
     # One job per suite, gated by the files its scope reads, so a push runs
     # only the suites its commits touch. With no file template in run, a
     # pre-push glob filters {push_files}.
-    # https://github.com/evilmartians/lefthook/blob/master/docs/configuration/glob.md The jobs run concurrently, and each runner
-    # parallelises inside its suite: pytest-xdist for pytest, bats --jobs for
-    # bats (needs GNU parallel), one child process per file for the mod runner.
+    # https://github.com/evilmartians/lefthook/blob/master/docs/configuration/glob.md
+    # The jobs run concurrently, and each runner parallelises inside its
+    # suite: pytest-xdist for pytest, bats --jobs for bats (needs GNU
+    # parallel), one child process per file for the mod runner.
+    # Every pytest job shares the repository root as rootdir, so each runs
+    # with the cache plugin off; otherwise concurrent runs write the same
+    # .pytest_cache.
+    # https://docs.pytest.org/en/stable/how-to/cache.html
     # Git hands a hook run from a linked worktree GIT_DIR and GIT_INDEX_FILE,
     # which point at that worktree's repository. A suite's scratch repository
     # (git init, git commit, git config) would then write into the real one,
@@ -138,13 +143,13 @@ pre-push:
               - "features/plugins/rulesets/**"
               - "pyproject.toml"
               - "uv.lock"
-            run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR uv run --frozen pytest features/plugins/rulesets/tests -q -n auto
+            run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR uv run --frozen pytest features/plugins/rulesets/tests -q -n auto -p no:cacheprovider
           - name: test-epistemic-marks
             glob:
               - "features/plugins/epistemic-marks/**"
               - "pyproject.toml"
               - "uv.lock"
-            run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR uv run --frozen pytest features/plugins/epistemic-marks/tests -q -n auto
+            run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR uv run --frozen pytest features/plugins/epistemic-marks/tests -q -n auto -p no:cacheprovider
           - name: test-scripts
             glob:
               - "scripts/**"
@@ -153,7 +158,7 @@ pre-push:
               - "features/*/*/.claude-plugin/plugin.json"
               - "pyproject.toml"
               - "uv.lock"
-            run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR uv run --frozen pytest scripts/tests scripts/hooks -q -n auto
+            run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR uv run --frozen pytest scripts/tests scripts/hooks -q -n auto -p no:cacheprovider
           - name: test-warden
             glob: "features/plugins/warden/**"
             run: env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_PREFIX -u GIT_WORK_TREE -u GIT_COMMON_DIR bats --jobs "$(getconf _NPROCESSORS_ONLN)" features/plugins/warden/tests
