@@ -1,0 +1,196 @@
+import { describe, expect, test } from "claude-code/testing";
+
+import {
+	abbrev,
+	barCells,
+	barRuns,
+	largestRemainder,
+	legendLines,
+	widestLine,
+} from "../hooks/layout";
+import type { BarRun, CategoryId } from "../hooks/palette";
+import type { GaugeRow } from "../hooks/rows";
+import type { UsageModel } from "../types";
+
+function row(id: CategoryId, tokens: number, estimated = false): GaugeRow {
+	return { id, label: id, tokens, estimated };
+}
+
+/** A window holding `used` of `max` tokens; the layout reads only those two. */
+function windowOf(used: number, max: number): UsageModel {
+	return { used, max, percent: Math.round((used / max) * 100), categories: [] };
+}
+
+function total(cells: readonly number[]): number {
+	return cells.reduce((sum, n) => sum + n, 0);
+}
+
+function runCells(runs: readonly BarRun[]): number {
+	return total(runs.map((r) => r.cells));
+}
+
+const PERCENT = "30%";
+const TOTALS = "30k/100k";
+
+/** Seven categories of 100 tokens each, labels four to twelve letters long. */
+const SEVEN: readonly GaugeRow[] = [
+	row("system", 100),
+	row("skills", 100),
+	row("hooks", 100, true),
+	row("user", 100, true),
+	row("calls", 100, true),
+	row("read", 100, true),
+	row("unattributed", 100),
+];
+
+describe("abbrev", () => {
+	test("a figure under a thousand reads in full", () => {
+		expect(abbrev(999)).toBe("999");
+	});
+
+	test("thousands read in k to one decimal, a whole number without its .0", () => {
+		expect(abbrev(1000)).toBe("1k");
+		expect(abbrev(1050)).toBe("1.1k");
+	});
+
+	test("a figure that rounds up to ten thousand reads 10k", () => {
+		expect(abbrev(9999)).toBe("10k");
+	});
+
+	test("from ten thousand, k reads whole", () => {
+		expect(abbrev(10_000)).toBe("10k");
+	});
+
+	test("millions read in M to one decimal", () => {
+		expect(abbrev(1_500_000)).toBe("1.5M");
+	});
+});
+
+describe("largestRemainder", () => {
+	test("the leftover cell goes to the largest remainder", () => {
+		// 7 cells over 5:3:2 make 3.5, 2.1 and 1.4.
+		expect(largestRemainder([5, 3, 2], 7)).toEqual([4, 2, 1]);
+	});
+
+	test("the shares sum to the cells exactly", () => {
+		expect(total(largestRemainder([1, 1, 1], 10))).toBe(10);
+		expect(total(largestRemainder([7, 13, 29, 51], 23))).toBe(23);
+	});
+});
+
+describe("barRuns", () => {
+	test("a row too small for a share of its own still takes one cell, free space last", () => {
+		// The two floor cells leave 18, split 29,900 : 100 : 70,000 into 5.38, 0.02 and 12.6.
+		const runs = barRuns(
+			windowOf(30_000, 100_000),
+			[row("system", 29_900), row("skills", 100)],
+			20,
+		);
+
+		expect(runs).toEqual([
+			{ id: "system", cells: 6 },
+			{ id: "skills", cells: 1 },
+			{ id: "free", cells: 13 },
+		]);
+	});
+
+	test("at every width the runs fill the bar exactly, each used row in at least one cell", () => {
+		const rows = [
+			row("system", 6000),
+			row("skills", 40),
+			row("replies", 20_000),
+		];
+		for (let width = 3; width <= 60; width++) {
+			const runs = barRuns(windowOf(26_040, 100_000), rows, width);
+
+			expect(runCells(runs)).toBe(width);
+			expect(runs.map((r) => r.id).slice(0, 3)).toEqual([
+				"system",
+				"skills",
+				"replies",
+			]);
+			expect(runs.every((r) => r.cells >= 1)).toBe(true);
+		}
+	});
+
+	test("where the legend leaves fewer cells than rows, each row still takes one cell", () => {
+		const widest = widestLine(legendLines(SEVEN, 20));
+		const width = barCells(widest, PERCENT, TOTALS, SEVEN.length);
+		const runs = barRuns(windowOf(700, 1000), SEVEN, width);
+
+		expect(widest - PERCENT.length - TOTALS.length - 2).toBeLessThan(
+			SEVEN.length,
+		);
+		expect(runs.map((r) => r.id)).toEqual(SEVEN.map((r) => r.id));
+		expect(runs.every((r) => r.cells === 1)).toBe(true);
+	});
+});
+
+describe("legendLines", () => {
+	test("an item counts its key, a space, its label, a space and its figure", () => {
+		const [line] = legendLines(
+			[row("system", 6000), row("user", 1000, true)],
+			80,
+		);
+
+		expect(line?.items.map((i) => [i.figure, i.cells])).toEqual([
+			["6k", 2 + 1 + 6 + 1 + 2],
+			["~1k", 2 + 1 + 4 + 1 + 3],
+		]);
+	});
+
+	// Items of 12, 12 and 14 cells: the first two with their gap take 26.
+	const ROWS = [
+		row("system", 6000),
+		row("skills", 4000),
+		row("replies", 20_000),
+	];
+
+	test("a line takes the next item while it fits room exactly", () => {
+		const lines = legendLines(ROWS, 26);
+
+		expect(lines.map((l) => l.items.map((i) => i.row.id))).toEqual([
+			["system", "skills"],
+			["replies"],
+		]);
+		expect(lines.map((l) => l.cells)).toEqual([26, 14]);
+	});
+
+	test("a line breaks where the next item would pass room", () => {
+		const lines = legendLines(ROWS, 25);
+
+		expect(lines.map((l) => l.items.map((i) => i.row.id))).toEqual([
+			["system"],
+			["skills"],
+			["replies"],
+		]);
+	});
+});
+
+describe("widestLine", () => {
+	test("the widest line's cells", () => {
+		const ROWS = [
+			row("system", 6000),
+			row("skills", 4000),
+			row("replies", 20_000),
+		];
+
+		expect(widestLine(legendLines(ROWS, 26))).toBe(26);
+	});
+
+	test("no lines take no cells", () => {
+		expect(widestLine([])).toBe(0);
+	});
+});
+
+describe("barCells", () => {
+	test("the bar line, percentage, bar, totals and two spaces, spans the widest legend line", () => {
+		const cells = barCells(40, PERCENT, TOTALS, 3);
+
+		expect(PERCENT.length + 1 + cells + 1 + TOTALS.length).toBe(40);
+	});
+
+	test("never fewer cells than used categories", () => {
+		expect(barCells(12, PERCENT, TOTALS, 7)).toBe(7);
+	});
+});
