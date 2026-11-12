@@ -3,6 +3,7 @@ import { describe, expect, test } from "claude-code/testing";
 import {
 	abbrev,
 	barCells,
+	barLine,
 	barRuns,
 	largestRemainder,
 	legendLines,
@@ -74,6 +75,12 @@ describe("abbrev", () => {
 
 	test("millions read in M to one decimal", () => {
 		expect(abbrev(1_500_000)).toBe("1.5M");
+	});
+
+	test("a figure that rounds up to a thousand k reads in M", () => {
+		expect(abbrev(999_499)).toBe("999k");
+		expect(abbrev(999_500)).toBe("1M");
+		expect(abbrev(999_999)).toBe("1M");
 	});
 });
 
@@ -198,5 +205,34 @@ describe("barCells", () => {
 
 	test("never fewer cells than used categories", () => {
 		expect(barCells(12, PERCENT, TOTALS, 7)).toBe(7);
+	});
+});
+
+describe("barLine", () => {
+	test("where the bar line fits the row, the totals stay on it", () => {
+		expect(barLine(40, 77, PERCENT, TOTALS, 3)).toEqual({
+			cells: barCells(40, PERCENT, TOTALS, 3),
+			totalsWrap: false,
+		});
+	});
+
+	test("where the percentage, the totals and one cell per category outgrow the row, the totals wrap", () => {
+		// 3 + 1 + 18 + 1 + 8 = 31 cells against a 27-cell row.
+		const line = barLine(25, 27, PERCENT, TOTALS, 18);
+
+		expect(line.totalsWrap).toBe(true);
+	});
+
+	test("with the totals wrapped, the bar spans the widest legend line after the percentage", () => {
+		const line = barLine(25, 27, PERCENT, TOTALS, 18);
+
+		expect(PERCENT.length + 1 + line.cells).toBe(25);
+	});
+
+	test("a row too narrow even for the percentage and one cell per category keeps every cell", () => {
+		expect(barLine(8, 10, PERCENT, TOTALS, 18)).toEqual({
+			cells: 18,
+			totalsWrap: true,
+		});
 	});
 });

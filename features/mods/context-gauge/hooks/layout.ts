@@ -13,9 +13,9 @@ export const LEGEND_GAP = 2;
 /** The spacer on each side of the bar and around a legend label; widths count it. */
 export const SPACE = " ";
 
-/** Each figure size's unit, suffix and decimals, largest first. */
+/** Each figure size's unit, suffix and decimals, largest first; M starts where a whole k figure would round up to 1000k. */
 const MAGNITUDES = [
-	{ from: 1_000_000, unit: 1_000_000, suffix: "M", decimals: 1 },
+	{ from: 999_500, unit: 1_000_000, suffix: "M", decimals: 1 },
 	{ from: 10_000, unit: 1000, suffix: "k", decimals: 0 },
 	{ from: 1000, unit: 1000, suffix: "k", decimals: 1 },
 ] as const;
@@ -124,4 +124,25 @@ export function barCells(
 		used,
 		widest - percent.length - totals.length - 2 * SPACE.length,
 	);
+}
+
+/** The bar line's shape: the bar's cells, and whether the totals wrap onto their own line under the bar. */
+export type BarLine = { cells: number; totalsWrap: boolean };
+
+/** The bar line in a row of `room` cells: the totals wrap where the percentage, the bar and the totals outgrow it, and the bar keeps one cell per used category either way. */
+export function barLine(
+	widest: number,
+	room: number,
+	percent: string,
+	totals: string,
+	used: number,
+): BarLine {
+	const cells = barCells(widest, percent, totals, used);
+	const inline =
+		percent.length + SPACE.length + cells + SPACE.length + totals.length;
+	if (inline <= room) return { cells, totalsWrap: false };
+	return {
+		cells: Math.max(used, widest - percent.length - SPACE.length),
+		totalsWrap: true,
+	};
 }
