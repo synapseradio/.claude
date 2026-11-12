@@ -13,7 +13,7 @@ Before Claude Code runs a shell command on your machine, it shows the command to
 | `ask-fetch-and-run` | A command that downloads a package and runs it in the same step | A prompt asking you to approve |
 | `deny-unpinned-bunx` | A `bunx` or `bun x` command whose package names no version | Refused |
 | `deny-sleep` | A command that waits on a timer | Refused |
-| `deny-rm` | A command that deletes files for good with `rm` | Refused |
+| `deny-rm` | A command that deletes with `rm` something git cannot bring back | Refused |
 | `deny-bulk-home-search` | A file search that walks your whole home directory or the whole disk | Refused |
 | `deny-eval` | A command that runs `eval` | Refused |
 | `ask-shell-c` | A command that runs a shell with `-c` | A prompt asking you to approve |
@@ -35,7 +35,7 @@ Before Claude Code runs a shell command on your machine, it shows the command to
 
 `deny-sleep` refuses `sleep` wherever it starts a command, a loop body included. A sleep holds the session on a guess at how long something takes. The refusal points at running the command in the background, which resumes the session with a completion notice when the command exits, or at reading the log once with a command that exits.
 
-`deny-rm` refuses `rm` wherever it starts a command: at the beginning, after `&&`, `||`, `;`, `|`, or a new line, inside a subshell or `$(`, after `sudo`, `command`, `xargs`, `env`, or `exec`, inside a `bash -c` string, and behind `find -exec`. The refusal points at `trash <path>`, which moves the path to the Trash where it can be recovered.
+`deny-rm` lets `rm` run when git can restore everything it removes: each path it names is tracked, identical to the last commit, with nothing staged or modified, or the path does not exist. A directory runs only when every file beneath it is committed and unchanged and nothing beneath it is untracked or ignored, so a `__pycache__` folder or a nested repository holds it back. Each path is judged in the repository that holds it, and a relative path resolves against the directory the command starts in. The guard refuses when it cannot tell what `rm` would remove: a path outside any git repository, a path with a wildcard, a variable, a command substitution, a brace expansion, or a `~`, an `rm` that gets its paths from `xargs` or `find -exec`, a command that changes directory before the `rm`, and a git that fails or does not answer within four seconds. It looks at `rm` wherever it starts a command: at the beginning, after `&&`, `||`, `;`, `|`, or a new line, inside a subshell or `$(`, after `sudo`, `command`, `xargs`, `env`, or `exec`, inside a `bash -c` string, and behind `find -exec`. The refusal names the path it held back and points at `trash <path>`, which moves the path to the Trash where it can be recovered.
 
 `deny-bulk-home-search` refuses a file search that starts at the top of the disk, at the folder that holds every user's home, or at your home folder itself. It covers `find`, `fd`, `rg`, a recursive `grep`, `ag`, `ack`, `tree`, `du`, a recursive `ls` or one over a wildcard at the top of home, `locate`, and `mdfind` without `-onlyin`, along with Claude Code's own Grep and Glob tools. A search that names no starting folder starts in the current one, so the guard also refuses it when the current folder is one of those. A search inside one folder of your home runs untouched. The refusal points at searching the one folder that holds what is wanted, or at the tool's documentation.
 
