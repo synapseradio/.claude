@@ -102,39 +102,47 @@ async function refresh($: EngineInterface): Promise<void> {
 	]);
 }
 
-/** Counts one kept row into its categories and into what is pending; a compaction's row starts the estimates over from its summary. */
+/**
+ * Counts one kept row into its categories, and into what is pending unless it
+ * is a response's own, which its anchor holds; a compaction's row starts the
+ * window over from its summary.
+ *
+ * Hazard: a response's rows are kept before its `turn.step` resolves, so they
+ * reach no anchor but their own.
+ */
 async function countRow(
 	$: EngineInterface,
 	row: Pick<SessionAppendInput, "door" | "origin" | "message">,
 ): Promise<void> {
 	const effect = rowEffect(row);
 	if (effect.reset) {
-		await Promise.all([
-			update($, estimates, () => addCounts(NO_ESTIMATES, effect.counts)),
-			update($, pending, () => 0),
-		]);
-		await refresh($);
+		await update($, estimates, () => addCounts(NO_ESTIMATES, effect.counts));
+		await compactWindow($);
 		return;
 	}
 	if (effect.counts.length === 0) return;
-	const chars = effect.counts.reduce((sum, c) => sum + c.chars, 0);
+	const chars =
+		row.door === "response"
+			? 0
+			: effect.counts.reduce((sum, c) => sum + c.chars, 0);
 	await Promise.all([
 		update($, estimates, (e) => addCounts(e, effect.counts)),
 		update($, pending, (p) => p + chars),
 	]);
 }
 
-/** Anchors the total on a response: the window it left, nothing pending, its thinking counted, the breakdown read again. */
+/** Anchors the total on a response: the window it left, less pending by the `sent` characters its request carried, its thinking counted, the breakdown read again. */
 async function anchorOn(
 	$: EngineInterface,
 	result: TurnStepResult,
+	sent: number,
 ): Promise<void> {
 	if (result.usage === null) return;
 	const left = windowAfter(result.usage);
 	const thinking = thinkingTokens(result) * CHARS_PER_TOKEN;
 	await Promise.all([
 		update($, anchor, () => left),
-		update($, pending, () => 0),
+		update($, pending, (p) => p - sent),
 		update($, estimates, (e) =>
 			addCounts(e, [{ id: "thinking", chars: thinking }]),
 		),
@@ -147,10 +155,11 @@ function compacted(e: MessageEstimates): MessageEstimates {
 	return addCounts(NO_ESTIMATES, [{ id: "summary", chars: e.summary }]);
 }
 
-/** Starts the estimates over after a compaction, whichever of its signals comes first, and reads the breakdown again. */
+/** Starts the window over after a compaction, whichever of its signals comes first: every estimate but the summary cleared, no anchor, nothing pending, the breakdown read again. */
 async function compactWindow($: EngineInterface): Promise<void> {
 	await Promise.all([
 		update($, estimates, compacted),
+		update($, anchor, () => null),
 		update($, pending, () => 0),
 	]);
 	await refresh($);
@@ -194,12 +203,12 @@ type Terminal = ElementTable<"terminal">;
 function bar(
 	ui: Terminal,
 	runs: readonly BarRun[],
-	set: GlyphSet | null,
+	fallback: GlyphSet | null,
 	source: Pixels,
 ): RenderElement | null {
 	const { Box, Image, Text } = ui;
 	if (runs.length === 0) return null;
-	if (set === null) {
+	if (fallback === null) {
 		const cells = source.width / PX_PER_CELL;
 		return (
 			<Image
@@ -213,7 +222,7 @@ function bar(
 	}
 	return (
 		<Box key={BAR_KEY} flexShrink={0}>
-			{fallbackRuns(runs, set).map((run, i) => (
+			{fallbackRuns(runs, fallback).map((run, i) => (
 				<Text key={`run-${i}`} color={run.color}>
 					{run.text}
 				</Text>
@@ -226,7 +235,7 @@ function bar(
 function legend(
 	ui: Terminal,
 	lines: readonly LegendLine[],
-	set: GlyphSet | null,
+	fallback: GlyphSet | null,
 ): RenderElement {
 	const { Box, Image, Text } = ui;
 	return (
@@ -236,7 +245,9 @@ function legend(
 					{line.items.map(({ row, figure }) => {
 						const id = `${row.id}-${row.label}`;
 						const sample =
-							set === null ? null : legendSample(row.id, SAMPLE_CELLS, set);
+							fallback === null
+								? null
+								: legendSample(row.id, SAMPLE_CELLS, fallback);
 						return (
 							<Box key={`item-${id}`} flexShrink={0}>
 								{sample === null ? (
@@ -272,7 +283,15 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 	next,
 ) => {
 	if (e.surface !== "terminal") return next(e);
-	const [hint, ctx, pct, chars, anchored, waiting, set] = await Promise.all([
+	const [
+		hint,
+		breakdown,
+		pctRaw,
+		counted,
+		anchorTokens,
+		pendingChars,
+		fallback,
+	] = await Promise.all([
 		next(e),
 		read($, context),
 		read($, override),
@@ -281,44 +300,47 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 		read($, pending),
 		read($, glyphs),
 	]);
-	if (ctx === null) return hint;
-	const live = { anchor: anchored, pending: waiting };
-	const model = usageModel(ctx, live, pct ?? undefined);
+	if (breakdown === null) return hint;
+	const live = { anchor: anchorTokens, pending: pendingChars };
+	const model = usageModel(breakdown, live, pctRaw ?? undefined);
 	if (model === null) return hint;
 
 	const ui = $.ui.resolve(e);
 	const { Box, Text } = ui;
-	const rows = gaugeRows(model.categories, chars);
+	const rows = gaugeRows(model.categories, counted);
 	const room = (e.viewport?.columns ?? DEFAULT_COLUMNS) - ROW_INSET;
 	const percent = `${model.percent}%`;
 	const totals = `${abbrev(model.used)}/${abbrev(model.max)}`;
 	const lines = legendLines(rows, room);
-
-	// The bar line spans the widest legend line where the row holds it.
-	const line = barLine(widestLine(lines), room, percent, totals, rows.length);
-	const runs = barRuns(model, rows, Math.min(line.cells, MAX_BAR_CELLS));
+	const shape = barLine(widestLine(lines), room, percent, totals, rows.length);
+	const runs = barRuns(model, rows, Math.min(shape.cells, MAX_BAR_CELLS));
 	const source = barPixels(runs);
-	if (set === null && runs.length > 0) {
+	if (fallback === null && runs.length > 0) {
 		$.clock.after(0, () => checkBar($, e.requestId, source));
 	}
 
+	const totalsText = <Text weight="bold">{totals}</Text>;
 	return (
 		<Box flexDirection="column">
 			{hint}
 			<Box key="gauge">
 				<Text weight="bold">{percent}</Text>
 				<Text>{SPACE}</Text>
-				{bar(ui, runs, set, source)}
-				{line.totalsWrap ? null : <Text>{SPACE}</Text>}
-				{line.totalsWrap ? null : <Text weight="bold">{totals}</Text>}
+				{bar(ui, runs, fallback, source)}
+				{shape.totalsWrap ? null : (
+					<>
+						<Text>{SPACE}</Text>
+						{totalsText}
+					</>
+				)}
 			</Box>
-			{line.totalsWrap ? (
+			{shape.totalsWrap ? (
 				<Box key="totals">
 					<Text>{SPACE.repeat(percent.length + SPACE.length)}</Text>
-					<Text weight="bold">{totals}</Text>
+					{totalsText}
 				</Box>
 			) : null}
-			{legend(ui, lines, set)}
+			{legend(ui, lines, fallback)}
 		</Box>
 	);
 };
@@ -329,12 +351,7 @@ const refreshOnStart: Hook<"session.start"> = async ($, e, next) => {
 	return next(e);
 };
 
-/**
- * Counts each row the main conversation keeps, as it is kept.
- *
- * Hazard: a response's rows are kept before its `turn.step` resolves, so the
- * anchor that step sets already holds them.
- */
+/** Counts each row the main conversation keeps, as it is kept. */
 const countKept: Hook<"session.append"> = async ($, e, next) => {
 	const kept = await next(e);
 	if (onMain(e) && kept.message !== undefined) {
@@ -347,10 +364,11 @@ const countKept: Hook<"session.append"> = async ($, e, next) => {
 	return kept;
 };
 
-/** Anchors the total on each main-thread response, once it has arrived whole. */
+/** Anchors the total on each main-thread response once it has arrived whole, keeping pending what was appended while its request was in flight. */
 const anchorStep: Hook<"turn.step"> = async function* ($, e, next) {
+	const sent = onMain(e) ? await read($, pending) : 0;
 	const result = yield* next(e);
-	if (onMain(e)) await anchorOn($, result);
+	if (onMain(e)) await anchorOn($, result, sent);
 	return result;
 };
 
@@ -360,9 +378,9 @@ const resetOnCompact: Hook<"session.compact"> = async ($, e, next) => {
 	if (!onMain(e) || e.trigger === "precompute" || result.skip !== undefined) {
 		return result;
 	}
+	await compactWindow($);
 	const after = result.tokensAfter ?? null;
 	await update($, anchor, () => after);
-	await compactWindow($);
 	return result;
 };
 
@@ -379,6 +397,7 @@ const resetOnStart: Hook<"classic.SessionStart"> = async ($, e, next) => {
 	return result;
 };
 
+/** Registers the gauge: one hook per event it counts, anchors, resets or draws on. */
 export const register: Register = (on) => {
 	on("session.start", refreshOnStart);
 	on("session.append", countKept).catch(passThrough);

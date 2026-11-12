@@ -2,12 +2,12 @@ import type {
 	ApiContentBlock,
 	ContextCategory,
 	HookStream,
-	ModelUsage,
 	On,
 	SessionAppendInput,
 	SessionCompactResult,
 	SessionMessage,
 	SessionUsage,
+	TurnUsage,
 	UiBlitResult,
 } from "claude-code";
 import type {
@@ -44,6 +44,24 @@ const HINT = {
 } as const;
 
 const VIEWPORT = { columns: 80, rows: 24 } as const;
+
+type Viewport = { columns: number; rows: number };
+
+/** Mounts the hint line `viewport` cells across. */
+function mount($: Engine, viewport: Viewport = VIEWPORT) {
+	return $.ui.mount({
+		plugin: HINT.plugin,
+		component: HINT.component,
+		surface: HINT.surface,
+		props: HINT.props,
+		viewport,
+	});
+}
+
+/** The widest of `widths`, 0 for none. */
+function widestOf(widths: readonly number[]): number {
+	return widths.reduce((widest, w) => Math.max(widest, w), 0);
+}
 
 const ICONS = /[○◔◑◕●⊞⚙⇄◇▤✦✉]/u;
 
@@ -165,8 +183,9 @@ const BASH: Origin = { kind: "tool", tool: "Bash" };
 const ENGINE: Origin = { kind: "engine" };
 
 /** A model response's usage: what it read, cached and wrote. */
-function usage(input: number, cacheRead: number, output: number): ModelUsage {
+function usage(input: number, cacheRead: number, output: number): TurnUsage {
 	return {
+		model: "test",
 		input_tokens: input,
 		cache_read_input_tokens: cacheRead,
 		cache_creation_input_tokens: 0,
@@ -174,17 +193,21 @@ function usage(input: number, cacheRead: number, output: number): ModelUsage {
 	};
 }
 
-/** Answers every model request with `answer` as its one text chunk, at `spent`. */
-function respond(on: On, spent: ModelUsage, answer = ""): void {
+type Reply = { answer?: string; arrived?: Promise<void> };
+
+/** Answers every model request with its answer as one text chunk, at `spent`, once `arrived` settles. */
+function respond(on: On, spent: TurnUsage, reply: Reply = {}): void {
+	const answer = reply.answer ?? "";
 	on("turn.step", async function* (_, e) {
 		yield { kind: "text", index: 0, text: answer };
+		await reply.arrived;
 		return {
 			turnId: e.turnId,
 			index: e.index,
 			answer,
 			toolUses: [],
 			stopReason: "end_turn",
-			usage: { model: "test", ...spent },
+			usage: spent,
 		};
 	});
 }
@@ -251,11 +274,8 @@ type Drawn = {
 };
 
 /** Everything a test reads off one drawing at `viewport`, mounted and unmounted around the reads. */
-async function drawn(
-	$: Engine,
-	viewport: { columns: number; rows: number } = VIEWPORT,
-): Promise<Drawn> {
-	const ui = await $.ui.mount({ viewport, ...HINT });
+async function drawn($: Engine, viewport: Viewport = VIEWPORT): Promise<Drawn> {
+	const ui = await mount($, viewport);
 	const gauge = await ui.find({ key: "gauge" });
 	const bar = await ui.find({ key: "bar" });
 	const totals = await ui.find({ key: "totals" });
@@ -450,9 +470,26 @@ describe("the live total", () => {
 		expect(await gaugeText($)).toMatch(/32k\/100k$/u);
 	});
 
+	test("a row appended while a request is in flight stays in the total once the response anchors it", async ($, on) => {
+		const { clock } = engine(on);
+		let arrive: () => void = () => undefined;
+		const arrived = new Promise<void>((resolve) => {
+			arrive = resolve;
+		});
+		respond(on, usage(10_000, 20_000, 2000), { arrived });
+		await startSession($);
+		const inFlight = step($);
+		await clock.settle();
+		await append($, "delivery", ENGINE, 4000);
+		arrive();
+		await inFlight;
+
+		expect(await gaugeText($)).toMatch(/33k\/100k$/u);
+	});
+
 	test("the output a response's answer leaves unexplained shows as thinking", async ($, on) => {
 		engine(on);
-		respond(on, usage(27_000, 0, 3000), "a".repeat(400));
+		respond(on, usage(27_000, 0, 3000), { answer: "a".repeat(400) });
 		await startSession($);
 		await step($);
 
@@ -508,6 +545,17 @@ describe("compaction and /clear", () => {
 		const d = await drawn($);
 		expect(d.gauge?.text).toMatch(/5k\/100k$/u);
 		expect(d.legend).not.toMatch(/user/u);
+	});
+
+	test("a compaction's row and SessionStart drop the total a response anchored before it", async ($, on) => {
+		engine(on);
+		respond(on, usage(10_000, 20_000, 2000));
+		await startSession($);
+		await step($);
+		await append($, "compaction", ENGINE, 8000);
+		await $.classic.SessionStart({ source: "compact" });
+
+		expect(await gaugeText($)).toMatch(/30k\/100k$/u);
 	});
 
 	test("the compaction's summary row starts the estimates over", async ($, on) => {
@@ -591,7 +639,7 @@ describe("the layout", () => {
 		await startSession($);
 
 		const d = await drawn($);
-		const widest = Math.max(...d.lines.map(lineCells));
+		const widest = widestOf(d.lines.map(lineCells));
 
 		expect(gaugeCells(d)).toBe(widest);
 		expect(d.gauge?.text.endsWith("30k/100k")).toBe(true);
@@ -601,7 +649,7 @@ describe("the layout", () => {
 		engine(on);
 		await startSession($);
 
-		const ui = await $.ui.mount({ viewport: VIEWPORT, ...HINT });
+		const ui = await mount($);
 		const line = await ui.find({ key: "legend-0" });
 		const items = await ui.findAll({
 			type: "Box",
@@ -657,10 +705,8 @@ describe("the layout", () => {
 		const items = d.lines.reduce((sum, l) => sum + l.children.length, 0);
 
 		expect(items).toBe(7);
-		expect(Math.max(...widths)).toBeLessThanOrEqual(
-			VIEWPORT.columns - ROW_INSET,
-		);
-		expect(gaugeCells(d)).toBe(Math.max(...widths));
+		expect(widestOf(widths)).toBeLessThanOrEqual(VIEWPORT.columns - ROW_INSET);
+		expect(gaugeCells(d)).toBe(widestOf(widths));
 	});
 
 	test("on a row too narrow for the percentage, the totals and a cell per category, the totals wrap under the bar", async ($, on) => {
@@ -702,7 +748,7 @@ describe("the layout", () => {
 
 /** Draws the bar once and lets the blit check it starts settle. */
 async function settleBlit($: Engine, clock: MockClock): Promise<void> {
-	const ui = await $.ui.mount({ viewport: VIEWPORT, ...HINT });
+	const ui = await mount($);
 	await clock.settle();
 	await ui.unmount();
 }
@@ -736,7 +782,7 @@ describe("the character fallback", () => {
 		await startSession($);
 		await settleBlit($, clock);
 
-		const ui = await $.ui.mount({ viewport: VIEWPORT, ...HINT });
+		const ui = await mount($);
 		const item = await ui.find({ key: "item-system-system" });
 		await ui.unmount();
 		const sample = legendSample("system", SAMPLE_CELLS, "bmp");
