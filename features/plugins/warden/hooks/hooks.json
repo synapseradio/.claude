@@ -1,122 +1,128 @@
 {
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-secret-leaks.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the command for a secret it would print"
-          },
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-secret-file-reads.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the command for a secret-shaped path"
-          },
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-inplace-stream-edit.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the command for an in-place stream edit"
-          },
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-remote-data-send.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking where the command would send data"
-          },
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-fetch-and-run.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the command for a package it would fetch and run"
-          },
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-unpinned-bunx.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the command for a bunx run with no version"
-          },
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-sleep.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the command for a sleep"
-          },
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-rm.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the command for an rm"
-          },
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-bulk-home-search.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the command for a search of the whole home directory"
-          },
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-eval.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the command for an eval"
-          },
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-shell-c.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the command for a shell run with -c"
-          },
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-git-amend.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the command for a commit amend"
-          },
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-hook-covered-check.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the command for a check the git hooks already run"
-          }
-        ]
-      },
-      {
-        "matcher": "Grep|Glob",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-bulk-home-search.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the search root"
-          }
-        ]
-      },
-      {
-        "matcher": "Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-unset-model.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the spawn for a model, and for a haiku critic or planner"
-          }
-        ]
-      },
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-secret-file-reads.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking the path for a secret-shaped location"
-          }
-        ]
-      }
-    ]
-  }
+	"hooks": {
+		"PreToolUse": [
+			{
+				"matcher": "Bash",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-secret-leaks.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the command for a secret it would print"
+					},
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-secret-file-reads.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the command for a secret-shaped path"
+					},
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-inplace-stream-edit.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the command for an in-place stream edit"
+					},
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-remote-data-send.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking where the command would send data"
+					},
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-fetch-and-run.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the command for a package it would fetch and run"
+					},
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-unpinned-bunx.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the command for a bunx run with no version"
+					},
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-sleep.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the command for a sleep"
+					},
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-rm.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the command for an rm"
+					},
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-bulk-home-search.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the command for a search of the whole home directory"
+					},
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-eval.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the command for an eval"
+					},
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-shell-c.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the command for a shell run with -c"
+					},
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-git-amend.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the command for a commit amend"
+					},
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-unsafe-soft-reset.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the command for a soft reset that could lose work"
+					},
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-hook-covered-check.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the command for a check the git hooks already run"
+					}
+				]
+			},
+			{
+				"matcher": "Grep|Glob",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-bulk-home-search.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the search root"
+					}
+				]
+			},
+			{
+				"matcher": "Agent",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-unset-model.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the spawn for a model, and for a haiku critic or planner"
+					}
+				]
+			},
+			{
+				"matcher": "Read",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-secret-file-reads.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the path for a secret-shaped location"
+					}
+				]
+			}
+		]
+	}
 }
