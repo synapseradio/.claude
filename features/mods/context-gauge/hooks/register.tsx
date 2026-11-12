@@ -29,17 +29,20 @@ const estimates = atom(
 	NO_ESTIMATES,
 );
 
-const BAR_CELLS = 14;
+/** Terminal width when the surface has not measured itself. */
+const DEFAULT_COLUMNS = 80;
+/**
+ * Cells the terminal's hint row lacks against `viewport.columns`: a bar line
+ * exactly `columns` wide wrapped three cells onto the next row.
+ */
+const ROW_INSET = 3;
+const MIN_BAR_CELLS = 10;
 
-function phrase(percent: number): string {
-	if (percent <= 0) return "fresh canvas";
-	if (percent < 20) return "roomy";
-	if (percent < 40) return "comfy";
-	if (percent < 60) return "getting snug";
-	if (percent < 75) return "cozy in here";
-	if (percent < 90) return "toasty";
-	return "about to compact";
-}
+/** A legend item: a chip of ` label ` with the label padded to 7, a space, then a 5-cell figure. */
+const LABEL_CELLS = 7;
+const FIGURE_CELLS = 5;
+const ITEM_CELLS = LABEL_CELLS + 2 + 1 + FIGURE_CELLS;
+const ITEM_GAP = 3;
 
 function abbrev(n: number): string {
 	if (n >= 1_000_000)
@@ -47,10 +50,6 @@ function abbrev(n: number): string {
 	if (n >= 10_000) return `${Math.round(n / 1000)}k`;
 	if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/u, "")}k`;
 	return String(n);
-}
-
-function commas(n: number): string {
-	return String(n).replace(/\B(?=(\d{3})+(?!\d))/gu, ",");
 }
 
 async function effectiveMax(
@@ -141,42 +140,94 @@ async function countHooks<
 	return result;
 }
 
+/**
+ * Splits `cells` across `weights` in proportion, by largest remainder, so the
+ * counts sum to `cells` exactly.
+ */
+function largestRemainder(weights: readonly number[], cells: number): number[] {
+	const total = weights.reduce((a, b) => a + b, 0);
+	if (total <= 0 || cells <= 0) return weights.map(() => 0);
+	const raw = weights.map((w) => (w / total) * cells);
+	const counts = raw.map((r) => Math.floor(r));
+	const leftover = cells - counts.reduce((a, b) => a + b, 0);
+	const order = raw
+		.map((_, i) => i)
+		.sort((a, b) => ((raw[b] ?? 0) % 1) - ((raw[a] ?? 0) % 1));
+	for (const i of order.slice(0, leftover)) counts[i] = (counts[i] ?? 0) + 1;
+	return counts;
+}
+
+type Segment = { color: string; chars: string };
+
+/**
+ * The bar, `width` cells: each row with tokens owns at least one `▓` cell in
+ * its colour, the remaining cells split by tokens against the window, and
+ * free space fills the rest with `░`. Where rows outnumber cells, every part
+ * takes its plain proportional share.
+ */
 function barSegments(
 	model: UsageModel,
 	rows: readonly GaugeRow[],
-): { color: string; chars: string }[] {
-	const total = Math.max(model.max, 1);
+	width: number,
+): Segment[] {
 	const parts = [
-		...rows.map((r) => ({
-			tokens: r.tokens,
-			char: "▓",
-			color: CATEGORY_SWATCHES[r.id].hex,
-		})),
+		...rows
+			.filter((r) => r.tokens > 0)
+			.map((r) => ({
+				tokens: r.tokens,
+				char: "▓",
+				color: CATEGORY_SWATCHES[r.id].hex,
+				floor: 1,
+			})),
 		{
 			tokens: Math.max(0, model.max - model.used),
 			char: "░",
 			color: "inactive",
+			floor: 0,
 		},
 	];
-	const raw = parts.map((p) => (p.tokens / total) * BAR_CELLS);
-	const cells = raw.map((r) => Math.floor(r));
-	const leftover = BAR_CELLS - cells.reduce((a, b) => a + b, 0);
-	const order = raw
-		.map((_, i) => i)
-		.sort((a, b) => ((raw[b] ?? 0) % 1) - ((raw[a] ?? 0) % 1));
-	for (let k = 0; k < leftover; k++) {
-		const i = order[k % order.length];
-		if (i !== undefined) cells[i] = (cells[i] ?? 0) + 1;
-	}
+	const floors = parts.map((p) => p.floor);
+	const reserved = floors.reduce((a, b) => a + b, 0);
+	const seeded = reserved <= width;
+	const shares = largestRemainder(
+		parts.map((p) => p.tokens),
+		seeded ? width - reserved : width,
+	);
 
-	const out: { color: string; chars: string }[] = [];
-	for (let i = 0; i < parts.length; i++) {
-		const cell = cells[i] ?? 0;
-		const part = parts[i];
-		if (cell > 0 && part)
-			out.push({ color: part.color, chars: part.char.repeat(cell) });
-	}
+	const out: Segment[] = [];
+	parts.forEach((part, i) => {
+		const cells = (shares[i] ?? 0) + (seeded ? (floors[i] ?? 0) : 0);
+		if (cells > 0)
+			out.push({ color: part.color, chars: part.char.repeat(cells) });
+	});
 	return out;
+}
+
+/** A row's legend figure, `~` marking an estimate. */
+function figure(row: GaugeRow): string {
+	return `${row.estimated ? "~" : ""}${abbrev(row.tokens)}`;
+}
+
+/** How many legend items fit side by side on a terminal `width` columns wide. */
+function gridColumns(width: number): number {
+	return Math.max(
+		1,
+		Math.floor((width - ROW_INSET + ITEM_GAP) / (ITEM_CELLS + ITEM_GAP)),
+	);
+}
+
+/** Cells that `columns` legend items span, gaps between them included. */
+function gridSpan(columns: number): number {
+	return columns * ITEM_CELLS + (columns - 1) * ITEM_GAP;
+}
+
+/** Legend rows in lines of as many fixed-width items as `width` holds. */
+function legendLines(rows: readonly GaugeRow[], width: number): GaugeRow[][] {
+	const columns = gridColumns(width);
+	const lines: GaugeRow[][] = [];
+	for (let i = 0; i < rows.length; i += columns)
+		lines.push(rows.slice(i, i + columns));
+	return lines;
 }
 
 export const register: Register = (on) => {
@@ -257,38 +308,53 @@ export const register: Register = (on) => {
 
 		const { Box, Text } = $.ui.resolve(e);
 		const rows = gaugeRows(model.categories, await read($, estimates));
+		const width = e.viewport?.columns ?? DEFAULT_COLUMNS;
+		const percent = `${model.percent}% `;
+		const totals = ` ${abbrev(model.used)}/${abbrev(model.max)}`;
+		// The bar line ends on a legend column's edge, one column short of
+		// the widest grid that fits.
+		const lineCells = gridSpan(Math.max(1, gridColumns(width) - 1));
+		const barWidth = Math.max(
+			MIN_BAR_CELLS,
+			lineCells - percent.length - totals.length,
+		);
 
 		return (
 			<Box flexDirection="column">
 				{await next(e)}
 				<Box key="gauge">
-					<Text
-						color={CHIP_TEXT}
-						backgroundColor={fillSwatch(model.percent).hex}
-					>
-						{` ${model.percent}% `}
-					</Text>
-					<Text> </Text>
-					{barSegments(model, rows).map((s, i) => (
-						<Text key={`s${i}`} color={s.color}>
-							{s.chars}
-						</Text>
-					))}
-					<Text>
-						{" "}
-						{commas(model.used)}/{commas(model.max)}{" "}
-					</Text>
-					<Text dimColor={true}>{phrase(model.percent)}</Text>
-					{rows.map((r) => (
-						<Box key={`row-${r.id}-${r.label}`}>
-							<Text dimColor={true}> · </Text>
-							<Text
-								color={CHIP_TEXT}
-								backgroundColor={CATEGORY_SWATCHES[r.id].hex}
-							>
-								{` ${r.label} `}
+					<Box flexShrink={0}>
+						<Text color={fillSwatch(model.percent).hex}>{percent}</Text>
+					</Box>
+					<Box key="bar" flexShrink={1} overflow="hidden" height={1}>
+						{barSegments(model, rows, barWidth).map((s, i) => (
+							<Text key={`s${i}`} color={s.color}>
+								{s.chars}
 							</Text>
-							<Text> {`${r.estimated ? "~" : ""}${abbrev(r.tokens)}`}</Text>
+						))}
+					</Box>
+					<Box flexShrink={0}>
+						<Text>{totals}</Text>
+					</Box>
+				</Box>
+				<Box key="legend" flexDirection="column">
+					{legendLines(rows, width).map((line, n) => (
+						<Box key={`legend-${n}`} columnGap={ITEM_GAP}>
+							{line.map((r) => (
+								<Box
+									key={`item-${r.id}-${r.label}`}
+									width={ITEM_CELLS}
+									flexShrink={0}
+								>
+									<Text
+										color={CHIP_TEXT}
+										backgroundColor={CATEGORY_SWATCHES[r.id].hex}
+									>
+										{` ${r.label.slice(0, LABEL_CELLS).padEnd(LABEL_CELLS)} `}
+									</Text>
+									<Text>{` ${figure(r).padStart(FIGURE_CELLS)}`}</Text>
+								</Box>
+							))}
 						</Box>
 					))}
 				</Box>
