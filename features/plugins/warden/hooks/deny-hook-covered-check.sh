@@ -109,10 +109,10 @@ in_list() {
 #######################################
 is_nested_group() {
   case "$1" in
-  claude) in_list ' plugin mcp config ' "$2" ;;
-  gh) in_list ' alias attestation auth cache codespace config extension gist gpg-key issue label org pr project release repo ruleset run search secret ssh-key variable workflow ' "$2" ;;
-  docker) in_list ' builder buildx checkpoint compose config container context image manifest network node plugin secret service stack swarm system trust volume ' "$2" ;;
-  kubectl) in_list ' alpha auth certificate config plugin rollout set top ' "$2" ;;
+  claude) in_list ' auth auto-mode mcp plugin plugins ' "$2" ;;
+  gh) in_list ' agent agent-task agent-tasks agents alias attestation auth cache codespace config discussion extension gist gpg-key issue label org pr preview project release repo ruleset run search secret skill skills ssh-key stack variable workflow ' "$2" ;;
+  docker) in_list ' ai builder buildx checkpoint compose config container context image manifest mcp model network node offload plugin scout secret service stack swarm system volume ' "$2" ;;
+  kubectl) in_list ' auth certificate config plugin rollout set top ' "$2" ;;
   helm) in_list ' dependency dep get plugin registry repo search show ' "$2" ;;
   terraform) in_list ' providers state workspace ' "$2" ;;
   aws | gcloud | az) return 0 ;;
