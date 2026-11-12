@@ -66,9 +66,15 @@
 					},
 					{
 						"type": "command",
-						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-shell-c.sh\"",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-shell-c.sh\"",
 						"timeout": 5,
 						"statusMessage": "Checking the command for a shell run with -c"
+					},
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-indirect-execution.sh\"",
+						"timeout": 5,
+						"statusMessage": "Checking the command for substitutions and subshells"
 					},
 					{
 						"type": "command",

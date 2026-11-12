@@ -16,7 +16,8 @@ Before Claude Code runs a shell command on your machine, it shows the command to
 | `deny-rm` | A command that deletes with `rm` something git cannot bring back, or runs `rm` after another step | Refused |
 | `deny-bulk-home-search` | A file search that walks your whole home directory or the whole disk | Refused |
 | `deny-eval` | A command that runs `eval` | Refused |
-| `ask-shell-c` | A command that runs a shell with `-c` | A prompt asking you to approve |
+| `deny-shell-c` | A command that runs a shell with `-c` | Refused, or a prompt for `zsh -ic` |
+| `deny-indirect-execution` | A command substitution, backticks, a process substitution, or a subshell | Refused |
 | `ask-git-amend` | A command that amends a commit with `git commit --amend` | A prompt asking you to approve |
 | `deny-unsafe-soft-reset` | A `git reset --soft` that could lose work or rewrite published history | Refused |
 | `deny-hook-covered-check` | A command that runs by hand a check the repository's git hooks already run | Refused |
@@ -44,7 +45,9 @@ The guard reads the disk before the command runs, so it refuses any `rm` that fo
 
 `deny-eval` refuses `eval` wherever it starts a command, with the same reach as `deny-rm`: after a separator, in a subshell or `$(`, behind a wrapper, and inside a `bash -c` string. The refusal points at writing the step as a script file in the scratchpad and running that file, or running the command directly. `git log --eval`, `echo eval`, and `eval` inside quotation marks run untouched.
 
-`ask-shell-c` steps in when a command runs `bash`, `sh`, `zsh`, `dash`, or `ksh` with `-c`, alone or in a flag cluster such as `-lc`, `-ic`, or `-xc`. It does not refuse. It asks, and the message it carries says to run a shell with `-c` only to test how that shell behaves, or as `zsh -ic '<command>'` for a command-line tool whose credentials load only in an interactive shell, and otherwise to write a script file in the scratchpad and run it. Other interpreters, `grep -c`, and a shell that runs a script file do not prompt.
+`deny-shell-c` refuses a command that runs `bash`, `sh`, `zsh`, `dash`, or `ksh` with `-c`, alone or in a flag cluster such as `-lc` or `-xc`, because the string after `-c` runs without ever standing as a command the other guards read. The refusal says to write the step as a script file in the scratchpad and run that file, with the shell under test where the point is how that shell behaves. `zsh` with both `-i` and `-c`, as in `zsh -ic '<command>'`, asks in place of refusing, for a command-line tool whose credentials load only in an interactive shell. Other interpreters, `grep -c`, and a shell that runs a script file run untouched.
+
+`deny-indirect-execution` refuses a command that runs text not standing as a command of its own: a command substitution `$( )`, backticks, a process substitution `<( )` or `>( )`, zsh's `=( )`, and a subshell `( )` where a command starts. The shell runs these inside double quotes and inside a here-document whose delimiter is unquoted, so the guard catches them there too. Single quotes, a backslash, a here-document with a quoted delimiter such as `<<'EOF'`, and a comment leave them as plain text. Arithmetic `$(( ))` and `(( ))`, an array such as `args=(a b)`, a glob qualifier such as `*(.)`, and parentheses in a quoted pattern run untouched. One kind of substitution runs too: a read-only query, `pwd`, `git rev-parse`, `git branch --show-current`, or `wt stack base`, written with no quote, second step, redirect, or nested substitution. The refusal says to run each step as its own command and pass its output on as a literal value, to commit a multi-line message with `git commit -F <file>`, or to write a script file in the scratchpad and run it.
 
 `ask-git-amend` steps in when a command runs `git commit` with `--amend`, wherever `--amend` stands and whatever options precede the subcommand, as in `git -C <path> commit --amend`. It does not refuse. It asks, and the message it carries says that after a hook rejects a commit, the cause is fixed and the commit made anew rather than amended. A commit message that mentions `--amend` does not prompt.
 
@@ -82,6 +85,8 @@ These guards are built to stay out of the way. All of the following keep working
 - `git rm`, `npm rm`, `bun rm`, `pnpm rm`, `docker rm`, `rmdir`, and `trash`, and the word `rm` as an argument, as in `grep -n rm file`, or inside quotation marks
 - `bunx` and `bun x` at a pinned version or `@latest`, and package commands that fetch nothing to run, such as `bun install`, `npm install`, and `docker build`
 - `git reset --soft` on a feature branch, back over commits no remote-tracking ref holds, as the first step of its command
+- `zsh -ic '<command>'` for a tool whose credentials load only in an interactive shell, after you approve the prompt
+- A plain read-only query in `$( )`, as in `git -C "$(git rev-parse --show-toplevel)" status`, and `$( )` or backticks inside single quotes or a `<<'EOF'` here-document
 - A subagent spawn that names its model, and any fork
 - A critic or planner spawned on sonnet or opus, and haiku for any other agent
 - A check no git hook runs, a test run, a script whose name only starts like a hook's (`bun run build` against a hook running `bun run build:check`), and any command in a directory outside a repository

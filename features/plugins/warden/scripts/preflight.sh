@@ -240,8 +240,19 @@ main() {
   check deny-eval.sh deny 'evals a string' 'eval "$(ssh-agent -s)"'
   check deny-eval.sh allow 'names eval as an argument' 'echo eval'
 
-  check ask-shell-c.sh ask 'runs a shell with -c' "bash -lc 'echo hi'"
-  check ask-shell-c.sh allow 'counts matches with grep -c' 'grep -c eval f'
+  check deny-shell-c.sh deny 'runs a shell with -c' "bash -lc 'echo hi'"
+  check deny-shell-c.sh ask 'runs an interactive zsh -c' "zsh -ic 'spu'"
+  check deny-shell-c.sh allow 'counts matches with grep -c' 'grep -c eval f'
+
+  # shellcheck disable=SC2016
+  check deny-indirect-execution.sh deny 'substitutes a command' \
+    'echo "$(rm tracked)"'
+  check deny-indirect-execution.sh deny 'opens a subshell' '(cd sub && make)'
+  # shellcheck disable=SC2016
+  check deny-indirect-execution.sh allow 'queries the top level' \
+    'git -C "$(git rev-parse --show-toplevel)" status'
+  # shellcheck disable=SC2016
+  check deny-indirect-execution.sh allow 'quotes the syntax' "echo '\$(x)'"
 
   check ask-git-amend.sh ask 'amends a commit' \
     'git -C /tmp/repo commit --amend --no-edit'
@@ -256,6 +267,10 @@ main() {
       'bun run lint:fix'
     check_in_repo deny-hook-covered-check.sh allow 'runs the tests' \
       'bun run test'
+    check_in_repo deny-unsafe-soft-reset.sh deny 'resets the default branch' \
+      'git reset --soft HEAD~1'
+    check_in_repo deny-unsafe-soft-reset.sh allow 'reads the status' \
+      'git status'
   else
     printf 'FAIL  %-30s %-30s could not write the fixture repository\n' \
       deny-hook-covered-check.sh 'fixture'
