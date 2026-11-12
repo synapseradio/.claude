@@ -18,54 +18,49 @@ export const PX_PER_CELL = 10;
 /** The pixel height of the bar, one terminal row. */
 export const PX_HEIGHT = 20;
 
-// Map: in each column of the image, rows BAND_TOP to BAND_BOTTOM - 1 hold a
-// category's band and rows FREE_TOP to FREE_BOTTOM - 1 free space's line; every
-// other row stays transparent. A run's first column stays transparent too,
-// as the seam, unless the run opens the bar.
-const BAND_TOP = Math.round(PX_HEIGHT / 3);
-const BAND_BOTTOM = PX_HEIGHT - BAND_TOP;
-const FREE_TOP = PX_HEIGHT / 2 - 1;
-const FREE_BOTTOM = PX_HEIGHT / 2 + 1;
+// Map: in each column of the image, the rows of BAND hold a category's band
+// and the rows of FREE_LINE free space's line; every other row stays
+// transparent. A run's first column stays transparent too, as the seam, unless
+// the run opens the bar.
+type Rows = { top: number; bottom: number };
+const BAND: Rows = {
+	top: Math.round(PX_HEIGHT / 3),
+	bottom: PX_HEIGHT - Math.round(PX_HEIGHT / 3),
+};
+const FREE_LINE: Rows = { top: PX_HEIGHT / 2 - 1, bottom: PX_HEIGHT / 2 + 1 };
 
 const ON_ALPHA = 255;
 const OFF_ALPHA = 110;
 
-/** Whether a texture lights the pixel `x` columns into its run, on image row `y`. */
-function lit(texture: Texture, x: number, y: number): boolean {
+function textureOn(texture: Texture, runX: number, row: number): boolean {
 	switch (texture) {
 		case "solid":
 			return true;
 		case "diagonal":
-			return (x + y) % 6 < 3;
+			return (runX + row) % 6 < 3;
 		case "vertical":
-			return x % 4 < 2;
+			return runX % 4 < 2;
 		case "dots":
-			return x % 4 < 2 && y % 4 < 2;
+			return runX % 4 < 2 && row % 4 < 2;
 	}
 }
 
 type Paint = {
 	swatch: Swatch;
-	top: number;
-	bottom: number;
-	alpha: (x: number, y: number) => number;
+	rows: Rows;
+	alpha: (runX: number, row: number) => number;
 };
 
 function paintOf(id: BarRun["id"]): Paint {
 	if (id === "free") {
-		return {
-			swatch: FREE_SWATCH,
-			top: FREE_TOP,
-			bottom: FREE_BOTTOM,
-			alpha: () => ON_ALPHA,
-		};
+		return { swatch: FREE_SWATCH, rows: FREE_LINE, alpha: () => ON_ALPHA };
 	}
 	const { swatch, texture } = CATEGORY_STYLES[id];
 	return {
 		swatch,
-		top: BAND_TOP,
-		bottom: BAND_BOTTOM,
-		alpha: (x, y) => (lit(texture, x, y) ? ON_ALPHA : OFF_ALPHA),
+		rows: BAND,
+		alpha: (runX, row) =>
+			textureOn(texture, runX, row) ? ON_ALPHA : OFF_ALPHA,
 	};
 }
 
@@ -75,19 +70,19 @@ export function barPixels(runs: readonly BarRun[]): Pixels {
 	const px = new Uint8Array(width * PX_HEIGHT * 4);
 	let start = 0;
 	for (const run of runs) {
-		const paint = paintOf(run.id);
-		const r = Number.parseInt(paint.swatch.hex.slice(1, 3), 16);
-		const g = Number.parseInt(paint.swatch.hex.slice(3, 5), 16);
-		const b = Number.parseInt(paint.swatch.hex.slice(5, 7), 16);
+		const { swatch, rows, alpha } = paintOf(run.id);
+		const r = Number.parseInt(swatch.hex.slice(1, 3), 16);
+		const g = Number.parseInt(swatch.hex.slice(3, 5), 16);
+		const b = Number.parseInt(swatch.hex.slice(5, 7), 16);
 		const end = start + run.cells * PX_PER_CELL;
-		const first = start === 0 ? start : start + 1;
-		for (let x = first; x < end; x++) {
-			for (let y = paint.top; y < paint.bottom; y++) {
-				const o = (y * width + x) * 4;
-				px[o] = r;
-				px[o + 1] = g;
-				px[o + 2] = b;
-				px[o + 3] = paint.alpha(x - start, y);
+		const drawFrom = start === 0 ? start : start + 1;
+		for (let x = drawFrom; x < end; x++) {
+			for (let y = rows.top; y < rows.bottom; y++) {
+				const offset = (y * width + x) * 4;
+				px[offset] = r;
+				px[offset + 1] = g;
+				px[offset + 2] = b;
+				px[offset + 3] = alpha(x - start, y);
 			}
 		}
 		start = end;

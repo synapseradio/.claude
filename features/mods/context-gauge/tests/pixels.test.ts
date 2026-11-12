@@ -16,7 +16,6 @@ import {
 
 type Rgb = { r: number; g: number; b: number };
 
-/** A decoded image: one RGBA quadruple per pixel, row by row. */
 type Decoded = { width: number; height: number; bytes: Uint8Array };
 
 function decode(p: Pixels): Decoded {
@@ -55,20 +54,17 @@ function range(from: number, to: number): number[] {
 	return Array.from({ length: to - from }, (_, i) => from + i);
 }
 
-/** The rows of column `x` with any opacity. */
-function litRows(img: Decoded, x: number): number[] {
+function visibleRows(img: Decoded, x: number): number[] {
 	return range(0, img.height).filter((y) => alpha(img, x, y) > 0);
 }
 
-/** Every alpha of columns `from` to `to`, column by column, as one list. */
-function alphas(img: Decoded, from: number, to: number): number[] {
+function columnAlphas(img: Decoded, from: number, to: number): number[] {
 	return range(from, to).flatMap((x) =>
 		range(0, img.height).map((y) => alpha(img, x, y)),
 	);
 }
 
-/** Every byte of columns `from` to `to`, column by column, as one list. */
-function columns(img: Decoded, from: number, to: number): number[] {
+function columnBytes(img: Decoded, from: number, to: number): number[] {
 	return range(from, to).flatMap((x) =>
 		range(0, img.height).flatMap((y) =>
 			range(0, 4).map((c) => byteAt(img, x, y, c)),
@@ -76,22 +72,21 @@ function columns(img: Decoded, from: number, to: number): number[] {
 	);
 }
 
-/** The first column of each run, in pixels. */
-function runStarts(runs: readonly BarRun[]): number[] {
-	return runs.map(
-		(_, i) =>
-			runs.slice(0, i).reduce((n, run) => n + run.cells, 0) * PX_PER_CELL,
-	);
+type Span = { id: BarRun["id"]; start: number; end: number; seamed: boolean };
+
+function spans(runs: readonly BarRun[]): Span[] {
+	return runs.map((run, i) => {
+		const start =
+			runs.slice(0, i).reduce((n, r) => n + r.cells, 0) * PX_PER_CELL;
+		return {
+			id: run.id,
+			start,
+			end: start + run.cells * PX_PER_CELL,
+			seamed: i > 0,
+		};
+	});
 }
 
-function categoryWith(texture: Texture): CategoryId {
-	const id = BAR_ORDER.find((c) => CATEGORY_STYLES[c].texture === texture);
-	if (id === undefined) throw new Error(`no category draws ${texture}`);
-	return id;
-}
-
-// The approved prototype draws a 20-pixel row's band from round(20 / 3) = 7 to
-// 20 - 7 = 13, exclusive.
 const BAND_ROWS = [7, 8, 9, 10, 11, 12];
 
 const RUNS: readonly BarRun[] = [
@@ -102,19 +97,18 @@ const RUNS: readonly BarRun[] = [
 	{ id: "free", cells: 4 },
 ];
 
-const CATEGORY_RUNS = RUNS.flatMap((run, i) => {
-	const start = runStarts(RUNS)[i] ?? 0;
-	return run.id === "free"
-		? []
-		: [
-				{
-					id: run.id,
-					start,
-					end: start + run.cells * PX_PER_CELL,
-					seamed: i > 0,
-				},
-			];
-});
+const CATEGORY_SPANS = spans(RUNS).filter(
+	(s): s is Span & { id: CategoryId } => s.id !== "free",
+);
+
+const FREE_SPANS = spans(RUNS).filter((s) => s.id === "free");
+
+const DRAWN_WITH: Readonly<Record<Texture, CategoryId>> = {
+	solid: "system",
+	diagonal: "mcp",
+	vertical: "agents",
+	dots: "memory",
+};
 
 describe("bar pixels", () => {
 	test("a cell is 10 pixels wide and the bar one 20-pixel terminal row high", () => {
@@ -130,12 +124,15 @@ describe("bar pixels", () => {
 		expect(img.bytes.length).toBe(11 * PX_PER_CELL * PX_HEIGHT * 4);
 	});
 
-	test("every category column is lit in the band rows and nowhere else", () => {
+	test("every category column is visible in the band rows and nowhere else", () => {
 		const img = decode(barPixels(RUNS));
-		for (const run of CATEGORY_RUNS) {
-			for (const x of range(run.seamed ? run.start + 1 : run.start, run.end)) {
-				expect({ id: run.id, x, rows: litRows(img, x) }).toEqual({
-					id: run.id,
+		for (const span of CATEGORY_SPANS) {
+			for (const x of range(
+				span.seamed ? span.start + 1 : span.start,
+				span.end,
+			)) {
+				expect({ id: span.id, x, rows: visibleRows(img, x) }).toEqual({
+					id: span.id,
 					x,
 					rows: BAND_ROWS,
 				});
@@ -143,14 +140,15 @@ describe("bar pixels", () => {
 		}
 	});
 
-	test("every lit pixel of a run carries its category's colour", () => {
+	test("every visible pixel of a run carries its category's colour", () => {
 		const img = decode(barPixels(RUNS));
-		for (const run of CATEGORY_RUNS) {
-			const want = hexRgb(CATEGORY_STYLES[run.id].swatch.hex);
-			for (const x of range(run.start, run.end)) {
-				for (const y of litRows(img, x)) {
-					expect({ id: run.id, x, y, colour: rgb(img, x, y) }).toEqual({
-						id: run.id,
+		expect(rgb(img, 0, 7)).toEqual({ r: 230, g: 73, b: 128 });
+		for (const span of CATEGORY_SPANS) {
+			const want = hexRgb(CATEGORY_STYLES[span.id].swatch.hex);
+			for (const x of range(span.start, span.end)) {
+				for (const y of visibleRows(img, x)) {
+					expect({ id: span.id, x, y, colour: rgb(img, x, y) }).toEqual({
+						id: span.id,
 						x,
 						y,
 						colour: want,
@@ -160,16 +158,56 @@ describe("bar pixels", () => {
 		}
 	});
 
-	test("a texture's pixels are fully opaque where it is on and alpha 110 where it is off", () => {
+	test("each texture draws its pattern in one cell, on pixels opaque and off pixels at alpha 110", () => {
+		const patterns: Record<Texture, string[]> = {
+			solid: [
+				"##########",
+				"##########",
+				"##########",
+				"##########",
+				"##########",
+				"##########",
+			],
+			diagonal: [
+				"##...###..",
+				"#...###...",
+				"...###...#",
+				"..###...##",
+				".###...###",
+				"###...###.",
+			],
+			vertical: [
+				"##..##..##",
+				"##..##..##",
+				"##..##..##",
+				"##..##..##",
+				"##..##..##",
+				"##..##..##",
+			],
+			dots: [
+				"..........",
+				"##..##..##",
+				"##..##..##",
+				"..........",
+				"..........",
+				"##..##..##",
+			],
+		};
 		for (const texture of TEXTURES) {
-			const img = decode(samplePixels(categoryWith(texture), 1));
-			const band = range(0, PX_PER_CELL).flatMap((x) =>
-				BAND_ROWS.map((y) => alpha(img, x, y)),
+			const id = DRAWN_WITH[texture];
+			const img = decode(samplePixels(id, 1));
+			const drawn = BAND_ROWS.map((y) =>
+				range(0, PX_PER_CELL)
+					.map((x) => {
+						const a = alpha(img, x, y);
+						return a === 255 ? "#" : a === 110 ? "." : String(a);
+					})
+					.join(""),
 			);
-			const levels = Array.from(new Set(band)).sort((a, b) => a - b);
-			expect({ texture, levels }).toEqual({
+			expect({ texture, of: CATEGORY_STYLES[id].texture, drawn }).toEqual({
 				texture,
-				levels: texture === "solid" ? [255] : [110, 255],
+				of: texture,
+				drawn: patterns[texture],
 			});
 		}
 	});
@@ -179,10 +217,10 @@ describe("bar pixels", () => {
 			const img = decode(
 				barPixels([
 					{ id: "system", cells: 1 },
-					{ id: categoryWith(texture), cells: 1 },
+					{ id: DRAWN_WITH[texture], cells: 1 },
 				]),
 			);
-			return alphas(img, PX_PER_CELL + 1, 2 * PX_PER_CELL).join(",");
+			return columnAlphas(img, PX_PER_CELL + 1, 2 * PX_PER_CELL).join(",");
 		});
 		expect(new Set(masks).size).toBe(TEXTURES.length);
 	});
@@ -190,23 +228,39 @@ describe("bar pixels", () => {
 	test("a transparent one-pixel seam sits where each run meets the next, and nowhere else", () => {
 		const img = decode(barPixels(RUNS));
 		const empty = range(0, img.width).filter(
-			(x) => litRows(img, x).length === 0,
+			(x) => visibleRows(img, x).length === 0,
 		);
-		expect(empty).toEqual(runStarts(RUNS).slice(1));
+		expect(empty).toEqual(
+			spans(RUNS)
+				.slice(1)
+				.map((s) => s.start),
+		);
 	});
 
 	test("free space is a line in the free swatch, thinner than the band and centred on it", () => {
 		const img = decode(barPixels(RUNS));
-		const start = runStarts(RUNS)[RUNS.length - 1] ?? 0;
 		const mean = (rows: readonly number[]): number =>
 			rows.reduce((a, b) => a + b, 0) / rows.length;
-		for (const x of range(start + 1, img.width)) {
-			const rows = litRows(img, x);
-			expect(rows.length).toBeGreaterThan(0);
-			expect(rows.length).toBeLessThan(BAND_ROWS.length);
-			expect(mean(rows)).toBe(mean(BAND_ROWS));
-			for (const y of rows) {
-				expect(rgb(img, x, y)).toEqual(hexRgb(FREE_SWATCH.hex));
+		expect(FREE_SPANS.length).toBe(1);
+		for (const span of FREE_SPANS) {
+			for (const x of range(span.start + 1, span.end)) {
+				const rows = visibleRows(img, x);
+				expect({ x, some: rows.length > 0 }).toEqual({ x, some: true });
+				expect({ x, thinner: rows.length < BAND_ROWS.length }).toEqual({
+					x,
+					thinner: true,
+				});
+				expect({ x, centre: mean(rows) }).toEqual({
+					x,
+					centre: mean(BAND_ROWS),
+				});
+				for (const y of rows) {
+					expect({ x, y, colour: rgb(img, x, y) }).toEqual({
+						x,
+						y,
+						colour: hexRgb(FREE_SWATCH.hex),
+					});
+				}
 			}
 		}
 	});
@@ -230,9 +284,9 @@ describe("legend samples", () => {
 					{ id: "free", cells: 1 },
 				]),
 			);
-			expect({ id, px: columns(bar, 0, 2 * PX_PER_CELL) }).toEqual({
+			expect({ id, px: columnBytes(bar, 0, 2 * PX_PER_CELL) }).toEqual({
 				id,
-				px: columns(sample, 0, 2 * PX_PER_CELL),
+				px: columnBytes(sample, 0, 2 * PX_PER_CELL),
 			});
 		}
 	});
@@ -248,8 +302,8 @@ describe("legend samples", () => {
 			);
 			expect({
 				id,
-				px: columns(bar, PX_PER_CELL + 1, 3 * PX_PER_CELL),
-			}).toEqual({ id, px: columns(sample, 1, 2 * PX_PER_CELL) });
+				px: columnBytes(bar, PX_PER_CELL + 1, 3 * PX_PER_CELL),
+			}).toEqual({ id, px: columnBytes(sample, 1, 2 * PX_PER_CELL) });
 		}
 	});
 });
