@@ -6,7 +6,6 @@ import { NO_ESTIMATES } from "../hooks/rows";
 
 type Row = Pick<SessionAppendInput, "door" | "origin" | "message">;
 
-/** A row a request carries in the user role, in through `door`. */
 function userRow(
 	door: Row["door"],
 	origin: Row["origin"],
@@ -15,7 +14,6 @@ function userRow(
 	return { door, origin, message: { type: "user", role: "user", content } };
 }
 
-/** An attachment row the engine injects beside the conversation. */
 function attachmentRow(
 	door: Row["door"],
 	origin: Row["origin"],
@@ -28,7 +26,6 @@ function attachmentRow(
 	};
 }
 
-/** One block of the model's response. */
 function responseRow(block: ApiContentBlock): Row {
 	return {
 		door: "response",
@@ -106,12 +103,28 @@ describe("what one appended row counts", () => {
 		expect(effect.counts).toEqual([{ id: "calls", chars: 20 }]);
 	});
 
-	test("a thinking block counts nothing", async () => {
+	test("a thinking block counts nothing, whatever text it holds", async () => {
 		const effect = rowEffect(
-			responseRow({ type: "thinking", thinking: "", signature: "s" }),
+			responseRow({
+				type: "thinking",
+				thinking: "weigh the next step",
+				signature: "s",
+			}),
 		);
 
 		expect(effect.counts).toEqual([]);
+	});
+
+	test("image and document blocks count nothing beside the text they arrive with", async () => {
+		const effect = rowEffect(
+			userRow("prompt", { kind: "composer" }, [
+				text(10),
+				{ type: "image", source: { type: "base64", data: "AAAA" } },
+				{ type: "document", source: { type: "text", data: "a document" } },
+			]),
+		);
+
+		expect(effect.counts).toEqual([{ id: "user", chars: 10 }]);
 	});
 
 	test("a Read result is read text, its string content measured", async () => {
@@ -191,6 +204,20 @@ describe("what one appended row counts", () => {
 		});
 	});
 
+	test("a compaction no request carries still replaces the window", async () => {
+		const effect = rowEffect({
+			door: "compaction",
+			origin: { kind: "engine" },
+			message: {
+				type: "system",
+				name: "compact_boundary",
+				content: [text(22)],
+			},
+		});
+
+		expect(effect).toEqual({ reset: true, counts: [] });
+	});
+
 	test("a notice counts nothing", async () => {
 		const effect = rowEffect({
 			door: "notice",
@@ -243,6 +270,11 @@ describe("adding counts to the estimates", () => {
 			thinking: 0,
 			replies: 0,
 		});
+	});
+
+	test("the estimates added to stay as they were", async () => {
+		addCounts(NO_ESTIMATES, [{ id: "user", chars: 40 }]);
+
 		expect(NO_ESTIMATES.user).toBe(0);
 	});
 });

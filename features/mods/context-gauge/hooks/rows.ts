@@ -58,11 +58,6 @@ function named(id: NamedId, tokens: number, estimated: boolean): GaugeRow {
 	return { id, label: id, tokens, estimated };
 }
 
-/**
- * Splits the Messages row's tokens into the counted categories, each rounded
- * once from its characters: scaled down to fit where they sum past the row,
- * otherwise as counted with the difference as an unattributed row.
- */
 function splitMessages(tokens: number, chars: MessageEstimates): GaugeRow[] {
 	const seen =
 		COUNTED.reduce((sum, id) => sum + chars[id], 0) / CHARS_PER_TOKEN;

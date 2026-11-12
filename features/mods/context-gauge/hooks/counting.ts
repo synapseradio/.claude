@@ -15,18 +15,14 @@ export type RowEffect = { reset: boolean; counts: readonly Counted[] };
 
 type Row = Pick<SessionAppendInput, "door" | "origin" | "message">;
 
-/** The block kinds the gauge tells apart; every other kind is `unmeasured`. */
 type BlockKind = "text" | "tool_use" | "tool_result" | "unmeasured";
 
-/** A content block's kind and the characters the model reads in it. */
 type Measured = { kind: BlockKind; chars: number };
 
-/** Characters of `value` as JSON, 0 where there is none. */
 function jsonChars(value: unknown): number {
 	return value === undefined ? 0 : JSON.stringify(value).length;
 }
 
-/** Characters of a text block held as an unknown value, 0 for any other value. */
 function textChars(item: unknown): number {
 	if (typeof item !== "object" || item === null) return 0;
 	if (!("type" in item && "text" in item)) return 0;
@@ -35,7 +31,6 @@ function textChars(item: unknown): number {
 		: 0;
 }
 
-/** Characters of a tool result's content: the string, or the sum of its text blocks. */
 function resultChars(content: unknown): number {
 	if (typeof content === "string") return content.length;
 	if (!Array.isArray(content)) return 0;
@@ -45,7 +40,6 @@ function resultChars(content: unknown): number {
 	);
 }
 
-/** Sorts a block by kind and measures it; thinking, media and unknown kinds measure 0. */
 function measure(block: ApiContentBlock): Measured {
 	const { type, text, name, input, content } = block;
 	if (type === "text" && typeof text === "string")
@@ -57,7 +51,6 @@ function measure(block: ApiContentBlock): Measured {
 	return { kind: "unmeasured", chars: 0 };
 }
 
-/** The category a block of `row` counts into, or null where it counts nowhere. */
 function category(row: Row, kind: BlockKind): CountedId | null {
 	const { origin } = row;
 	switch (row.door) {
