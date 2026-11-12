@@ -12,6 +12,8 @@
 !.shellcheckrc
 !biome.json
 !tsconfig.json
+!package.json
+!bun.lock
 
 !.claude-plugin/
 !.claude-plugin/**
