@@ -2,7 +2,6 @@ import type {
 	ContextCategory,
 	ModelUsage,
 	SessionContextBreakdown,
-	SessionContextUsage,
 	TurnUsage,
 } from "claude-code";
 import { describe, expect, test } from "claude-code/testing";
@@ -31,10 +30,14 @@ function responseUsage(
 	};
 }
 
-/**
- * A window of `rawMaxTokens` holding the breakdown's estimate of 30,000
- * tokens: 6,000 system prompt, 4,000 skills, 20,000 messages.
- */
+/** A response's usage that generated `output` tokens and read nothing. */
+function turnUsage(output: number): TurnUsage {
+	return Object.assign(responseUsage(0, 0, 0, output), { model: "test" });
+}
+
+/** The breakdown's estimate of the window: 6,000 system prompt, 4,000 skills, 20,000 messages. */
+const BREAKDOWN_TOTAL = 30_000;
+
 function breakdown(
 	rawMaxTokens: number,
 	autoCompactThreshold?: number,
@@ -44,13 +47,13 @@ function breakdown(
 			row("System prompt", 6000),
 			row("Skills", 4000),
 			row("Messages", 20_000),
-			row("Free space", rawMaxTokens - 30_000, "free"),
+			row("Free space", rawMaxTokens - BREAKDOWN_TOTAL, "free"),
 		],
-		totalTokens: 30_000,
+		totalTokens: BREAKDOWN_TOTAL,
 		maxTokens: rawMaxTokens,
 		rawMaxTokens,
 		autocompactSource: "model-default",
-		percentage: Math.round((30_000 / rawMaxTokens) * 100),
+		percentage: Math.round((BREAKDOWN_TOTAL / rawMaxTokens) * 100),
 		gridRows: [],
 		model: "test",
 		memoryFiles: [],
@@ -64,22 +67,16 @@ function breakdown(
 	return b;
 }
 
-function context(b: SessionContextBreakdown): SessionContextUsage {
-	return { window: b.rawMaxTokens, breakdown: b };
-}
-
-/** A response's usage that generated `output` tokens and read nothing. */
-function turnUsage(output: number): TurnUsage {
-	return {
-		input_tokens: 0,
-		cache_read_input_tokens: 0,
-		cache_creation_input_tokens: 0,
-		output_tokens: output,
-		model: "test",
-	};
-}
-
 const NO_ANCHOR = { anchor: null, pending: 0 };
+
+/** The usage model of a session whose context carries breakdown `b`. */
+function modelFor(
+	b: SessionContextBreakdown,
+	live: Parameters<typeof usageModel>[1] = NO_ANCHOR,
+	pctRaw?: string,
+) {
+	return usageModel({ window: b.rawMaxTokens, breakdown: b }, live, pctRaw);
+}
 
 describe("the window after a response", () => {
 	test("sums the input, both cache figures and the output", async () => {
@@ -127,40 +124,24 @@ describe("thinking tokens", () => {
 
 describe("the usage model", () => {
 	test("before any anchor, used is the breakdown's total", async () => {
-		const model = usageModel(context(breakdown(100_000)), NO_ANCHOR, undefined);
-
-		expect(model?.used).toBe(30_000);
-		expect(model?.percent).toBe(30);
+		expect(modelFor(breakdown(100_000))?.used).toBe(30_000);
 	});
 
 	test("an anchored response plus 4,000 pending characters reads 33,000 used", async () => {
 		const anchor = windowAfter(responseUsage(10_000, 20_000, 0, 2000));
-		const model = usageModel(
-			context(breakdown(100_000)),
-			{ anchor, pending: 4000 },
-			undefined,
-		);
+		const model = modelFor(breakdown(100_000), { anchor, pending: 4000 });
 
 		expect(model?.used).toBe(33_000);
 	});
 
 	test("an anchor of 5,000 from a compaction with nothing pending reads 5,000 used", async () => {
-		const model = usageModel(
-			context(breakdown(100_000)),
-			{ anchor: 5000, pending: 0 },
-			undefined,
-		);
+		const model = modelFor(breakdown(100_000), { anchor: 5000, pending: 0 });
 
 		expect(model?.used).toBe(5000);
-		expect(model?.percent).toBe(5);
 	});
 
 	test("categories scale to used and keep only used rows", async () => {
-		const model = usageModel(
-			context(breakdown(100_000)),
-			{ anchor: 15_000, pending: 0 },
-			undefined,
-		);
+		const model = modelFor(breakdown(100_000), { anchor: 15_000, pending: 0 });
 
 		expect(model?.categories).toEqual([
 			{ name: "System prompt", tokens: 3000 },
@@ -172,11 +153,7 @@ describe("the usage model", () => {
 	test("a breakdown totalling 0 leaves categories unscaled", async () => {
 		const b = breakdown(100_000);
 		b.totalTokens = 0;
-		const model = usageModel(
-			context(b),
-			{ anchor: 5000, pending: 0 },
-			undefined,
-		);
+		const model = modelFor(b, { anchor: 5000, pending: 0 });
 
 		expect(model?.categories.map((c) => c.tokens)).toEqual([
 			6000, 4000, 20_000,
@@ -184,45 +161,38 @@ describe("the usage model", () => {
 	});
 
 	test("the ceiling is the auto-compaction threshold where no override is set", async () => {
-		const model = usageModel(
-			context(breakdown(100_000, 80_000)),
-			NO_ANCHOR,
-			undefined,
-		);
-
-		expect(model?.max).toBe(80_000);
-		expect(model?.percent).toBe(38);
+		expect(modelFor(breakdown(100_000, 80_000))?.max).toBe(80_000);
 	});
 
 	test("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE sets the ceiling as a share of the raw window", async () => {
-		const model = usageModel(
-			context(breakdown(100_000, 80_000)),
-			NO_ANCHOR,
-			"50",
-		);
+		const model = modelFor(breakdown(100_000, 80_000), NO_ANCHOR, "50");
 
 		expect(model?.max).toBe(50_000);
-		expect(model?.percent).toBe(60);
 	});
 
 	for (const pctRaw of ["0", "150", "half"]) {
 		test(`an override of "${pctRaw}" leaves the breakdown's ceiling`, async () => {
-			const model = usageModel(
-				context(breakdown(100_000, 80_000)),
-				NO_ANCHOR,
-				pctRaw,
-			);
+			const model = modelFor(breakdown(100_000, 80_000), NO_ANCHOR, pctRaw);
 
 			expect(model?.max).toBe(80_000);
 		});
 	}
 
+	test("the percentage divides used by the effective ceiling, not the raw window", async () => {
+		const model = modelFor(breakdown(100_000, 80_000), NO_ANCHOR, "50");
+
+		expect(model?.percent).toBe(60);
+	});
+
+	test("the percentage rounds to a whole number", async () => {
+		expect(modelFor(breakdown(100_000, 80_000))?.percent).toBe(38);
+	});
+
 	test("the percentage stops at 100 past the ceiling", async () => {
-		const model = usageModel(
-			context(breakdown(100_000)),
-			{ anchor: 140_000, pending: 0 },
-			undefined,
-		);
+		const model = modelFor(breakdown(100_000), {
+			anchor: 140_000,
+			pending: 0,
+		});
 
 		expect(model?.percent).toBe(100);
 	});
@@ -235,6 +205,6 @@ describe("the usage model", () => {
 		const empty = breakdown(100_000);
 		empty.rawMaxTokens = 0;
 
-		expect(usageModel(context(empty), NO_ANCHOR, undefined)).toBeNull();
+		expect(modelFor(empty)).toBeNull();
 	});
 });
