@@ -56,6 +56,7 @@ Direct each haiku read to return cited facts, each a path:line beside its quoted
 Fill the template below, replacing each bracket with what it describes and sending the rest verbatim. Drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Name the delegate's model family and identifier in the `You are` line, resolved through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
 Settle before the spawn every fork that could change what the step does, touches, or returns, and write its answer into Task, Context, or Constraints.
 Keep mutation checks out of every prompt, code broken on purpose and failing assertions added to watch a suite go red included.
+Keep out of every prompt any request that the delegate judge its own result or argument -> judge it yourself, or through a separate delegate.
 State every cost in tokens, calls, or wait, with time units kept out.
 
 ```markdown

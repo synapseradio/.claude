@@ -3,8 +3,8 @@
 
 For every step a delegate could take, and every spawn through Agent, Fork, or any other spawning tool, a delegate's own spawns included, optimize for a step done by the cheapest model able to take it, through a spawn that pays its cost in tokens and wait and returns a result the caller can check.
 
-- gauges: inference, what the delegate must infer beyond the prompt and its evidence; span, whether the work fits one context; reversibility, the cost of undoing a wrong result; verifiability, which check outside the delegate, a test or your own read of its result, catches a wrong answer; surviving critiques, critique findings awaiting repair
-- gathering: a read, a grep, a log scan, or a command run for its output, a test suite's run for one, with every command whose job is a change, a commit, an edit, or an install outside it
+- gauges: inference, what the delegate must infer beyond the prompt and its evidence; span, whether the work fits one context; reversibility, the cost of undoing a wrong result; verifiability, the check outside the delegate that catches a wrong answer; surviving critiques, critique findings awaiting repair
+- gathering: a read, a grep, a log scan, or a command run for its output, a test suite's run for one, never a command that changes, commits, edits, or installs
 - shared focus: a file, artifact, decision, term, or convention two or more agents in one orchestration read, write, or state, a spec two delegates both edit for one
 - roster: the orchestration's running agents, each with its address and the slice it owns
 
@@ -22,9 +22,9 @@ route step
   | a git operation whose command you can state whole, outside a slice you built = spawn it to a general-purpose haiku
   | an observed failure whose cause is unknown = spawn diagnostician
   | a fix for a break would pull you off the current task = spawn it
-  | the Read of a file that Edit, or Write over an existing file, requires before your next change to it, the newest handoff note read at a session's first turn, a cited line opened to confirm it backs a claim, or a scan of saved command output by grep, jq, ast-grep, or a Read by line range = act directly
+  | the Read that Edit or an overwriting Write requires before your next change, the newest handoff note read at a session's first turn, a cited line opened to confirm it backs a claim, or a scan of saved command output by grep, jq, ast-grep, or a Read by line range = act directly
   | any other gathering = spawn a fresh haiku, one holding the step's related reads > parallel haikus, each saving every command run's output to a file in the scratchpad
-  | a unit of a plan whose units run in sequence on one working tree = act directly, whatever delegates the plan names, its gathering spawned as above and every verdict on its work, a check passing or a review finding, judged by you
+  | a unit of a plan whose units run in sequence on one working tree = act directly, whatever delegates the plan names, its gathering spawned as above and every verdict on its work judged by you
   | sizeable work independent of the step in hand = spawn it
   | a step finishes with the context in hand = act directly
   | a map, an implementation, a critique, a design, or a plan = spawn it to the cheapest model able to take it
@@ -67,6 +67,7 @@ Fill the template below, replacing each bracket with what it describes and sendi
 Settle before the spawn every fork that could change what the step does, touches, or returns, and write its answer into Task, Context, or Constraints.
 Name in each implementer's prompt the files it may change, and direct it to add nothing beyond them. Direct a worker that builds a slice to commit it once its checks pass.
 Keep mutation checks out of every prompt and brief, code broken on purpose and failing assertions added to watch a suite go red included. Direct a critic to judge tests by reading them.
+Keep out of every prompt any request that the delegate judge its own result or argument -> judge it yourself, or through a separate delegate.
 State every cost in tokens, calls, or wait, with time units kept out.
 
 ```markdown
@@ -88,7 +89,7 @@ You are [model family and identifier]. [a welcome for this spawn, glad the deleg
 
 ## Tooling
 
-[only where the step needs a particular tool or skill: the environment; the tools and skills it must or may use; each skill you loaded that bears on the task's nature or scope, by exact name, to load through the Skill tool; no limits on its allowed tools]
+[only where the step needs a particular tool or skill: the environment; the tools and skills it must or may use; each skill you loaded that bears on the task, by exact name, to load through the Skill tool; no limits on its allowed tools]
 
 ## Constraints
 
