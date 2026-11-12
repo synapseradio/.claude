@@ -51,6 +51,12 @@
 			]
 		},
 		{
+			"name": "planning",
+			"source": "./features/plugins/planning",
+			"version": "0.1.0",
+			"description": "Holds the planning loop as a skill."
+		},
+		{
 			"name": "context-gauge",
 			"source": "./features/mods/context-gauge",
 			"version": "0.5.0",
