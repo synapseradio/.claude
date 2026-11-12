@@ -322,7 +322,21 @@
       "Bash(echo:*)",
       "Bash(uv run:*)",
       "Edit(~/.scratchpad/**)",
-      "Edit(~/projects/.worktrees/**)"
+      "Edit(~/projects/.worktrees/**)",
+      "mcp__circleci-mcp-server__find_flaky_tests",
+      "mcp__circleci-mcp-server__get_build_failure_logs",
+      "mcp__circleci-mcp-server__list_followed_projects",
+      "mcp__circleci-mcp-server__download_usage_api_data",
+      "mcp__circleci-mcp-server__get_latest_pipeline_status",
+      "mcp__circleci-mcp-server__get_job_test_results",
+      "mcp__cypress-cloud__cypress_get_failed_tests",
+      "mcp__cypress-cloud__cypress_get_runs",
+      "mcp__cypress-cloud__cypress_get_flaky_tests",
+      "mcp__cypress-cloud__cypress_get_projects",
+      "mcp__cypress-cloud__cypress_get_test_screenshots",
+      "mcp__cypress-cloud__cypress_get_tests",
+      "mcp__cypress-cloud__cypress_get_specs",
+      "mcp__cypress-cloud__cypress_get_accessibility_views"
     ],
     "additionalDirectories": [
       "~/.scratchpad",
