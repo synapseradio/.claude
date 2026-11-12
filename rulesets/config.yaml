@@ -10,7 +10,7 @@ sets:
   git: git-commit
   dialogue: resolving-input inquiring asking-questions
   planning: writing-plans handoff persistent-memory
-  orchestration: agent-delegation worktrees
+  orchestration: agent-delegation delegate-prompt worktrees
   bash: shell-scripts
 
 model sonnet:
@@ -27,7 +27,7 @@ model haiku:
   # `kind any` lifts this block to agent rank, where its excludes beat every agent block's
   # includes; at model rank alone they would lose to them.
   kind any:
-    exclude: comments claims resolving-input unasked-asides
+    exclude: comments claims resolving-input unasked-asides delegate-prompt
 kind session:
   include: all.*
   then:
