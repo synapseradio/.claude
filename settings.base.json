@@ -663,7 +663,7 @@
 	"verbose": false,
 	"viewMode": "default",
 	"enabledPlugins": {
-		"context-gauge@claude-root": false,
+		"context-gauge@claude-root": true,
 		"epistemic-marks@claude-root": true,
 		"harness-config@claude-root": true,
 		"planning@claude-root": true,
