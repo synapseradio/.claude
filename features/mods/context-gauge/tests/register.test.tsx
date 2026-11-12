@@ -108,19 +108,36 @@ describe('the gauge under the prompt', () => {
     expect(await gaugeText($)).toMatch(/user\s+~1k/)
   })
 
-  test('a Read result shows as read text, unless a subagent made the call', async ($, on) => {
+  test('a tool call shows its input as calls text and its result as results text', async ($, on) => {
     engine(on)
-    on('tool.call', () => ({
-      result: {
-        type: 'text',
-        file: { filePath: '/a', content: 'x'.repeat(8000), numLines: 1, startLine: 1, totalLines: 1 },
-      },
-    }))
+    on('tool.call', () => ({ result: {}, text: 'r'.repeat(8000) }))
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    await $.tool.call({ tool: 'Bash', command: 'x'.repeat(400 - 'Bash{"command":""}'.length) })
+
+    const gauge = await gaugeText($)
+    expect(gauge).toMatch(/calls\s+~100/)
+    expect(gauge).toMatch(/results\s+~2k/)
+  })
+
+  test('a Read result shows as read text, apart from other results', async ($, on) => {
+    engine(on)
+    on('tool.call', () => ({ result: {}, text: 'r'.repeat(8000) }))
     await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
     await $.tool.call({ tool: 'Read', file_path: '/a' })
-    await $.tool.call({ tool: 'Read', file_path: '/a', agentId: 'sub' })
 
-    expect(await gaugeText($)).toMatch(/read\s+~2k/)
+    const gauge = await gaugeText($)
+    expect(gauge).toMatch(/read\s+~2k/)
+    expect(gauge).not.toMatch(/results/)
+  })
+
+  test('a call a subagent makes leaves the gauge as it was', async ($, on) => {
+    engine(on)
+    on('tool.call', () => ({ result: {}, text: 'r'.repeat(8000) }))
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+    const before = await gaugeText($)
+    await $.tool.call({ tool: 'Bash', command: 'x'.repeat(400), agentId: 'sub' })
+
+    expect(await gaugeText($)).toBe(before)
   })
 
   test('hook context shows as hooks text, unless it reached a subagent', async ($, on) => {

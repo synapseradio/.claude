@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, SessionContextBreakdown, SessionContextUsage } from 'claude-code'
+import type { EngineInterface, Register, SessionContextBreakdown, SessionContextUsage, ToolCallInput } from 'claude-code'
 
 import type { MessageEstimates, UsageModel } from '../types'
 import { CATEGORY_SWATCHES, CHIP_TEXT, fillSwatch } from './palette'
@@ -80,6 +80,15 @@ function hookChars(result: { additionalContext?: readonly string[]; block?: stri
   return context + (result.block?.length ?? 0)
 }
 
+/** The keys `tool.call`'s input carries that the tool never sees. */
+const RESERVED_INPUT_KEYS = new Set(['tool', 'tool_use_id', 'consent', 'agentId', 'requestMeta'])
+
+/** Characters a tool call hands the model: the tool's name and its arguments as JSON. */
+function callChars(e: ToolCallInput): number {
+  const args = Object.fromEntries(Object.entries(e).filter(([key]) => !RESERVED_INPUT_KEYS.has(key)))
+  return e.tool.length + JSON.stringify(args).length
+}
+
 /** Counts a main-thread hook result; a subagent's hooks fill the subagent's window. */
 async function countHooks<R extends { additionalContext?: readonly string[]; block?: string }>(
   $: EngineInterface,
@@ -137,7 +146,7 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   // Only a person's own typing counts as user text: task notifications, peers
-  // and scheduled triggers enter the window too, and stay in `replies & tools`.
+  // and scheduled triggers enter the window too, and stay in `replies`.
   on('prompt.submit', async ($, e, next) => {
     const result = await next(e)
     const typed = e.origin.kind === 'composer' || e.origin.kind === 'bridge'
@@ -145,10 +154,13 @@ export const register: Register = on => {
     return result
   }).catch(($, e, next) => next(e))
 
-  on('tool.call', { tool: 'Read' }, async ($, e, next) => {
+  // Only main-thread calls count; a subagent's calls and results fill its own window.
+  on('tool.call', async ($, e, next) => {
     const result = await next(e)
-    const output = 'result' in result && !result.isError ? result.result : undefined
-    if (e.agentId === undefined && output?.type === 'text') await count($, 'read', output.file.content.length)
+    if (e.agentId === undefined) {
+      await count($, 'calls', callChars(e))
+      await count($, e.tool === 'Read' ? 'read' : 'results', (result.deny ?? result.text ?? '').length)
+    }
     return result
   }).catch(($, e, next) => next(e))
 
