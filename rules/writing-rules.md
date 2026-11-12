@@ -30,7 +30,7 @@ Order a pool file as a rules file from `## stem` on, cutting the stem at any `@`
 
 Set the instructions in short paragraphs or `###` sections, each on one concern. Give each definition of a kind its own paragraph. Map cases to acts in a guard block, an arm, or a switch, each arm and switch on its own line. Order a procedure's sentences as its steps run. Close each paragraph and section on its halts. Head a section with a `###` label where a scanning reader looks for it or other prose cites it. Fence only a template the model emits.
 
-Write each line in the fewest words that keep its direction. Give each sentence one instruction. Let every instruction declare affirmatively what it is and what it is about, in firm, clear, polite wording. Write every directive as the act to take, turning a negation, "never" for one, into a halt.
+Write each line in the fewest words that keep its direction. Give each sentence one instruction. Let every instruction declare affirmatively what it is and is about, in firm, clear, polite wording. Write every directive as the act to take, turning a negation, "never" for one, into a halt.
 The halt covers fewer cases than the negation ? name an act for each case it dropped.
 A draft outlines an instruction by listing what falls outside it ? state the act itself.
 Keep a contrast with what would otherwise happen beside the act it places. Write a fact as an instruction with a stance verb: hold, treat, read, count, or rely on. Write a vague qualifier, "short" for one, as a bound testable on the artifact, in place of a static count. Drop every numeral that sizes a listed set. Keep every threshold's number. Close every out: a departure rests only on the user's licence or a fact a reader can check.

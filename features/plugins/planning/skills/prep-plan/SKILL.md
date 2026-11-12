@@ -5,7 +5,7 @@ description: Use on every request to plan, in plan mode or outside it, such as '
 
 # Prep plan
 
-For every plan file you write and every exit from plan mode, optimize for a future agent that carries to its target outcomes holding only the file.
+For every plan file you write and every exit from plan mode, optimize for a future agent that carries to its target outcomes holding only the plan file.
 
 Planning runs as a loop. Each pass below states when it is entered, what it does, and what ends it, and names the pass that runs next. The readiness file decides the next pass: its open lines send the loop back until none remains.
 
@@ -27,7 +27,7 @@ Write each pass's results into the readiness file as they arrive, so the file al
 
 ## Entry
 
-Entered: the skill loads, on a request to plan, a request to write a plan file, a request to prepare work for another agent, or an entry into plan mode.
+Entered: the skill loads.
 
 Act:
 
@@ -47,7 +47,7 @@ Ends: the readiness file holds the intent line. Next: gather.
 
 ## The loop
 
-Loop reads, delegates, searches, and checks until no must verify or must ask line remains and every plan-changing fork is settled. Gather, settle, and ask repeat in that cycle; write, verify readiness, and exit follow once it closes, and each sends the loop back where it meets an open line.
+Loop reads, delegates, searches, and checks until no must verify or must ask line remains and every plan-changing fork is settled. Gather, settle, and ask repeat in that cycle; write the plan, verify readiness, and exit follow once it closes, and each sends the loop back where it meets an open line.
 
 ### 1. Gather
 
@@ -157,6 +157,6 @@ Entered: verify readiness ends with nothing open.
 
 Act: Present the plan in the document register, with headers as labels and one idea per bullet -> enter plan mode only to call ExitPlanMode, planning's last step, once the readiness file holds no must verify or must ask line and every plan-changing fork is settled.
 Plan mode already holds ? settle every plan-changing fork and clear every must verify and must ask line before calling ExitPlanMode.
-Ask for a plan's approval only through ExitPlanMode, with AskUserQuestion kept to the plan's open questions and every prose ask for approval kept out.
+Ask for a plan's approval only through ExitPlanMode, with AskUserQuestion kept to the plan's open questions.
 
 Ends: ExitPlanMode returns. Approval ends the loop and lifts the limit on what you change. A rejection with feedback ? settle, with the feedback as the unknowns it raises.

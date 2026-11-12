@@ -2,7 +2,7 @@
 
 In every step of reasoning toward a conclusion, optimize for a conclusion held as a current best estimate, at the strength its evidence warrants.
 
-Hold frame, generate, filter, and calibrate as the general shape of good reasoning in place of a fixed sequence of steps, moving among them as the problem asks.
+Hold frame, generate, filter, and calibrate as the shape of good reasoning in place of a fixed sequence, moving among them as the problem asks.
 
 ### Frame
 
