@@ -170,6 +170,20 @@ describe("the usage model", () => {
 		expect(model?.max).toBe(50_000);
 	});
 
+	// Why: the override can lower the auto-compaction threshold, never raise
+	// it (https://code.claude.com/docs/en/env-vars).
+	test("an override above the auto-compaction threshold leaves the threshold", async () => {
+		const model = modelFor(breakdown(100_000, 80_000), NO_ANCHOR, "90");
+
+		expect(model?.max).toBe(80_000);
+	});
+
+	test("without a threshold, an override sets the ceiling as a share of the raw window", async () => {
+		const model = modelFor(breakdown(100_000), NO_ANCHOR, "90");
+
+		expect(model?.max).toBe(90_000);
+	});
+
 	for (const pctRaw of ["0", "150", "half"]) {
 		test(`an override of "${pctRaw}" leaves the breakdown's ceiling`, async () => {
 			const model = modelFor(breakdown(100_000, 80_000), NO_ANCHOR, pctRaw);

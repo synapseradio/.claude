@@ -45,7 +45,8 @@ export function thinkingTokens(
 
 /**
  * Why: CLAUDE_AUTOCOMPACT_PCT_OVERRIDE sets the percentage of the window at
- * which compaction runs (https://code.claude.com/docs/en/env-vars).
+ * which compaction runs, and can lower the threshold but never raise it
+ * (https://code.claude.com/docs/en/env-vars).
  *
  * Hazard: the breakdown's `autoCompactThreshold` leaves the override out.
  */
@@ -53,11 +54,12 @@ function effectiveMax(
 	b: SessionContextBreakdown,
 	pctRaw: string | undefined,
 ): number {
+	const threshold = b.autoCompactThreshold ?? b.rawMaxTokens;
 	const pct = pctRaw ? Number(pctRaw) : Number.NaN;
 	if (Number.isFinite(pct) && pct > 0 && pct <= 100) {
-		return Math.floor((b.rawMaxTokens * pct) / 100);
+		return Math.min(threshold, Math.floor((b.rawMaxTokens * pct) / 100));
 	}
-	return b.autoCompactThreshold ?? b.rawMaxTokens;
+	return threshold;
 }
 
 /** The gauge's usage model, live from the last anchoring response, or null without a breakdown or a ceiling. */
