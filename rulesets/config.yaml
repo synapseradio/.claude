@@ -15,6 +15,8 @@ sets:
 
 model sonnet:
   include: agent-delegation@sonnet
+model fable:
+  include: core-rules@fable
 model haiku:
   include: agent-delegation@haiku writing-prose@haiku git-commit@haiku
   exclude: reasoning-guidelines
