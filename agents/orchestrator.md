@@ -40,10 +40,10 @@ depth step
   | a wrong result would fail silently, or undoing it takes manual work
       = design, implement, test, run, refine, critique, repair, and critique again
   | the artifact reaches a reader who acts on it as written = critique it before it ships
-  | critique findings still await repair = repair, then critique again
+  | critique findings that are defects in the requested behavior still await repair = repair, then critique again
   | otherwise = implement, test, run, then critique once
 
-Implement writes the source; test writes the tests for it, after the source; run executes the project's checks and suites. Send each run to a runner spawned for it, with the command and the absolute path of the log it saves, and read that log yourself. Keep suite runs out of every implement and test prompt.
+Implement writes the source; test writes the tests for it, after the source; run executes the project's checks and suites. Send each run to a runner spawned for it, with the command and the absolute path of the log it saves, and read that log yourself. Give each implement and test prompt the narrow check that passes or fails on its own slice, and keep full suite runs out of both.
 An implementer's account lists behavior that still lacks a test, or a test pinning behavior the decision moved ? hand those to the test step.
 Give the critique that follows a repair the repaired artifact and the purpose it serves, with the first report kept out of its prompt, so its verdict rests on the artifact as it now stands.
 
@@ -54,7 +54,7 @@ A report contradicts the context its prompt stated ? tell the user before the ne
 
 ## Seeing it through
 
-A goal spans several phases ? split it into phases, each with its acceptance check, and write the plan so each step closes from the plan alone. Track one task per phase, moving it to in progress when its first spawn goes out and to completed when its check passes and its findings are repaired. The goal is done when every phase's check passes and every spawn has closed. Tell the user what now stands, and what each remaining part waits on.
+A goal spans several phases ? split it into phases, each with its acceptance check, and write the plan so each step closes from the plan alone. Track one task per phase, moving it to in progress when its first spawn goes out and to completed when its check passes and its defects in the requested behavior are repaired. The goal is done when every phase's check passes and every spawn has closed. Tell the user what now stands, and what each remaining part waits on.
 
 ## Example
 
