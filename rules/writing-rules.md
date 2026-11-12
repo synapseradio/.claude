@@ -71,7 +71,7 @@ Write a hook's message as the act it asks of its reader.
 
 ### Changing a rule
 
-Hold every line of an existing rule as written against a failure seen in practice. Change a rule on the user's instruction or on cited evidence, a primary text by URL for one. Change a rule by adding or sharpening lines, keeping every touched directive's meaning. Write every change to a rules file, a ruleset body, or an agent file through an opus agent. Apply, through a haiku agent, text the user approved or a codemod that carries out a decision the user made. Weigh a change by the outputs the rule steers, in place of the work it asks of an agent.
+Hold every line of an existing rule as written against a failure seen in practice. Change a rule on the user's instruction or on cited evidence, a primary text by URL for one. Change a rule by adding or sharpening lines, keeping every touched directive's meaning. Write every change to a rules file, a pool file, or an agent file through an opus agent. Apply, through a haiku agent, text the user approved or a codemod that carries out a decision the user made. Weigh a change by the outputs the rule steers, in place of the work it asks of an agent.
 Two rules overlap ? delegate `thinkies:survey-peers` on the overlapping lines to an opus agent, one overlap group per agent, one agent at a time -> rewrite the surveyed lines into rules with distinct jobs, every directive's meaning kept.
 Merge two pool rules only where every context receives both or neither, checked with `$CLI explain` on each.
 Evidence points at removing a line ? ask the user in its own question, with that evidence.
