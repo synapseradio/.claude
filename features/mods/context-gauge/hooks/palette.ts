@@ -27,6 +27,9 @@ export const BAR_ORDER = [
 
 export type CategoryId = (typeof BAR_ORDER)[number];
 
+/** A run of bar cells drawn as one category, or as the window's free space. */
+export type BarRun = { id: CategoryId | "free"; cells: number };
+
 /** The pixel patterns a bar segment fills its band with. */
 export const TEXTURES = ["solid", "diagonal", "vertical", "dots"] as const;
 
