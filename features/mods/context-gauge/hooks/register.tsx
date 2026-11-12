@@ -1,4 +1,5 @@
 import type {
+	Args,
 	EngineInterface,
 	Register,
 	SessionContextBreakdown,
@@ -10,20 +11,13 @@ import { atom, read, update } from "claude-code";
 import type { MessageEstimates, UsageModel } from "../types";
 import { CATEGORY_SWATCHES, fillSwatch } from "./palette";
 import type { GaugeRow } from "./rows";
-import { gaugeRows } from "./rows";
+import { gaugeRows, NO_ESTIMATES } from "./rows";
 
 const usage = atom(
 	{ plugin: "context-gauge", key: "usage" } as const,
 	null as UsageModel | null,
 );
 
-const NO_ESTIMATES: MessageEstimates = {
-	hooks: 0,
-	user: 0,
-	calls: 0,
-	results: 0,
-	read: 0,
-};
 const estimates = atom(
 	{ plugin: "context-gauge", key: "estimates" } as const,
 	NO_ESTIMATES,
@@ -48,6 +42,9 @@ const BAR_CELL = "\u{1FB0B}";
 /** Cells between legend items. */
 const LEGEND_GAP = 2;
 
+/** The spacer on each side of the bar and between a label and its figure; widths count it. */
+const SPACE = " ";
+
 function abbrev(n: number): string {
 	if (n >= 1_000_000)
 		return `${(n / 1_000_000).toFixed(1).replace(/\.0$/u, "")}M`;
@@ -56,13 +53,12 @@ function abbrev(n: number): string {
 	return String(n);
 }
 
-async function effectiveMax(
-	$: EngineInterface,
+function effectiveMax(
 	b: SessionContextBreakdown,
-): Promise<number> {
+	pctRaw: string | undefined,
+): number {
 	// The breakdown's `autoCompactThreshold` ignores CLAUDE_AUTOCOMPACT_PCT_OVERRIDE,
 	// so derive the ceiling from the override the way the settings file states it.
-	const pctRaw = await $.env.get("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE");
 	const pct = pctRaw ? Number(pctRaw) : Number.NaN;
 	if (Number.isFinite(pct) && pct > 0 && pct <= 100) {
 		return Math.floor((b.rawMaxTokens * pct) / 100);
@@ -76,13 +72,13 @@ async function effectiveMax(
  * response arrives in a fresh, cleared, or compacted window. Category figures
  * are scaled so they sum to `used`.
  */
-async function modelFrom(
-	$: EngineInterface,
+function modelFrom(
 	context: SessionContextUsage,
-): Promise<UsageModel | null> {
+	pctRaw: string | undefined,
+): UsageModel | null {
 	const b = context.breakdown;
 	if (!b || b.rawMaxTokens <= 0) return null;
-	const max = await effectiveMax($, b);
+	const max = effectiveMax(b, pctRaw);
 	const used = context.tokens ?? b.totalTokens;
 	const percent = Math.max(0, Math.min(100, Math.round((used / max) * 100)));
 	const scale = b.totalTokens > 0 ? used / b.totalTokens : 1;
@@ -93,29 +89,35 @@ async function modelFrom(
 }
 
 async function refresh($: EngineInterface): Promise<void> {
-	const { context } = await $.session.usage({ breakdown: "summary" });
-	const model = await modelFrom($, context);
+	const [{ context }, pctRaw] = await Promise.all([
+		$.session.usage({ breakdown: "summary" }),
+		$.env.get("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE"),
+	]);
+	const model = modelFrom(context, pctRaw);
 	await update($, usage, () => model);
 }
 
-async function count(
+/** Adds each field's characters to the estimates, in one update. */
+async function addChars(
 	$: EngineInterface,
-	field: keyof MessageEstimates,
-	chars: number,
+	chars: Partial<MessageEstimates>,
 ): Promise<void> {
-	if (chars > 0)
-		await update($, estimates, (e) => ({ ...e, [field]: e[field] + chars }));
+	if (!Object.values(chars).some((n) => n > 0)) return;
+	await update($, estimates, (e) => ({
+		hooks: e.hooks + (chars.hooks ?? 0),
+		user: e.user + (chars.user ?? 0),
+		calls: e.calls + (chars.calls ?? 0),
+		results: e.results + (chars.results ?? 0),
+		read: e.read + (chars.read ?? 0),
+	}));
 }
 
+/** The part of a classic hook result the model reads. */
+type HookText = { additionalContext?: readonly string[]; block?: string };
+
 /** Characters a classic hook result hands the model: its context entries and its block reason. */
-function hookChars(result: {
-	additionalContext?: readonly string[];
-	block?: string;
-}): number {
-	const context = (result.additionalContext ?? []).reduce(
-		(sum, text) => sum + text.length,
-		0,
-	);
+function hookChars(result: HookText): number {
+	const context = (result.additionalContext ?? []).join("").length;
 	return context + (result.block?.length ?? 0);
 }
 
@@ -136,12 +138,22 @@ function callChars(e: ToolCallInput): number {
 	return e.tool.length + JSON.stringify(args).length;
 }
 
-/** Counts a main-thread hook result; a subagent's hooks fill the subagent's window. */
-async function countHooks<
-	R extends { additionalContext?: readonly string[]; block?: string },
->($: EngineInterface, fromSubagent: boolean, result: R): Promise<R> {
-	if (!fromSubagent) await count($, "hooks", hookChars(result));
+/**
+ * A classic hook that counts the result's text as hooks text on the main
+ * thread; a subagent's hooks fill the subagent's window.
+ */
+async function countClassic<
+	E extends Pick<Args<"classic.Setup">, "agent_id">,
+	R extends HookText,
+>($: EngineInterface, e: E, next: (e: E) => Promise<R>): Promise<R> {
+	const result = await next(e);
+	if (e.agent_id === undefined) await addChars($, { hooks: hookChars(result) });
 	return result;
+}
+
+/** A catch handler that lets the dispatch continue as if the hook were absent. */
+function passThrough<E, R>(_$: EngineInterface, e: E, next: (e: E) => R): R {
+	return next(e);
 }
 
 /**
@@ -174,31 +186,23 @@ function barSegments(
 	rows: readonly GaugeRow[],
 	width: number,
 ): Segment[] {
-	const parts = [
-		...rows
-			.filter((r) => r.tokens > 0)
-			.map((r) => ({
-				tokens: r.tokens,
-				color: CATEGORY_SWATCHES[r.id].hex,
-				floor: 1,
-			})),
-		{
-			tokens: Math.max(0, model.max - model.used),
-			color: "inactive",
-			floor: 0,
-		},
-	];
-	const floors = parts.map((p) => p.floor);
-	const reserved = floors.reduce((a, b) => a + b, 0);
-	const seeded = reserved <= width;
+	const used = rows
+		.filter((r) => r.tokens > 0)
+		.map((r) => ({ tokens: r.tokens, color: CATEGORY_SWATCHES[r.id].hex }));
+	const parts = used.concat({
+		tokens: Math.max(0, model.max - model.used),
+		color: "inactive",
+	});
+	// One cell set aside for each used row, where every row can have one.
+	const rowFloor = used.length <= width ? 1 : 0;
 	const shares = largestRemainder(
 		parts.map((p) => p.tokens),
-		seeded ? width - reserved : width,
+		width - rowFloor * used.length,
 	);
 
 	const out: Segment[] = [];
 	parts.forEach((part, i) => {
-		const cells = (shares[i] ?? 0) + (seeded ? (floors[i] ?? 0) : 0);
+		const cells = (shares[i] ?? 0) + (i < used.length ? rowFloor : 0);
 		if (cells > 0)
 			out.push({ color: part.color, chars: BAR_CELL.repeat(cells) });
 	});
@@ -210,9 +214,9 @@ function figure(row: GaugeRow): string {
 	return `${row.estimated ? "~" : ""}${abbrev(row.tokens)}`;
 }
 
-/** Cells a legend item takes: its label, one space, its figure. */
+/** Cells a legend item takes: its label, a space, its figure. */
 function itemCells(row: GaugeRow): number {
-	return row.label.length + 1 + figure(row).length;
+	return row.label.length + SPACE.length + figure(row).length;
 }
 
 type LegendLine = { rows: GaugeRow[]; cells: number };
@@ -254,10 +258,10 @@ export const register: Register = (on) => {
 		if (e.source === "clear" || e.source === "compact")
 			await update($, estimates, () => NO_ESTIMATES);
 		const result = await next(e);
-		await count($, "hooks", hookChars(result));
+		await addChars($, { hooks: hookChars(result) });
 		await refresh($);
 		return result;
-	}).catch((_$, e, next) => next(e));
+	}).catch(passThrough);
 
 	// Only a person's own typing counts as user text: task notifications, peers
 	// and scheduled triggers enter the window too, and stay in `replies`.
@@ -265,55 +269,42 @@ export const register: Register = (on) => {
 		const result = await next(e);
 		const typed = e.origin.kind === "composer" || e.origin.kind === "bridge";
 		if (typed && !e.isMeta && result.drop === undefined)
-			await count($, "user", e.text.length);
+			await addChars($, { user: e.text.length });
 		return result;
-	}).catch((_$, e, next) => next(e));
+	}).catch(passThrough);
 
 	// Only main-thread calls count; a subagent's calls and results fill its own window.
 	on("tool.call", async ($, e, next) => {
 		const result = await next(e);
 		if (e.agentId === undefined) {
-			await count($, "calls", callChars(e));
-			await count(
-				$,
-				e.tool === "Read" ? "read" : "results",
-				(result.deny ?? result.text ?? "").length,
-			);
+			const resultField = e.tool === "Read" ? "read" : "results";
+			await addChars($, {
+				calls: callChars(e),
+				[resultField]: (result.deny ?? result.text ?? "").length,
+			});
 		}
 		return result;
-	}).catch((_$, e, next) => next(e));
+	}).catch(passThrough);
 
-	on("classic.Setup", async ($, e, next) =>
-		countHooks($, e.agent_id !== undefined, await next(e)),
-	).catch((_$, e, next) => next(e));
-	on("classic.UserPromptSubmit", async ($, e, next) =>
-		countHooks($, e.agent_id !== undefined, await next(e)),
-	).catch((_$, e, next) => next(e));
-	on("classic.UserPromptExpansion", async ($, e, next) =>
-		countHooks($, e.agent_id !== undefined, await next(e)),
-	).catch((_$, e, next) => next(e));
-	on("classic.PostToolUse", async ($, e, next) =>
-		countHooks($, e.agent_id !== undefined, await next(e)),
-	).catch((_$, e, next) => next(e));
-	on("classic.PostToolUseFailure", async ($, e, next) =>
-		countHooks($, e.agent_id !== undefined, await next(e)),
-	).catch((_$, e, next) => next(e));
-	on("classic.PostToolBatch", async ($, e, next) =>
-		countHooks($, e.agent_id !== undefined, await next(e)),
-	).catch((_$, e, next) => next(e));
-	on("classic.Stop", async ($, e, next) =>
-		countHooks($, e.agent_id !== undefined, await next(e)),
-	).catch((_$, e, next) => next(e));
-	on("classic.PostModelSwitch", async ($, e, next) =>
-		countHooks($, e.agent_id !== undefined, await next(e)),
-	).catch((_$, e, next) => next(e));
+	on("classic.Setup", countClassic).catch(passThrough);
+	on("classic.UserPromptSubmit", countClassic).catch(passThrough);
+	on("classic.UserPromptExpansion", countClassic).catch(passThrough);
+	on("classic.PostToolUse", countClassic).catch(passThrough);
+	on("classic.PostToolUseFailure", countClassic).catch(passThrough);
+	on("classic.PostToolBatch", countClassic).catch(passThrough);
+	on("classic.Stop", countClassic).catch(passThrough);
+	on("classic.PostModelSwitch", countClassic).catch(passThrough);
 
 	on("ui.render", { component: "PromptHint" }, async ($, e, next) => {
-		const model = await read($, usage);
-		if (model === null) return next(e);
+		const [hint, model, chars] = await Promise.all([
+			next(e),
+			read($, usage),
+			read($, estimates),
+		]);
+		if (model === null) return hint;
 
 		const { Box, Text } = $.ui.resolve(e);
-		const rows = gaugeRows(model.categories, await read($, estimates));
+		const rows = gaugeRows(model.categories, chars);
 		const width = e.viewport?.columns ?? DEFAULT_COLUMNS;
 		const percent = `${model.percent}%`;
 		const totals = `${abbrev(model.used)}/${abbrev(model.max)}`;
@@ -325,18 +316,18 @@ export const register: Register = (on) => {
 		);
 		const barWidth = Math.max(
 			MIN_BAR_CELLS,
-			lineCells - percent.length - totals.length - 2,
+			lineCells - percent.length - totals.length - 2 * SPACE.length,
 		);
 
 		return (
 			<Box flexDirection="column">
-				{await next(e)}
+				{hint}
 				<Box key="gauge">
 					<Box flexShrink={0}>
 						<Text weight="bold" color={fillSwatch(model.percent).hex}>
 							{percent}
 						</Text>
-						<Text> </Text>
+						<Text>{SPACE}</Text>
 					</Box>
 					<Box key="bar" flexShrink={1} overflow="hidden" height={1}>
 						{barSegments(model, rows, barWidth).map((s, i) => (
@@ -346,7 +337,7 @@ export const register: Register = (on) => {
 						))}
 					</Box>
 					<Box flexShrink={0}>
-						<Text> </Text>
+						<Text>{SPACE}</Text>
 						<Text weight="bold">{totals}</Text>
 					</Box>
 				</Box>
@@ -358,7 +349,7 @@ export const register: Register = (on) => {
 									<Text weight="bold" color={CATEGORY_SWATCHES[r.id].hex}>
 										{r.label}
 									</Text>
-									<Text> </Text>
+									<Text>{SPACE}</Text>
 									<Text weight="bold">{figure(r)}</Text>
 								</Box>
 							))}

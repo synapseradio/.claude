@@ -78,6 +78,16 @@ function engine(on: On): void {
 
 const TYPED = { wait: false, origin: { kind: "composer" } } as const;
 
+/** Starts an interactive terminal session, the one every test draws in. */
+async function startSession($: Engine): Promise<void> {
+	await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
+}
+
+/** Answers every tool call with a result the model reads as `chars` characters. */
+function answerToolCalls(on: On, chars: number): void {
+	on("tool.call", () => ({ result: {}, text: "r".repeat(chars) }));
+}
+
 type DrawnProps = {
 	color?: unknown;
 	backgroundColor?: unknown;
@@ -108,11 +118,7 @@ async function legendText($: Engine): Promise<string> {
 describe("the gauge under the prompt", () => {
 	test("sits on its own line beneath the engine hint line, percentage first, no icons", async ($, on) => {
 		engine(on);
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		await startSession($);
 
 		const ui = await $.ui.mount(HINT);
 		const texts = (await ui.findAll({ type: "Text" })).map((t) => t.text);
@@ -126,11 +132,7 @@ describe("the gauge under the prompt", () => {
 
 	test("each category label is bold in its bar segment colour, with no background", async ($, on) => {
 		engine(on);
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		await startSession($);
 
 		const ui = await $.ui.mount(HINT);
 		const label = await ui.find({ type: "Text", text: "system" });
@@ -145,11 +147,7 @@ describe("the gauge under the prompt", () => {
 
 	test("the percentage, the totals and every legend figure are bold, the percentage in its fill colour", async ($, on) => {
 		engine(on);
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		await startSession($);
 
 		const ui = await $.ui.mount(HINT);
 		const percent = await ui.find({ type: "Text", text: "30%" });
@@ -167,11 +165,7 @@ describe("the gauge under the prompt", () => {
 
 	test("the bar is one vertically centred cell high, free space in the same glyph", async ($, on) => {
 		engine(on);
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		await startSession($);
 
 		const ui = await $.ui.mount({ ...HINT, viewport: VIEWPORT });
 		const bar = (await ui.find({ key: "bar" }))?.text ?? "";
@@ -182,11 +176,7 @@ describe("the gauge under the prompt", () => {
 
 	test("a submitted prompt shows as user text", async ($, on) => {
 		engine(on);
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		await startSession($);
 		await $.prompt.submit({ ...TYPED, text: "x".repeat(4000) });
 
 		expect(await legendText($)).toMatch(/user\s+~1k/u);
@@ -194,45 +184,33 @@ describe("the gauge under the prompt", () => {
 
 	test("a tool call shows its input as calls text and its result as results text", async ($, on) => {
 		engine(on);
-		on("tool.call", () => ({ result: {}, text: "r".repeat(8000) }));
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		answerToolCalls(on, 8000);
+		await startSession($);
 		await $.tool.call({
 			tool: "Bash",
 			command: "x".repeat(400 - 'Bash{"command":""}'.length),
 		});
 
-		const gauge = await legendText($);
-		expect(gauge).toMatch(/calls\s+~100/u);
-		expect(gauge).toMatch(/results\s+~2k/u);
+		const legend = await legendText($);
+		expect(legend).toMatch(/calls\s+~100/u);
+		expect(legend).toMatch(/results\s+~2k/u);
 	});
 
 	test("a Read result shows as read text, apart from other results", async ($, on) => {
 		engine(on);
-		on("tool.call", () => ({ result: {}, text: "r".repeat(8000) }));
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		answerToolCalls(on, 8000);
+		await startSession($);
 		await $.tool.call({ tool: "Read", file_path: "/a" });
 
-		const gauge = await legendText($);
-		expect(gauge).toMatch(/read\s+~2k/u);
-		expect(gauge).not.toMatch(/results/u);
+		const legend = await legendText($);
+		expect(legend).toMatch(/read\s+~2k/u);
+		expect(legend).not.toMatch(/results/u);
 	});
 
 	test("a call a subagent makes leaves the gauge as it was", async ($, on) => {
 		engine(on);
-		on("tool.call", () => ({ result: {}, text: "r".repeat(8000) }));
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		answerToolCalls(on, 8000);
+		await startSession($);
 		const before = await legendText($);
 		await $.tool.call({
 			tool: "Bash",
@@ -248,11 +226,7 @@ describe("the gauge under the prompt", () => {
 		on("classic.UserPromptSubmit", () => ({
 			additionalContext: ["y".repeat(12_000)],
 		}));
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		await startSession($);
 		await $.classic.UserPromptSubmit({ prompt: "hi" });
 		await $.classic.UserPromptSubmit({ prompt: "hi", agent_id: "sub" });
 
@@ -261,11 +235,7 @@ describe("the gauge under the prompt", () => {
 
 	test("compaction clears the estimates", async ($, on) => {
 		engine(on);
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		await startSession($);
 		await $.prompt.submit({ ...TYPED, text: "x".repeat(4000) });
 		await $.classic.SessionStart({ source: "compact" });
 
@@ -276,11 +246,7 @@ describe("the gauge under the prompt", () => {
 	// 2-cell gaps between items: 9 + 2 + 9 + 2 + 11 = 33 cells.
 	test("the bar line ends where the legend's last item ends, on the abbreviated totals", async ($, on) => {
 		engine(on);
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		await startSession($);
 
 		const { gauge, legend } = await drawn($);
 
@@ -291,11 +257,7 @@ describe("the gauge under the prompt", () => {
 
 	test("each legend item is its label, one space and its figure, two cells from the next", async ($, on) => {
 		engine(on);
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		await startSession($);
 
 		const ui = await $.ui.mount({ ...HINT, viewport: VIEWPORT });
 		const line = await ui.find({ key: "legend-0" });
@@ -317,11 +279,7 @@ describe("the gauge under the prompt", () => {
 	// `replies 20k` would need 13 more.
 	test("the legend breaks onto a new line where the next item would not fit", async ($, on) => {
 		engine(on);
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		await startSession($);
 
 		const ui = await $.ui.mount({
 			...HINT,
@@ -337,11 +295,7 @@ describe("the gauge under the prompt", () => {
 
 	test("the bar clips at the row's edge where the row is narrower than measured", async ($, on) => {
 		engine(on);
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		await startSession($);
 
 		const ui = await $.ui.mount({ ...HINT, viewport: VIEWPORT });
 		const bar = await ui.find({ key: "bar" });
@@ -356,12 +310,8 @@ describe("the gauge under the prompt", () => {
 
 	test("every category in the legend owns a bar segment in its colour", async ($, on) => {
 		engine(on);
-		on("tool.call", () => ({ result: {}, text: "r".repeat(400) }));
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		answerToolCalls(on, 400);
+		await startSession($);
 		await $.prompt.submit({ ...TYPED, text: "x".repeat(40) });
 		await $.tool.call({ tool: "Read", file_path: "/a" });
 		await $.tool.call({ tool: "Bash", command: "ls" });
@@ -380,12 +330,8 @@ describe("the gauge under the prompt", () => {
 
 	test("with seven categories every legend line fits the row and the bar line matches the widest", async ($, on) => {
 		engine(on);
-		on("tool.call", () => ({ result: {}, text: "r".repeat(400) }));
-		await $.session.start({
-			cwd: "/",
-			surface: "terminal",
-			isInteractive: true,
-		});
+		answerToolCalls(on, 400);
+		await startSession($);
 		await $.prompt.submit({ ...TYPED, text: "x".repeat(40) });
 		await $.tool.call({ tool: "Read", file_path: "/a" });
 		await $.tool.call({ tool: "Bash", command: "ls" });

@@ -1,8 +1,6 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { gaugeRows } from "../hooks/rows";
-
-const NO_ESTIMATES = { hooks: 0, user: 0, calls: 0, results: 0, read: 0 };
+import { gaugeRows, NO_ESTIMATES } from "../hooks/rows";
 
 describe("gauge rows", () => {
 	test("engine rows are named in bar order, empty rows left out", async () => {

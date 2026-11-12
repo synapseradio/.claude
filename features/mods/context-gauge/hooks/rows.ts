@@ -19,20 +19,6 @@ const ROW_IDS: ReadonlyMap<string, NamedId> = new Map([
 	["Skills", "skills"],
 ]);
 
-const LABELS: Readonly<Record<NamedId, string>> = {
-	system: "system",
-	mcp: "mcp",
-	agents: "agents",
-	memory: "memory",
-	skills: "skills",
-	hooks: "hooks",
-	user: "user",
-	calls: "calls",
-	results: "results",
-	read: "read",
-	replies: "replies",
-};
-
 /** The Messages row's estimated parts, in bar order. */
 const ESTIMATED: readonly (keyof MessageEstimates & NamedId)[] = [
 	"hooks",
@@ -42,7 +28,19 @@ const ESTIMATED: readonly (keyof MessageEstimates & NamedId)[] = [
 	"read",
 ];
 
-const BAR_ORDER = Object.keys(CATEGORY_SWATCHES) as CategoryId[];
+/** Estimates before anything is counted, and after `/clear` or compaction. */
+export const NO_ESTIMATES: MessageEstimates = {
+	hooks: 0,
+	user: 0,
+	calls: 0,
+	results: 0,
+	read: 0,
+};
+
+/** Each category's place in the bar, the swatch table's key order. */
+const BAR_RANK: ReadonlyMap<string, number> = new Map(
+	Object.keys(CATEGORY_SWATCHES).map((id, rank) => [id, rank]),
+);
 
 export type GaugeRow = {
 	id: CategoryId;
@@ -52,7 +50,7 @@ export type GaugeRow = {
 };
 
 function named(id: NamedId, tokens: number, estimated: boolean): GaugeRow {
-	return { id, label: LABELS[id], tokens, estimated };
+	return { id, label: id, tokens, estimated };
 }
 
 /** Splits the Messages row's tokens into the estimated rows and the remainder. */
@@ -64,7 +62,7 @@ function splitMessages(tokens: number, chars: MessageEstimates): GaugeRow[] {
 		named(id, Math.round((chars[id] / CHARS_PER_TOKEN) * scale), true),
 	);
 	const rest = tokens - estimated.reduce((sum, r) => sum + r.tokens, 0);
-	return [...estimated, named("replies", Math.max(0, rest), false)];
+	return estimated.concat(named("replies", Math.max(0, rest), false));
 }
 
 /** Sums the tokens of rows sharing an id and label, keeping the first one's place. */
@@ -75,7 +73,7 @@ function merged(rows: readonly GaugeRow[]): GaugeRow[] {
 		const seen = byKey.get(key);
 		byKey.set(key, seen ? { ...seen, tokens: seen.tokens + r.tokens } : r);
 	}
-	return [...byKey.values()];
+	return Array.from(byKey.values());
 }
 
 /** The rows the gauge draws, in bar order, each with tokens. */
@@ -86,18 +84,11 @@ export function gaugeRows(
 	const rows = categories.flatMap((c): GaugeRow[] => {
 		if (c.name === "Messages") return splitMessages(c.tokens, chars);
 		const id = ROW_IDS.get(c.name);
-		return [
-			id
-				? named(id, c.tokens, false)
-				: {
-						id: "other",
-						label: c.name.toLowerCase(),
-						tokens: c.tokens,
-						estimated: false,
-					},
-		];
+		if (id) return [named(id, c.tokens, false)];
+		const label = c.name.toLowerCase();
+		return [{ id: "other", label, tokens: c.tokens, estimated: false }];
 	});
 	return merged(rows)
 		.filter((r) => r.tokens > 0)
-		.sort((a, b) => BAR_ORDER.indexOf(a.id) - BAR_ORDER.indexOf(b.id));
+		.sort((a, b) => (BAR_RANK.get(a.id) ?? 0) - (BAR_RANK.get(b.id) ?? 0));
 }
