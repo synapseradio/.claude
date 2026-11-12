@@ -10,6 +10,10 @@
 
 bats_require_minimum_version 1.5.0
 
+setup_file() {
+  export BATS_TEST_TIMEOUT=10
+}
+
 setup() {
   load 'helpers/fixture'
   fixture_setup
@@ -91,7 +95,7 @@ JSON
 
 # bats test_tags=unit
 @test "apply corrects a hook command to the floor's spelling when the two normalize alike" {
-  set_base '.hooks = { "PostToolUse": [ { "hooks": [ { "type": "command", "command": "python3.14 $HOME/.claude/scripts/hooks/x.py", "timeout": 5 } ] } ] }'
+  set_base ".hooks = { \"PostToolUse\": [ { \"hooks\": [ { \"type\": \"command\", \"command\": \"python3.15 \$HOME/.claude/scripts/hooks/x.py\", \"timeout\": 5 } ] } ] }"
   write_variant settings.glm.json <<'JSON'
 {
   "env": { "CLAUDE_CODE_ENABLE_TELEMETRY": "1" },
@@ -106,7 +110,7 @@ JSON
   run bash "${APPLY}"
   [ "${status}" -eq 0 ]
   [[ "${output}" == *"corrected"*"hooks.PostToolUse.hooks.command"* ]]
-  [ "$(variant_jq settings.glm.json '.hooks.PostToolUse[0].hooks | map(.command)')" = '["python3.14 $HOME/.claude/scripts/hooks/x.py"]' ]
+  [ "$(variant_jq settings.glm.json '.hooks.PostToolUse[0].hooks | map(.command)')" = "[\"python3.15 \$HOME/.claude/scripts/hooks/x.py\"]" ]
 }
 
 # bats test_tags=unit

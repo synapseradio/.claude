@@ -14,7 +14,7 @@ setup_file() {
 }
 
 setup() {
-  HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-hook-covered-check.sh"
+  export HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-hook-covered-check.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
 
   export HOME="${BATS_TEST_TMPDIR}/home"
@@ -187,8 +187,8 @@ lefthook_runs() {
   lefthook_runs 'node scripts/check.js'
   assert_silent_in "${REPO}" 'node scripts/other.js'
 
-  lefthook_runs 'python3.14 scripts/check.py --check'
-  assert_silent_in "${REPO}" 'python3.14 scripts/other.py'
+  lefthook_runs 'python3.15 scripts/check.py --check'
+  assert_silent_in "${REPO}" 'python3.15 scripts/other.py'
 
   lefthook_runs 'bash scripts/check.sh'
   assert_silent_in "${REPO}" 'bash scripts/other.sh'
@@ -211,14 +211,14 @@ pre-push:
     - name: sync
       run: |
         set -e
-        python3.14 scripts/sync.py
+        python3.15 scripts/sync.py
         shellcheck {push_files} || {
           echo "shellcheck failed"
           exit 1
         }
 EOF
   assert_denies_in "${REPO}" 'shellcheck scripts/build.sh'
-  assert_silent_in "${REPO}" 'python3.14 scripts/sync.py'
+  assert_silent_in "${REPO}" 'python3.15 scripts/sync.py'
   assert_silent_in "${REPO}" 'echo "shellcheck failed"'
 }
 
@@ -389,12 +389,12 @@ call_lefthook()
 call_lefthook run "pre-commit" "$@"
 EOF
   chmod +x "${REPO}/.git/hooks/pre-commit"
-  assert_silent_in "${REPO}" 'python3.14 -m pytest some/tests -q > /tmp/out.txt 2>&1'
+  assert_silent_in "${REPO}" 'python3.15 -m pytest some/tests -q > /tmp/out.txt 2>&1'
 }
 
 @test "a command that redirects both streams with &> stays allowed" {
   lefthook_runs 'bun run lint'
-  assert_silent_in "${REPO}" 'python3.14 -m pytest some/tests -q &> /tmp/out.txt'
+  assert_silent_in "${REPO}" 'python3.15 -m pytest some/tests -q &> /tmp/out.txt'
 }
 
 @test "a check a hook runs is denied when its output is redirected" {

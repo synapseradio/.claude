@@ -4,7 +4,7 @@
 # that can serve it, passing stdin and stdout through untouched.
 #
 # The hook commands name this rather than an interpreter, because `python3`
-# on one machine is 3.14 and on another is a system Python below 3.14, where
+# on one machine is 3.15 and on another is a system Python below 3.15, where
 # the hook would exit before reading its payload and the session would start
 # with no user rules.
 #
@@ -15,9 +15,9 @@
 
 set -uo pipefail
 
-readonly REQUIREMENT='Python 3.14 or later with pyyaml'
-readonly CANDIDATES=(python3.14 python3.15 python3)
-readonly VERSION_PROBE='import sys, yaml; sys.exit(sys.version_info < (3, 14))'
+readonly REQUIREMENT='Python 3.15 or later with pyyaml'
+readonly CANDIDATES=(python3.15 python3)
+readonly VERSION_PROBE='import sys, yaml; sys.exit(sys.version_info < (3, 15))'
 
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
@@ -30,7 +30,7 @@ err() {
 # Arguments:
 #   The interpreter's name or path.
 # Returns:
-#   0 where it exists, imports yaml, and reports 3.14 or later.
+#   0 where it exists, imports yaml, and reports 3.15 or later.
 #######################################
 usable() {
   local candidate="$1"
