@@ -322,21 +322,24 @@ then the variant's residual keys in their existing relative order; the same
 rule for array members; two-space indentation; a trailing newline. No step
 sorts or deduplicates by a rule a later pass would apply differently. Those
 bytes are what `jq .` produces for the merged document, so after writing,
-`diff <(jq . VARIANT) VARIANT` prints nothing.
+`jq . VARIANT | diff - VARIANT` prints nothing.
 
 The diff is empty: `Aligned`. Otherwise go to `Apply`.
 
 ## Apply
 
 Back the variant up, then write the sealed bytes and move them into place.
+Run each command on its own, and carry each printed value into the next
+command as literal text:
 
-```bash
-BR=$(git -C "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" branch --show-current)
-REPO=$(basename "$(dirname "$(git -C "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" rev-parse --path-format=absolute --git-common-dir)")")
-DIR="$HOME/.scratchpad/$REPO/$BR/update-claude-settings"
-mkdir -p "$DIR"
-cp VARIANT "$DIR/$(basename VARIANT).pre-$(date -u +%Y%m%d-%H%M%S).json"
-```
+1. `git -C "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" branch --show-current`
+   prints BRANCH.
+2. `git -C "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" rev-parse --path-format=absolute --git-common-dir`
+   prints a path; REPO is the name of the directory holding it.
+3. `date -u +%Y%m%d-%H%M%S` prints STAMP.
+4. `mkdir -p "$HOME/.scratchpad/REPO/BRANCH/update-claude-settings"`
+5. `cp VARIANT "$HOME/.scratchpad/REPO/BRANCH/update-claude-settings/NAME.pre-STAMP.json"`,
+   with NAME the variant's file name.
 
 Write the sealed JSON with the Write tool to `VARIANT.tmp` beside the
 variant, then run `mv VARIANT.tmp VARIANT`. The move within one directory is

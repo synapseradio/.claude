@@ -32,7 +32,7 @@ The pinned bash lacks a form the style guide gives, `readarray` or an associativ
 ## Startup files
 
 A startup file runs inside a person's interactive shell, sourced on every new shell or login. Write it in the syntax of every shell that sources it. Write it so that sourcing it twice leaves the shell as sourcing it once does, a PATH entry added only where it is absent for one. Keep `exit` and every option that changes error handling, `set -e` for one, out of it. Guard each external tool it calls with a check that the tool exists. Keep network calls and other slow commands off the path every new prompt waits on.
-Check a changed startup file by sourcing it in a fresh process of each shell that reads it, `zsh -c 'source <path>'` for one, and read what it prints to stderr.
+Check a changed startup file by sourcing it in a fresh process of each shell that reads it, through a scratchpad script holding `source <path>` run as `zsh <script>` for one, and read what it prints to stderr.
 
 ## Bats suites
 

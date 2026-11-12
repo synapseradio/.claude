@@ -15,7 +15,7 @@
 		{
 			"name": "rulesets",
 			"source": "./features/plugins/rulesets",
-			"version": "4.0.0",
+			"version": "4.0.1",
 			"description": "Compose the rules each Claude Code session and delegate receives from a pool of rule files and a config.yaml of conditional blocks, with flags, toggles, notices, delivery records, check, explain, adopt, eject, and render."
 		},
 		{
@@ -33,7 +33,7 @@
 		{
 			"name": "harness-config",
 			"source": "./features/plugins/harness-config",
-			"version": "1.1.0",
+			"version": "1.1.1",
 			"description": "Configure the Claude Code harness and switch provider profiles without a credential ever entering the repository. Ships the policy floor and its alignment machinery, a profile format whose only credential field is a path to a helper script, activation as a bounded write, value-free diagnostics, and guards that verify every settings variant stays out of git.",
 			"keywords": [
 				"settings",

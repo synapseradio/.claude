@@ -112,7 +112,7 @@ they are.
 
 1. Read `ROOT/config.yaml` and every file the edit touches, in full.
 2. Take a snapshot into a new directory, and keep its path for the diff:
-   `RUN SCRIPTS/impact.py snapshot --root ROOT --out "$(mktemp -d)/before"`.
+   run `mktemp -d`, then `RUN SCRIPTS/impact.py snapshot --root ROOT --out <that directory>/before`.
 
 ## After any change
 
