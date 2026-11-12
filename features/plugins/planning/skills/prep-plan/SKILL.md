@@ -139,7 +139,8 @@ Cite each document of record by section, in place of copying it; where the two d
 State each fact beside the work unit it binds, with its source.
 Give each removal its own entry.
 Name each way a check could pass with its defect present, and what closes it.
-Give each work unit at most one worker, a test written red-first for each new behavior, and one suite run before its commit.
+Give each work unit at most one worker and a test written red-first for each new behavior.
+Plan one suite run for the whole plan, as its last step before the work is declared done, with each work unit's own cheap checks before its commit.
 Keep a check only where it catches a break that would otherwise ship.
 Keep critic rounds, fix slices, and per-case logs out of a plan, unless the user asks for them.
 
