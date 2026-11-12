@@ -23,7 +23,7 @@ Run every hook. A hook rejects ? make the rejection the next task, fix its cause
 ## History
 
 Rewrite only commits that no remote branch contains, checked with `git branch -r --contains <sha>`. Revert a pushed commit with `git revert`, as a new commit.
-Organise commits per reviewing team from the repository's ownership file: one commit per owning team holding all its files, the scope naming the team, the shared part first.
+Organise commits per reviewing team from the repository's ownership file: one commit per owning team holding all its files, the scope naming the team, the trailer naming its handle, the shared part first.
 A rewrite keeps the tree ? confirm `git diff <old tip> HEAD` prints nothing.
 
 ## Rebasing and conflicts
