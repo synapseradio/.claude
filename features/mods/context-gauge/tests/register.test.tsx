@@ -2,7 +2,15 @@ import type { ContextCategory, On } from "claude-code";
 import type { Engine } from "claude-code/testing";
 import { describe, expect, test } from "claude-code/testing";
 
-import { CATEGORY_SWATCHES, CHIP_TEXT, FILL_SWATCHES } from "../hooks/palette";
+import { CATEGORY_SWATCHES, FILL_SWATCHES } from "../hooks/palette";
+
+/** A bar cell: the sextant filling a cell's middle third, U+1FB0B. */
+const BAR_CELL = /\u{1FB0B}/u;
+
+/** Cells a drawn string takes: one per code point, the bar's astral glyph included. */
+function cells(text: string): number {
+	return text.match(/./gsu)?.length ?? 0;
+}
 
 const HINT = {
 	plugin: "context-gauge",
@@ -70,10 +78,15 @@ function engine(on: On): void {
 
 const TYPED = { wait: false, origin: { kind: "composer" } } as const;
 
-type TextColors = { color?: unknown; backgroundColor?: unknown };
+type DrawnProps = {
+	color?: unknown;
+	backgroundColor?: unknown;
+	weight?: unknown;
+	columnGap?: unknown;
+};
 
-/** The colour props of a drawn Text, none where the node is absent. */
-function colors(node: { props: TextColors } | undefined): TextColors {
+/** The props the gauge's tests read off a drawn element, none where the node is absent. */
+function propsOf(node: { props: DrawnProps } | undefined): DrawnProps {
 	return node?.props ?? {};
 }
 
@@ -111,7 +124,7 @@ describe("the gauge under the prompt", () => {
 		expect(ICONS.test(texts.join(""))).toBe(false);
 	});
 
-	test("each category word is a chip in its bar segment colour, black text on it", async ($, on) => {
+	test("each category label is bold in its bar segment colour, with no background", async ($, on) => {
 		engine(on);
 		await $.session.start({
 			cwd: "/",
@@ -120,16 +133,51 @@ describe("the gauge under the prompt", () => {
 		});
 
 		const ui = await $.ui.mount(HINT);
-		const chip = await ui.find({ type: "Text", text: "system" });
-		const percent = await ui.find({ type: "Text", text: "30%" });
-		const segments = await ui.findAll({ type: "Text", text: /▓/u });
+		const label = await ui.find({ type: "Text", text: "system" });
+		const segments = await ui.findAll({ type: "Text", text: BAR_CELL });
 		await ui.unmount();
 
-		expect(colors(chip).backgroundColor).toBe(CATEGORY_SWATCHES.system.hex);
-		expect(colors(chip).color).toBe(CHIP_TEXT);
-		expect(colors(segments[0]).color).toBe(CATEGORY_SWATCHES.system.hex);
-		expect(colors(percent).color).toBe(FILL_SWATCHES.low.hex);
-		expect(colors(percent).backgroundColor).toBeUndefined();
+		expect(propsOf(label).color).toBe(CATEGORY_SWATCHES.system.hex);
+		expect(propsOf(label).backgroundColor).toBeUndefined();
+		expect(propsOf(label).weight).toBe("bold");
+		expect(propsOf(segments[0]).color).toBe(CATEGORY_SWATCHES.system.hex);
+	});
+
+	test("the percentage, the totals and every legend figure are bold, the percentage in its fill colour", async ($, on) => {
+		engine(on);
+		await $.session.start({
+			cwd: "/",
+			surface: "terminal",
+			isInteractive: true,
+		});
+
+		const ui = await $.ui.mount(HINT);
+		const percent = await ui.find({ type: "Text", text: "30%" });
+		const totals = await ui.find({ type: "Text", text: "30k/100k" });
+		const figures = await ui.findAll({ type: "Text", text: /^\d+k$/u });
+		await ui.unmount();
+
+		expect(propsOf(percent).color).toBe(FILL_SWATCHES.low.hex);
+		expect(propsOf(percent).backgroundColor).toBeUndefined();
+		expect(propsOf(percent).weight).toBe("bold");
+		expect(propsOf(totals).weight).toBe("bold");
+		expect(figures.map((f) => f.text)).toEqual(["6k", "4k", "20k"]);
+		expect(figures.every((f) => propsOf(f).weight === "bold")).toBe(true);
+	});
+
+	test("the bar is one vertically centred cell high, free space in the same glyph", async ($, on) => {
+		engine(on);
+		await $.session.start({
+			cwd: "/",
+			surface: "terminal",
+			isInteractive: true,
+		});
+
+		const ui = await $.ui.mount({ ...HINT, viewport: VIEWPORT });
+		const bar = (await ui.find({ key: "bar" }))?.text ?? "";
+		await ui.unmount();
+
+		expect(bar).toMatch(/^\u{1FB0B}+$/u);
 	});
 
 	test("a submitted prompt shows as user text", async ($, on) => {
@@ -224,11 +272,9 @@ describe("the gauge under the prompt", () => {
 		expect(await legendText($)).not.toMatch(/user/u);
 	});
 
-	// A legend item is 15 cells and the gap between items 3, so N grid columns
-	// span N * 15 + (N - 1) * 3 cells. The hint row draws 3 cells narrower than
-	// the terminal. At 80 columns, 77 cells hold 4 grid columns; at 200, 197
-	// cells hold 11. The bar line spans one grid column fewer than fits.
-	test("the bar line spans one grid column fewer than fit and ends on the abbreviated totals", async ($, on) => {
+	// The fixture's legend reads `system 6k`, `skills 4k`, `replies 20k` with
+	// 2-cell gaps between items: 9 + 2 + 9 + 2 + 11 = 33 cells.
+	test("the bar line ends where the legend's last item ends, on the abbreviated totals", async ($, on) => {
 		engine(on);
 		await $.session.start({
 			cwd: "/",
@@ -238,12 +284,38 @@ describe("the gauge under the prompt", () => {
 
 		const { gauge, legend } = await drawn($);
 
-		expect(gauge).toHaveLength(3 * 15 + 2 * 3);
+		expect(cells(gauge)).toBe(33);
 		expect(gauge.endsWith("30k/100k")).toBe(true);
 		expect(`${gauge}${legend}`).not.toMatch(/comfy/u);
 	});
 
-	test("on a wide terminal the bar line still ends one grid column short", async ($, on) => {
+	test("each legend item is its label, one space and its figure, two cells from the next", async ($, on) => {
+		engine(on);
+		await $.session.start({
+			cwd: "/",
+			surface: "terminal",
+			isInteractive: true,
+		});
+
+		const ui = await $.ui.mount({ ...HINT, viewport: VIEWPORT });
+		const line = await ui.find({ key: "legend-0" });
+		const items = await ui.findAll({
+			type: "Box",
+			text: /^[a-z]+ ~?[\d.]+[kM]?$/u,
+		});
+		await ui.unmount();
+
+		expect(items.map((item) => item.text)).toEqual([
+			"system 6k",
+			"skills 4k",
+			"replies 20k",
+		]);
+		expect(propsOf(line).columnGap).toBe(2);
+	});
+
+	// 30 columns leave 27 cells: `system 6k` and `skills 4k` take 20, and
+	// `replies 20k` would need 13 more.
+	test("the legend breaks onto a new line where the next item would not fit", async ($, on) => {
 		engine(on);
 		await $.session.start({
 			cwd: "/",
@@ -253,12 +325,14 @@ describe("the gauge under the prompt", () => {
 
 		const ui = await $.ui.mount({
 			...HINT,
-			viewport: { columns: 200, rows: 50 },
+			viewport: { columns: 30, rows: 24 },
 		});
-		const gauge = (await ui.find({ key: "gauge" }))?.text ?? "";
+		const first = await ui.find({ key: "legend-0" });
+		const second = await ui.find({ key: "legend-1" });
 		await ui.unmount();
 
-		expect(gauge).toHaveLength(10 * 15 + 9 * 3);
+		expect(first?.text).toBe("system 6kskills 4k");
+		expect(second?.text).toBe("replies 20k");
 	});
 
 	test("the bar clips at the row's edge where the row is narrower than measured", async ($, on) => {
@@ -293,21 +367,18 @@ describe("the gauge under the prompt", () => {
 		await $.tool.call({ tool: "Bash", command: "ls" });
 
 		const ui = await $.ui.mount({ ...HINT, viewport: VIEWPORT });
-		const legend = await ui.find({ key: "legend" });
-		const segments = await ui.findAll({ type: "Text", text: /▓/u });
-		const chips = (
-			await ui.findAll({ type: "Text", text: /^ [a-z]+ +$/u })
-		).filter((chip) => legend?.text.includes(chip.text) === true);
+		const segments = await ui.findAll({ type: "Text", text: BAR_CELL });
+		const labels = await ui.findAll({ type: "Text", text: /^[a-z]+$/u });
 		await ui.unmount();
 
-		const segmentColors = new Set(segments.map((s) => colors(s).color));
-		expect(chips).toHaveLength(7);
-		for (const chip of chips) {
-			expect(segmentColors.has(colors(chip).backgroundColor)).toBe(true);
+		const segmentColors = new Set(segments.map((s) => propsOf(s).color));
+		expect(labels).toHaveLength(7);
+		for (const label of labels) {
+			expect(segmentColors.has(propsOf(label).color)).toBe(true);
 		}
 	});
 
-	test("the legend lays seven categories out as aligned lines of four and three at 80 columns", async ($, on) => {
+	test("with seven categories every legend line fits the row and the bar line matches the widest", async ($, on) => {
 		engine(on);
 		on("tool.call", () => ({ result: {}, text: "r".repeat(400) }));
 		await $.session.start({
@@ -320,13 +391,23 @@ describe("the gauge under the prompt", () => {
 		await $.tool.call({ tool: "Bash", command: "ls" });
 
 		const ui = await $.ui.mount({ ...HINT, viewport: VIEWPORT });
-		const first = await ui.find({ key: "legend-0" });
-		const second = await ui.find({ key: "legend-1" });
-		const third = await ui.find({ key: "legend-2" });
+		const gauge = (await ui.find({ key: "gauge" }))?.text ?? "";
+		const lines: { text: string; children: unknown[] }[] = [];
+		for (let n = 0; ; n++) {
+			const line = await ui.find({ key: `legend-${n}` });
+			if (line === undefined) break;
+			lines.push(line);
+		}
 		await ui.unmount();
 
-		expect(first?.children).toHaveLength(4);
-		expect(second?.children).toHaveLength(3);
-		expect(third).toBeUndefined();
+		// A line draws its items' text plus a 2-cell gap between each pair.
+		const widths = lines.map(
+			(line) => cells(line.text) + 2 * (line.children.length - 1),
+		);
+		const items = lines.reduce((sum, line) => sum + line.children.length, 0);
+		expect(items).toBe(7);
+		const widest = widths.reduce((most, w) => Math.max(most, w), 0);
+		expect(widest).toBeLessThanOrEqual(VIEWPORT.columns - 3);
+		expect(cells(gauge)).toBe(widest);
 	});
 });

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "claude-code/testing";
 import type { Swatch } from "../hooks/palette";
-import { CATEGORY_SWATCHES, CHIP_TEXT, FILL_SWATCHES } from "../hooks/palette";
+import { CATEGORY_SWATCHES, FILL_SWATCHES } from "../hooks/palette";
 
 // Open Color 1.9.1, https://github.com/yeun/open-color/blob/v1.9.1/open-color.json
 const OPEN_COLOR: Readonly<Record<string, readonly string[]>> = {
@@ -149,7 +149,6 @@ const OPEN_COLOR: Readonly<Record<string, readonly string[]>> = {
 		"#d9480f",
 	],
 };
-const OPEN_COLOR_BLACK = "#000000";
 
 // Terminal backgrounds the gauge must read on: white, Open Color gray 0, a near-black, Open Color gray 9.
 const SURFACES = ["#ffffff", "#f8f9fa", "#1a1a19", "#212529"];
@@ -185,18 +184,9 @@ describe("palette", () => {
 				`${name} ${s.hex}`,
 			);
 		}
-		expect(CHIP_TEXT).toBe(OPEN_COLOR_BLACK);
 	});
 
-	test("chip text reads at 4.5:1 or more on every chip", async () => {
-		for (const [name, s] of swatches) {
-			expect(`${name} ${contrast(CHIP_TEXT, s.hex) >= 4.5}`).toBe(
-				`${name} true`,
-			);
-		}
-	});
-
-	test("every bar colour stands at 3:1 or more on light and dark surfaces", async () => {
+	test("every category colour, as bar cells and as bold label text, stands at 3:1 or more on light and dark surfaces", async () => {
 		for (const [name, s] of Object.entries(CATEGORY_SWATCHES)) {
 			for (const surface of SURFACES) {
 				expect(`${name} on ${surface} ${contrast(s.hex, surface) >= 3}`).toBe(

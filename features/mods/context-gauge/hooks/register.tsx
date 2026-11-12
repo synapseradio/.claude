@@ -8,7 +8,7 @@ import type {
 import { atom, read, update } from "claude-code";
 
 import type { MessageEstimates, UsageModel } from "../types";
-import { CATEGORY_SWATCHES, CHIP_TEXT, fillSwatch } from "./palette";
+import { CATEGORY_SWATCHES, fillSwatch } from "./palette";
 import type { GaugeRow } from "./rows";
 import { gaugeRows } from "./rows";
 
@@ -38,11 +38,15 @@ const DEFAULT_COLUMNS = 80;
 const ROW_INSET = 3;
 const MIN_BAR_CELLS = 10;
 
-/** A legend item: a chip of ` label ` with the label padded to 7, a space, then a 5-cell figure. */
-const LABEL_CELLS = 7;
-const FIGURE_CELLS = 5;
-const ITEM_CELLS = LABEL_CELLS + 2 + 1 + FIGURE_CELLS;
-const ITEM_GAP = 3;
+/**
+ * Every bar cell, used and free: the sextant filling a cell's middle third
+ * (U+1FB0B), so the bar sits centred on the text line with space above and
+ * below it.
+ */
+const BAR_CELL = "\u{1FB0B}";
+
+/** Cells between legend items. */
+const LEGEND_GAP = 2;
 
 function abbrev(n: number): string {
 	if (n >= 1_000_000)
@@ -160,10 +164,10 @@ function largestRemainder(weights: readonly number[], cells: number): number[] {
 type Segment = { color: string; chars: string };
 
 /**
- * The bar, `width` cells: each row with tokens owns at least one `▓` cell in
- * its colour, the remaining cells split by tokens against the window, and
- * free space fills the rest with `░`. Where rows outnumber cells, every part
- * takes its plain proportional share.
+ * The bar, `width` cells: each row with tokens owns at least one cell in its
+ * colour, the remaining cells split by tokens against the window, and free
+ * space fills the rest in the inactive colour. Where rows outnumber cells,
+ * every part takes its plain proportional share.
  */
 function barSegments(
 	model: UsageModel,
@@ -175,13 +179,11 @@ function barSegments(
 			.filter((r) => r.tokens > 0)
 			.map((r) => ({
 				tokens: r.tokens,
-				char: "▓",
 				color: CATEGORY_SWATCHES[r.id].hex,
 				floor: 1,
 			})),
 		{
 			tokens: Math.max(0, model.max - model.used),
-			char: "░",
 			color: "inactive",
 			floor: 0,
 		},
@@ -198,7 +200,7 @@ function barSegments(
 	parts.forEach((part, i) => {
 		const cells = (shares[i] ?? 0) + (seeded ? (floors[i] ?? 0) : 0);
 		if (cells > 0)
-			out.push({ color: part.color, chars: part.char.repeat(cells) });
+			out.push({ color: part.color, chars: BAR_CELL.repeat(cells) });
 	});
 	return out;
 }
@@ -208,25 +210,29 @@ function figure(row: GaugeRow): string {
 	return `${row.estimated ? "~" : ""}${abbrev(row.tokens)}`;
 }
 
-/** How many legend items fit side by side on a terminal `width` columns wide. */
-function gridColumns(width: number): number {
-	return Math.max(
-		1,
-		Math.floor((width - ROW_INSET + ITEM_GAP) / (ITEM_CELLS + ITEM_GAP)),
-	);
+/** Cells a legend item takes: its label, one space, its figure. */
+function itemCells(row: GaugeRow): number {
+	return row.label.length + 1 + figure(row).length;
 }
 
-/** Cells that `columns` legend items span, gaps between them included. */
-function gridSpan(columns: number): number {
-	return columns * ITEM_CELLS + (columns - 1) * ITEM_GAP;
-}
+type LegendLine = { rows: GaugeRow[]; cells: number };
 
-/** Legend rows in lines of as many fixed-width items as `width` holds. */
-function legendLines(rows: readonly GaugeRow[], width: number): GaugeRow[][] {
-	const columns = gridColumns(width);
-	const lines: GaugeRow[][] = [];
-	for (let i = 0; i < rows.length; i += columns)
-		lines.push(rows.slice(i, i + columns));
+/**
+ * Legend rows in lines, each item at its own width and `LEGEND_GAP` cells
+ * apart, a line breaking where its next item would pass `room` cells.
+ */
+function legendLines(rows: readonly GaugeRow[], room: number): LegendLine[] {
+	const lines: LegendLine[] = [];
+	for (const row of rows) {
+		const line = lines.at(-1);
+		const needed = itemCells(row);
+		if (line !== undefined && line.cells + LEGEND_GAP + needed <= room) {
+			line.rows.push(row);
+			line.cells += LEGEND_GAP + needed;
+		} else {
+			lines.push({ rows: [row], cells: needed });
+		}
+	}
 	return lines;
 }
 
@@ -309,14 +315,17 @@ export const register: Register = (on) => {
 		const { Box, Text } = $.ui.resolve(e);
 		const rows = gaugeRows(model.categories, await read($, estimates));
 		const width = e.viewport?.columns ?? DEFAULT_COLUMNS;
-		const percent = `${model.percent}% `;
-		const totals = ` ${abbrev(model.used)}/${abbrev(model.max)}`;
-		// The bar line ends on a legend column's edge, one column short of
-		// the widest grid that fits.
-		const lineCells = gridSpan(Math.max(1, gridColumns(width) - 1));
+		const percent = `${model.percent}%`;
+		const totals = `${abbrev(model.used)}/${abbrev(model.max)}`;
+		const lines = legendLines(rows, width - ROW_INSET);
+		// The bar line ends where the widest legend line ends.
+		const lineCells = lines.reduce(
+			(widest, line) => Math.max(widest, line.cells),
+			0,
+		);
 		const barWidth = Math.max(
 			MIN_BAR_CELLS,
-			lineCells - percent.length - totals.length,
+			lineCells - percent.length - totals.length - 2,
 		);
 
 		return (
@@ -324,7 +333,10 @@ export const register: Register = (on) => {
 				{await next(e)}
 				<Box key="gauge">
 					<Box flexShrink={0}>
-						<Text color={fillSwatch(model.percent).hex}>{percent}</Text>
+						<Text weight="bold" color={fillSwatch(model.percent).hex}>
+							{percent}
+						</Text>
+						<Text> </Text>
 					</Box>
 					<Box key="bar" flexShrink={1} overflow="hidden" height={1}>
 						{barSegments(model, rows, barWidth).map((s, i) => (
@@ -334,25 +346,20 @@ export const register: Register = (on) => {
 						))}
 					</Box>
 					<Box flexShrink={0}>
-						<Text>{totals}</Text>
+						<Text> </Text>
+						<Text weight="bold">{totals}</Text>
 					</Box>
 				</Box>
 				<Box key="legend" flexDirection="column">
-					{legendLines(rows, width).map((line, n) => (
-						<Box key={`legend-${n}`} columnGap={ITEM_GAP}>
-							{line.map((r) => (
-								<Box
-									key={`item-${r.id}-${r.label}`}
-									width={ITEM_CELLS}
-									flexShrink={0}
-								>
-									<Text
-										color={CHIP_TEXT}
-										backgroundColor={CATEGORY_SWATCHES[r.id].hex}
-									>
-										{` ${r.label.slice(0, LABEL_CELLS).padEnd(LABEL_CELLS)} `}
+					{lines.map((line, n) => (
+						<Box key={`legend-${n}`} columnGap={LEGEND_GAP}>
+							{line.rows.map((r) => (
+								<Box key={`item-${r.id}-${r.label}`} flexShrink={0}>
+									<Text weight="bold" color={CATEGORY_SWATCHES[r.id].hex}>
+										{r.label}
 									</Text>
-									<Text>{` ${figure(r).padStart(FIGURE_CELLS)}`}</Text>
+									<Text> </Text>
+									<Text weight="bold">{figure(r)}</Text>
 								</Box>
 							))}
 						</Box>

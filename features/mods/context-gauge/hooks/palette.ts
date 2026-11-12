@@ -41,9 +41,6 @@ export const CATEGORY_SWATCHES: Readonly<Record<CategoryId, Swatch>> = {
 	other: { hue: "gray", shade: 6, hex: "#868e96" },
 };
 
-/** Open Color black, the text colour of every chip. */
-export const CHIP_TEXT = "#000000";
-
 /**
  * The percentage chip's swatch by how full the window is. Orange stands in for yellow:
  * no Open Color yellow reaches 3:1 on a near-white surface.
