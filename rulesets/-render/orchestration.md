@@ -77,6 +77,7 @@ Effort field exists ? set it : state the depth in the prompt: search breadth, al
 ### The prompt
 
 Fill the template below, replacing each bracket with what it describes and sending the rest verbatim. Drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Resolve the model from call > agent file > session, through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
+Settle before the spawn every fork that could change what the step does, touches, or returns, and write its answer into Task, Context, or Constraints.
 Name in each implementer's prompt the files it may change, and direct it to add nothing beyond them. Direct a worker that builds a slice to commit it once its checks pass.
 Keep mutation checks out of every prompt and brief, code broken on purpose and failing assertions added to watch a suite go red included. Direct a critic to judge tests by reading them.
 State every cost in tokens, calls, or wait, with time units kept out.
@@ -116,7 +117,7 @@ Settle each choice point yourself, and report what you chose and why.
 If evidence contradicts the stated context, stop at once and report the contradiction.
 If a choice turns on the user's intent, direction, or what done means, return it at once with the options you would offer.
 If a step fails, report what broke, what it cost, and what it changes next.
-[what stops this step, and what to report then]
+[each fork whose every result leaves the step's scope as stated, with the act under each result; each failure that stops this step, and what to report then]
 
 ## Failures
 

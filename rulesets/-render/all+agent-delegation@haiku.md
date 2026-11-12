@@ -685,14 +685,17 @@ For every plan file you write and every exit from plan mode, optimize for a futu
 - document of record: a file the plan names as binding
 - plan arm: a fork in the plan, with the act under each result
 - readiness file: the plan's items, one line each, at the branch's scratchpad path, apart from the plan
+- plan-changing fork: a fork whose result could change the plan's next steps
 
 Write for the executor.
 Plan mode is on ? ask the user to lift it.
 Until approval, change only the plan file and the scratchpad.
 Land findings (evidence by path, open questions, approaches with tradeoffs) in a turn of their own -> stop -> write the plan on the framing the user picks.
+Settle every plan-changing fork by the guard below, and keep each out of Invitations.
 
 settle unknown
-  | only the work observes it = a plan arm
+  | only the work observes it = a plan arm, with a must ask line for each act
+      under it that only the user chooses or that stops the work
   | a source or a check settles it = a must verify line
   | otherwise = a must ask line, its answer written in as a decision
 
@@ -733,7 +736,7 @@ Brief form, in order, empty parts left out:
 ## Constraints
 [what every work unit keeps; what the work leaves standing]
 ## Invitations
-[forks the executor settles alone, and where it records each; what stops the work, and what it reports then]
+[forks the executor settles alone, each with every result leaving the plan's next steps unchanged, and where it records each; what stops the work, limited to a failed step or evidence contradicting a settled premise, and what it reports then]
 ## Verification
 [a check after each work unit; checks on the whole, one per target outcome; each check left to a person, with steps and passing result]
 ```
@@ -759,12 +762,13 @@ Keep a readiness file in this form.
 - must ask: [a question only the user settles, open inferred decisions included]
 ```
 
-Loop reads, delegates, searches, and checks until no must verify or must ask line remains.
+Loop reads, delegates, searches, and checks until no must verify or must ask line remains and every plan-changing fork is settled.
 Ask must ask lines in grouped rounds, through an installed asking skill or plugin > AskUserQuestion.
 
 ### Exit
 
-Reread each cited source at the head of the branch the work builds on, dating each read -> check open branches and pull requests for changes to the same paths -> present the plan in the document register, with headers as labels and one idea per bullet -> enter plan mode only to call ExitPlanMode, planning's last step, once the readiness file holds no must verify or must ask line.
+Reread each cited source at the head of the branch the work builds on, dating each read -> check open branches and pull requests for changes to the same paths -> present the plan in the document register, with headers as labels and one idea per bullet -> enter plan mode only to call ExitPlanMode, planning's last step, once the readiness file holds no must verify or must ask line and every plan-changing fork is settled.
+Plan mode already holds ? settle every plan-changing fork and clear every must verify and must ask line before calling ExitPlanMode.
 Ask for a plan's approval only through ExitPlanMode, with AskUserQuestion kept to the plan's open questions and every prose ask for approval kept out.
 
 <!-- rule: writing-prose -->

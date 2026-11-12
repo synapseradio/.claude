@@ -77,6 +77,7 @@ Effort field exists ? set it : state the depth in the prompt: search breadth, al
 ### The prompt
 
 Fill the template below, replacing each bracket with what it describes and sending the rest verbatim. Drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Resolve the model from call > agent file > session, through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
+Settle before the spawn every fork that could change what the step does, touches, or returns, and write its answer into Task, Context, or Constraints.
 Name in each implementer's prompt the files it may change, and direct it to add nothing beyond them. Direct a worker that builds a slice to commit it once its checks pass.
 Keep mutation checks out of every prompt and brief, code broken on purpose and failing assertions added to watch a suite go red included. Direct a critic to judge tests by reading them.
 State every cost in tokens, calls, or wait, with time units kept out.
@@ -116,7 +117,7 @@ Settle each choice point yourself, and report what you chose and why.
 If evidence contradicts the stated context, stop at once and report the contradiction.
 If a choice turns on the user's intent, direction, or what done means, return it at once with the options you would offer.
 If a step fails, report what broke, what it cost, and what it changes next.
-[what stops this step, and what to report then]
+[each fork whose every result leaves the step's scope as stated, with the act under each result; each failure that stops this step, and what to report then]
 
 ## Failures
 
@@ -817,14 +818,17 @@ For every plan file you write and every exit from plan mode, optimize for a futu
 - document of record: a file the plan names as binding
 - plan arm: a fork in the plan, with the act under each result
 - readiness file: the plan's items, one line each, at the branch's scratchpad path, apart from the plan
+- plan-changing fork: a fork whose result could change the plan's next steps
 
 Write for the executor.
 Plan mode is on ? ask the user to lift it.
 Until approval, change only the plan file and the scratchpad.
 Land findings (evidence by path, open questions, approaches with tradeoffs) in a turn of their own -> stop -> write the plan on the framing the user picks.
+Settle every plan-changing fork by the guard below, and keep each out of Invitations.
 
 settle unknown
-  | only the work observes it = a plan arm
+  | only the work observes it = a plan arm, with a must ask line for each act
+      under it that only the user chooses or that stops the work
   | a source or a check settles it = a must verify line
   | otherwise = a must ask line, its answer written in as a decision
 
@@ -865,7 +869,7 @@ Brief form, in order, empty parts left out:
 ## Constraints
 [what every work unit keeps; what the work leaves standing]
 ## Invitations
-[forks the executor settles alone, and where it records each; what stops the work, and what it reports then]
+[forks the executor settles alone, each with every result leaving the plan's next steps unchanged, and where it records each; what stops the work, limited to a failed step or evidence contradicting a settled premise, and what it reports then]
 ## Verification
 [a check after each work unit; checks on the whole, one per target outcome; each check left to a person, with steps and passing result]
 ```
@@ -891,12 +895,13 @@ Keep a readiness file in this form.
 - must ask: [a question only the user settles, open inferred decisions included]
 ```
 
-Loop reads, delegates, searches, and checks until no must verify or must ask line remains.
+Loop reads, delegates, searches, and checks until no must verify or must ask line remains and every plan-changing fork is settled.
 Ask must ask lines in grouped rounds, through an installed asking skill or plugin > AskUserQuestion.
 
 ### Exit
 
-Reread each cited source at the head of the branch the work builds on, dating each read -> check open branches and pull requests for changes to the same paths -> present the plan in the document register, with headers as labels and one idea per bullet -> enter plan mode only to call ExitPlanMode, planning's last step, once the readiness file holds no must verify or must ask line.
+Reread each cited source at the head of the branch the work builds on, dating each read -> check open branches and pull requests for changes to the same paths -> present the plan in the document register, with headers as labels and one idea per bullet -> enter plan mode only to call ExitPlanMode, planning's last step, once the readiness file holds no must verify or must ask line and every plan-changing fork is settled.
+Plan mode already holds ? settle every plan-changing fork and clear every must verify and must ask line before calling ExitPlanMode.
 Ask for a plan's approval only through ExitPlanMode, with AskUserQuestion kept to the plan's open questions and every prose ask for approval kept out.
 
 <!-- rule: writing-prose variant: haiku -->
