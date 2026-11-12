@@ -500,7 +500,7 @@ A tool call fails ? read the error before choosing the next step, and treat the 
 ### Jira and Notion
 
 Read and write Jira through `acli jira` in Bash, in place of the Atlassian MCP tools. Read `acli jira <command> --help` for flags before a write.
-Read and write Notion through the `ntn` CLI, in place of the Notion MCP and new SDK scripts, and keep using an existing SDK script that works. Run `ntn` as `zsh -ic '<command>'`, the shell that loads its token.
+Read and write Notion through the `ntn` CLI, in place of the Notion MCP and new SDK scripts, and keep using an existing SDK script that works. Run `ntn` as a direct Bash command, in place of a wrapping shell.
 Hold `ntn`'s reach as the pages shared with its integration, and treat its miss as no evidence of absence.
 
 ### A documentation site
