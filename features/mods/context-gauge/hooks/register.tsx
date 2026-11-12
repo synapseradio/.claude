@@ -40,11 +40,6 @@ const context = atom(
 	null as SessionContextUsage | null,
 );
 
-const override = atom(
-	{ plugin: "context-gauge", key: "override" } as const,
-	null as string | null,
-);
-
 const estimates = atom(
 	{ plugin: "context-gauge", key: "estimates" } as const,
 	NO_ESTIMATES,
@@ -89,17 +84,13 @@ function onMain(e: { readonly agentId?: string | undefined }): boolean {
 	return e.agentId === undefined;
 }
 
-/** Reads the breakdown and the compaction override into their atoms; a breakdown that fails to read leaves the last one. */
+/** Reads the breakdown into its atom; a breakdown that fails to read leaves the last one. */
 async function refresh($: EngineInterface): Promise<void> {
-	const [usage, pct] = await Promise.all([
-		$.session.usage({ breakdown: "summary" }).catch(() => null),
-		$.env.get("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE"),
-	]);
+	const usage = await $.session
+		.usage({ breakdown: "summary" })
+		.catch(() => null);
 	if (usage === null) return;
-	await Promise.all([
-		update($, context, () => usage.context),
-		update($, override, () => pct ?? null),
-	]);
+	await update($, context, () => usage.context);
 }
 
 /**
@@ -280,26 +271,18 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 	next,
 ) => {
 	if (e.surface !== "terminal") return next(e);
-	const [
-		hint,
-		breakdown,
-		pctRaw,
-		counted,
-		anchorTokens,
-		pendingChars,
-		fallback,
-	] = await Promise.all([
-		next(e),
-		read($, context),
-		read($, override),
-		read($, estimates),
-		read($, anchor),
-		read($, pending),
-		read($, glyphs),
-	]);
+	const [hint, breakdown, counted, anchorTokens, pendingChars, fallback] =
+		await Promise.all([
+			next(e),
+			read($, context),
+			read($, estimates),
+			read($, anchor),
+			read($, pending),
+			read($, glyphs),
+		]);
 	if (breakdown === null) return hint;
 	const live = { anchor: anchorTokens, pending: pendingChars };
-	const model = usageModel(breakdown, live, pctRaw ?? undefined);
+	const model = usageModel(breakdown, live);
 	if (model === null) return hint;
 
 	const ui = $.ui.resolve(e);

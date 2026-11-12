@@ -73,9 +73,8 @@ const NO_ANCHOR = { anchor: null, pending: 0 };
 function modelFor(
 	b: SessionContextBreakdown,
 	live: Parameters<typeof usageModel>[1] = NO_ANCHOR,
-	pctRaw?: string,
 ) {
-	return usageModel({ window: b.rawMaxTokens, breakdown: b }, live, pctRaw);
+	return usageModel({ window: b.rawMaxTokens, breakdown: b }, live);
 }
 
 describe("the window after a response", () => {
@@ -160,42 +159,18 @@ describe("the usage model", () => {
 		]);
 	});
 
-	test("the ceiling is the auto-compaction threshold where no override is set", async () => {
+	test("the ceiling is the auto-compaction threshold", async () => {
 		expect(modelFor(breakdown(100_000, 80_000))?.max).toBe(80_000);
 	});
 
-	test("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE sets the ceiling as a share of the raw window", async () => {
-		const model = modelFor(breakdown(100_000, 80_000), NO_ANCHOR, "50");
-
-		expect(model?.max).toBe(50_000);
+	test("with auto-compaction off, the ceiling is the raw window", async () => {
+		expect(modelFor(breakdown(100_000))?.max).toBe(100_000);
 	});
 
-	// Why: the override can lower the auto-compaction threshold, never raise
-	// it (https://code.claude.com/docs/en/env-vars).
-	test("an override above the auto-compaction threshold leaves the threshold", async () => {
-		const model = modelFor(breakdown(100_000, 80_000), NO_ANCHOR, "90");
+	test("the percentage divides used by the auto-compaction threshold, not the raw window", async () => {
+		const model = modelFor(breakdown(100_000, 40_000));
 
-		expect(model?.max).toBe(80_000);
-	});
-
-	test("without a threshold, an override sets the ceiling as a share of the raw window", async () => {
-		const model = modelFor(breakdown(100_000), NO_ANCHOR, "90");
-
-		expect(model?.max).toBe(90_000);
-	});
-
-	for (const pctRaw of ["0", "150", "half"]) {
-		test(`an override of "${pctRaw}" leaves the breakdown's ceiling`, async () => {
-			const model = modelFor(breakdown(100_000, 80_000), NO_ANCHOR, pctRaw);
-
-			expect(model?.max).toBe(80_000);
-		});
-	}
-
-	test("the percentage divides used by the effective ceiling, not the raw window", async () => {
-		const model = modelFor(breakdown(100_000, 80_000), NO_ANCHOR, "50");
-
-		expect(model?.percent).toBe(60);
+		expect(model?.percent).toBe(75);
 	});
 
 	test("the percentage rounds to a whole number", async () => {
@@ -212,7 +187,7 @@ describe("the usage model", () => {
 	});
 
 	test("no breakdown gives no model", async () => {
-		expect(usageModel({ window: 100_000 }, NO_ANCHOR, undefined)).toBeNull();
+		expect(usageModel({ window: 100_000 }, NO_ANCHOR)).toBeNull();
 	});
 
 	test("an empty window gives no model", async () => {

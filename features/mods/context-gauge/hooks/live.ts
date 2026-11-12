@@ -2,7 +2,6 @@
 
 import type {
 	ModelUsage,
-	SessionContextBreakdown,
 	SessionContextUsage,
 	TurnStepResult,
 } from "claude-code";
@@ -43,34 +42,14 @@ export function thinkingTokens(
 	);
 }
 
-/**
- * Why: CLAUDE_AUTOCOMPACT_PCT_OVERRIDE sets the percentage of the window at
- * which compaction runs, and can lower the threshold but never raise it
- * (https://code.claude.com/docs/en/env-vars).
- *
- * Hazard: the breakdown's `autoCompactThreshold` leaves the override out.
- */
-function effectiveMax(
-	b: SessionContextBreakdown,
-	pctRaw: string | undefined,
-): number {
-	const threshold = b.autoCompactThreshold ?? b.rawMaxTokens;
-	const pct = pctRaw ? Number(pctRaw) : Number.NaN;
-	if (Number.isFinite(pct) && pct > 0 && pct <= 100) {
-		return Math.min(threshold, Math.floor((b.rawMaxTokens * pct) / 100));
-	}
-	return threshold;
-}
-
-/** The gauge's usage model, live from the last anchoring response, or null without a breakdown or a ceiling. */
+/** The gauge's usage model, live from the last anchoring response, or null without a breakdown or a ceiling; the ceiling is the auto-compaction threshold, or the raw window where auto-compaction is off. */
 export function usageModel(
 	context: SessionContextUsage,
 	live: { anchor: number | null; pending: number },
-	pctRaw: string | undefined,
 ): UsageModel | null {
 	const breakdown = context.breakdown;
 	if (breakdown === undefined) return null;
-	const max = effectiveMax(breakdown, pctRaw);
+	const max = breakdown.autoCompactThreshold ?? breakdown.rawMaxTokens;
 	if (max <= 0) return null;
 	const used =
 		live.anchor === null

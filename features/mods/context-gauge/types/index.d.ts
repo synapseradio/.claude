@@ -31,8 +31,6 @@ declare module "claude-code" {
 		"context-gauge": {
 			/** The last breakdown read, or null before the first. */
 			context: SessionContextUsage | null;
-			/** CLAUDE_AUTOCOMPACT_PCT_OVERRIDE as read, or null where unset. */
-			override: string | null;
 			estimates: MessageEstimates;
 			/** The window as the last main-thread response left it, or null before one. */
 			anchor: number | null;
