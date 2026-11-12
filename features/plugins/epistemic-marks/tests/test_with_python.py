@@ -1,6 +1,6 @@
-"""Tests for hooks/with-python.sh, the interpreter chooser every hook command
-runs through instead of naming an interpreter directly, run from the plugin
-root:
+"""Tests for hooks/with-python.sh, the interpreter chooser every hook command runs through.
+
+Hook commands name the chooser instead of an interpreter directly. Run from the plugin root:
 
     python3 -m unittest discover -s tests -p test_with_python.py -v
 
@@ -24,13 +24,13 @@ ESCAPE_HATCH = "EPISTEMIC_MARKS_PYTHON"
 PROBE_SCRIPT = "print('PROBE-OK')\n"
 
 
-def make_executable(path, body):
+def make_executable(path, body) -> None:
     path.write_text(body)
     mode = path.stat().st_mode
     path.chmod(mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def working_mock(path, real_interpreter):
+def working_mock(path, real_interpreter) -> None:
     """A stand-in that behaves like a real interpreter at or above the floor.
 
     It answers a `-c` version probe and a script invocation alike by handing
@@ -40,13 +40,15 @@ def working_mock(path, real_interpreter):
     make_executable(path, f'#!/bin/bash\nexec "{real_interpreter}" "$@"\n')
 
 
-def unusable_mock(path):
-    """A stand-in for an interpreter below the floor: found on PATH, but
-    fails the version probe every time, the way a pre-3.9 python would."""
+def unusable_mock(path) -> None:
+    """A stand-in for an interpreter below the floor.
+
+    It is found on PATH but fails the version probe every time, the way a pre-3.9 python would.
+    """
     make_executable(path, "#!/bin/bash\nexit 1\n")
 
 
-def version_reporting_mock(path, real_interpreter, version):
+def version_reporting_mock(path, real_interpreter, version) -> None:
     """A stand-in that reports `version` to a `-c` probe and runs scripts for real.
 
     The probe is evaluated by the real interpreter with `sys.version_info`
@@ -65,7 +67,7 @@ def version_reporting_mock(path, real_interpreter, version):
     )
 
 
-def run_chooser(script, path_dirs, env_extra=None):
+def run_chooser(script, path_dirs, env_extra=None) -> subprocess.CompletedProcess[str]:
     env = {key: value for key, value in os.environ.items() if key not in (ESCAPE_HATCH, "PATH")}
     env["PATH"] = os.pathsep.join(str(d) for d in path_dirs)
     env.update(env_extra or {})
@@ -79,7 +81,7 @@ def run_chooser(script, path_dirs, env_extra=None):
 
 
 class WithPythonFallsBackWhenThePreferredInterpreterIsAbsent(unittest.TestCase):
-    def test_it_execs_python3_when_no_versioned_interpreter_is_on_path(self):
+    def test_it_execs_python3_when_no_versioned_interpreter_is_on_path(self) -> None:
         real = sys.executable
         with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
             bindir = Path(bindir)
@@ -90,12 +92,12 @@ class WithPythonFallsBackWhenThePreferredInterpreterIsAbsent(unittest.TestCase):
 
             result = run_chooser(script, [bindir])
 
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), "PROBE-OK")
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == "PROBE-OK"
 
 
 class WithPythonHonorsTheEscapeHatch(unittest.TestCase):
-    def test_the_named_interpreter_runs_even_though_every_candidate_fails_its_probe(self):
+    def test_the_named_interpreter_runs_even_though_every_candidate_fails_its_probe(self) -> None:
         real = sys.executable
         with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
             bindir = Path(bindir)
@@ -103,7 +105,7 @@ class WithPythonHonorsTheEscapeHatch(unittest.TestCase):
             # hook: only the escape hatch's own interpreter can. If the
             # chooser ignored the variable and walked its own candidate list
             # instead, this run would exit 1 with no interpreter found.
-            unusable_mock(bindir / "python3.14")
+            unusable_mock(bindir / "python3.15")
             unusable_mock(bindir / "python3")
             named = bindir / "chosen-interpreter"
             working_mock(named, real)
@@ -112,29 +114,29 @@ class WithPythonHonorsTheEscapeHatch(unittest.TestCase):
 
             result = run_chooser(script, [bindir], env_extra={ESCAPE_HATCH: str(named)})
 
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), "PROBE-OK")
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == "PROBE-OK"
 
 
 class WithPythonReportsAndExitsNonZeroWhenNothingServes(unittest.TestCase):
-    def test_it_names_the_requirement_on_stderr_and_leaves_stdout_empty(self):
+    def test_it_names_the_requirement_on_stderr_and_leaves_stdout_empty(self) -> None:
         with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
             bindir = Path(bindir)
-            unusable_mock(bindir / "python3.14")
+            unusable_mock(bindir / "python3.15")
             unusable_mock(bindir / "python3")
             script = Path(scratch) / "probe.py"
             script.write_text(PROBE_SCRIPT)
 
             result = run_chooser(script, [bindir])
 
-        self.assertEqual(result.returncode, 1)
-        self.assertEqual(result.stdout, "")
-        self.assertIn("3.9", result.stderr)
-        self.assertIn(ESCAPE_HATCH, result.stderr)
+        assert result.returncode == 1
+        assert result.stdout == ""
+        assert "3.9" in result.stderr
+        assert ESCAPE_HATCH in result.stderr
 
 
 class WithPythonBindsItsFloorFromBothSides(unittest.TestCase):
-    def test_an_interpreter_reporting_3_9_serves_the_script(self):
+    def test_an_interpreter_reporting_3_9_serves_the_script(self) -> None:
         real = sys.executable
         with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
             bindir = Path(bindir)
@@ -144,10 +146,10 @@ class WithPythonBindsItsFloorFromBothSides(unittest.TestCase):
 
             result = run_chooser(script, [bindir])
 
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), "PROBE-OK")
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == "PROBE-OK"
 
-    def test_an_interpreter_reporting_3_8_is_refused_and_the_floor_is_named(self):
+    def test_an_interpreter_reporting_3_8_is_refused_and_the_floor_is_named(self) -> None:
         real = sys.executable
         with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
             bindir = Path(bindir)
@@ -157,12 +159,12 @@ class WithPythonBindsItsFloorFromBothSides(unittest.TestCase):
 
             result = run_chooser(script, [bindir])
 
-        self.assertEqual(result.returncode, 1)
-        self.assertEqual(result.stdout, "")
-        self.assertIn("3.9", result.stderr)
-        self.assertIn(ESCAPE_HATCH, result.stderr)
+        assert result.returncode == 1
+        assert result.stdout == ""
+        assert "3.9" in result.stderr
+        assert ESCAPE_HATCH in result.stderr
 
-    def test_a_versioned_interpreter_serves_where_python3_is_unusable(self):
+    def test_a_versioned_interpreter_serves_where_python3_is_unusable(self) -> None:
         real = sys.executable
         with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
             bindir = Path(bindir)
@@ -173,8 +175,8 @@ class WithPythonBindsItsFloorFromBothSides(unittest.TestCase):
 
             result = run_chooser(script, [bindir])
 
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), "PROBE-OK")
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == "PROBE-OK"
 
 
 if __name__ == "__main__":
