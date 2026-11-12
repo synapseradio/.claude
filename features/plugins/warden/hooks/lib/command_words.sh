@@ -451,6 +451,20 @@ command_words::emit_command() {
 }
 
 #######################################
+# Say whether a program line only hands a script to a shell, as bash -c does.
+# The programs in that script are listed on lines of their own, so the line
+# itself runs nothing beyond them.
+# Arguments:
+#   $1 - the program line.
+# Returns:
+#   0 when the line is a shell run with -c and a script, 1 otherwise.
+#######################################
+command_words::hands_script_to_shell() {
+  local pattern='^(bash|sh|zsh|dash|ksh)[[:space:]]([^[:space:]]+[[:space:]])*-[A-Za-z]*c[A-Za-z]*[[:space:]][^[:space:]]'
+  [[ "$1" =~ ${pattern} ]]
+}
+
+#######################################
 # Print each program the command text would run.
 # Globals:
 #   CW_DEPTH

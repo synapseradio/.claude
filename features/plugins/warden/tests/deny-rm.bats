@@ -614,26 +614,26 @@ assert_reason_contains() {
 
 # Command positions still judged by the rule
 
-@test "rm after && is judged by the rule" {
+@test "rm before && is judged by the rule" {
   make_repo
-  assert_silent "true && rm ${REPO}/tracked.txt"
+  assert_silent "rm ${REPO}/tracked.txt && true"
   printf 'new\n' >"${REPO}/new.txt"
-  assert_denies "true && rm ${REPO}/new.txt"
+  assert_denies "rm ${REPO}/new.txt && true"
 }
 
-@test "rm after || and ; and a pipe is judged by the rule" {
+@test "rm before || and ; and a pipe is judged by the rule" {
   make_repo
   printf 'new\n' >"${REPO}/new.txt"
-  assert_silent "false || rm ${REPO}/tracked.txt"
-  assert_silent "true; rm ${REPO}/tracked.txt"
-  assert_silent "echo x | rm ${REPO}/tracked.txt"
-  assert_denies "false || rm ${REPO}/new.txt"
-  assert_denies "true; rm ${REPO}/new.txt"
+  assert_silent "rm ${REPO}/tracked.txt || false"
+  assert_silent "rm ${REPO}/tracked.txt; true"
+  assert_silent "rm ${REPO}/tracked.txt | cat"
+  assert_denies "rm ${REPO}/new.txt || false"
+  assert_denies "rm ${REPO}/new.txt; true"
 }
 
-@test "rm on a later line is judged by the rule" {
+@test "rm on a first line is judged by the rule" {
   make_repo
-  assert_silent $'echo go\n'"rm ${REPO}/tracked.txt"
+  assert_silent "rm ${REPO}/tracked.txt"$'\necho go'
 }
 
 @test "rm in a subshell and a command substitution is judged by the rule" {
@@ -655,20 +655,155 @@ assert_reason_contains() {
   done
 }
 
-@test "rm inside a loop body and after then is judged by the rule" {
+@test "rm inside a brace group is judged by the rule" {
   make_repo
   printf 'new\n' >"${REPO}/new.txt"
-  assert_silent "for f in a b; do rm ${REPO}/tracked.txt; done"
-  assert_silent "if true; then rm ${REPO}/tracked.txt; fi"
-  assert_denies "for f in a b; do rm ${REPO}/new.txt; done"
-  assert_denies "if true; then rm ${REPO}/new.txt; fi"
+  assert_silent "{ rm ${REPO}/tracked.txt; }"
+  assert_denies "{ rm ${REPO}/new.txt; }"
 }
 
 @test "rm in a bash -c string is judged by the rule" {
   make_repo
   printf 'new\n' >"${REPO}/new.txt"
-  assert_silent "bash -c 'echo start; rm ${REPO}/tracked.txt'"
-  assert_denies "bash -c 'echo start; rm ${REPO}/new.txt'"
+  assert_silent "bash -c 'rm ${REPO}/tracked.txt'"
+  assert_denies "bash -c 'rm ${REPO}/new.txt'"
+}
+
+# rm after another step
+
+@test "rm of a directory that an earlier mkdir and redirect fill is denied" {
+  make_repo
+  assert_denies "mkdir ${REPO}/d && echo x > ${REPO}/d/f && rm -r ${REPO}/d"
+  assert_reason_contains 'another step'
+}
+
+@test "rm of a tracked file that an earlier append changes is denied" {
+  make_repo
+  assert_denies "echo x >> ${REPO}/tracked.txt && rm ${REPO}/tracked.txt"
+}
+
+@test "rm of a committed directory after a build step is denied" {
+  make_repo
+  assert_denies "npm run build && rm -rf ${REPO}/dir"
+}
+
+@test "rm after a step that only redirects is denied" {
+  make_repo
+  assert_denies "> ${REPO}/tracked.txt && rm ${REPO}/tracked.txt"
+}
+
+@test "rm of a clean tracked file as the only step is allowed" {
+  make_repo
+  assert_silent "rm ${REPO}/tracked.txt"
+  assert_silent "rm -f ${REPO}/tracked.txt 2>/dev/null"
+}
+
+@test "rm after a semicolon is denied even on a clean tracked file" {
+  make_repo
+  assert_denies "true; rm ${REPO}/tracked.txt"
+  assert_reason_contains 'another step'
+}
+
+@test "rm after || is denied even on a clean tracked file" {
+  make_repo
+  assert_denies "false || rm ${REPO}/tracked.txt"
+  assert_reason_contains 'another step'
+}
+
+@test "rm after a pipe is denied even on a clean tracked file" {
+  make_repo
+  assert_denies "echo x | rm ${REPO}/tracked.txt"
+  assert_reason_contains 'another step'
+}
+
+@test "rm after & is denied even on a clean tracked file" {
+  make_repo
+  assert_denies "sleep 1 & rm ${REPO}/tracked.txt"
+}
+
+@test "rm on a later line is denied even on a clean tracked file" {
+  make_repo
+  assert_denies $'echo go\n'"rm ${REPO}/tracked.txt"
+  assert_reason_contains 'another step'
+}
+
+@test "rm after then and inside a loop body is denied even on a clean tracked file" {
+  make_repo
+  assert_denies "if true; then rm ${REPO}/tracked.txt; fi"
+  assert_denies "for f in a b; do rm ${REPO}/tracked.txt; done"
+}
+
+@test "rm after another step in a subshell is denied" {
+  make_repo
+  assert_denies "(echo x > ${REPO}/f; rm ${REPO}/f)"
+  assert_denies "(true; rm ${REPO}/tracked.txt)"
+}
+
+@test "rm after another step in a command substitution is denied" {
+  make_repo
+  assert_denies "echo \$(echo x >> ${REPO}/tracked.txt; rm ${REPO}/tracked.txt)"
+  assert_reason_contains 'another step'
+}
+
+@test "rm after another step in a backtick substitution is denied" {
+  make_repo
+  assert_denies "echo \`true; rm ${REPO}/tracked.txt\`"
+}
+
+@test "rm in a command substitution that follows a step is denied" {
+  make_repo
+  assert_denies "true; echo \$(rm ${REPO}/tracked.txt)"
+}
+
+@test "rm after another step inside a bash -c string is denied" {
+  make_repo
+  assert_denies "bash -c 'echo x >> ${REPO}/tracked.txt && rm ${REPO}/tracked.txt'"
+  assert_reason_contains 'another step'
+}
+
+@test "rm in a bash -c string that follows a step is denied" {
+  make_repo
+  assert_denies "true && sh -c 'rm ${REPO}/tracked.txt'"
+}
+
+@test "rm after a step is denied behind a wrapper word" {
+  make_repo
+  assert_denies "true && sudo rm ${REPO}/tracked.txt"
+}
+
+@test "rm after only other rm steps is allowed when each is restorable" {
+  make_repo
+  assert_silent "rm ${REPO}/tracked.txt && rm ${REPO}/other.txt"
+  assert_silent "rm ${REPO}/tracked.txt; rm -r ${REPO}/dir"
+  assert_silent "rm ${REPO}/tracked.txt || rm ${REPO}/other.txt"
+  assert_silent "rm ${REPO}/tracked.txt
+rm ${REPO}/other.txt"
+}
+
+@test "a later rm is denied on its own operand after an earlier rm" {
+  make_repo
+  printf 'new\n' >"${REPO}/new.txt"
+  assert_denies "rm ${REPO}/tracked.txt && rm ${REPO}/new.txt"
+  assert_reason_contains "${REPO}/new.txt"
+}
+
+@test "rm after an rm and another step is denied" {
+  make_repo
+  assert_denies "rm ${REPO}/tracked.txt; echo x > ${REPO}/f; rm ${REPO}/f"
+  assert_denies "rm ${REPO}/tracked.txt; true; rm ${REPO}/other.txt"
+}
+
+@test "a step after rm leaves the rm judged as the first step" {
+  make_repo
+  assert_silent "rm ${REPO}/tracked.txt && echo done"
+}
+
+@test "an after-step denial says to send throwaway output to /dev/null" {
+  make_repo
+  run_bash_hook "echo x > ${REPO}/f && rm ${REPO}/f"
+  assert_decision 'deny' "write then delete"
+  assert_reason_contains '/dev/null'
+  assert_reason_contains 'trash <path>'
 }
 
 @test "rm in a bash -c string after a cd is denied" {

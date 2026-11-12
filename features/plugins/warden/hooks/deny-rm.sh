@@ -26,6 +26,11 @@
 # `npm rm`, `docker rm`, rmdir, trash, and the word rm inside a quoted
 # string or as an argument stay allowed.
 #
+# The judging reads disk state before the command runs, so an rm that follows
+# another step is refused outright: that step may have written what rm then
+# removes. Steps that are themselves rm do not count, since rm creates nothing.
+# A shell run with -c is no step of its own; the programs in its script are.
+#
 # Globals: WARDEN_RM_DEADLINE (seconds git gets, default 4).
 # Stdin:   PreToolUse hook JSON envelope.
 # Stdout:  hookSpecificOutput JSON when denying; nothing when allowing.
@@ -180,7 +185,7 @@ judge_rm_lines() {
 
 main() {
   local envelope command cwd line detail result_file worker watcher status=0
-  local cd_seen=0
+  local cd_seen=0 other_steps=0 after_step=0
   local -a rm_lines=()
 
   envelope="$(cat)"
@@ -191,11 +196,22 @@ main() {
     return 0
   fi
 
+  # The resolver lists programs in the order they run, so a program with any
+  # non-rm program listed ahead of it follows another step.
   while IFS= read -r line; do
     case "${line}" in
-    rm | rm\ *) rm_lines+=("${line}") ;;
+    rm | rm\ *)
+      rm_lines+=("${line}")
+      if ((other_steps > 0)); then
+        after_step=1
+      fi
+      continue
+      ;;
     cd | cd\ * | pushd | pushd\ * | popd | popd\ * | builtin\ *) cd_seen=1 ;;
     esac
+    if ! command_words::hands_script_to_shell "${line}"; then
+      other_steps=$((other_steps + 1))
+    fi
   done < <(command_words::resolve "${command}")
 
   if ((${#rm_lines[@]} == 0)); then
@@ -213,6 +229,10 @@ main() {
   fi
   if [[ "${command}" =~ ${FIND_EXEC_PATTERN} ]]; then
     deny 'rm runs behind find -exec, which supplies operands and directories the guard cannot see'
+  fi
+
+  if ((after_step)); then
+    deny 'rm follows another step in the command, and that step may have written what rm removes. If the output is known to be throwaway, send it to /dev/null in place of writing a file and deleting it'
   fi
 
   result_file="$(mktemp "${TMPDIR:-/tmp}/deny-rm.XXXXXX")" ||
