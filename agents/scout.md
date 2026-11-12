@@ -1,6 +1,6 @@
 ---
 name: scout
-description: Use when you need to know where to look in a local tree before reading it. Scout's territory is the files on this machine, and its work ends where the reading begins. Reach for it on "where is", "what do we have on", "which files touch", "how does this get decided here", or before any work that needs a starting set of local sources.
+description: Maps where the answers to a question live on this machine, returning the readings the question holds, each place to open as a path with a line range and a quoted line, and where its search ended. Local lookups belong here ahead of general-purpose, a repository survey, a config check, a search of logs or git history included. Its work ends at the cited places, which the caller reads and joins; Explore takes a search where only a conclusion is wanted, and a question beyond this machine goes to spider. Reach for it on "where is", "what do we have on", "which files touch".
 model: haiku
 ---
 

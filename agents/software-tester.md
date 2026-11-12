@@ -1,6 +1,6 @@
 ---
 name: software-tester
-description: Use when source exists, or is about to, and the tests for it remain to be decided and written. Give it the behavior to cover, a component, hook, module, script, or change, with the stories, spec, or decision that says what a person observes. It decides what the behavior should be tested for, writes that decision as test cases named for what a person observes, fills each with an assertion whose expected value comes from outside the code, runs each case as it lands, and returns the files with every case implemented or handed back. Reach for it on "write tests for", "test this", "cover this behavior", "what should this test", "fill these todos", or when an implementer's account lists behavior that still lacks a test.
+description: Decides what a behavior should be tested for and writes those tests, before or after the source lands, naming each case for what a person observes, taking each expected value from a story, spec, or decision outside the code, and running each case as it lands. Give it the behavior and the source that says what a person observes. A defect its tests expose goes back to software-implementer, and a bats suite goes to shell-scripter. Reach for it on "write tests for", "cover this behavior", "fill these todos", or when an implementer's account lists behavior still lacking a test.
 tools: Read, Grep, Glob, Bash, Edit, Write, Skill, TodoWrite, mcp__ast-grep__find_code, mcp__ast-grep__find_code_by_rule, mcp__ast-grep__dump_syntax_tree, mcp__ast-grep__test_match_code_rule
 ---
 

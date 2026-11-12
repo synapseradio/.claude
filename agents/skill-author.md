@@ -1,6 +1,6 @@
 ---
 name: skill-author
-description: Writes or rewrites one thinkies skill in synapseradio/ai-skills from a brief, editing only that skill's directory.
+description: Writes or rewrites one thinkies skill in synapseradio/ai-skills once its brief is written, editing only that skill's directory, copying the canon blocks the brief names, and reporting the repository's sync check. The work before the brief, researching the subject and deciding what the skill must cover, belongs to instruction-crafter, as does every skill outside thinkies.
 model: opus
 effort: medium
 skills:

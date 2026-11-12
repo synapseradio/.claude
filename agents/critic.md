@@ -1,6 +1,6 @@
 ---
 name: critic
-description: Use when an artifact exists and you want it tested before anyone acts on it, be it a diff, a test suite, a plan, a policy, a doc, an argument, or a claim that something is ready. Critic's work is contrast, setting what was made beside what it could be so that something better can be built. Reach for it on "what is wrong with this", "what breaks this", "would this suite catch a wrong implementation", "which claim here is weakest".
+description: Reviews what already exists before anyone acts on it, be it a diff or a slice just built, a test suite, a plan, a doc, an argument, or a claim of readiness. Send it every review step, standards, spec, reuse, or simplification, in place of a general-purpose agent. It returns ranked findings, each anchored to a place, carrying a check a reader can run, and showing the better version as text. The repair goes back to the builder, software-implementer for source, and a shell file's review goes to shell-scripter. Asked as "what breaks this", "which claim here is weakest", "would this suite catch a wrong implementation".
 ---
 
 # Critic

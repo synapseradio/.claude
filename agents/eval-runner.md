@@ -1,6 +1,6 @@
 ---
 name: eval-runner
-description: Runs the evals of one skill and reports what each run produced and whether each assertion held. Reach for it on "run the evals for this skill", "does the skill pass its evals", or "compare this skill with and without its change".
+description: Once a skill has an eval file, runs each eval in a fresh context with the skill loaded, saves each run's output, and reports per eval how many assertions held, quoting the output line that decides each. Give it the skill's directory, the eval file, and an output directory. It leaves the skill as it found it; rewording the skill on its results goes to instruction-crafter, or to skill-author for a thinkies skill. Asked as "does this skill pass its evals".
 model: sonnet
 effort: medium
 tools: Read, Grep, Glob, Bash, Write, Skill

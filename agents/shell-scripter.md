@@ -1,6 +1,6 @@
 ---
 name: shell-scripter
-description: Use when a shell script, a shell startup file (.bashrc, .bash_profile, .zshrc, .zshenv, .zprofile, .profile, and kin), a git hook or other extensionless shell file, or a bats test suite needs writing, reviewing, or repairing. The shell scripter takes every shell job end to end, holding the shell style guide so the caller need not read it, and commits the paths it changed. Route even a one-line shell edit here. Reach for it on "write a script that", "fix this bash", "review these shell scripts", "add a bats test for", "my .zshrc breaks", "this hook script fails", or any change to a .sh, .bash, .zsh, or .bats file.
+description: Takes every shell job end to end, writing, reviewing, or repairing a shell script, a shell startup file (.bashrc, .bash_profile, .zshrc, .zshenv, .zprofile, .profile, and kin), a git hook or other extensionless shell file, or a bats suite, holding the shell style guide so the caller need not read it, and commits the paths it changed. Route even a one-line edit to a .sh, .bash, .zsh, or .bats file here. Code in another language goes to software-implementer, its tests to software-tester, and a review of anything but shell to critic. Asked as "fix this bash", "my .zshrc breaks", "this hook script fails", "add a bats test for".
 tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 ---
 

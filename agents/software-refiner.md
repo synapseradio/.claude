@@ -1,6 +1,6 @@
 ---
 name: software-refiner
-description: Use when work is built and working but still less clear than it should be, be it code with duplication or loose types, or comments, docs, and rules whose wording needs tightening. The refiner's work is improving what exists while keeping what it does. Reach for it on "collapse this duplication", "tighten these types", "tighten the wording in what I just touched", "clean this up before review".
+description: Once code, tests, config, docs, or rules work, makes them cheaper to read and change while each keeps doing exactly what it does, collapsing duplication, narrowing types to legal states, naming one thing one way, and proving each change by a check on both sides of it. A change in what code does goes to software-implementer, and a change in what a rule directs goes to instruction-crafter. Reach for it on "collapse this duplication", "tighten these types", "tighten the wording in what I just touched".
 tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 ---
 

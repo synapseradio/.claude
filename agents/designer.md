@@ -1,6 +1,6 @@
 ---
 name: designer
-description: Use when something that runs needs designing before anyone builds it and more than one approach is still live, be it software, a data contract, a workflow, a process, or a rule system. The designer's work is the decision, made before any building starts. Reach for it on "design the data model for", "which of these approaches wins", "where do the boundaries go", "how should this process work", "we will not know until we try it".
+description: Settles how something that runs should work while more than one approach is still live, be it software, a data contract, a workflow, or a process. It models the legal states, cuts the boundaries, weighs the approaches with standing still among them, and writes the choice with its price and the checks and spikes the builder starts from. Whether the direction itself is the right one is a question for systems-thinker; the chosen design goes to software-implementer to build. Reach for it on "design the data model for", "which of these approaches wins", "where do the boundaries go".
 tools: Read, Grep, Glob, Bash, Write, Skill
 ---
 
