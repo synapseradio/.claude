@@ -42,12 +42,12 @@ const WIDTH_N: readonly (readonly [number, number])[] = [
 
 // Sextant names from https://www.unicode.org/Public/18.0.0/ucd/UnicodeData.txt:
 // cells numbered 1 to 6, left to right and top to bottom, in a 2 by 3 grid.
-const SEXTANT_NAMES: Readonly<Record<number, string>> = {
-	129795: "BLOCK SEXTANT-3",
-	129803: "BLOCK SEXTANT-34",
-	129819: "BLOCK SEXTANT-1345",
-	129820: "BLOCK SEXTANT-2345",
-};
+const SEXTANT_NAMES: ReadonlyMap<number, string> = new Map([
+	[0x1_fb_03, "BLOCK SEXTANT-3"],
+	[0x1_fb_0b, "BLOCK SEXTANT-34"],
+	[0x1_fb_1b, "BLOCK SEXTANT-1345"],
+	[0x1_fb_1c, "BLOCK SEXTANT-2345"],
+]);
 
 // The sextant block at U+1FB00 skips the patterns other blocks already hold:
 // the left half (21) and the right half (42), per
@@ -82,10 +82,9 @@ describe("fallback bar", () => {
 	test("every glyph is one code point of East Asian Width N", async () => {
 		for (const set of SETS) {
 			for (const glyph of glyphsOf(set)) {
-				const points = Array.from(glyph);
 				const cp = glyph.codePointAt(0) ?? -1;
 				const narrow = WIDTH_N.some(([lo, hi]) => cp >= lo && cp <= hi);
-				expect(`${set} ${glyph} ${points.length} ${narrow}`).toBe(
+				expect(`${set} ${glyph} ${cells(glyph)} ${narrow}`).toBe(
 					`${set} ${glyph} 1 true`,
 				);
 			}
@@ -97,7 +96,7 @@ describe("fallback bar", () => {
 			const cp = glyph.codePointAt(0) ?? -1;
 			const lit = sextantCells(cp);
 			expect(`BLOCK SEXTANT-${lit.join("")}`).toBe(
-				SEXTANT_NAMES[cp] ?? `no name fixture for ${cp.toString(16)}`,
+				SEXTANT_NAMES.get(cp) ?? `no name fixture for ${cp.toString(16)}`,
 			);
 			const middle = lit.includes(3) || lit.includes(4);
 			const upright = sameCells(lit, lit.map(flipped));

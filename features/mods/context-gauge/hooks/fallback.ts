@@ -31,7 +31,8 @@ export const TEXTURE_GLYPHS: Readonly<
 		dots: "\u{1FB03}",
 	},
 	// Hazard: the font, not the terminal, draws ▬ and ▪, so their height and
-	// position are the font's own; Menlo and SF Mono centre them with ▐ and ▞.
+	// position are the font's own; Menlo, which also draws them for SF Mono,
+	// centres them with ▐ and ▞.
 	bmp: { solid: "▬", diagonal: "▞", vertical: "▐", dots: "▪" },
 };
 
@@ -54,7 +55,7 @@ export function glyphSet(env: TerminalEnv): GlyphSet {
 	// Why: Windows Terminal sets WT_SESSION but no TERM_PROGRAM, and draws
 	// sextants itself from 1.25, https://github.com/microsoft/terminal/releases/tag/v1.25.2733.0
 	if (!env.termProgram && env.wtSession) return "sextant";
-	// Hazard: Apple Terminal takes sextants from the font, and no font macOS
+	// Hazard: Apple Terminal takes sextants from the font, and no font macOS 26
 	// ships covers them, so they draw as missing-glyph boxes.
 	return "bmp";
 }
