@@ -1,6 +1,8 @@
+import type { UiBlitResult } from "claude-code";
 import { describe, expect, test } from "claude-code/testing";
 import type { GlyphSet, TerminalEnv } from "../hooks/fallback";
 import {
+	deniedBeforeMount,
 	FREE_GLYPH,
 	fallbackRuns,
 	glyphSet,
@@ -225,6 +227,32 @@ describe("fallback bar", () => {
 		];
 		for (const [name, env, set] of cases) {
 			expect(`${name} ${glyphSet(env)}`).toBe(`${name} ${set}`);
+		}
+	});
+
+	test("only a denial for an Image not yet mounted is one a later blit may overturn", () => {
+		const cases: readonly (readonly [string, UiBlitResult, boolean])[] = [
+			["a taken blit", {}, false],
+			[
+				"an Image not mounted yet",
+				{
+					deny: 'no Image of its own is mounted under key "bar" in prompt-hint',
+				},
+				true,
+			],
+			[
+				"an Image drawing its alt",
+				{ deny: "the Image draws its alt here" },
+				false,
+			],
+			[
+				"tmux holding images back",
+				{ deny: "passthrough off", fix: "tmux-passthrough" },
+				false,
+			],
+		];
+		for (const [name, blit, expected] of cases) {
+			expect(`${name} ${deniedBeforeMount(blit)}`).toBe(`${name} ${expected}`);
 		}
 	});
 });

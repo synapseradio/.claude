@@ -60,6 +60,11 @@ export function glyphSet(env: TerminalEnv): GlyphSet {
 	return "bmp";
 }
 
+/** Whether a denial says the Image is not mounted yet, so a later blit may succeed. The engine types give this denial no code, only words. */
+export function deniedBeforeMount(blit: UiBlitResult): boolean {
+	return blit.deny?.startsWith("no Image of its own is mounted") === true;
+}
+
 /** A run's look: its category's texture glyph and swatch, or free space's own. */
 export function lookOf(id: BarRun["id"], set: GlyphSet): Look {
 	if (id === "free") return { glyph: FREE_GLYPH, color: FREE_SWATCH.hex };

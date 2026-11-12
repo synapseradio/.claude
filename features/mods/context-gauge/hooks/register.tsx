@@ -16,7 +16,12 @@ import { atom, read, update } from "claude-code";
 import type { MessageEstimates } from "../types";
 import { addCounts, rowEffect } from "./counting";
 import type { GlyphSet, Run } from "./fallback";
-import { fallbackRuns, glyphSet, legendSample } from "./fallback";
+import {
+	deniedBeforeMount,
+	fallbackRuns,
+	glyphSet,
+	legendSample,
+} from "./fallback";
 import type { LegendLine } from "./layout";
 import {
 	abbrev,
@@ -231,7 +236,7 @@ async function checkBar(
 		tmux: await $.env.get("TMUX"),
 		...probeInfo,
 	});
-	if (blit.deny === undefined) return;
+	if (blit.deny === undefined || deniedBeforeMount(blit)) return;
 	const [termProgram, wtSession] = await Promise.all([
 		$.env.get("TERM_PROGRAM"),
 		$.env.get("WT_SESSION"),

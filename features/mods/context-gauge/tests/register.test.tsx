@@ -131,6 +131,8 @@ type Fixture = {
 	usage?: (call: number) => SessionUsage;
 	/** What every blit on the bar Image answers; by default, that it drew. */
 	blit?: UiBlitResult;
+	/** What the first blit on the bar Image answers, before `blit` takes over; by default, `blit`. */
+	firstBlit?: UiBlitResult;
 };
 
 type World = { session: MockSession; clock: MockClock };
@@ -161,7 +163,10 @@ function engine(on: On, fixture: Fixture = {}): World {
 	on("session.start", (_, e) => ({ cwd: e.cwd }));
 	on("classic.SessionStart", () => ({}));
 	on("session.usage", () => ({ value: usage(calls++) }));
-	on("ui.blit", () => ({ value: blit }));
+	let blits = 0;
+	on("ui.blit", () => ({
+		value: blits++ === 0 ? (fixture.firstBlit ?? blit) : blit,
+	}));
 	on("ui.render", ($, e) => {
 		const { Text } = $.ui.resolve(e);
 		return <Text>engine hint line</Text>;
@@ -926,8 +931,22 @@ async function settleBlit($: Engine, clock: MockClock): Promise<void> {
 }
 
 const ALT = { deny: "the Image draws its alt here" } as const;
+const NOT_MOUNTED =
+	'no Image of its own is mounted under key "bar" in prompt-hint';
 
 describe("the character fallback", () => {
+	test("in Ghostty, a first blit denied before the bar mounts still leaves the pixel bar drawn", async ($, on) => {
+		const { clock } = engine(on, {
+			termProgram: "ghostty",
+			firstBlit: { deny: NOT_MOUNTED },
+		});
+		await startSession($);
+		await settleBlit($, clock);
+		await settleBlit($, clock);
+
+		expect((await drawn($)).bar?.type).toBe("Image");
+	});
+
 	test("where the bar Image draws its alt, the bar draws in characters", async ($, on) => {
 		const { clock } = engine(on, {
 			termProgram: "vscode",
