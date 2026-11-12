@@ -48,6 +48,8 @@ agent critic thinkies:
   include: reasoning.* lookup.* prose.*
 agent critic:
   include: writing-code
+agent diagnostician:
+  include: reasoning.* lookup.* prose.* debugging
 
 agent designer:
   include: reasoning.* lookup.* prose.*
@@ -63,6 +65,8 @@ agent instruction-crafter:
   include: reasoning.* lookup.* prose.*
   model opus fable:
     include: orchestration.*
+agent prompt-refiner:
+  include: reasoning.* lookup.* prose.*
 
 agent skill-author:
   include: lookup.* prose.* git.*
@@ -76,6 +80,12 @@ agent shell-scripter:
 agent software-implementer software-refiner software-tester shell-scripter:
   not model haiku:
     include: code.*
+agent prose-writer:
+  include: reasoning.* lookup.* prose.* git.*
+agent git-operator:
+  include: reasoning.* lookup.* prose.* git.* orchestration.* comments
+  not model haiku:
+    include: writing-code
 
 agent eval-runner:
   include: reasoning.* lookup.*
