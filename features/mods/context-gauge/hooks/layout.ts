@@ -129,7 +129,7 @@ export function barCells(
 /** The bar line's shape: the bar's cells, and whether the totals wrap onto their own line under the bar. */
 export type BarLine = { cells: number; totalsWrap: boolean };
 
-/** The bar line in a row of `room` cells: the totals wrap where the percentage, the bar and the totals outgrow it, and the bar keeps one cell per used category either way. */
+/** The bar line in a row of `room` cells: the totals wrap where the percentage, the bar and the totals outgrow it, a wrapped bar spans the widest legend line inside the row, and the bar keeps one cell per used category either way. */
 export function barLine(
 	widest: number,
 	room: number,
@@ -142,7 +142,10 @@ export function barLine(
 		percent.length + SPACE.length + cells + SPACE.length + totals.length;
 	if (inline <= room) return { cells, totalsWrap: false };
 	return {
-		cells: Math.max(used, widest - percent.length - SPACE.length),
+		cells: Math.max(
+			used,
+			Math.min(widest, room) - percent.length - SPACE.length,
+		),
 		totalsWrap: true,
 	};
 }

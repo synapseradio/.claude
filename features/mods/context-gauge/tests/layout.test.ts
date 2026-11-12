@@ -229,6 +229,12 @@ describe("barLine", () => {
 		expect(PERCENT.length + 1 + line.cells).toBe(25);
 	});
 
+	test("with the totals wrapped, the bar stays inside the row where a legend item is wider than it", () => {
+		const line = barLine(19, 17, PERCENT, TOTALS, 3);
+
+		expect(PERCENT.length + 1 + line.cells).toBe(17);
+	});
+
 	test("a row too narrow even for the percentage and one cell per category keeps every cell", () => {
 		expect(barLine(8, 10, PERCENT, TOTALS, 18)).toEqual({
 			cells: 18,
