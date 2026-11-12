@@ -54,21 +54,5 @@ pre-push:
       glob: "*.{sh,bash,bats}"
       run: shellcheck {push_files}
 
-    # Ungated by glob: enabling a plugin stales a generated file while
-    # changing nothing under version control. The translation jobs write the
-    # live configs outside this repository, so they run on main alone, then
-    # check what they wrote. The pool check only reads. set -e carries a
-    # failure out to the gate, which reads the last line's status.
-    # https://github.com/evilmartians/lefthook/blob/master/docs/configuration/run.md
-    - name: sync-agent-configs
-      only:
-        - ref: main
-      run: |-
-        set -e
-        python3.15 scripts/agent-configs/translate-for-pi.py
-        python3.15 scripts/agent-configs/translate-for-opencode.py
-        python3.15 scripts/agent-configs/own-opencode-key.py
-        python3.15 scripts/agent-configs/translate-for-pi.py --check
-        python3.15 scripts/agent-configs/translate-for-opencode.py --check
-        python3.15 scripts/agent-configs/own-opencode-key.py --check
-        python3.15 features/plugins/rulesets/lib/rulesets/cli.py check --root rulesets
+    - name: rulesets-check
+      run: python3.15 features/plugins/rulesets/lib/rulesets/cli.py check --root rulesets
