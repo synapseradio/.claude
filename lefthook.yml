@@ -77,7 +77,7 @@ pre-commit:
         - "rulesets/config.yaml"
         - "rulesets/rules/**"
       run: >-
-        python3.15 features/plugins/rulesets/lib/rulesets/cli.py render --root rulesets && git add rulesets/-render
+        bash features/plugins/rulesets/hooks/with-python.sh features/plugins/rulesets/lib/rulesets/cli.py render --root rulesets && git add rulesets/-render
 
 pre-push:
   jobs:
@@ -86,4 +86,4 @@ pre-push:
       run: shellcheck {push_files}
 
     - name: rulesets-check
-      run: python3.15 features/plugins/rulesets/lib/rulesets/cli.py check --root rulesets
+      run: bash features/plugins/rulesets/hooks/with-python.sh features/plugins/rulesets/lib/rulesets/cli.py check --root rulesets

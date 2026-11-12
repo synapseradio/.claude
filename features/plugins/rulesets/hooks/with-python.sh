@@ -15,9 +15,10 @@
 
 set -uo pipefail
 
-readonly REQUIREMENT='Python 3.15 or later with pyyaml'
-readonly CANDIDATES=(python3.15 python3)
-readonly VERSION_PROBE='import sys, yaml; sys.exit(sys.version_info < (3, 15))'
+readonly MINOR=15
+readonly REQUIREMENT="Python 3.${MINOR} or later with pyyaml"
+readonly CANDIDATES=("python3.${MINOR}" python3)
+readonly VERSION_PROBE="import sys, yaml; sys.exit(sys.version_info < (3, ${MINOR}))"
 
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
