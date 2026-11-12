@@ -25,7 +25,7 @@ reconciliation, and reads the predicates from
 ## States
 
 | State | Entry condition | Exits |
-|-------|-----------------|-------|
+| ------- | ----------------- | ------- |
 | `Acquire` | The sweep reached this variant | `HaltBaseInvalid`, `HaltVariantInvalid`, `AuditBase` |
 | `AuditBase` | Both files parsed | `HaltBaseInvalid`, `Survey` |
 | `Survey` | Base is fit as a floor | `Consult`, `Project` |
@@ -71,7 +71,7 @@ jq -s --arg mode audit-base \
 ```
 
 | # | Precondition | Check name in that output |
-|---|--------------|---------------------------|
+| --- | -------------- | --------------------------- |
 | 1 | Base parses to a JSON object rather than an array or a scalar | `root-object` |
 | 2 | `alignment` is present and well formed: an object, `exempt` an array of entries each carrying a non-empty `path` and `why`, every path segment matching `[A-Za-z0-9_*-]+`, `notAVariant` an array of non-empty strings, `keyed` an object whose values name identity functions this skill defines | `registry-well-formed` |
 | 3 | Base names nothing exempt: no leaf path matches a registry pattern, no leaf key ends in a secret-shaped word, no leaf value carries a credential shape | `base-holds-nothing-exempt` |
@@ -123,7 +123,7 @@ and stops the walk there. A path is exempt when any of these holds:
   `CREDENTIAL`, compared without regard to case.
 - Its value is a string carrying a credential shape: a known credential
   prefix such as `sk-`, `ghp_`, `github_pat_`, `xoxb-`, `AKIA`, `AIza`,
-  `glpat-`, `npm_`, `hf_`, or `Bearer `, or the form of a long opaque token,
+  `glpat-`, `npm_`, `hf_`, or `Bearer`, or the form of a long opaque token,
   twenty or more characters from `[A-Za-z0-9_-]` followed by `.` and eight
   or more of the same.
 
@@ -142,7 +142,7 @@ Each side of a path sits in one of five states: `Absent`, `Null`, `Scalar`
 Rows are base's state, columns the variant's.
 
 | base \ variant | Absent | Null | Scalar | Array | Object |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | **Absent** | unreachable | VariantOnly | VariantOnly | VariantOnly | Recurse |
 | **Null** | Add | Satisfied | Conflict(scalar) | Conflict(type) | Conflict(type) |
 | **Scalar** | Add | Conflict(scalar) | [scalar rule](#the-scalar-rule) | Conflict(type) | Conflict(type) |
@@ -154,7 +154,7 @@ because the walk visits only paths one of the two files names, so its
 emptiness is an argument rather than an omission.
 
 | Verdict | Action |
-|---------|--------|
+| --------- | -------- |
 | `Satisfied` | None |
 | `Exempt` | None, and the path is no lift candidate |
 | `Recurse` | None at this path; walk into the union of the two objects' keys |
@@ -190,7 +190,7 @@ definition. Read it before implementing the merge by hand.
 
 Normalization is what makes `//tmp` a corrupted spelling of `/tmp` rather
 than a legitimate variant-only addition, and what maps a bare
-`verify-marks.py` command onto base's `python3.14`-prefixed form, so the
+`verify-marks.py` command onto base's `python3.15`-prefixed form, so the
 variant gains the interpreter through `Corrected` instead of through a human
 answering a question. It pairs nothing across the permission lists, which is
 correct: `WebFetch` is a corruption of nothing and reaches
@@ -240,9 +240,9 @@ nobody anticipated. Resolving it registers an identity function in
 
 `alignment.keyed` maps a path pattern to one of these names.
 
-| Name | Key |
-|------|-----|
-| `matcher` | The member's `matcher` field, taken literally, with an absent field keying as null. Matchers are regexes, so normalization does not apply to them. |
+| Name          | Key                                                                                                                                                       |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `matcher`     | The member's `matcher` field, taken literally, with an absent field keying as null. Matchers are regexes, so normalization does not apply to them.        |
 | `hookPayload` | The pair of the member's `type` and the normalization of the first present of `command`, `prompt`, `agent`. A member naming none of the three has no key. |
 
 `hookPayload` carries `type` alongside the payload, since a prompt hook and
@@ -293,7 +293,7 @@ Ask one AskUserQuestion per open fork, and ask every open fork in one call.
 State in each option what gets written if the user picks it.
 
 | Fork | Question | Options |
-|------|----------|---------|
+| ------ | ---------- | --------- |
 | `Conflict(scalar)` | Base and the variant hold different values at PATH | Take base's value. Register PATH exempt, which also removes PATH from base, since precondition 3 requires base to name nothing exempt. Lift the variant's value into base, offered in lift mode alone. Halt. |
 | `Conflict(type)` | Base holds one type at PATH and the variant another | Replace the variant's value with base's, whole. Register PATH exempt and remove it from base. Halt. |
 | `Conflict(unkeyed)` | PATH is an array of objects with no identity function | Register an identity function for PATH in `alignment.keyed`. Replace the variant's array with base's, whole. Register PATH exempt and remove it from base. Halt. |
@@ -360,7 +360,7 @@ done
 ```
 
 | Predicate | Claim | What it catches that the others miss |
-|-----------|-------|--------------------------------------|
+| ----------- | ------- | -------------------------------------- |
 | `floor` | Every leaf pair base names, with array indices elided, appears in the variant | A key or member that never got copied down |
 | `disjoint` | The variant's permission lists stay pairwise disjoint | A contradiction, which the floor predicate cannot see because the floor checks presence and never absence |
 | `residue` | No scalar array holds two members sharing a normalization | A corrupted spelling left standing beside the correct one, which is how a `Corrected` removal proves it happened |
@@ -397,7 +397,7 @@ A path moves from a variant into base only through a lift, and only when
 every one of these holds.
 
 | # | Clause | How to check it |
-|---|--------|-----------------|
+| --- | -------- | ----------------- |
 | 1 | Base does not already carry the candidate | `base-does-not-carry-it` in the `lift-gate` mode |
 | 2 | No registry pattern matches the path | `no-registry-match` |
 | 3 | The secret guard stays silent on the path and the value | `secret-guard-silent` |
