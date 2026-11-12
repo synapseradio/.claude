@@ -85,6 +85,46 @@ const MAX_BAR_CELLS = Math.floor(IMAGE_MAX_PX / PX_PER_CELL);
 /** The bar Image's key, which its blit names. */
 const BAR_KEY = "bar";
 
+// PROBE-U2 start
+const PROBE_PATH = "/Users/nke/.scratchpad/-claude/main/gauge-probe-2.jsonl";
+const probeLines: string[] = [];
+const probeDraws = new Map<string, number>();
+
+async function probeAtoms($: EngineInterface): Promise<unknown> {
+	const [c, est, anc, pend, gly] = await Promise.all([
+		read($, context),
+		read($, estimates),
+		read($, anchor),
+		read($, pending),
+		read($, glyphs),
+	]);
+	return {
+		totalTokens: c?.breakdown?.totalTokens ?? null,
+		threshold: c?.breakdown?.autoCompactThreshold ?? null,
+		estimates: est,
+		anchor: anc,
+		pending: pend,
+		glyphs: gly,
+	};
+}
+
+async function probe(
+	$: EngineInterface,
+	event: string,
+	fields: Record<string, unknown>,
+): Promise<void> {
+	if (probeLines.length > 3000) return;
+	const atoms = await probeAtoms($);
+	probeLines.push(JSON.stringify({ at: Date.now(), event, fields, atoms }));
+	await $.fs.write(PROBE_PATH, `${probeLines.join("\n")}\n`).catch(() => {});
+}
+
+const probeEnd: Hook<"session.end"> = async ($, e, next) => {
+	await probe($, "session.end", { reason: e.reason });
+	return next(e);
+};
+// PROBE-U2 end
+
 /** Whether an event belongs to the main conversation; a subagent's rows, responses and compactions fill the subagent's own window. */
 function onMain(e: { readonly agentId?: string | undefined }): boolean {
 	return e.agentId === undefined;
@@ -176,8 +216,21 @@ async function checkBar(
 	$: EngineInterface,
 	requestId: string,
 	source: Pixels,
+	probeInfo: Record<string, unknown>,
 ): Promise<void> {
 	const blit = await $.ui.blit({ requestId, key: BAR_KEY, source });
+	const draw = (probeDraws.get(requestId) ?? 0) + 1;
+	probeDraws.set(requestId, draw);
+	await probe($, "checkBar", {
+		requestId,
+		draw,
+		sourceWidth: source.width,
+		deny: blit.deny ?? null,
+		fix: blit.fix ?? null,
+		termProgram: await $.env.get("TERM_PROGRAM"),
+		tmux: await $.env.get("TMUX"),
+		...probeInfo,
+	});
 	if (blit.deny === undefined) return;
 	const [termProgram, wtSession] = await Promise.all([
 		$.env.get("TERM_PROGRAM"),
@@ -316,7 +369,13 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 	if (fallback !== null) barElement = barGlyphs(ui, runs, fallback);
 	else if (runs.length > 0) {
 		const source = barPixels(runs);
-		$.clock.after(0, () => checkBar($, e.requestId, source));
+		const probeInfo = {
+			columns: e.viewport?.columns ?? null,
+			used: model.used,
+			max: model.max,
+			rows: rows.map((r) => [r.label, r.tokens]),
+		};
+		$.clock.after(0, () => checkBar($, e.requestId, source, probeInfo));
 		barElement = barImage(ui, source);
 	}
 
@@ -349,18 +408,35 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 /** Reads the breakdown as the session starts. */
 const refreshOnStart: Hook<"session.start"> = async ($, e, next) => {
 	await refresh($);
+	await probe($, "session.start", {});
 	return next(e);
 };
 
 /** Counts each row the main conversation keeps, as it is kept. */
 const countKept: Hook<"session.append"> = async ($, e, next) => {
 	const kept = await next(e);
+	if (onMain(e) && e.door === "compaction") {
+		await probe($, "append.compaction.before", {
+			type: e.message.type,
+			name: e.message.name ?? null,
+			role: e.message.role ?? null,
+			keptRole: kept.message?.role ?? null,
+		});
+	}
+	if (onMain(e) && (e.door === "command" || e.door === "notice")) {
+		await probe($, `append.${e.door}`, {
+			type: e.message.type,
+			name: e.message.name ?? null,
+			chars: JSON.stringify(e.message.content).length,
+		});
+	}
 	if (onMain(e) && kept.message !== undefined) {
 		await countRow($, {
 			door: e.door,
 			origin: e.origin,
 			message: kept.message,
 		});
+		if (e.door === "compaction") await probe($, "append.compaction.after", {});
 	}
 	return kept;
 };
@@ -375,7 +451,15 @@ const anchorStep: Hook<"turn.step"> = async function* ($, e, next) {
 
 /** Starts the window over at its compacted size once a main-thread compaction stands; a precompute changes nothing yet. */
 const resetOnCompact: Hook<"session.compact"> = async ($, e, next) => {
+	await probe($, "compact.before", {
+		trigger: e.trigger,
+		agent: e.agentId ?? null,
+	});
 	const result = await next(e);
+	await probe($, "compact.after-next", {
+		skip: result.skip ?? null,
+		tokensAfter: "tokensAfter" in result ? (result.tokensAfter ?? null) : null,
+	});
 	if (!onMain(e) || e.trigger === "precompute" || result.skip !== undefined) {
 		return result;
 	}
@@ -390,9 +474,11 @@ const resetOnCompact: Hook<"session.compact"> = async ($, e, next) => {
  * carries both as its source, https://code.claude.com/docs/en/hooks#sessionstart
  */
 const resetOnStart: Hook<"classic.SessionStart"> = async ($, e, next) => {
+	await probe($, "classic.SessionStart.before", { source: e.source });
 	const result = await next(e);
 	if (e.source === "clear") await resetWindow($, () => NO_ESTIMATES, null);
 	if (e.source === "compact") await resetWindow($, compacted, null);
+	await probe($, "classic.SessionStart.after", { source: e.source });
 	return result;
 };
 
@@ -404,4 +490,5 @@ export const register: Register = (on) => {
 	on("session.compact", resetOnCompact).catch(passThrough);
 	on("classic.SessionStart", resetOnStart).catch(passThrough);
 	on("ui.render", { component: "PromptHint" }, drawGauge);
+	on("session.end", probeEnd);
 };
