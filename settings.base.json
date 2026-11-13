@@ -68,8 +68,6 @@
 			"mcp__tavily",
 			"mcp__exa",
 			"mcp__amboss-ds",
-			"mcp__plugin_context7_context7__query-docs",
-			"mcp__plugin_context7_context7__resolve-library-id",
 			"mcp__hindsight",
 			"mcp__hindsight-banks",
 			"Skill(hindsight-coding-agent)",
@@ -500,7 +498,7 @@
 				]
 			},
 			{
-				"matcher": "WebFetch|WebSearch|Bash|mcp__linkup__.*|mcp__plugin_context7_.*|mcp__.*tavily.*",
+				"matcher": "WebFetch|WebSearch|Bash|mcp__linkup__.*|mcp__.*tavily.*",
 				"hooks": [
 					{
 						"type": "command",
