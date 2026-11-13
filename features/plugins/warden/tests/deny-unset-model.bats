@@ -8,26 +8,22 @@
 # a temporary Claude directory, a temporary project, and a temporary plugin
 # install, so no case reads the machine's own agents.
 
-# setup sets HOOK and the helpers read it, which shellcheck cannot see
-# (SC2034).
-# shellcheck disable=SC2034
-
 setup_file() {
   export BATS_TEST_TIMEOUT=10
 }
 
 setup() {
-  HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-unset-model.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  load_guard deny-unset-model
   isolate_home
 
   export CLAUDE_CONFIG_DIR="${BATS_TEST_TMPDIR}/config"
   mkdir -p "${CLAUDE_CONFIG_DIR}/agents" "${CLAUDE_CONFIG_DIR}/plugins" \
     "${BATS_TEST_TMPDIR}/project/.claude/agents" \
     "${BATS_TEST_TMPDIR}/install/agents"
-  jq -nc --arg p "${BATS_TEST_TMPDIR}/install" \
-    '{version:2,plugins:{"lenses@market":[{scope:"user",installPath:$p}]}}' \
-    >"${CLAUDE_CONFIG_DIR}/plugins/installed_plugins.json"
+  json_quote "${BATS_TEST_TMPDIR}/install"
+  printf '{"version":2,"plugins":{"lenses@market":[{"scope":"user","installPath":%s}]}}\n' \
+    "${JSON_TEXT}" >"${CLAUDE_CONFIG_DIR}/plugins/installed_plugins.json"
 }
 
 #######################################
@@ -197,4 +193,10 @@ write_agent() {
   reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
     <<<"${HOOK_OUTPUT}")"
   [[ "${reason}" == *'sonnet or opus'* ]]
+}
+
+@test "an envelope proposing a critic that its project pins to haiku prints a PreToolUse denial" {
+  write_agent "${BATS_TEST_TMPDIR}/project/.claude/agents" critic critic haiku
+  assert_main_prints deny 'never haiku' \
+    "{\"tool_name\":\"Agent\",\"cwd\":\"${BATS_TEST_TMPDIR}/project\",\"tool_input\":{\"prompt\":\"p\",\"subagent_type\":\"critic\"}}"
 }

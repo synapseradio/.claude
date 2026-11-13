@@ -18,11 +18,20 @@
 # Stdin:  PreToolUse hook JSON envelope.
 # Stdout: hookSpecificOutput JSON when denying; nothing when allowing.
 # Exit:   0 in all cases (deny is communicated via stdout, not exit code).
+# Sourced: defines decide_bash, decide_grep, decide_glob, and main, and runs
+# none.
 
 # Single quotes are intentional throughout: these regexes match the literal
 # characters `$HOME` and `${HOME}` in a command, not their expansion.
 # shellcheck disable=SC2016
-set -euo pipefail
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  set -euo pipefail
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+# shellcheck source=lib/decision.sh
+source "${SCRIPT_DIR}/lib/decision.sh"
 
 # A home directory, the directory holding them, or a root's own spelling.
 readonly NAMED_ROOT='(~|\$HOME|\$\{HOME\}|/(Users|home)(/[^/*?[]+)?|/root)'
@@ -31,22 +40,20 @@ readonly NAMED_ROOT='(~|\$HOME|\$\{HOME\}|/(Users|home)(/[^/*?[]+)?|/root)'
 # search tools handled below.
 readonly VALUE_OPTIONS=' -g --glob --iglob -t --type -T --type-not --type-add -e --regexp -f --file -m --max-count -A -B -C -M --max-columns --max-depth --maxdepth -d --exact-depth -E --exclude -j --threads --max-filesize -L -I -P --pattern --ignore-dir --include --exclude-dir '
 
-# Set by main() from the hook envelope.
+# Set by each decision function from the tool input.
 CWD=''
 BARE_RE=''
 GLOB_RE=''
 
 #######################################
-# Emit a deny decision and exit.
+# Record a deny decision.
+# Globals:
+#   GUARD_DECISION, GUARD_REASON
 # Arguments:
 #   $1 - what was searched, quoted back in the reason.
 #######################################
 deny() {
-  local reason
-  reason="Refused: this search walks a whole home directory or the whole disk (${1}). Search inside the one directory that holds the target, or read the tool's documentation for the answer."
-  jq -nc --arg r "${reason}" \
-    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$r}}'
-  exit 0
+  decision::reach deny "Refused: this search walks a whole home directory or the whole disk (${1}). Search inside the one directory that holds the target, or read the tool's documentation for the answer."
 }
 
 #######################################
@@ -189,7 +196,7 @@ ls_is_recursive() {
 #######################################
 # Check one search command's words and deny when it searches broadly.
 # Globals:
-#   VALUE_OPTIONS
+#   VALUE_OPTIONS, GUARD_DECISION, GUARD_REASON
 # Arguments:
 #   $1 - the command name.
 #   $2 - 1 when the first positional word is a pattern, not a root.
@@ -219,6 +226,7 @@ check_search() {
     positional=$((positional + 1))
     if is_broad "${word}"; then
       deny "${command} ${word}"
+      return 0
     fi
     if ((pattern_first && positional == 1)); then
       continue
@@ -227,6 +235,7 @@ check_search() {
     resolved="$(resolve_root "${word}")"
     if is_broad "${resolved}"; then
       deny "${command} ${word}, which resolves to ${resolved}"
+      return 0
     fi
   done
 
@@ -237,6 +246,8 @@ check_search() {
 
 #######################################
 # Check one command of a shell line.
+# Globals:
+#   GUARD_DECISION, GUARD_REASON
 # Arguments:
 #   $1 - the command text, already split from its neighbors.
 #######################################
@@ -294,6 +305,7 @@ check_segment() {
       [[ "${word}" == -* ]] && continue
       if [[ "${word}" =~ ${GLOB_RE} ]]; then
         deny "${command} ${word}"
+        return 0
       fi
     done
     if ls_is_recursive "${command}" "$@"; then
@@ -304,7 +316,10 @@ check_segment() {
 }
 
 #######################################
-# Split a shell line into commands and check each one.
+# Split a shell line into commands and check each one, stopping at the
+# first that denies.
+# Globals:
+#   GUARD_DECISION, GUARD_REASON
 # Arguments:
 #   $1 - the shell line.
 #######################################
@@ -317,11 +332,14 @@ check_command() {
   done
   while IFS= read -r line; do
     check_segment "${line}"
+    [[ -z "${GUARD_DECISION}" ]] || return 0
   done <<<"${text}"
 }
 
 #######################################
 # Check a Grep or Glob tool call.
+# Globals:
+#   GUARD_DECISION, GUARD_REASON
 # Arguments:
 #   $1 - the tool name.
 #   $2 - the path argument, possibly empty.
@@ -346,7 +364,9 @@ check_tool() {
   esac
 
   if [[ "${tool}" == Grep ]]; then
-    is_broad "${base}" && deny "Grep in ${base}"
+    if is_broad "${base}"; then
+      deny "Grep in ${base}"
+    fi
     return 0
   fi
   if is_broad "${base}" && [[ "${pattern}" == *'**'* || "${pattern}" == */* ]]; then
@@ -355,28 +375,79 @@ check_tool() {
   return 0
 }
 
+#######################################
+# Decide on a command the Bash tool proposes.
+# Globals:
+#   CWD, GUARD_DECISION, GUARD_REASON
+# Arguments:
+#   $1 - the command.
+#   $2 - the session's working directory, possibly empty or absent.
+#######################################
+decide_bash() {
+  decision::clear
+  CWD="${2:-}"
+  build_root_patterns
+  check_command "$1"
+}
+
+#######################################
+# Decide on a call of the Grep tool. Grep's pattern is a regex over file
+# contents, never a path, so only the path is judged.
+# Globals:
+#   CWD, GUARD_DECISION, GUARD_REASON
+# Arguments:
+#   $1 - the path argument, possibly empty.
+#   $2 - the session's working directory, possibly empty.
+#######################################
+decide_grep() {
+  decision::clear
+  CWD="$2"
+  build_root_patterns
+  check_tool Grep "$1" ''
+}
+
+#######################################
+# Decide on a call of the Glob tool.
+# Globals:
+#   CWD, GUARD_DECISION, GUARD_REASON
+# Arguments:
+#   $1 - the Glob pattern.
+#   $2 - the path argument, possibly empty.
+#   $3 - the session's working directory, possibly empty.
+#######################################
+decide_glob() {
+  decision::clear
+  CWD="$3"
+  build_root_patterns
+  check_tool Glob "$2" "$1"
+}
+
 main() {
-  local input tool_name
+  local input tool_name cwd
   input="$(cat)"
   tool_name="$(jq -r '.tool_name // ""' <<<"${input}")"
-  CWD="$(jq -r '.cwd // ""' <<<"${input}")"
-  build_root_patterns
+  cwd="$(jq -r '.cwd // ""' <<<"${input}")"
 
   case "${tool_name}" in
   Bash)
-    check_command "$(jq -r '.tool_input.command // ""' <<<"${input}")"
+    decide_bash "$(jq -r '.tool_input.command // ""' <<<"${input}")" \
+      "${cwd}"
     ;;
   Grep)
-    # Grep's pattern is a regex over file contents, never a path.
-    check_tool Grep "$(jq -r '.tool_input.path // ""' <<<"${input}")" ''
+    decide_grep "$(jq -r '.tool_input.path // ""' <<<"${input}")" "${cwd}"
     ;;
   Glob)
-    check_tool Glob \
-      "$(jq -r '.tool_input.path // ""' <<<"${input}")" \
-      "$(jq -r '.tool_input.pattern // ""' <<<"${input}")"
+    decide_glob \
+      "$(jq -r '.tool_input.pattern // ""' <<<"${input}")" \
+      "$(jq -r '.tool_input.path // ""' <<<"${input}")" "${cwd}"
+    ;;
+  *)
+    return 0
     ;;
   esac
-  exit 0
+  decision::print
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

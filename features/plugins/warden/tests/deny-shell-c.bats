@@ -10,17 +10,14 @@
 # cover -c on other programs, other interpreters, a shell that runs a script
 # file or reads a script from stdin, and the words bash and -c inside quotes
 # or as arguments.
-#
-# setup sets HOOK and the helpers read it, which shellcheck cannot see.
-# shellcheck disable=SC2034
 
 setup_file() {
   export BATS_TEST_TIMEOUT=10
 }
 
 setup() {
-  HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-shell-c.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  load_guard deny-shell-c
   isolate_home
 }
 
@@ -183,4 +180,9 @@ setup() {
 
 @test "an empty command stays silent" {
   assert_silent ''
+}
+
+@test "an envelope proposing bash -c prints a PreToolUse denial" {
+  assert_main_prints deny 'script file in the scratchpad' \
+    '{"tool_name":"Bash","tool_input":{"command":"bash -c ls"}}'
 }

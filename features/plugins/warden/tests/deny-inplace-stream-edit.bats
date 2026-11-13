@@ -8,17 +8,13 @@
 # cases cover read-only stream editing, which stays allowed, and a mention of
 # the flag inside a quoted argument, which edits nothing.
 
-# setup sets HOOK and the helpers read it, which shellcheck cannot see
-# (SC2034).
-# shellcheck disable=SC2034
-
 setup_file() {
   export BATS_TEST_TIMEOUT=10
 }
 
 setup() {
-  HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-inplace-stream-edit.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  load_guard deny-inplace-stream-edit
   isolate_home
 }
 
@@ -114,4 +110,9 @@ setup() {
 # drift, and so a reader meeting the denial finds it named here.
 @test "an unquoted echo of the flag is denied, the cost of the wrapper word" {
   assert_denies "echo sed -i s/a/b/ notes.md"
+}
+
+@test "an envelope proposing sed -i prints a PreToolUse denial" {
+  assert_main_prints deny 'Edit or Write' \
+    '{"tool_name":"Bash","tool_input":{"command":"sed -i s/a/b/ notes.txt"}}'
 }

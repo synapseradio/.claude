@@ -13,8 +13,17 @@
 # that type pins haiku. The built-in Plan type has no definition file, so
 # only a model set on the call can put it on haiku.
 # Model resolution order: https://code.claude.com/docs/en/sub-agents.md#choose-a-model
+#
+# Sourced: defines decide_agent and main, and runs neither.
 
-set -euo pipefail
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  set -euo pipefail
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+# shellcheck source=lib/decision.sh
+source "${SCRIPT_DIR}/lib/decision.sh"
 
 readonly DENIAL_REASON='This spawn names no model, and no agent definition it names pins one. Set model on the Agent call by the agent-delegation rule: haiku for reads, maps, lists, summaries, verbatim copies of prepared payloads, and git operations stated whole; sonnet for implementing from a design, editing files, refining a diff, and critiquing; opus for designs, plans, and irreversible edits. A fork, subagent_type fork, leaves model unset, and so does a spawn of an agent whose definition pins a model.'
 
@@ -135,31 +144,20 @@ is_haiku_critic_or_planner() {
 }
 
 #######################################
-# Emit a deny decision.
+# Decide on a spawn the Agent tool proposes.
+# Globals:
+#   GUARD_DECISION, GUARD_REASON
 # Arguments:
-#   $1 - the reason.
-# Outputs:
-#   The permission decision JSON on stdout.
+#   $1 - the subagent type, possibly empty.
+#   $2 - the model set on the call, possibly empty.
+#   $3 - the session's working directory, possibly empty.
 #######################################
-deny() {
-  jq -nc --arg reason "$1" '{
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: $reason
-    }
-  }'
-}
-
-main() {
-  local input model type cwd
-  input="$(cat)"
-  model="$(jq -r '.tool_input.model // ""' <<<"${input}")"
-  type="$(jq -r '.tool_input.subagent_type // ""' <<<"${input}")"
-  cwd="$(jq -r '.cwd // ""' <<<"${input}")"
+decide_agent() {
+  local type="$1" model="$2" cwd="$3"
+  decision::clear
 
   if is_haiku_critic_or_planner "${type}" "${model}" "${cwd}"; then
-    deny "${HAIKU_BAN_REASON}"
+    decision::reach deny "${HAIKU_BAN_REASON}"
     return 0
   fi
 
@@ -171,8 +169,19 @@ main() {
     return 0
   fi
 
-  deny "${DENIAL_REASON}"
-  return 0
+  decision::reach deny "${DENIAL_REASON}"
 }
 
-main "$@"
+main() {
+  local input model type cwd
+  input="$(cat)"
+  model="$(jq -r '.tool_input.model // ""' <<<"${input}")"
+  type="$(jq -r '.tool_input.subagent_type // ""' <<<"${input}")"
+  cwd="$(jq -r '.cwd // ""' <<<"${input}")"
+  decide_agent "${type}" "${model}" "${cwd}"
+  decision::print
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

@@ -8,17 +8,16 @@
 # guard's patterns and the denial cases go red.
 
 # Single quotes are intentional throughout: the guard has to receive the
-# literal text, never its expansion (SC2016). setup sets HOOK and the
-# helpers read it, which shellcheck cannot see (SC2034).
-# shellcheck disable=SC2016,SC2034
+# literal text, never its expansion (SC2016).
+# shellcheck disable=SC2016
 
 setup_file() {
   export BATS_TEST_TIMEOUT=10
 }
 
 setup() {
-  HOOK="${BATS_TEST_DIRNAME}/../hooks/block-secret-leaks.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  load_guard block-secret-leaks
   isolate_home
 }
 
@@ -205,4 +204,9 @@ nest_in_shell_c() {
 
 @test "a here-document run by a shell that dumps the environment is denied" {
   assert_denies $'bash <<\'EOF\'\nprintenv\nEOF'
+}
+
+@test "an envelope proposing printenv prints a PreToolUse denial" {
+  assert_main_prints deny 'printenv would print env vars' \
+    '{"tool_name":"Bash","tool_input":{"command":"printenv"}}'
 }

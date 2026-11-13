@@ -19,13 +19,18 @@
 # Stdin:   PreToolUse hook JSON envelope.
 # Stdout:  hookSpecificOutput JSON when denying or asking; nothing otherwise.
 # Exit:    0 in all cases (the decision travels on stdout, not the exit code).
+# Sourced: defines decide_bash and main, and runs neither.
 
-set -euo pipefail
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  set -euo pipefail
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 # shellcheck source=lib/command_words.sh
 source "${SCRIPT_DIR}/lib/command_words.sh"
+# shellcheck source=lib/decision.sh
+source "${SCRIPT_DIR}/lib/decision.sh"
 
 readonly DENIAL_REASON="A shell run with -c executes a string that never stands as a command of its own. Write the step as a script file in the scratchpad and run that file, with the shell under test where the point is how that shell behaves (zsh <file>, /bin/bash <file>). A CLI whose credentials load only in an interactive shell runs as zsh -ic '<command>', which prompts."
 readonly ASK_REASON="zsh -ic runs a string in an interactive shell, which a CLI whose credentials load only there needs. Approve only that use."
@@ -80,24 +85,17 @@ shell_c_decision() {
 }
 
 #######################################
-# Emit a permission decision and exit.
+# Decide on a command the Bash tool proposes: a deny on the first program
+# line that calls for one, else an ask where any line called for one.
+# Globals:
+#   SHELL_C_DECISION, GUARD_DECISION, GUARD_REASON
 # Arguments:
-#   $1 - "deny" or "ask".
-# Outputs:
-#   The permission decision JSON on stdout.
+#   $1 - the command.
 #######################################
-decide() {
-  local decision="$1" reason="${DENIAL_REASON}"
-  [[ "${decision}" == ask ]] && reason="${ASK_REASON}"
-  jq -nc --arg d "${decision}" --arg r "${reason}" \
-    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:$d,permissionDecisionReason:$r}}'
-  exit 0
-}
-
-main() {
-  local command line asked=0
+decide_bash() {
+  local command="$1" line asked=0
   local -a words
-  command="$(jq -r '.tool_input.command // ""')"
+  decision::clear
 
   if [[ -z "${command}" ]]; then
     return 0
@@ -106,14 +104,25 @@ main() {
   while IFS= read -r line; do
     IFS=' ' read -r -a words <<<"${line}"
     shell_c_decision "${words[@]}"
-    [[ "${SHELL_C_DECISION}" == deny ]] && decide deny
+    if [[ "${SHELL_C_DECISION}" == deny ]]; then
+      decision::reach deny "${DENIAL_REASON}"
+      return 0
+    fi
     [[ "${SHELL_C_DECISION}" == ask ]] && asked=1
   done < <(command_words::resolve "${command}")
 
   if ((asked)); then
-    decide ask
+    decision::reach ask "${ASK_REASON}"
   fi
-  return 0
 }
 
-main "$@"
+main() {
+  local command
+  command="$(jq -r '.tool_input.command // ""')"
+  decide_bash "${command}"
+  decision::print
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

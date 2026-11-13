@@ -16,35 +16,31 @@
 # Stdin:   PreToolUse hook JSON envelope.
 # Stdout:  hookSpecificOutput JSON when denying; nothing when allowing.
 # Exit:    0 in all cases (the decision travels on stdout, not the exit code).
+# Sourced: defines decide_bash and main, and runs neither.
 
-set -euo pipefail
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  set -euo pipefail
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 # shellcheck source=lib/command_words.sh
 source "${SCRIPT_DIR}/lib/command_words.sh"
+# shellcheck source=lib/decision.sh
+source "${SCRIPT_DIR}/lib/decision.sh"
 
 readonly DENIAL_REASON='eval parses its argument a second time, so the text that runs is not the text that was written. Write the step as a script file in the scratchpad and run that file, or run the command directly.'
 
 #######################################
-# Emit a deny decision and exit.
-# Outputs:
-#   The permission decision JSON on stdout.
+# Decide on a command the Bash tool proposes.
+# Globals:
+#   GUARD_DECISION, GUARD_REASON
+# Arguments:
+#   $1 - the command.
 #######################################
-deny() {
-  jq -nc --arg reason "${DENIAL_REASON}" '{
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: $reason
-    }
-  }'
-  exit 0
-}
-
-main() {
-  local command line
-  command="$(jq -r '.tool_input.command // ""')"
+decide_bash() {
+  local command="$1" line
+  decision::clear
 
   if [[ -z "${command}" ]]; then
     return 0
@@ -52,11 +48,19 @@ main() {
 
   while IFS= read -r line; do
     if [[ "${line}" == eval || "${line}" == eval\ * ]]; then
-      deny
+      decision::reach deny "${DENIAL_REASON}"
+      return 0
     fi
   done < <(command_words::resolve "${command}")
-
-  return 0
 }
 
-main "$@"
+main() {
+  local command
+  command="$(jq -r '.tool_input.command // ""')"
+  decide_bash "${command}"
+  decision::print
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

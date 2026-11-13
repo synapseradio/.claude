@@ -38,16 +38,20 @@
 #
 # Nothing here names a directory particular to one person's machine.
 #
-# Globals: MODE, SUBJECT (set by main before the checks run).
+# Globals: MODE, SUBJECT (set by decide_bash and decide_read before the
+#          checks run).
 # Stdin:   PreToolUse hook JSON envelope.
 # Stdout:  hookSpecificOutput JSON when denying; nothing when allowing.
 # Exit:    0 in all cases (deny is communicated via stdout, not exit code).
+# Sourced: defines decide_bash, decide_read, and main, and runs none.
 
 # The check_every_pattern labels below spell a few directories with a
 # leading tilde, intentional shorthand for the user's home directory in a
 # display string, not a path shellcheck should try to expand.
 # shellcheck disable=SC2088
-set -euo pipefail
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  set -euo pipefail
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
@@ -55,6 +59,8 @@ readonly SCRIPT_DIR
 source "${SCRIPT_DIR}/lib/command_words.sh"
 # shellcheck source=lib/search_operands.sh
 source "${SCRIPT_DIR}/lib/search_operands.sh"
+# shellcheck source=lib/decision.sh
+source "${SCRIPT_DIR}/lib/decision.sh"
 
 # Commands that read file contents from a path argument or redirect.
 readonly READ_CMDS='(cat|tac|less|more|head|tail|bat|xxd|od|strings|hexdump|grep|rg|ripgrep|sed|awk|jq|yq|nl|file|wc|md5sum|sha1sum|sha256sum|sha512sum|cksum|cp|mv|install|tar|zip|gzip|bzip2|xz|7z|openssl|base64|gpg|ssh-keygen|ssh-add)'
@@ -110,7 +116,7 @@ readonly ALL_PATH_PATTERNS="${SSH_PATH}|${AWS_PATH}|${GNUPG_PATH}|${KUBE_PATH}|$
 # default in force.
 readonly BANNED_READS_LEAF='warden/banned-reads.conf'
 
-# Set by main() from the hook envelope, read by every check below.
+# Set by decide_bash and decide_read, read by every check below.
 MODE=''
 SUBJECT=''
 
@@ -123,23 +129,20 @@ READ_READY=0
 READ_HEREDOC=0
 
 #######################################
-# Emit a deny decision and exit.
+# Record a deny decision.
 # Globals:
-#   MODE
+#   MODE, GUARD_DECISION, GUARD_REASON
 # Arguments:
 #   $1 - human label for the path pattern that matched.
 #######################################
 deny() {
-  local label="$1" action reason
+  local label="$1" action
   if [[ "${MODE}" == "path" ]]; then
     action='Read would open'
   else
     action='command would read'
   fi
-  reason="Refused: ${action} a secret-shaped path (${label}). If this is intentional, run it yourself."
-  jq -nc --arg r "${reason}" \
-    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$r}}'
-  exit 0
+  decision::reach deny "Refused: ${action} a secret-shaped path (${label}). If this is intentional, run it yourself."
 }
 
 #######################################
@@ -212,15 +215,17 @@ path_hits_pattern() {
 }
 
 #######################################
-# Run the checks the active mode calls for. Denies on the first hit.
+# Run the checks the active mode calls for, unless an earlier check already
+# denied. Denies on the first hit.
 # Globals:
-#   MODE
+#   MODE, GUARD_DECISION
 # Arguments:
 #   $1 - human label for the deny message
 #   $2 - regex for the secret path
 #######################################
 check_pattern() {
   local label="$1" path_re="$2"
+  [[ -z "${GUARD_DECISION}" ]] || return 0
   if [[ "${MODE}" == "path" ]]; then
     if path_hits_pattern "${path_re}"; then
       deny "${label}"
@@ -298,14 +303,16 @@ escape_regex() {
 }
 
 #######################################
-# Test each fragment the user banned against the subject.
+# Test each fragment the user banned against the subject, unless an earlier
+# check already denied.
 # Globals:
-#   SUBJECT
+#   SUBJECT, GUARD_DECISION
 # Arguments:
 #   None
 #######################################
 check_banned_reads() {
   local file line
+  [[ -z "${GUARD_DECISION}" ]] || return 0
   file="$(banned_reads_file)"
   [[ -r "${file}" ]] || return 0
 
@@ -318,32 +325,72 @@ check_banned_reads() {
   done <"${file}"
 }
 
+#######################################
+# Judge SUBJECT in the active mode, from a fresh start.
+# Globals:
+#   SUBJECT, READ_SUBJECT, READ_READY, READ_HEREDOC, GUARD_DECISION,
+#   GUARD_REASON
+#######################################
+judge_subject() {
+  decision::clear
+  READ_SUBJECT=''
+  READ_READY=0
+  READ_HEREDOC=0
+
+  if [[ -z "${SUBJECT}" ]]; then
+    return 0
+  fi
+
+  check_every_pattern
+}
+
+#######################################
+# Decide on a command the Bash tool proposes.
+# Globals:
+#   MODE, SUBJECT, GUARD_DECISION, GUARD_REASON
+# Arguments:
+#   $1 - the command.
+#######################################
+decide_bash() {
+  MODE='command'
+  SUBJECT="$1"
+  judge_subject
+}
+
+#######################################
+# Decide on a path the Read tool proposes to open.
+# Globals:
+#   MODE, SUBJECT, GUARD_DECISION, GUARD_REASON
+# Arguments:
+#   $1 - the file path.
+#######################################
+decide_read() {
+  MODE='path'
+  SUBJECT="$1"
+  judge_subject
+}
+
 main() {
-  local input tool_name
+  local input tool_name subject
   input="$(cat)"
   tool_name="$(jq -r '.tool_name // ""' <<<"${input}")"
 
   case "${tool_name}" in
   Bash)
-    MODE='command'
-    SUBJECT="$(jq -r '.tool_input.command // ""' <<<"${input}")"
+    subject="$(jq -r '.tool_input.command // ""' <<<"${input}")"
+    decide_bash "${subject}"
     ;;
   Read)
-    MODE='path'
-    SUBJECT="$(jq -r '.tool_input.file_path // ""' <<<"${input}")"
+    subject="$(jq -r '.tool_input.file_path // ""' <<<"${input}")"
+    decide_read "${subject}"
     ;;
   *)
-    exit 0
+    return 0
     ;;
   esac
-
-  if [[ -z "${SUBJECT}" ]]; then
-    exit 0
-  fi
-
-  check_every_pattern
-
-  exit 0
+  decision::print
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

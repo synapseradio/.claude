@@ -8,17 +8,13 @@
 # cover other git subcommands, a commit without --amend, and --amend inside
 # a message, a quoted string, or as an argument to another program.
 
-# setup sets HOOK and the helpers read it, which shellcheck cannot see
-# (SC2034).
-# shellcheck disable=SC2034
-
 setup_file() {
   export BATS_TEST_TIMEOUT=10
 }
 
 setup() {
-  HOOK="${BATS_TEST_DIRNAME}/../hooks/ask-git-amend.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  load_guard ask-git-amend
   isolate_home
   export GIT_CONFIG_GLOBAL="${HOME}/gitconfig"
   export GIT_CONFIG_NOSYSTEM=1
@@ -156,4 +152,9 @@ setup() {
 
 @test "an empty command stays silent" {
   assert_silent ''
+}
+
+@test "an envelope proposing git commit --amend prints a PreToolUse ask" {
+  assert_main_prints ask 'commit anew' \
+    '{"tool_name":"Bash","tool_input":{"command":"git commit --amend --no-edit"}}'
 }

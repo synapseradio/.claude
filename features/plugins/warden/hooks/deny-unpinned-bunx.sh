@@ -23,13 +23,18 @@
 # Stdin:   PreToolUse hook JSON envelope.
 # Stdout:  hookSpecificOutput JSON when denying; nothing when staying silent.
 # Exit:    0 in all cases (the decision travels on stdout, not the exit code).
+# Sourced: defines decide_bash and main, and runs neither.
 
-set -euo pipefail
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  set -euo pipefail
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 # shellcheck source=lib/command_words.sh
 source "${SCRIPT_DIR}/lib/command_words.sh"
+# shellcheck source=lib/decision.sh
+source "${SCRIPT_DIR}/lib/decision.sh"
 
 # Options, besides -p and --package, whose next word is a value rather than
 # the package.
@@ -161,24 +166,16 @@ find_unpinned() {
 }
 
 #######################################
-# Emit a deny decision naming the unpinned package.
+# Decide on a command the Bash tool proposes.
 # Globals:
-#   UNPINNED
-# Outputs:
-#   The permission decision JSON on stdout.
+#   BUNX_ARGS, UNPINNED, GUARD_DECISION, GUARD_REASON
+# Arguments:
+#   $1 - the command.
 #######################################
-deny() {
-  local reason
-  reason="bunx runs ${UNPINNED} with no version, so it fetches whatever the registry serves at that moment and executes it. Run bunx at a pinned version or @latest: bunx <pkg>@<version>. Before it runs, state in the message: the package, the version the command pins, what it executes, and which installed tool falls short of the step."
-  jq -nc --arg r "${reason}" \
-    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$r}}'
-  exit 0
-}
-
-main() {
-  local command line
+decide_bash() {
+  local command="$1" line
   local -a words
-  command="$(jq -r '.tool_input.command // ""')"
+  decision::clear
 
   if [[ -z "${command}" ]]; then
     return 0
@@ -189,12 +186,20 @@ main() {
     if collect_bunx_args "${words[@]}"; then
       find_unpinned ${BUNX_ARGS[@]+"${BUNX_ARGS[@]}"}
       if [[ -n "${UNPINNED}" ]]; then
-        deny
+        decision::reach deny "bunx runs ${UNPINNED} with no version, so it fetches whatever the registry serves at that moment and executes it. Run bunx at a pinned version or @latest: bunx <pkg>@<version>. Before it runs, state in the message: the package, the version the command pins, what it executes, and which installed tool falls short of the step."
+        return 0
       fi
     fi
   done < <(command_words::resolve "${command}")
-
-  return 0
 }
 
-main "$@"
+main() {
+  local command
+  command="$(jq -r '.tool_input.command // ""')"
+  decide_bash "${command}"
+  decision::print
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

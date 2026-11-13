@@ -10,17 +10,16 @@
 # string, in a comment, and in a here-document body.
 
 # Single quotes are intentional throughout: the guard has to receive the
-# literal text, never its expansion (SC2016). setup sets HOOK and the
-# helpers read it, which shellcheck cannot see (SC2034).
-# shellcheck disable=SC2016,SC2034
+# literal text, never its expansion (SC2016).
+# shellcheck disable=SC2016
 
 setup_file() {
   export BATS_TEST_TIMEOUT=10
 }
 
 setup() {
-  HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-eval.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  load_guard deny-eval
   isolate_home
 }
 
@@ -132,4 +131,9 @@ setup() {
 
 @test "an empty command stays silent" {
   assert_silent ''
+}
+
+@test "an envelope proposing eval prints a PreToolUse denial" {
+  assert_main_prints deny 'parses its argument a second time' \
+    '{"tool_name":"Bash","tool_input":{"command":"eval ls"}}'
 }

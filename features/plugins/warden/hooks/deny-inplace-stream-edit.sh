@@ -29,32 +29,48 @@
 # Globals: none.
 # Stdin:   PreToolUse hook JSON envelope.
 # Stdout:  hookSpecificOutput JSON when denying; nothing when allowing.
+# Sourced: defines decide_bash and main, and runs neither.
 
-set -euo pipefail
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  set -euo pipefail
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+# shellcheck source=lib/decision.sh
+source "${SCRIPT_DIR}/lib/decision.sh"
 
 readonly INPLACE_PATTERN='(^|[|;&(])[[:space:]]*([A-Za-z0-9_.-]+[[:space:]]+)?(g?sed[[:space:]]+(-[a-zA-Z0-9.]*i|--in-place)|awk[[:space:]]+-i[[:space:]]+inplace)'
 
 readonly DENIAL_REASON='An in-place stream edit rewrites the file without reporting a failed match, so a wrong pattern mangles the rest of it silently. Use Edit or Write instead: they match exactly and fail loudly on a wrong match. Read-only stream editing in a pipeline stays allowed.'
 
-main() {
-  local command
-  command="$(jq -r '.tool_input.command // ""')"
+#######################################
+# Decide on a command the Bash tool proposes.
+# Globals:
+#   GUARD_DECISION, GUARD_REASON
+# Arguments:
+#   $1 - the command.
+#######################################
+decide_bash() {
+  local command="$1"
+  decision::clear
 
   if [[ -z "${command}" ]]; then
     return 0
   fi
 
   if grep -Eq "${INPLACE_PATTERN}" <<<"${command}"; then
-    jq -nc --arg reason "${DENIAL_REASON}" '{
-      hookSpecificOutput: {
-        hookEventName: "PreToolUse",
-        permissionDecision: "deny",
-        permissionDecisionReason: $reason
-      }
-    }'
+    decision::reach deny "${DENIAL_REASON}"
   fi
-
-  return 0
 }
 
-main "$@"
+main() {
+  local command
+  command="$(jq -r '.tool_input.command // ""')"
+  decide_bash "${command}"
+  decision::print
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

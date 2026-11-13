@@ -11,8 +11,8 @@
 # guard reads (after a separator, in a sh -c string, behind env).
 
 # The single-quoted command texts below are the input under test, so their
-# $ and backticks must stay literal (SC2016). bats reads BATS_TEST_TIMEOUT
-# and the helpers read HOOK, which shellcheck cannot see (SC2034).
+# $ and backticks must stay literal (SC2016). bats reads BATS_TEST_TIMEOUT,
+# which shellcheck cannot see (SC2034).
 # shellcheck disable=SC2016,SC2034
 
 BATS_TEST_TIMEOUT=10
@@ -27,8 +27,8 @@ setup_file() {
 }
 
 setup() {
-  HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-unsafe-soft-reset.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  load_guard deny-unsafe-soft-reset
   isolate_home
   isolate_git_config
   copy_fixture
@@ -394,4 +394,9 @@ assert_denied_because() {
 
 @test "a step after the soft reset does not hold it back" {
   assert_silent_in "${WORK}" 'git reset --soft HEAD~1; echo done'
+}
+
+@test "an envelope proposing a soft reset past the first commit prints a PreToolUse denial" {
+  assert_main_prints deny 'HEAD~3 does not resolve to a commit' \
+    "{\"tool_name\":\"Bash\",\"cwd\":\"${WORK}\",\"tool_input\":{\"command\":\"git reset --soft HEAD~3\"}}"
 }

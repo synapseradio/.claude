@@ -1,20 +1,26 @@
 # Shared helpers for the warden hook tests.
 #
-# Every guard here reads one PreToolUse envelope on stdin and answers on
-# stdout: a permission decision object when it objects, and nothing at all
-# when it does not. The exit status stays 0 either way, so a guard that
-# crashed and a guard that allowed look alike unless the status is checked
-# too. These helpers check both.
+# Every guard reads one PreToolUse envelope on stdin and answers on stdout: a
+# permission decision object when it objects, and nothing at all when it does
+# not. Its decision functions take the tool input as arguments and leave the
+# decision in GUARD_DECISION and GUARD_REASON (hooks/lib/decision.sh); its
+# main reads the envelope, calls one of them, and prints the result.
 #
-# Each test file sets HOOK to the guard under test in its own setup, then
-# loads this file. The guards run under `bash <path>`, which is how the
-# harness invokes them.
+# Each test file sources its guard in setup through load_guard. The run_*
+# helpers below call the guard's decision functions in the test's own shell,
+# so a case starts no bash, jq, or cat of its own. run_hook_envelope runs the
+# guard's main as a function with the envelope on stdin, the path the harness
+# takes short of starting bash. The assertions check the exit status too, so
+# a guard that crashed and a guard that allowed never look alike.
 #
 # shellcheck shell=bash
 
-# Set by run_bash_hook and run_read_hook, read by the assertions below.
+# Set by the run_* helpers, read by the assertions below. HOOK_OUTPUT holds
+# the decision as the guard's JSON, for cases that read it with jq.
 HOOK_OUTPUT=''
 HOOK_STATUS=0
+HOOK_DECISION=''
+HOOK_REASON=''
 
 # Point the banned-reads file at this test's own temporary directory. No
 # case can then reach a file the machine already has, whatever the person
@@ -56,45 +62,139 @@ isolate_git_config() {
 }
 
 #######################################
-# Feed one envelope to the guard under test.
+# Source the guard under test into this shell, and fail where sourcing
+# changed the shell's options: the guard's strict mode belongs to the process
+# it runs as, and in force here it would end or alter the test. Sourcing that
+# turned nounset or pipefail on has them turned off again before the failure,
+# since bats itself stops reporting under either.
+# Arguments:
+#   $1 - the guard's file name in hooks/, without .sh.
+#######################################
+load_guard() {
+  local flags="$-" pipefail=0 now_flags now_pipefail=0
+  if shopt -qo pipefail; then
+    pipefail=1
+  fi
+  # shellcheck source=/dev/null
+  source "${BATS_TEST_DIRNAME}/../hooks/$1.sh"
+  now_flags="$-"
+  if shopt -qo pipefail; then
+    now_pipefail=1
+  fi
+  [[ "${now_flags}" != "${flags}" ]] || ((now_pipefail != pipefail)) ||
+    return 0
+
+  [[ "${flags}" == *u* ]] || set +u
+  ((pipefail)) || set +o pipefail
+  echo "sourcing $1.sh changed the shell options: flags ${flags} to" \
+    "${now_flags}, pipefail ${pipefail} to ${now_pipefail}" >&2
+  return 1
+}
+
+#######################################
+# Set JSON_TEXT to a JSON string literal holding a text.
 # Globals:
-#   HOOK, HOOK_OUTPUT, HOOK_STATUS
+#   JSON_TEXT
+# Arguments:
+#   $1 - the text.
+#######################################
+json_quote() {
+  local text="$1" code octal char escaped
+  local backslash=$'\\' quote='"'
+  text="${text//${backslash}/${backslash}${backslash}}"
+  text="${text//${quote}/${backslash}${quote}}"
+  text="${text//$'\n'/${backslash}n}"
+  text="${text//$'\t'/${backslash}t}"
+  text="${text//$'\r'/${backslash}r}"
+  if [[ "${text}" == *[[:cntrl:]]* ]]; then
+    for ((code = 1; code < 32; code++)); do
+      printf -v octal '%03o' "${code}"
+      # shellcheck disable=SC2059
+      printf -v char "\\${octal}"
+      printf -v escaped '%su%04x' "${backslash}" "${code}"
+      text="${text//"${char}"/${escaped}}"
+    done
+  fi
+  JSON_TEXT="${quote}${text}${quote}"
+}
+
+#######################################
+# Call one of the guard's decision functions under the options the guard runs
+# with, then record what it decided. bats traces every command of a function
+# it calls; the trace stays off for the call, which would otherwise cost more
+# than the decision itself. A guard that judges with git leaves a timer
+# process behind, and bats waits for every process holding its descriptor 3,
+# so the call runs with that descriptor closed.
+# https://bats-core.readthedocs.io/en/stable/writing-tests.html#file-descriptor-3-read-this-if-bats-hangs
+# Globals:
+#   GUARD_DECISION, GUARD_REASON, HOOK_OUTPUT, HOOK_STATUS, HOOK_DECISION,
+#   HOOK_REASON, JSON_TEXT
+# Arguments:
+#   The decision function, then its arguments.
+#######################################
+judge() {
+  local flags="$-" pipefail=0
+  if shopt -qo pipefail; then
+    pipefail=1
+  fi
+  set +T -u -o pipefail
+  "$@" 3>&-
+  [[ "${flags}" == *u* ]] || set +u
+  ((pipefail)) || set +o pipefail
+  [[ "${flags}" != *T* ]] || set -T
+
+  HOOK_STATUS=0
+  HOOK_DECISION="${GUARD_DECISION}"
+  HOOK_REASON="${GUARD_REASON}"
+  HOOK_OUTPUT=''
+  if [[ -n "${HOOK_DECISION}" ]]; then
+    json_quote "${HOOK_REASON}"
+    HOOK_OUTPUT="{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"${HOOK_DECISION}\",\"permissionDecisionReason\":${JSON_TEXT}}}"
+  fi
+}
+
+#######################################
+# Feed one envelope to the guard's main, in a subshell under the guard's own
+# options and with descriptor 3 closed as in judge, and read back what it
+# printed.
+# Globals:
+#   HOOK_OUTPUT, HOOK_STATUS, HOOK_DECISION, HOOK_REASON
 # Arguments:
 #   $1 - the PreToolUse envelope JSON.
 #######################################
 run_hook_envelope() {
-  local envelope="$1"
+  local envelope="$1" fields
   HOOK_STATUS=0
-  HOOK_OUTPUT="$(bash "${HOOK}" <<<"${envelope}")" || HOOK_STATUS=$?
+  HOOK_OUTPUT="$(
+    set -euo pipefail
+    main <<<"${envelope}" 3>&-
+  )" || HOOK_STATUS=$?
+  HOOK_DECISION=''
+  HOOK_REASON=''
+  [[ -n "${HOOK_OUTPUT}" ]] || return 0
+  fields="$(jq -r '.hookSpecificOutput.permissionDecision // "",
+    .hookSpecificOutput.permissionDecisionReason // ""' <<<"${HOOK_OUTPUT}")"
+  HOOK_DECISION="${fields%%$'\n'*}"
+  HOOK_REASON="${fields#*$'\n'}"
 }
 
 #######################################
 # Run the guard against a command the Bash tool proposes.
-# Globals:
-#   HOOK_OUTPUT, HOOK_STATUS
 # Arguments:
 #   $1 - the shell command.
 #######################################
 run_bash_hook() {
-  local command="$1" envelope
-  envelope="$(jq -nc --arg c "${command}" \
-    '{tool_name:"Bash",tool_input:{command:$c}}')"
-  run_hook_envelope "${envelope}"
+  judge decide_bash "$1"
 }
 
 #######################################
 # Run the guard against a command the Bash tool proposes from a directory.
-# Globals:
-#   HOOK_OUTPUT, HOOK_STATUS
 # Arguments:
 #   $1 - the session's working directory.
 #   $2 - the shell command.
 #######################################
 run_bash_hook_in() {
-  local cwd="$1" command="$2" envelope
-  envelope="$(jq -nc --arg c "${command}" --arg cwd "${cwd}" \
-    '{tool_name:"Bash",cwd:$cwd,tool_input:{command:$c}}')"
-  run_hook_envelope "${envelope}"
+  judge decide_bash "$2" "$1"
 }
 
 #######################################
@@ -121,31 +221,48 @@ assert_silent_in() {
 
 #######################################
 # Run the guard against a path the Read tool proposes to open.
-# Globals:
-#   HOOK_OUTPUT, HOOK_STATUS
 # Arguments:
 #   $1 - the file path.
 #######################################
 run_read_hook() {
-  local path="$1" envelope
-  envelope="$(jq -nc --arg p "${path}" \
-    '{tool_name:"Read",tool_input:{file_path:$p}}')"
-  run_hook_envelope "${envelope}"
+  judge decide_read "$1"
 }
 
 #######################################
-# Run the guard against the input the Agent tool proposes.
+# Set JSON_FIELD to the value of one string field of a flat JSON object, or
+# to empty where the object holds no such string.
 # Globals:
-#   HOOK_OUTPUT, HOOK_STATUS, BATS_TEST_TMPDIR
+#   JSON_FIELD
 # Arguments:
-#   $1 - the tool_input object as JSON.
+#   $1 - the JSON object, holding no escaped character.
+#   $2 - the field's name.
+#######################################
+json_field() {
+  local pattern="\"$2\"[[:space:]]*:[[:space:]]*\"([^\"]*)\""
+  JSON_FIELD=''
+  if [[ "$1" =~ ${pattern} ]]; then
+    JSON_FIELD="${BASH_REMATCH[1]}"
+  fi
+}
+
+#######################################
+# Run the guard against the input the Agent tool proposes, from a project
+# directory under this test's own.
+# Globals:
+#   BATS_TEST_TMPDIR, JSON_FIELD
+# Arguments:
+#   $1 - the tool_input object as flat JSON, holding no escaped character.
 #######################################
 run_agent_hook() {
-  local tool_input="$1" envelope
-  envelope="$(jq -nc --argjson i "${tool_input}" \
-    --arg cwd "${BATS_TEST_TMPDIR}/project" \
-    '{tool_name:"Agent",cwd:$cwd,tool_input:$i}')"
-  run_hook_envelope "${envelope}"
+  local tool_input="$1" type
+  [[ "${tool_input}" != *\\* ]] || {
+    echo "run_agent_hook reads flat JSON with no escapes: ${tool_input}" >&2
+    return 1
+  }
+  json_field "${tool_input}" subagent_type
+  type="${JSON_FIELD}"
+  json_field "${tool_input}" model
+  judge decide_agent "${type}" "${JSON_FIELD}" "${BATS_TEST_TMPDIR}/project"
 }
 
 #######################################
@@ -183,49 +300,60 @@ assert_exited_clean() {
 #######################################
 # Assert the last run carried a given permission decision.
 # Globals:
-#   HOOK_OUTPUT
+#   HOOK_DECISION, HOOK_REASON
 # Arguments:
 #   $1 - the expected permissionDecision value.
 #   $2 - the subject, quoted back on failure.
 #######################################
 assert_decision() {
-  local want="$1" subject="$2" event decision
+  local want="$1" subject="$2"
   assert_exited_clean || return 1
-  [[ -n "${HOOK_OUTPUT}" ]] || {
+  [[ -n "${HOOK_DECISION}" ]] || {
     echo "expected a ${want}, got silence for: ${subject}" >&2
     return 1
   }
-  event="$(jq -r '.hookSpecificOutput.hookEventName // ""' <<<"${HOOK_OUTPUT}")"
-  [[ "${event}" == 'PreToolUse' ]] || {
-    echo "expected hookEventName PreToolUse, got '${event}'" >&2
+  [[ "${HOOK_DECISION}" == "${want}" ]] || {
+    echo "expected ${want}, got '${HOOK_DECISION}' for: ${subject}" >&2
     return 1
   }
-  decision="$(jq -r '.hookSpecificOutput.permissionDecision // ""' \
-    <<<"${HOOK_OUTPUT}")"
-  [[ "${decision}" == "${want}" ]] || {
-    echo "expected ${want}, got '${decision}' for: ${subject}" >&2
-    return 1
-  }
-  [[ -n "$(jq -r '.hookSpecificOutput.permissionDecisionReason // ""' \
-    <<<"${HOOK_OUTPUT}")" ]] || {
+  [[ -n "${HOOK_REASON}" ]] || {
     echo "decision carried no reason for the user to read: ${subject}" >&2
     return 1
   }
 }
 
 #######################################
-# Assert the last denial's reason contains a string.
+# Assert the guard's main, fed one envelope, printed a PreToolUse decision
+# whose reason holds a given text.
 # Globals:
 #   HOOK_OUTPUT
+# Arguments:
+#   $1 - the expected permissionDecision value.
+#   $2 - text the reason must hold.
+#   $3 - the PreToolUse envelope JSON.
+#######################################
+assert_main_prints() {
+  local want="$1" text="$2" event
+  run_hook_envelope "$3"
+  assert_decision "${want}" "$3" || return 1
+  event="$(jq -r '.hookSpecificOutput.hookEventName // ""' <<<"${HOOK_OUTPUT}")"
+  [[ "${event}" == 'PreToolUse' ]] || {
+    echo "expected hookEventName PreToolUse, got '${event}'" >&2
+    return 1
+  }
+  assert_reason_contains "${text}"
+}
+
+#######################################
+# Assert the last decision's reason contains a string.
+# Globals:
+#   HOOK_REASON
 # Arguments:
 #   $1 - the text the reason must hold.
 #######################################
 assert_reason_contains() {
-  local reason
-  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")"
-  [[ "${reason}" == *"$1"* ]] || {
-    echo "reason lacks '$1': ${reason}" >&2
+  [[ "${HOOK_REASON}" == *"$1"* ]] || {
+    echo "reason lacks '$1': ${HOOK_REASON}" >&2
     return 1
   }
 }

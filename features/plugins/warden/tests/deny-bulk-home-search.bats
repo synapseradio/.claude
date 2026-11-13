@@ -6,36 +6,31 @@
 # HOME is pinned to a fixed path so every case reads the same whatever
 # machine runs it. The guard reads paths as text and opens nothing.
 
-# setup sets HOOK and the helpers read it, which shellcheck cannot see
-# (SC2034).
-# shellcheck disable=SC2034
-
 setup_file() {
   export BATS_TEST_TIMEOUT=10
 }
 
 setup() {
-  HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-bulk-home-search.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  load_guard deny-bulk-home-search
   isolate_home
   export HOME=/Users/tester
 }
 
 # Run the guard against a command proposed from a given working directory.
 run_bash_in() {
-  local cwd="$1" command="$2" envelope
-  envelope="$(jq -nc --arg c "${command}" --arg d "${cwd}" \
-    '{tool_name:"Bash",cwd:$d,tool_input:{command:$c}}')"
-  run_hook_envelope "${envelope}"
+  run_bash_hook_in "$1" "$2"
 }
 
 # Run the guard against a Grep or Glob call from a given working directory.
+# Grep's pattern is a regex over file contents, so only Glob is given one.
 run_tool_in() {
-  local tool="$1" cwd="$2" path="$3" pattern="$4" envelope
-  envelope="$(jq -nc --arg t "${tool}" --arg d "${cwd}" --arg p "${path}" \
-    --arg g "${pattern}" \
-    '{tool_name:$t,cwd:$d,tool_input:({pattern:$g} + (if $p == "" then {} else {path:$p} end))}')"
-  run_hook_envelope "${envelope}"
+  local tool="$1" cwd="$2" path="$3" pattern="$4"
+  if [[ "${tool}" == Grep ]]; then
+    judge decide_grep "${path}" "${cwd}"
+  else
+    judge decide_glob "${pattern}" "${path}" "${cwd}"
+  fi
 }
 
 @test "find from the filesystem root is denied" {
@@ -181,4 +176,13 @@ run_tool_in() {
 
 @test "an empty command stays silent" {
   assert_silent ''
+}
+
+@test "an envelope proposing a search of home prints a PreToolUse denial" {
+  assert_main_prints deny 'find with no root, run in /Users/tester' \
+    '{"tool_name":"Bash","cwd":"/Users/tester","tool_input":{"command":"find -name x"}}'
+  assert_main_prints deny 'Grep in /Users/tester' \
+    '{"tool_name":"Grep","cwd":"/Users/tester/app","tool_input":{"pattern":"x","path":".."}}'
+  assert_main_prints deny 'Glob **/x.py in /Users/tester' \
+    '{"tool_name":"Glob","cwd":"/Users/tester","tool_input":{"pattern":"**/x.py"}}'
 }

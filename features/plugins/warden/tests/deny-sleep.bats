@@ -7,17 +7,16 @@
 # word that only contains sleep and a mention inside a quoted argument.
 
 # Single quotes are intentional throughout: the guard has to receive the
-# literal text, never its expansion (SC2016). setup sets HOOK and the
-# helpers read it, which shellcheck cannot see (SC2034).
-# shellcheck disable=SC2016,SC2034
+# literal text, never its expansion (SC2016).
+# shellcheck disable=SC2016
 
 setup_file() {
   export BATS_TEST_TIMEOUT=10
 }
 
 setup() {
-  HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-sleep.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  load_guard deny-sleep
   isolate_home
 }
 
@@ -100,4 +99,8 @@ setup() {
   assert_denies 'nohup sleep 5 &'
   assert_denies "bash -c 'sleep 5'"
   assert_denies 'FOO=1 sleep 5'
+}
+
+@test "an envelope proposing sleep prints a PreToolUse denial" {
+  assert_main_prints deny 'run_in_background' '{"tool_name":"Bash","tool_input":{"command":"sleep 5"}}'
 }

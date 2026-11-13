@@ -42,8 +42,11 @@
 # Stdin:   PreToolUse hook JSON envelope.
 # Stdout:  hookSpecificOutput JSON when denying; nothing when allowing.
 # Exit:    0 in all cases (the decision travels on stdout, not the exit code).
+# Sourced: defines decide_bash and main, and runs neither.
 
-set -euo pipefail
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  set -euo pipefail
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
@@ -51,10 +54,8 @@ readonly SCRIPT_DIR
 source "${SCRIPT_DIR}/lib/command_words.sh"
 # shellcheck source=lib/git_guard.sh
 source "${SCRIPT_DIR}/lib/git_guard.sh"
-
-# Git would otherwise judge the repository that holds the hook and not the
-# one the command names.
-git_guard::unset_repository_env
+# shellcheck source=lib/decision.sh
+source "${SCRIPT_DIR}/lib/decision.sh"
 
 readonly DENIAL_ADVICE='To squash a branch, use wt -C <worktree> step squash <target>: it rewrites only the branch'\''s own commits and leaves published history alone.'
 
@@ -79,23 +80,14 @@ RESET_CHDIR_COUNTS=()
 RESET_CHDIRS=()
 
 #######################################
-# Emit a deny decision and exit.
+# Record a deny decision.
 # Globals:
-#   DENIAL_ADVICE
+#   DENIAL_ADVICE, GUARD_DECISION, GUARD_REASON
 # Arguments:
 #   $1 - what the guard found, appended to the reason.
-# Outputs:
-#   The permission decision JSON on stdout.
 #######################################
 deny() {
-  jq -nc --arg reason "Soft reset held back: $1. ${DENIAL_ADVICE}" '{
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: $reason
-    }
-  }'
-  exit 0
+  decision::reach deny "Soft reset held back: $1. ${DENIAL_ADVICE}"
 }
 
 #######################################
@@ -360,12 +352,28 @@ collect_reset_line() {
   fi
 }
 
-main() {
-  local command cwd status=0
+#######################################
+# Decide on a command the Bash tool proposes, stopping at the first finding
+# that denies.
+# Globals:
+#   RESET_REVS, RESET_PROBLEMS, RESET_CHDIR_COUNTS, RESET_CHDIRS, GG_CD_SEEN,
+#   GG_AFTER_STEP, GG_DETAIL, WARDEN_SOFT_RESET_DEADLINE, GUARD_DECISION,
+#   GUARD_REASON
+# Arguments:
+#   $1 - the command.
+#   $2 - the session's working directory, possibly empty or absent.
+#######################################
+decide_bash() {
+  local command="$1" cwd="${2:-}" status=0
+  decision::clear
+  RESET_REVS=()
+  RESET_PROBLEMS=()
+  RESET_CHDIR_COUNTS=()
+  RESET_CHDIRS=()
 
-  git_guard::read_envelope
-  command="${GG_COMMAND}"
-  cwd="${GG_CWD}"
+  # Git would otherwise judge the repository that holds the hook and not the
+  # one the command names.
+  git_guard::unset_repository_env
 
   if [[ -z "${command}" ]]; then
     return 0
@@ -382,15 +390,19 @@ main() {
 
   if ((GG_CD_SEEN)); then
     deny 'the command changes directory, so the guard cannot resolve which repository the reset runs in'
+    return 0
   fi
   if git_guard::wrapper_may_chdir "${command}"; then
     deny 'the command runs git behind a wrapper that can change directory'
+    return 0
   fi
   if [[ "${command}" =~ ${GIT_VARIABLE_PATTERN} ]]; then
     deny 'the command sets a GIT_ variable, which can point git at another repository'
+    return 0
   fi
   if ((GG_AFTER_STEP)); then
     deny 'the soft reset follows another step in the command, and that step may have pushed, switched branches, or committed. Run the soft reset as the first step of its own command'
+    return 0
   fi
 
   git_guard::run_with_deadline "${WARDEN_SOFT_RESET_DEADLINE:-4}" deny-unsafe-soft-reset \
@@ -400,7 +412,14 @@ main() {
   2) deny 'the guard could not create a scratch file to judge with' ;;
   *) deny "${GG_DETAIL:-git did not answer before the deadline}" ;;
   esac
-  return 0
 }
 
-main "$@"
+main() {
+  git_guard::read_envelope
+  decide_bash "${GG_COMMAND}" "${GG_CWD}"
+  decision::print
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

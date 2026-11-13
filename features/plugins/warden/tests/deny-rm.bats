@@ -13,38 +13,57 @@
 # covers what the guard decides from git's view of each operand.
 
 # The single-quoted command texts below are the input under test, so their
-# $ and backticks must stay literal (SC2016). bats reads BATS_TEST_TIMEOUT
-# and the helpers read HOOK, which shellcheck cannot see (SC2034).
+# $ and backticks must stay literal (SC2016). bats reads BATS_TEST_TIMEOUT,
+# which shellcheck cannot see (SC2034).
 # shellcheck disable=SC2016,SC2034
 
 BATS_TEST_TIMEOUT=10
 
-setup() {
-  HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-rm.sh"
+setup_file() {
+  export FIXTURE="${BATS_FILE_TMPDIR}/repo"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  export HOME="${BATS_FILE_TMPDIR}/home"
+  mkdir -p "${HOME}"
+  isolate_git_config
+  build_fixture
+}
+
+setup() {
+  load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  load_guard deny-rm
   isolate_home
   isolate_git_config
 }
 
 #######################################
-# Build a scratch repository whose every file is committed and unchanged.
+# Build, once for the file, a scratch repository whose every file is
+# committed and unchanged.
 # Globals:
-#   REPO, BATS_TEST_TMPDIR
+#   FIXTURE
+#######################################
+build_fixture() {
+  git init -q -b main "${FIXTURE}"
+  mkdir -p "${FIXTURE}/dir/sub" "${FIXTURE}/sub"
+  printf 'one\n' >"${FIXTURE}/tracked.txt"
+  printf 'two\n' >"${FIXTURE}/other.txt"
+  printf 'three\n' >"${FIXTURE}/a b.txt"
+  printf 'four\n' >"${FIXTURE}/-x"
+  printf 'five\n' >"${FIXTURE}/dir/one.txt"
+  printf 'six\n' >"${FIXTURE}/dir/sub/two.txt"
+  printf 'seven\n' >"${FIXTURE}/sub/inner.txt"
+  printf '*.log\n__pycache__/\n' >"${FIXTURE}/.gitignore"
+  git -C "${FIXTURE}" add -A
+  git -C "${FIXTURE}" commit -q -m seed
+}
+
+#######################################
+# Give this case its own copy of the file's scratch repository.
+# Globals:
+#   FIXTURE, REPO, BATS_TEST_TMPDIR
 #######################################
 make_repo() {
   REPO="${BATS_TEST_TMPDIR}/repo"
-  git init -q -b main "${REPO}"
-  mkdir -p "${REPO}/dir/sub" "${REPO}/sub"
-  printf 'one\n' >"${REPO}/tracked.txt"
-  printf 'two\n' >"${REPO}/other.txt"
-  printf 'three\n' >"${REPO}/a b.txt"
-  printf 'four\n' >"${REPO}/-x"
-  printf 'five\n' >"${REPO}/dir/one.txt"
-  printf 'six\n' >"${REPO}/dir/sub/two.txt"
-  printf 'seven\n' >"${REPO}/sub/inner.txt"
-  printf '*.log\n__pycache__/\n' >"${REPO}/.gitignore"
-  git -C "${REPO}" add -A
-  git -C "${REPO}" commit -q -m seed
+  cp -R "${FIXTURE}" "${REPO}"
 }
 
 #######################################
@@ -829,4 +848,10 @@ rm ${REPO}/other.txt"
   printf '#!/bin/bash\nexit 127\n' >"${stubs}/git"
   chmod +x "${stubs}/git"
   PATH="${stubs}:${PATH}" assert_denies "rm ${REPO}/tracked.txt"
+}
+
+@test "an envelope proposing rm from a directory outside git prints a PreToolUse denial" {
+  make_plain_dir
+  assert_main_prints deny 'loose.txt is not inside a git work tree' \
+    "{\"tool_name\":\"Bash\",\"cwd\":\"${PLAIN}\",\"tool_input\":{\"command\":\"rm loose.txt\"}}"
 }

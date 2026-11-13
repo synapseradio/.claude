@@ -25,13 +25,18 @@
 # Stdin:   PreToolUse hook JSON envelope.
 # Stdout:  hookSpecificOutput JSON when asking; nothing when staying silent.
 # Exit:    0 in all cases (the decision travels on stdout, not the exit code).
+# Sourced: defines decide_bash and main, and runs neither.
 
-set -euo pipefail
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  set -euo pipefail
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 # shellcheck source=lib/command_words.sh
 source "${SCRIPT_DIR}/lib/command_words.sh"
+# shellcheck source=lib/decision.sh
+source "${SCRIPT_DIR}/lib/decision.sh"
 
 # Options, across the package managers and container runtimes handled below,
 # whose next word is a value rather than a subcommand.
@@ -116,20 +121,16 @@ is_fetch_and_run() {
 }
 
 #######################################
-# Emit an ask decision and exit.
-# Outputs:
-#   The permission decision JSON on stdout.
+# Decide on a command the Bash tool proposes.
+# Globals:
+#   GUARD_DECISION, GUARD_REASON
+# Arguments:
+#   $1 - the command.
 #######################################
-ask() {
-  jq -nc --arg r "${ASK_REASON}" \
-    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"ask",permissionDecisionReason:$r}}'
-  exit 0
-}
-
-main() {
-  local command line
+decide_bash() {
+  local command="$1" line
   local -a words
-  command="$(jq -r '.tool_input.command // ""')"
+  decision::clear
 
   if [[ -z "${command}" ]]; then
     return 0
@@ -138,11 +139,19 @@ main() {
   while IFS= read -r line; do
     IFS=' ' read -r -a words <<<"${line}"
     if is_fetch_and_run "${words[@]}"; then
-      ask
+      decision::reach ask "${ASK_REASON}"
+      return 0
     fi
   done < <(command_words::resolve "${command}")
-
-  return 0
 }
 
-main "$@"
+main() {
+  local command
+  command="$(jq -r '.tool_input.command // ""')"
+  decide_bash "${command}"
+  decision::print
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

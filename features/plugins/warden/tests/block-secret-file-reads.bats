@@ -16,17 +16,16 @@
 # off within a day.
 
 # Single quotes are intentional throughout: the guard has to receive the
-# literal text, never its expansion (SC2016). setup sets HOOK and the
-# helpers read it, which shellcheck cannot see (SC2034).
-# shellcheck disable=SC2016,SC2030,SC2031,SC2034
+# literal text, never its expansion (SC2016).
+# shellcheck disable=SC2016,SC2030,SC2031
 
 setup_file() {
   export BATS_TEST_TIMEOUT=10
 }
 
 setup() {
-  HOOK="${BATS_TEST_DIRNAME}/../hooks/block-secret-file-reads.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  load_guard block-secret-file-reads
   isolate_home
 
   # The helper points WARDEN_BANNED_READS at this test's own temporary
@@ -297,4 +296,11 @@ setup() {
 
 @test "a here-document body that reads a secret path is denied" {
   assert_denies $'bash <<\'EOF\'\ncat ~/.ssh/id_rsa\nEOF'
+}
+
+@test "an envelope proposing a secret read prints a PreToolUse denial" {
+  assert_main_prints deny 'command would read a secret-shaped path (~/.ssh)' \
+    '{"tool_name":"Bash","tool_input":{"command":"cat ~/.ssh/id_rsa"}}'
+  assert_main_prints deny 'Read would open a secret-shaped path (~/.aws)' \
+    "{\"tool_name\":\"Read\",\"tool_input\":{\"file_path\":\"${FAKE_HOME}/.aws/credentials\"}}"
 }

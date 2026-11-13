@@ -24,8 +24,16 @@
 # Stdin:   PreToolUse hook JSON envelope.
 # Stdout:  hookSpecificOutput JSON when asking; nothing when staying silent.
 # Exit:    0 in all cases (the decision travels on stdout, not the exit code).
+# Sourced: defines decide_bash and main, and runs neither.
 
-set -euo pipefail
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  set -euo pipefail
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+# shellcheck source=lib/decision.sh
+source "${SCRIPT_DIR}/lib/decision.sh"
 
 readonly CURL_AT_COMMAND_POSITION='(^|[|;&(`]|\$\()[[:space:]]*([A-Za-z0-9_.-]+[[:space:]]+)?curl[[:space:]]'
 
@@ -52,51 +60,54 @@ is_loopback() {
 }
 
 #######################################
-# Emit an ask decision and exit.
-# Outputs:
-#   The permission decision JSON on stdout.
+# Decide on a command the Bash tool proposes.
+# Globals:
+#   GUARD_DECISION, GUARD_REASON
+# Arguments:
+#   $1 - the command.
 #######################################
-ask() {
-  jq -nc --arg r "${ASK_REASON}" \
-    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"ask",permissionDecisionReason:$r}}'
-  exit 0
-}
-
-main() {
-  local command
-  command="$(jq -r '.tool_input.command // ""')"
+decide_bash() {
+  local command="$1" token url
+  local -a urls=()
+  decision::clear
 
   if [[ -z "${command}" ]]; then
-    exit 0
+    return 0
   fi
 
   if ! grep -Eq "${CURL_AT_COMMAND_POSITION}" <<<" ${command}"; then
-    exit 0
+    return 0
   fi
 
   if ! grep -Eq "${DATA_SEND_FLAG}" <<<"${command}"; then
-    exit 0
+    return 0
   fi
 
   # A read loop rather than mapfile, which /bin/bash 3.2 on macOS lacks.
-  local -a urls=()
-  local token
   while IFS= read -r token; do
     urls+=("${token}")
   done < <(grep -oE "${URL_TOKEN}" <<<"${command}" || true)
 
   if ((${#urls[@]} == 0)); then
-    ask
+    decision::reach ask "${ASK_REASON}"
+    return 0
   fi
 
-  local url
   for url in "${urls[@]}"; do
     if ! is_loopback "${url}"; then
-      ask
+      decision::reach ask "${ASK_REASON}"
+      return 0
     fi
   done
-
-  exit 0
 }
 
-main "$@"
+main() {
+  local command
+  command="$(jq -r '.tool_input.command // ""')"
+  decide_bash "${command}"
+  decision::print
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

@@ -35,8 +35,11 @@
 # Stdin:   PreToolUse hook JSON envelope.
 # Stdout:  hookSpecificOutput JSON when denying; nothing when allowing.
 # Exit:    0 in all cases (the decision travels on stdout, not the exit code).
+# Sourced: defines decide_bash and main, and runs neither.
 
-set -euo pipefail
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  set -euo pipefail
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
@@ -46,10 +49,8 @@ source "${SCRIPT_DIR}/lib/command_words.sh"
 source "${SCRIPT_DIR}/lib/git_guard.sh"
 # shellcheck source=lib/git_restorable.sh
 source "${SCRIPT_DIR}/lib/git_restorable.sh"
-
-# Git would otherwise judge every path in the repository that holds the hook
-# and not in its own.
-git_guard::unset_repository_env
+# shellcheck source=lib/decision.sh
+source "${SCRIPT_DIR}/lib/decision.sh"
 
 readonly DENIAL_REASON='rm runs only on files committed and unchanged in git, where git can restore them. For anything else, delete with trash <path> instead: it moves the path to the Trash, where it can be recovered. Deleting still needs the confirmation the task calls for.'
 
@@ -61,23 +62,14 @@ readonly FIND_EXEC_PATTERN='[[:space:]]-(exec|execdir|ok|okdir)([[:space:]]|$)'
 RM_LINES=()
 
 #######################################
-# Emit a deny decision and exit.
+# Record a deny decision.
 # Globals:
-#   DENIAL_REASON
+#   DENIAL_REASON, GUARD_DECISION, GUARD_REASON
 # Arguments:
 #   $1 - what the guard found, appended to the reason.
-# Outputs:
-#   The permission decision JSON on stdout.
 #######################################
 deny() {
-  jq -nc --arg reason "${DENIAL_REASON} Held back: $1." '{
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: $reason
-    }
-  }'
-  exit 0
+  decision::reach deny "${DENIAL_REASON} Held back: $1."
 }
 
 #######################################
@@ -203,12 +195,24 @@ collect_rm_line() {
   return 1
 }
 
-main() {
-  local command cwd status=0
+#######################################
+# Decide on a command the Bash tool proposes, stopping at the first finding
+# that denies.
+# Globals:
+#   RM_LINES, GG_CD_SEEN, GG_AFTER_STEP, GG_DETAIL, WARDEN_RM_DEADLINE,
+#   GUARD_DECISION, GUARD_REASON
+# Arguments:
+#   $1 - the command.
+#   $2 - the session's working directory, possibly empty or absent.
+#######################################
+decide_bash() {
+  local command="$1" cwd="${2:-}" status=0
+  decision::clear
+  RM_LINES=()
 
-  git_guard::read_envelope
-  command="${GG_COMMAND}"
-  cwd="${GG_CWD}"
+  # Git would otherwise judge every path in the repository that holds the
+  # hook and not in its own.
+  git_guard::unset_repository_env
 
   if [[ -z "${command}" ]]; then
     return 0
@@ -225,19 +229,24 @@ main() {
 
   if ((GG_CD_SEEN)); then
     deny 'the command changes directory, so the guard cannot resolve what rm names'
+    return 0
   fi
   if git_guard::wrapper_may_chdir "${command}"; then
     deny 'the command runs rm behind a wrapper that can change directory'
+    return 0
   fi
   if [[ "${command}" =~ ${XARGS_PATTERN} ]]; then
     deny 'rm runs behind xargs, which supplies operands the guard cannot see'
+    return 0
   fi
   if [[ "${command}" =~ ${FIND_EXEC_PATTERN} ]]; then
     deny 'rm runs behind find -exec, which supplies operands and directories the guard cannot see'
+    return 0
   fi
 
   if ((GG_AFTER_STEP)); then
     deny 'rm follows another step in the command, and that step may have written what rm removes. If the output is known to be throwaway, send it to /dev/null in place of writing a file and deleting it'
+    return 0
   fi
 
   git_guard::run_with_deadline "${WARDEN_RM_DEADLINE:-4}" deny-rm \
@@ -247,7 +256,14 @@ main() {
   2) deny 'the guard could not create a scratch file to judge with' ;;
   *) deny "${GG_DETAIL:-git did not answer before the deadline}" ;;
   esac
-  return 0
 }
 
-main "$@"
+main() {
+  git_guard::read_envelope
+  decide_bash "${GG_COMMAND}" "${GG_CWD}"
+  decision::print
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi
