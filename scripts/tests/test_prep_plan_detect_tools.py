@@ -11,12 +11,14 @@ this machine has installed.
 """
 
 import ast
+import atexit
 import json
 import os
 import pathlib
 import shutil
 import subprocess
 import sys
+import tempfile
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "features/plugins/prep/skills/prep-plan/scripts/detect-tools.py"
@@ -47,6 +49,31 @@ def stand_in(bin_dir, name, output="") -> None:
     tool.chmod(0o755)
 
 
+_templates: dict[str, pathlib.Path] = {}
+
+
+def template_repository(branch) -> pathlib.Path:
+    """A repository on `branch` holding one empty commit, built the first time each branch is asked for."""
+    if branch not in _templates:
+        root = pathlib.Path(tempfile.mkdtemp(prefix="detect-tools-")).resolve()
+        atexit.register(shutil.rmtree, root, ignore_errors=True)
+        repo = root / "project"
+        repo.mkdir()
+        (root / "home").mkdir()
+        (root / "bin").mkdir()
+        for args in (("init", "-q", "-b", branch), ("commit", "-q", "--allow-empty", "-m", "init")):
+            subprocess.run(
+                [REAL_GIT, "-c", "user.email=t@t", "-c", "user.name=t", *args],
+                cwd=repo,
+                env=environment(root / "home", root / "bin"),
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        _templates[branch] = repo
+    return _templates[branch]
+
+
 class Machine:
     """One isolated home, PATH, and repository."""
 
@@ -59,9 +86,7 @@ class Machine:
         git.write_text(f'#!/bin/sh\nexec "{REAL_GIT}" "$@"\n')
         git.chmod(0o755)
         self.repo = tmp_path / "project"
-        self.repo.mkdir()
-        self.git("init", "-q", "-b", branch)
-        self.git("commit", "-q", "--allow-empty", "-m", "init")
+        shutil.copytree(template_repository(branch), self.repo, symlinks=True)
 
     def git(self, *args, cwd=None) -> None:
         subprocess.run(

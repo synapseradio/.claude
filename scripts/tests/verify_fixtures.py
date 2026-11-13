@@ -14,8 +14,19 @@ of the first response whose program matches and whose substring occurs in its
 argv, appends an end record, and exits with that response's code. A response
 may also name files to rewrite, which the stub does before printing, to
 simulate a fixer changing what it was handed.
+
+The scratch repository is built once per pytest process and copied into each
+sandbox, so no test starts git to set one up and none can write into the
+shared copy. `Sandbox.run` calls `cli.dispatch` in this process, with the
+sandbox's environment, working directory, and captured streams, and puts all
+three back afterwards. It starts a real process for `fmt` and `verify`, whose
+formatter inherits the caller's output descriptors, and while a `Holder` of
+that sandbox is alive, because a run waiting on a held slot needs a timeout.
 """
 
+import atexit
+import contextlib
+import io
 import itertools
 import json
 import os
@@ -23,16 +34,27 @@ import pathlib
 import re
 import select
 import shutil
+import signal
 import subprocess
 import sys
+import tempfile
+import threading
 import time
+import traceback
+import types
+from collections.abc import Iterator
 
 WORKTREE = pathlib.Path(__file__).resolve().parents[2]
 CLI = WORKTREE / "scripts" / "verify" / "cli.py"
 REAL_MANIFEST = WORKTREE / "scripts" / "verify" / "jobs.toml"
 
+VERIFY_DIR = WORKTREE / "scripts" / "verify"
+
 GIT_LOCATORS = ("GIT_DIR", "GIT_INDEX_FILE", "GIT_PREFIX", "GIT_WORK_TREE", "GIT_COMMON_DIR")
 RUN_TIMEOUT = 20
+
+PROCESS_COMMANDS = ("fmt", "verify")
+HANDLED_SIGNALS = (signal.SIGINT, signal.SIGTERM)
 
 PATH_PROGRAMS = ("uv", "bats", "claude", "treefmt", "shellcheck", "taplo", "yamlfmt", "shfmt")
 REPO_PROGRAMS = ("biome", "markdownlint-cli2", "tsc")
@@ -259,6 +281,95 @@ print("released", flush=True)
 """
 
 
+_templates: dict[tuple, pathlib.Path] = {}
+_template_root: list[pathlib.Path] = []
+
+
+def template_repo(files: dict[str, str]) -> pathlib.Path:
+    """The repository holding exactly `files` on branch `work`, built the first time it is asked for."""
+    key = tuple(files.items())
+    if key not in _templates:
+        if not _template_root:
+            root = pathlib.Path(tempfile.mkdtemp(prefix="verify-fixtures-")).resolve()
+            atexit.register(shutil.rmtree, root, ignore_errors=True)
+            _template_root.append(root)
+        directory = _template_root[0] / str(len(_templates))
+        _build_template(directory, files)
+        _templates[key] = directory / "proj"
+    return _templates[key]
+
+
+def _build_template(directory: pathlib.Path, files: dict[str, str]) -> None:
+    git = shutil.which("git")
+    assert git, "the sandbox builds its repository with the machine's git"
+    gitconfig = directory / "gitconfig"
+    repo = directory / "proj"
+    repo.mkdir(parents=True)
+    gitconfig.write_text(
+        "[user]\n\tname = t\n\temail = t@t\n[init]\n\tdefaultBranch = main\n[commit]\n\tgpgsign = false\n"
+    )
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "HOME": str(directory),
+        "XDG_CACHE_HOME": str(directory / "cache"),
+        "XDG_CONFIG_HOME": str(directory / "config"),
+        "GIT_CONFIG_GLOBAL": str(gitconfig),
+        "GIT_CONFIG_NOSYSTEM": "1",
+    }
+
+    def run_git(*args: str) -> None:
+        result = subprocess.run(
+            [git, *args],
+            cwd=repo,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=RUN_TIMEOUT,
+        )
+        assert result.returncode == 0, f"git {' '.join(args)} failed: {result.stderr}"
+
+    run_git("init", "-q", "-b", "main")
+    for relative, text in files.items():
+        target = repo / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text)
+    run_git("add", "-A")
+    run_git("commit", "-q", "-m", "init")
+    run_git("checkout", "-q", "-b", "work")
+
+
+@contextlib.contextmanager
+def in_process_state(cwd: pathlib.Path, env: dict[str, str]) -> Iterator[None]:
+    """Run the body in `cwd` with exactly `env`, then restore the working directory, environment, and signal handlers."""
+    saved_cwd = os.getcwd()
+    saved_env = dict(os.environ)
+    on_main_thread = threading.current_thread() is threading.main_thread()
+    saved_handlers = (
+        {sig: signal.getsignal(sig) for sig in HANDLED_SIGNALS} if on_main_thread else {}
+    )
+    os.chdir(cwd)
+    os.environ.clear()
+    os.environ.update(env)
+    try:
+        yield
+    finally:
+        os.chdir(saved_cwd)
+        os.environ.clear()
+        os.environ.update(saved_env)
+        for sig, handler in saved_handlers.items():
+            if handler is not None:
+                signal.signal(sig, handler)
+
+
+def load_cli() -> types.ModuleType:
+    if str(VERIFY_DIR) not in sys.path:
+        sys.path.insert(0, str(VERIFY_DIR))
+    import cli
+
+    return cli
+
+
 class Sandbox:
     """One scratch repository `proj` on branch `work`, its stubs, and an environment confined to tmp_path."""
 
@@ -276,6 +387,7 @@ class Sandbox:
         for directory in (self.home, self.cache, self.logs, self.state, self.stubs, self.tools):
             directory.mkdir(parents=True)
         (self.root / "tmp").mkdir()
+        self.holders: list[Holder] = []
         gitconfig = self.root / "gitconfig"
         gitconfig.write_text(
             "[user]\n\tname = t\n\temail = t@t\n"
@@ -372,12 +484,7 @@ class Sandbox:
         self.git("commit", "-q", "-m", message)
 
     def build_repo(self, files: dict[str, str]) -> None:
-        self.repo.mkdir()
-        self.git("init", "-q", "-b", "main")
-        for relative, text in files.items():
-            self.write(relative, text)
-        self.commit("init")
-        self.git("checkout", "-q", "-b", "work")
+        shutil.copytree(template_repo(files), self.repo, symlinks=True)
 
     def add_origin(self) -> pathlib.Path:
         bare = self.root / "origin.git"
@@ -387,6 +494,41 @@ class Sandbox:
 
     def run(self, *args: str, extra_env: dict | None = None) -> subprocess.CompletedProcess:
         env = {**self.env, **(extra_env or {})}
+        holding = any(holder.process.poll() is None for holder in self.holders)
+        if holding or (args and args[0] in PROCESS_COMMANDS):
+            return self.run_as_process(args, env)
+        return self.run_in_process(args, env)
+
+    def run_in_process(self, args: tuple[str, ...], env: dict) -> subprocess.CompletedProcess:
+        cli = load_cli()
+        out, err = io.StringIO(), io.StringIO()
+        with (
+            in_process_state(self.repo, env),
+            contextlib.redirect_stdout(out),
+            contextlib.redirect_stderr(err),
+        ):
+            code = self.dispatch_like_main(cli, list(args))
+        return subprocess.CompletedProcess(
+            [sys.executable, str(CLI), *args], code, out.getvalue(), err.getvalue()
+        )
+
+    @staticmethod
+    def dispatch_like_main(cli, argv: list[str]) -> int:
+        try:
+            return cli.dispatch(argv)
+        except cli.Exit as stop:
+            print(stop.message, file=sys.stderr, flush=True)
+            return stop.code
+        except SystemExit as stop:
+            if isinstance(stop.code, str):
+                print(stop.code, file=sys.stderr)
+                return 1
+            return stop.code or 0
+        except Exception:
+            traceback.print_exc()
+            return 1
+
+    def run_as_process(self, args: tuple[str, ...], env: dict) -> subprocess.CompletedProcess:
         return subprocess.run(
             [sys.executable, str(CLI), *args],
             cwd=self.repo,
@@ -505,6 +647,7 @@ class Holder:
         assert line.strip() == "held", (
             f"the holder failed to lock {slots}: {self.process.stderr.read()}"
         )
+        sandbox.holders.append(self)
 
     def release(self) -> None:
         self.process.stdin.write("release\n")
