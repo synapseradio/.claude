@@ -225,7 +225,7 @@ path_hits_pattern() {
 #######################################
 check_pattern() {
   local label="$1" path_re="$2"
-  [[ -z "${GUARD_DECISION}" ]] || return 0
+  ! decision::reached || return 0
   if [[ "${MODE}" == "path" ]]; then
     if path_hits_pattern "${path_re}"; then
       deny "${label}"
@@ -312,7 +312,7 @@ escape_regex() {
 #######################################
 check_banned_reads() {
   local file line
-  [[ -z "${GUARD_DECISION}" ]] || return 0
+  ! decision::reached || return 0
   file="$(banned_reads_file)"
   [[ -r "${file}" ]] || return 0
 
@@ -322,6 +322,7 @@ check_banned_reads() {
     line="${line%"${line##*[![:space:]]}"}"
     [[ -n "${line}" ]] || continue
     check_pattern "a fragment you banned in ${file}" "$(escape_regex "${line}")"
+    ! decision::reached || break
   done <"${file}"
 }
 

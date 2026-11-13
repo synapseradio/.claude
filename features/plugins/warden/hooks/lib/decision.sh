@@ -55,3 +55,29 @@ decision::print() {
   jq -nc --arg d "${GUARD_DECISION}" --arg r "${GUARD_REASON}" \
     '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:$d,permissionDecisionReason:$r}}'
 }
+
+#######################################
+# Say whether a decision is recorded.
+# Globals:
+#   GUARD_DECISION
+# Returns:
+#   0 when one is, 1 otherwise.
+#######################################
+decision::reached() {
+  [[ -n "${GUARD_DECISION}" ]]
+}
+
+#######################################
+# Read a Bash tool envelope on stdin, judge its command with the guard's
+# decide_bash, and print the decision. The body of a Bash guard's main.
+# Globals:
+#   GUARD_DECISION, GUARD_REASON
+# Outputs:
+#   The permission decision JSON on stdout, or nothing.
+#######################################
+decision::main_bash() {
+  local command
+  command="$(jq -r '.tool_input.command // ""')"
+  decide_bash "${command}"
+  decision::print
+}

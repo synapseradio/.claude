@@ -146,10 +146,7 @@ decide_bash() {
 }
 
 main() {
-  local command
-  command="$(jq -r '.tool_input.command // ""')"
-  decide_bash "${command}"
-  decision::print
+  decision::main_bash
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

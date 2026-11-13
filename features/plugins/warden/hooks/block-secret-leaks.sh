@@ -214,12 +214,12 @@ decide_bash() {
 
   while IFS= read -r line; do
     check_program "${line}"
-    [[ -z "${GUARD_DECISION}" ]] || return 0
+    ! decision::reached || return 0
   done < <(command_words::resolve_parts ${parts[@]+"${parts[@]}"})
 
   for line in ${parts[@]+"${parts[@]}"}; do
     check_bare_env "${line}"
-    [[ -z "${GUARD_DECISION}" ]] || return 0
+    ! decision::reached || return 0
   done
 
   if command_words::opens_heredoc "${cmd}"; then
@@ -228,10 +228,7 @@ decide_bash() {
 }
 
 main() {
-  local cmd
-  cmd="$(jq -r '.tool_input.command // ""')"
-  decide_bash "${cmd}"
-  decision::print
+  decision::main_bash
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

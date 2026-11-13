@@ -332,7 +332,7 @@ check_command() {
   done
   while IFS= read -r line; do
     check_segment "${line}"
-    [[ -z "${GUARD_DECISION}" ]] || return 0
+    ! decision::reached || return 0
   done <<<"${text}"
 }
 

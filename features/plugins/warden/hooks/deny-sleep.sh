@@ -36,27 +36,20 @@ readonly DENIAL_REASON='sleep holds the session on a guess at how long something
 #   $1 - the command.
 #######################################
 decide_bash() {
-  local command="$1" line
+  local command="$1"
   decision::clear
 
   if [[ -z "${command}" ]]; then
     return 0
   fi
 
-  while IFS= read -r line; do
-    if [[ "${line}" == sleep || "${line}" == sleep\ * ]]; then
-      decision::reach deny "${DENIAL_REASON}"
-      return 0
-    fi
-  done < <(command_words::resolve "${command}")
+  if command_words::runs sleep "${command}"; then
+    decision::reach deny "${DENIAL_REASON}"
+  fi
 }
 
 main() {
-  local input command
-  input="$(cat)"
-  command="$(jq -r '.tool_input.command // ""' <<<"${input}")"
-  decide_bash "${command}"
-  decision::print
+  decision::main_bash
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

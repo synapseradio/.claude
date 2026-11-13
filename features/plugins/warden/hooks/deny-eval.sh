@@ -39,26 +39,20 @@ readonly DENIAL_REASON='eval parses its argument a second time, so the text that
 #   $1 - the command.
 #######################################
 decide_bash() {
-  local command="$1" line
+  local command="$1"
   decision::clear
 
   if [[ -z "${command}" ]]; then
     return 0
   fi
 
-  while IFS= read -r line; do
-    if [[ "${line}" == eval || "${line}" == eval\ * ]]; then
-      decision::reach deny "${DENIAL_REASON}"
-      return 0
-    fi
-  done < <(command_words::resolve "${command}")
+  if command_words::runs eval "${command}"; then
+    decision::reach deny "${DENIAL_REASON}"
+  fi
 }
 
 main() {
-  local command
-  command="$(jq -r '.tool_input.command // ""')"
-  decide_bash "${command}"
-  decision::print
+  decision::main_bash
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

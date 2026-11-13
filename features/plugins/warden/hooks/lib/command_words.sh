@@ -517,3 +517,23 @@ command_words::resolve() {
   done < <(command_words::split "$1")
   command_words::resolve_parts ${parts[@]+"${parts[@]}"}
 }
+
+#######################################
+# Say whether the command text runs a program by a given name, whether bare
+# or with arguments.
+# Arguments:
+#   $1 - the program's name.
+#   $2 - the command text.
+# Returns:
+#   0 when a program line is the name or starts with the name and a space,
+#   1 otherwise.
+#######################################
+command_words::runs() {
+  local word="$1" line
+  while IFS= read -r line; do
+    if [[ "${line}" == "${word}" || "${line}" == "${word}"\ * ]]; then
+      return 0
+    fi
+  done < <(command_words::resolve "$2")
+  return 1
+}

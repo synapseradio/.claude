@@ -62,6 +62,30 @@ isolate_git_config() {
 }
 
 #######################################
+# Record whether nounset and pipefail are on, for restore_shell_options. It
+# sets globals in place of printing, so no subshell hides the options it reads.
+# Globals:
+#   SAVED_FLAGS, SAVED_PIPEFAIL
+#######################################
+save_shell_options() {
+  SAVED_FLAGS="$-"
+  SAVED_PIPEFAIL=0
+  if shopt -qo pipefail; then
+    SAVED_PIPEFAIL=1
+  fi
+}
+
+#######################################
+# Turn nounset and pipefail off again where save_shell_options found them off.
+# Globals:
+#   SAVED_FLAGS, SAVED_PIPEFAIL
+#######################################
+restore_shell_options() {
+  [[ "${SAVED_FLAGS}" == *u* ]] || set +u
+  ((SAVED_PIPEFAIL)) || set +o pipefail
+}
+
+#######################################
 # Source the guard under test into this shell, and fail where sourcing
 # changed the shell's options: the guard's strict mode belongs to the process
 # it runs as, and in force here it would end or alter the test. Sourcing that
@@ -71,10 +95,10 @@ isolate_git_config() {
 #   $1 - the guard's file name in hooks/, without .sh.
 #######################################
 load_guard() {
-  local flags="$-" pipefail=0 now_flags now_pipefail=0
-  if shopt -qo pipefail; then
-    pipefail=1
-  fi
+  local flags pipefail now_flags now_pipefail=0
+  save_shell_options
+  flags="${SAVED_FLAGS}"
+  pipefail="${SAVED_PIPEFAIL}"
   # shellcheck source=/dev/null
   source "${BATS_TEST_DIRNAME}/../hooks/$1.sh"
   now_flags="$-"
@@ -84,8 +108,7 @@ load_guard() {
   [[ "${now_flags}" != "${flags}" ]] || ((now_pipefail != pipefail)) ||
     return 0
 
-  [[ "${flags}" == *u* ]] || set +u
-  ((pipefail)) || set +o pipefail
+  restore_shell_options
   echo "sourcing $1.sh changed the shell options: flags ${flags} to" \
     "${now_flags}, pipefail ${pipefail} to ${now_pipefail}" >&2
   return 1
@@ -133,15 +156,11 @@ json_quote() {
 #   The decision function, then its arguments.
 #######################################
 judge() {
-  local flags="$-" pipefail=0
-  if shopt -qo pipefail; then
-    pipefail=1
-  fi
+  save_shell_options
   set +T -u -o pipefail
   "$@" 3>&-
-  [[ "${flags}" == *u* ]] || set +u
-  ((pipefail)) || set +o pipefail
-  [[ "${flags}" != *T* ]] || set -T
+  restore_shell_options
+  [[ "${SAVED_FLAGS}" != *T* ]] || set -T
 
   HOOK_STATUS=0
   HOOK_DECISION="${GUARD_DECISION}"
