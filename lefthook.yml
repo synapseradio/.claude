@@ -7,13 +7,18 @@ pre-commit:
       group:
         parallel: false
         jobs:
+          # fmt and lint stage their fixes even when findings remain, then
+          # exit with the recipe's status. stage_fixed stages only after a
+          # zero exit:
+          # https://github.com/evilmartians/lefthook/blob/v2.2.2/internal/run/controller/job.go#L146-L154
+          # Lefthook hides the unstaged hunks of partially staged files
+          # around the hook, so the git add takes only staged work:
+          # https://github.com/evilmartians/lefthook/blob/v2.2.2/internal/run/controller/controller.go#L97
           - name: fmt
-            run: just fmt {staged_files}
-            stage_fixed: true
+            run: just fmt {staged_files}; code=$?; git add -- {staged_files}; exit $code
 
           - name: lint
-            run: just lint {staged_files}
-            stage_fixed: true
+            run: just lint {staged_files}; code=$?; git add -- {staged_files}; exit $code
 
           - name: render-rulesets
             glob:
