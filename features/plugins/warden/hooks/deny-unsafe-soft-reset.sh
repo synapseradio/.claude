@@ -70,8 +70,13 @@ PR_CHDIRS=()
 PR_REV=''
 PR_PROBLEM=''
 
-# The soft reset lines collect_reset_line found.
-RESET_LINES=()
+# What collect_reset_line took from each soft reset line, one entry per line.
+# The -C paths of all lines run together in RESET_CHDIRS, each line's share
+# counted in RESET_CHDIR_COUNTS.
+RESET_REVS=()
+RESET_PROBLEMS=()
+RESET_CHDIR_COUNTS=()
+RESET_CHDIRS=()
 
 #######################################
 # Emit a deny decision and exit.
@@ -230,122 +235,103 @@ parse_reset_line() {
 }
 
 #######################################
-# Judge one soft reset, stopping at the first condition that fails.
+# Judge each soft reset, stopping at the first condition that fails. Reads
+# the fields collect_reset_line took from each line.
 # Globals:
-#   PR_CHDIRS, PR_REV, PR_PROBLEM, CW_SPACE
+#   RESET_REVS, RESET_PROBLEMS, RESET_CHDIR_COUNTS, RESET_CHDIRS, CW_SPACE
 # Arguments:
 #   $1 - the envelope's cwd, possibly empty.
-#   $2 - the program line.
-# Outputs:
-#   The failed condition on stdout.
-# Returns:
-#   0 when the reset passes every condition, 1 otherwise.
-#######################################
-judge_reset_line() {
-  local cwd="$1" dir rev chdir why branch default ref paths path sha
-  local total unpushed
-
-  parse_reset_line "$2" || return 0
-  if [[ -n "${PR_PROBLEM}" ]]; then
-    echo "${PR_PROBLEM}"
-    return 1
-  fi
-
-  rev="${PR_REV}"
-  if ! why="$(text_problem "${rev}")" || [[ "${rev}" == *"${CW_SPACE}"* ]]; then
-    echo "the revision ${rev} ${why:-holds a space}"
-    return 1
-  fi
-
-  dir="${cwd}"
-  for chdir in ${PR_CHDIRS[@]+"${PR_CHDIRS[@]}"}; do
-    if ! why="$(text_problem "${chdir}")"; then
-      echo "the -C path ${chdir} ${why}"
-      return 1
-    fi
-    chdir="${chdir//${CW_SPACE}/ }"
-    if [[ "${chdir}" == /* ]]; then
-      dir="${chdir}"
-    elif [[ -z "${dir}" ]]; then
-      echo "the -C path ${chdir} is relative and the command names no working directory"
-      return 1
-    else
-      dir="${dir%/}/${chdir}"
-    fi
-  done
-  if [[ -z "${dir}" ]]; then
-    echo 'the command names no working directory, so the guard cannot tell which repository it resets'
-    return 1
-  fi
-  # One git call locates every marker of an operation in progress, and fails
-  # outside a repository.
-  if [[ ! -d "${dir}" ]] || ! paths="$(git -C "${dir}" rev-parse \
-    --git-path rebase-merge --git-path rebase-apply --git-path sequencer \
-    --git-path MERGE_HEAD --git-path CHERRY_PICK_HEAD --git-path REVERT_HEAD \
-    2>/dev/null)"; then
-    echo "git finds no repository at ${dir}"
-    return 1
-  fi
-  while IFS= read -r path; do
-    [[ "${path}" == /* ]] || path="${dir%/}/${path}"
-    if [[ -e "${path}" ]]; then
-      echo "a rebase, merge, cherry-pick, or revert is in progress (${path##*/} exists)"
-      return 1
-    fi
-  done <<<"${paths}"
-
-  if ! branch="$(git -C "${dir}" symbolic-ref -q --short HEAD 2>/dev/null)"; then
-    echo 'HEAD is detached, so the reset would leave no branch pointing at the dropped commits'
-    return 1
-  fi
-  if ref="$(git -C "${dir}" symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null)"; then
-    default="${ref#origin/}"
-    if [[ "${branch}" == "${default}" ]]; then
-      echo "HEAD is on ${branch}, the default branch"
-      return 1
-    fi
-  elif [[ "${branch}" == main || "${branch}" == master ]]; then
-    echo "HEAD is on ${branch}, a default branch"
-    return 1
-  fi
-
-  if ! sha="$(git -C "${dir}" rev-parse --verify --quiet "${rev}^{commit}" 2>/dev/null)"; then
-    echo "${rev} does not resolve to a commit"
-    return 1
-  fi
-  if ! git -C "${dir}" merge-base --is-ancestor "${sha}" HEAD 2>/dev/null; then
-    echo "${rev} is not an ancestor of HEAD"
-    return 1
-  fi
-
-  if ! total="$(git -C "${dir}" rev-list --count "${sha}..HEAD" 2>/dev/null)" ||
-    ! unpushed="$(git -C "${dir}" rev-list --count "${sha}..HEAD" --not --remotes 2>/dev/null)"; then
-    echo 'git could not count the commits the reset drops'
-    return 1
-  fi
-  if ((total != unpushed)); then
-    echo "$((total - unpushed)) of the ${total} commits between ${rev} and HEAD are reachable from a remote-tracking ref, so the reset would rewrite pushed history"
-    return 1
-  fi
-  return 0
-}
-
-#######################################
-# Judge each soft reset line, stopping at the first one that fails.
-# Arguments:
-#   $1 - the envelope's cwd, possibly empty.
-#   The soft reset lines.
 # Outputs:
 #   The failed condition on stdout for the first failure.
 # Returns:
-#   0 when every reset passes, 1 otherwise.
+#   0 when every reset passes every condition, 1 otherwise.
 #######################################
 judge_reset_lines() {
-  local cwd="$1" line why
-  shift
-  for line in "$@"; do
-    if ! why="$(judge_reset_line "${cwd}" "${line}")"; then
-      echo "${why}"
+  local cwd="$1" dir rev chdir why branch default ref paths path sha
+  local total unpushed index offset=0 end
+
+  for ((index = 0; index < ${#RESET_REVS[@]}; index++)); do
+    if [[ -n "${RESET_PROBLEMS[index]}" ]]; then
+      echo "${RESET_PROBLEMS[index]}"
+      return 1
+    fi
+
+    rev="${RESET_REVS[index]}"
+    if ! why="$(text_problem "${rev}")" || [[ "${rev}" == *"${CW_SPACE}"* ]]; then
+      echo "the revision ${rev} ${why:-holds a space}"
+      return 1
+    fi
+
+    dir="${cwd}"
+    end=$((offset + RESET_CHDIR_COUNTS[index]))
+    for (( ; offset < end; offset++)); do
+      chdir="${RESET_CHDIRS[offset]}"
+      if ! why="$(text_problem "${chdir}")"; then
+        echo "the -C path ${chdir} ${why}"
+        return 1
+      fi
+      chdir="${chdir//${CW_SPACE}/ }"
+      if [[ "${chdir}" == /* ]]; then
+        dir="${chdir}"
+      elif [[ -z "${dir}" ]]; then
+        echo "the -C path ${chdir} is relative and the command names no working directory"
+        return 1
+      else
+        dir="${dir%/}/${chdir}"
+      fi
+    done
+    if [[ -z "${dir}" ]]; then
+      echo 'the command names no working directory, so the guard cannot tell which repository it resets'
+      return 1
+    fi
+    # One git call locates every marker of an operation in progress, and fails
+    # outside a repository.
+    if [[ ! -d "${dir}" ]] || ! paths="$(git -C "${dir}" rev-parse \
+      --git-path rebase-merge --git-path rebase-apply --git-path sequencer \
+      --git-path MERGE_HEAD --git-path CHERRY_PICK_HEAD --git-path REVERT_HEAD \
+      2>/dev/null)"; then
+      echo "git finds no repository at ${dir}"
+      return 1
+    fi
+    while IFS= read -r path; do
+      [[ "${path}" == /* ]] || path="${dir%/}/${path}"
+      if [[ -e "${path}" ]]; then
+        echo "a rebase, merge, cherry-pick, or revert is in progress (${path##*/} exists)"
+        return 1
+      fi
+    done <<<"${paths}"
+
+    if ! branch="$(git -C "${dir}" symbolic-ref -q --short HEAD 2>/dev/null)"; then
+      echo 'HEAD is detached, so the reset would leave no branch pointing at the dropped commits'
+      return 1
+    fi
+    if ref="$(git -C "${dir}" symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null)"; then
+      default="${ref#origin/}"
+      if [[ "${branch}" == "${default}" ]]; then
+        echo "HEAD is on ${branch}, the default branch"
+        return 1
+      fi
+    elif [[ "${branch}" == main || "${branch}" == master ]]; then
+      echo "HEAD is on ${branch}, a default branch"
+      return 1
+    fi
+
+    if ! sha="$(git -C "${dir}" rev-parse --verify --quiet "${rev}^{commit}" 2>/dev/null)"; then
+      echo "${rev} does not resolve to a commit"
+      return 1
+    fi
+    if ! git -C "${dir}" merge-base --is-ancestor "${sha}" HEAD 2>/dev/null; then
+      echo "${rev} is not an ancestor of HEAD"
+      return 1
+    fi
+
+    if ! total="$(git -C "${dir}" rev-list --count "${sha}..HEAD" 2>/dev/null)" ||
+      ! unpushed="$(git -C "${dir}" rev-list --count "${sha}..HEAD" --not --remotes 2>/dev/null)"; then
+      echo 'git could not count the commits the reset drops'
+      return 1
+    fi
+    if ((total != unpushed)); then
+      echo "$((total - unpushed)) of the ${total} commits between ${rev} and HEAD are reachable from a remote-tracking ref, so the reset would rewrite pushed history"
       return 1
     fi
   done
@@ -353,9 +339,10 @@ judge_reset_lines() {
 }
 
 #######################################
-# Record a program line when it is git reset with --soft.
+# Record what a program line names when it is git reset with --soft.
 # Globals:
-#   RESET_LINES
+#   RESET_REVS, RESET_PROBLEMS, RESET_CHDIR_COUNTS, RESET_CHDIRS, PR_CHDIRS,
+#   PR_REV, PR_PROBLEM
 # Arguments:
 #   $1 - the program line.
 # Returns:
@@ -365,7 +352,12 @@ collect_reset_line() {
   if ! parse_reset_line "$1"; then
     return 1
   fi
-  RESET_LINES+=("$1")
+  RESET_REVS+=("${PR_REV}")
+  RESET_PROBLEMS+=("${PR_PROBLEM}")
+  RESET_CHDIR_COUNTS+=("${#PR_CHDIRS[@]}")
+  if ((${#PR_CHDIRS[@]} > 0)); then
+    RESET_CHDIRS+=("${PR_CHDIRS[@]}")
+  fi
 }
 
 main() {
@@ -384,7 +376,7 @@ main() {
   # included.
   git_guard::scan_programs collect_reset_line 1 "${command}"
 
-  if ((${#RESET_LINES[@]} == 0)); then
+  if ((${#RESET_REVS[@]} == 0)); then
     return 0
   fi
 
@@ -402,7 +394,7 @@ main() {
   fi
 
   git_guard::run_with_deadline "${WARDEN_SOFT_RESET_DEADLINE:-4}" deny-unsafe-soft-reset \
-    judge_reset_lines "${cwd}" "${RESET_LINES[@]}" || status=$?
+    judge_reset_lines "${cwd}" || status=$?
   case "${status}" in
   0) ;;
   2) deny 'the guard could not create a scratch file to judge with' ;;
