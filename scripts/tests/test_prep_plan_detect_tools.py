@@ -61,9 +61,21 @@ def template_repository(branch) -> pathlib.Path:
         repo.mkdir()
         (root / "home").mkdir()
         (root / "bin").mkdir()
+        # A commit starts a detached `git maintenance run --auto`, whose lock files
+        # can vanish while a test copies the template.
+        # https://git-scm.com/docs/git-config#Documentation/git-config.txt-maintenanceauto
         for args in (("init", "-q", "-b", branch), ("commit", "-q", "--allow-empty", "-m", "init")):
             subprocess.run(
-                [REAL_GIT, "-c", "user.email=t@t", "-c", "user.name=t", *args],
+                [
+                    REAL_GIT,
+                    "-c",
+                    "user.email=t@t",
+                    "-c",
+                    "user.name=t",
+                    "-c",
+                    "maintenance.auto=false",
+                    *args,
+                ],
                 cwd=repo,
                 env=environment(root / "home", root / "bin"),
                 check=True,

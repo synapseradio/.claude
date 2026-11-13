@@ -305,8 +305,12 @@ def _build_template(directory: pathlib.Path, files: dict[str, str]) -> None:
     gitconfig = directory / "gitconfig"
     repo = directory / "proj"
     repo.mkdir(parents=True)
+    # A commit starts a detached `git maintenance run --auto`, whose lock files
+    # can vanish while a test copies the template.
+    # https://git-scm.com/docs/git-config#Documentation/git-config.txt-maintenanceauto
     gitconfig.write_text(
         "[user]\n\tname = t\n\temail = t@t\n[init]\n\tdefaultBranch = main\n[commit]\n\tgpgsign = false\n"
+        "[maintenance]\n\tauto = false\n"
     )
     env = {
         "PATH": "/usr/bin:/bin",
