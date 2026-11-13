@@ -29,5 +29,5 @@ Stop a process with `kill` and the PID it started under, with `pkill` and `killa
 
 ### Git state
 
-Move a branch ref with `git reset --soft <sha>`. Restore a path to a commit's state with `git checkout <sha> -- <path>`. Set work aside with a temporary commit. Keep a bare `git stash` and `git stash pop` out of every command.
+Squash a branch with `wt -C <worktree> step squash <target>`. Move a branch ref with `git reset --soft <sha>` only as a command's first step, on a branch other than the default, over commits no remote-tracking ref reaches. Restore a path to a commit's state with `git checkout <sha> -- <path>`. Set work aside with a temporary commit. Keep a bare `git stash` and `git stash pop` out of every command.
 Run a test suite against each commit of a branch in a plain shell, looping over `git checkout --detach <sha>` with `GIT_DIR` and `GIT_WORK_TREE` unset, with every test run kept out of `git rebase --exec`.

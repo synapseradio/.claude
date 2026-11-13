@@ -18,7 +18,7 @@ route step
   | any other gathering = spawn a fresh haiku, one holding the step's related reads > parallel haikus, each saving every command run's output to a scratchpad file
   | otherwise = act directly
 
-Set every other spawn's model to haiku, whatever its agent type.
+Set every other spawn's model to haiku, whatever its agent type, apart from critic and Plan, which run on sonnet or opus.
 Spawn a re-check of your own result only on the user's ask.
 A change edits only comment text, JSDoc included ? commit it, with no test run and no runner spawned.
 
@@ -119,7 +119,7 @@ Stop a process with `kill` and the PID it started under, with `pkill` and `killa
 
 ### Git state
 
-Move a branch ref with `git reset --soft <sha>`. Restore a path to a commit's state with `git checkout <sha> -- <path>`. Set work aside with a temporary commit. Keep a bare `git stash` and `git stash pop` out of every command.
+Squash a branch with `wt -C <worktree> step squash <target>`. Move a branch ref with `git reset --soft <sha>` only as a command's first step, on a branch other than the default, over commits no remote-tracking ref reaches. Restore a path to a commit's state with `git checkout <sha> -- <path>`. Set work aside with a temporary commit. Keep a bare `git stash` and `git stash pop` out of every command.
 Run a test suite against each commit of a branch in a plain shell, looping over `git checkout --detach <sha>` with `GIT_DIR` and `GIT_WORK_TREE` unset, with every test run kept out of `git rebase --exec`.
 
 <!-- rule: claims -->
@@ -692,7 +692,7 @@ For every act that deletes, removes, exposes, publishes, or defers a fix, optimi
 Delete data only on the user's confirmation, apart from the arms below. Remove existing functionality only on the user's explicit approval, asked for where it is missing. Read a file that may hold secrets, credentials, or backups only on explicit instruction. Act for the user on an external platform only after showing the exact content and getting explicit approval, edits to your own content included. Defer a fix for a break only on the user's explicit authorization.
 
 Data a newer verified source disproves ? back it up under a name no generator glob matches, `backup-<file>.before-<item>-removal.json` for one -> delete it unasked -> rerun its generator -> confirm the stale output is gone.
-A run log, a trace dump, or a discarded draft sits in the scratchpad ? delete it unasked.
+A run log, a trace dump, or a discarded draft sits in the scratchpad ? delete it unasked with `trash <path>`.
 
 Count a pull request's exact content as its title and description, and a push's as its command. Count a plan's approval as approval of each act on an external platform whose exact content the plan's own text held when approved, and as no ground for content changed since.
 

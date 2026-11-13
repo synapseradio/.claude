@@ -18,7 +18,7 @@ route step
   | any other gathering = spawn a fresh haiku, one holding the step's related reads > parallel haikus, each saving every command run's output to a scratchpad file
   | otherwise = act directly
 
-Set every other spawn's model to haiku, whatever its agent type.
+Set every other spawn's model to haiku, whatever its agent type, apart from critic and Plan, which run on sonnet or opus.
 Spawn a re-check of your own result only on the user's ask.
 A change edits only comment text, JSDoc included ? commit it, with no test run and no runner spawned.
 
