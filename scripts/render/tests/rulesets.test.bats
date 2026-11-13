@@ -13,12 +13,8 @@ setup() {
 
 # Start a fixture repository with the stubbed launcher and enter it.
 enter_repo() {
-  setup_sandbox_test_env
-  stub_toolchain
-  REPO="${BATS_TEST_TMPDIR}/repo"
-  make_fixture_repo "${REPO}"
-  stub_rulesets_cli "${REPO}"
-  cd "${REPO}" || return 1
+  enter_fixture_repo repo
+  stub_rulesets_cli "${BATS_TEST_TMPDIR}/repo"
 }
 
 @test "render renders the rulesets root" {

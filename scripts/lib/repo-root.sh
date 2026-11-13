@@ -16,10 +16,20 @@ export REPO_ROOT='' PRIMARY_ROOT='' REPO_GIT_DIR='' REPO_GIT_COMMON_DIR=''
 #   1 outside a git checkout.
 #######################################
 repo_root::init() {
-  REPO_ROOT="$(git rev-parse --show-toplevel)" || return 1
-  REPO_GIT_DIR="$(git rev-parse --path-format=absolute --git-dir)" || return 1
-  REPO_GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir)" || return 1
+  local out
+  out="$(git rev-parse --path-format=absolute --show-toplevel --git-dir --git-common-dir)" ||
+    return 1
+  {
+    read -r REPO_ROOT
+    read -r REPO_GIT_DIR
+    read -r REPO_GIT_COMMON_DIR
+  } <<<"${out}"
   PRIMARY_ROOT="${REPO_GIT_COMMON_DIR%/*}"
+}
+
+repo_root::enter() {
+  repo_root::init || return 1
+  cd "${REPO_ROOT}" || return 1
 }
 
 #######################################

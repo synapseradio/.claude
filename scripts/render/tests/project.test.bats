@@ -12,20 +12,9 @@ setup() {
   PROJECT='uv run --frozen python scripts/agent-configs'
 }
 
-# Start a stubbed primary checkout and enter it.
-enter_primary() {
-  setup_sandbox_test_env
-  stub_toolchain
-  PRIMARY="${BATS_TEST_TMPDIR}/primary"
-  make_fixture_repo "${PRIMARY}"
-  cd "${PRIMARY}" || return 1
-}
-
 @test "project exits 2 in a linked worktree and runs nothing" {
-  enter_primary
-  LINKED="${BATS_TEST_TMPDIR}/linked"
-  add_linked_worktree "${PRIMARY}" "${LINKED}"
-  cd "${LINKED}"
+  enter_fixture_repo primary
+  enter_linked_worktree
   run bash "${RENDER}" project --check
   [ "${status}" -eq 2 ]
   [[ "${output}" == *"projections run only from the primary checkout"* ]]
@@ -33,7 +22,7 @@ enter_primary() {
 }
 
 @test "project --check runs the three projection scripts with --check" {
-  enter_primary
+  enter_fixture_repo primary
   run bash "${RENDER}" project --check
   [ "${status}" -eq 0 ]
   assert_logged "${PROJECT}/translate-for-pi.py --check"
@@ -42,7 +31,7 @@ enter_primary() {
 }
 
 @test "project with no flags runs the three projection scripts bare" {
-  enter_primary
+  enter_fixture_repo primary
   run bash "${RENDER}" project
   [ "${status}" -eq 0 ]
   assert_logged "${PROJECT}/translate-for-pi.py"
@@ -51,7 +40,7 @@ enter_primary() {
 }
 
 @test "project --agent reaches the two translators and not the key owner" {
-  enter_primary
+  enter_fixture_repo primary
   run bash "${RENDER}" project --agent reviewer
   [ "${status}" -eq 0 ]
   assert_logged "${PROJECT}/translate-for-pi.py --agent reviewer"
@@ -60,7 +49,7 @@ enter_primary() {
 }
 
 @test "project stops and exits 1 when a projection script fails" {
-  enter_primary
+  enter_fixture_repo primary
   write_stub uv <<<'exit 1'
   run bash "${RENDER}" project
   [ "${status}" -eq 1 ]

@@ -14,8 +14,7 @@ render::run() {
   render | check | project)
     local subcommand="$1"
     shift
-    repo_root::init || exit 1
-    cd "${REPO_ROOT}" || exit 1
+    repo_root::enter || exit 1
     "render::${subcommand}" "$@" || exit 1
     ;;
   *)

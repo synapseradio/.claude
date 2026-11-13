@@ -13,8 +13,7 @@
 setup::run() {
   case "${1:-}" in
   deps | tools)
-    repo_root::init || exit 1
-    cd "${REPO_ROOT}" || exit 1
+    repo_root::enter || exit 1
     "setup::$1" || exit 1
     ;;
   *)

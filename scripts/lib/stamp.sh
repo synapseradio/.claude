@@ -32,8 +32,13 @@ stamp::hash() {
 # Returns:
 #   0 where the stamp exists and equals the hash.
 #######################################
+stamp::path() {
+  printf '%s\n' "${REPO_ROOT}/.cache/verify/$1.sha256"
+}
+
 stamp::matches() {
-  local file="${REPO_ROOT}/.cache/verify/$1.sha256"
+  local file
+  file="$(stamp::path "$1")"
   [[ -f "${file}" && "$(<"${file}")" == "$2" ]]
 }
 
@@ -45,7 +50,8 @@ stamp::matches() {
 #   The stamp name, then the hash.
 #######################################
 stamp::write() {
-  local dir="${REPO_ROOT}/.cache/verify"
-  mkdir -p "${dir}" || return 1
-  printf '%s\n' "$2" >"${dir}/$1.sha256"
+  local file
+  file="$(stamp::path "$1")"
+  mkdir -p "${file%/*}" || return 1
+  printf '%s\n' "$2" >"${file}"
 }

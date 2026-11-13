@@ -10,16 +10,8 @@ setup() {
   SETUP="${BATS_TEST_DIRNAME}/../../setup.sh"
 }
 
-# Start a stubbed fixture repository and enter it.
-enter_repo() {
-  setup_sandbox_test_env
-  stub_toolchain
-  make_fixture_repo "${BATS_TEST_TMPDIR}/repo"
-  cd "${BATS_TEST_TMPDIR}/repo" || return 1
-}
-
 @test "setup tools installs nothing when the bundle check passes" {
-  enter_repo
+  enter_fixture_repo repo
   BREW_CHECK_STATUS=0 run bash "${SETUP}" tools
   [ "${status}" -eq 0 ]
   assert_logged 'brew bundle check --file Brewfile'
@@ -27,7 +19,7 @@ enter_repo() {
 }
 
 @test "setup tools installs the Brewfile when the bundle check fails" {
-  enter_repo
+  enter_fixture_repo repo
   BREW_CHECK_STATUS=1 run bash "${SETUP}" tools
   [ "${status}" -eq 0 ]
   assert_logged 'brew bundle --file Brewfile'

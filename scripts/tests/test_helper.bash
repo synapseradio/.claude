@@ -162,6 +162,19 @@ add_linked_worktree() {
   git -C "$1" worktree add -q -b linked "$2"
 }
 
+enter_fixture_repo() {
+  setup_sandbox_test_env
+  stub_toolchain
+  make_fixture_repo "${BATS_TEST_TMPDIR}/$1"
+  cd "${BATS_TEST_TMPDIR}/$1" || return 1
+}
+
+enter_linked_worktree() {
+  LINKED="${BATS_TEST_TMPDIR}/linked"
+  add_linked_worktree "${PWD}" "${LINKED}"
+  cd "${LINKED}" || return 1
+}
+
 #######################################
 # Write the engine-generated gauge types into a checkout.
 # Arguments:

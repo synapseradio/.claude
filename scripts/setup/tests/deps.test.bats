@@ -11,17 +11,8 @@ setup() {
   SETUP="${BATS_TEST_DIRNAME}/../../setup.sh"
 }
 
-# Start a stubbed primary checkout and enter it.
-enter_primary() {
-  setup_sandbox_test_env
-  stub_toolchain
-  PRIMARY="${BATS_TEST_TMPDIR}/primary"
-  make_fixture_repo "${PRIMARY}"
-  cd "${PRIMARY}" || return 1
-}
-
 @test "the first setup deps runs bun install and uv sync" {
-  enter_primary
+  enter_fixture_repo primary
   run bash "${SETUP}" deps
   [ "${status}" -eq 0 ]
   [[ "${output}" == *"run bun"* ]]
@@ -31,7 +22,7 @@ enter_primary() {
 }
 
 @test "the second setup deps skips each step and runs no install" {
-  enter_primary
+  enter_fixture_repo primary
   run bash "${SETUP}" deps
   [ "${status}" -eq 0 ]
   : >"${CALL_LOG}"
@@ -43,7 +34,7 @@ enter_primary() {
 }
 
 @test "a changed bun.lock reruns bun and skips uv" {
-  enter_primary
+  enter_fixture_repo primary
   run bash "${SETUP}" deps
   [ "${status}" -eq 0 ]
   : >"${CALL_LOG}"
@@ -57,7 +48,7 @@ enter_primary() {
 }
 
 @test "a missing node_modules/.bin/biome reruns bun" {
-  enter_primary
+  enter_fixture_repo primary
   run bash "${SETUP}" deps
   [ "${status}" -eq 0 ]
   : >"${CALL_LOG}"
@@ -70,7 +61,7 @@ enter_primary() {
 }
 
 @test "a failed bun install exits 1 and leaves no stamp, so the next run installs" {
-  enter_primary
+  enter_fixture_repo primary
   BUN_STATUS=1 run bash "${SETUP}" deps
   [ "${status}" -eq 1 ]
   : >"${CALL_LOG}"
@@ -81,8 +72,8 @@ enter_primary() {
 }
 
 @test "the primary checkout skips gauge types and keeps its own copy" {
-  enter_primary
-  write_gauge_types "${PRIMARY}" 'primary types'
+  enter_fixture_repo primary
+  write_gauge_types "${BATS_TEST_TMPDIR}/primary" 'primary types'
   run bash "${SETUP}" deps
   [ "${status}" -eq 0 ]
   [[ "${output}" == *"skip gauge-types (primary checkout)"* ]]
@@ -90,11 +81,9 @@ enter_primary() {
 }
 
 @test "a linked worktree copies gauge types from the primary checkout" {
-  enter_primary
-  write_gauge_types "${PRIMARY}" 'primary types'
-  LINKED="${BATS_TEST_TMPDIR}/linked"
-  add_linked_worktree "${PRIMARY}" "${LINKED}"
-  cd "${LINKED}"
+  enter_fixture_repo primary
+  write_gauge_types "${BATS_TEST_TMPDIR}/primary" 'primary types'
+  enter_linked_worktree
   run bash "${SETUP}" deps
   [ "${status}" -eq 0 ]
   [[ "${output}" == *"run gauge-types"* ]]
@@ -102,17 +91,15 @@ enter_primary() {
 }
 
 @test "a linked worktree skips gauge types on the second run until the primary copy changes" {
-  enter_primary
-  write_gauge_types "${PRIMARY}" 'primary types'
-  LINKED="${BATS_TEST_TMPDIR}/linked"
-  add_linked_worktree "${PRIMARY}" "${LINKED}"
-  cd "${LINKED}"
+  enter_fixture_repo primary
+  write_gauge_types "${BATS_TEST_TMPDIR}/primary" 'primary types'
+  enter_linked_worktree
   run bash "${SETUP}" deps
   [ "${status}" -eq 0 ]
   run bash "${SETUP}" deps
   [ "${status}" -eq 0 ]
   [[ "${output}" == *"skip gauge-types (inputs unchanged)"* ]]
-  write_gauge_types "${PRIMARY}" 'newer types'
+  write_gauge_types "${BATS_TEST_TMPDIR}/primary" 'newer types'
   run bash "${SETUP}" deps
   [ "${status}" -eq 0 ]
   [[ "${output}" == *"run gauge-types"* ]]
@@ -120,17 +107,15 @@ enter_primary() {
 }
 
 @test "a linked worktree skips gauge types when the primary checkout has none" {
-  enter_primary
-  LINKED="${BATS_TEST_TMPDIR}/linked"
-  add_linked_worktree "${PRIMARY}" "${LINKED}"
-  cd "${LINKED}"
+  enter_fixture_repo primary
+  enter_linked_worktree
   run bash "${SETUP}" deps
   [ "${status}" -eq 0 ]
   [[ "${output}" == *"skip gauge-types (no types in the primary checkout)"* ]]
 }
 
 @test "stamps live under .cache/verify in the checkout" {
-  enter_primary
+  enter_fixture_repo primary
   run bash "${SETUP}" deps
   [ "${status}" -eq 0 ]
   [ -d .cache/verify ]
