@@ -756,9 +756,10 @@ A lane's agent holds no Bash tool ? leave committing and landing out of its prom
 
 ### Land
 
+Keep `skill:simplify` out of every lane's landing and out of every lane agent's prompt; Finish holds its one run.
 The lane's own agent lands the lane once its checks pass, and you land your own lane and every lane whose agent holds no Bash tool, in these steps:
 
-1. Run `skill:simplify` over the lane's changes, unless the lane's agent ran it -> commit what it yields -> run `wt -C <worktree> step squash $trunk` -> confirm `git -C <worktree> log --oneline $trunk..HEAD` lists one commit.
+1. Run `wt -C <worktree> step squash $trunk` -> confirm `git -C <worktree> log --oneline $trunk..HEAD` lists one commit.
 2. Run `git -C <worktree> fetch`, then `git -C <worktree> rev-list --left-right --count "$trunk...$trunk@{upstream}"`. Both counts are above zero, meaning the trunk and its upstream have diverged ? stop and report both counts.
 3. Run `wt -C <worktree> merge $trunk`, which rebases the branch onto the trunk, fast-forwards the trunk, then removes the worktree and deletes its branch.
 4. The merge stops because the trunk moved or the fast-forward was refused ? run it again, at most twice -> it still stops ? report the lane, its branch, and the last error. The merge stops on a rebase conflict ? resolve it in the worktree on its merits -> continue the rebase -> run the merge again, counting the run among the two.
@@ -770,7 +771,9 @@ A hook step you write or change shares a cache, lock, or output path with a step
 
 ### Finish
 
-After every lane lands, in the primary checkout run the work that needs every lane landed, a cleanup or a deletion across lanes for one -> run each test suite once on the trunk -> report each lane's landed SHA and subject.
+After every lane lands, in the primary checkout run the work that needs every lane landed, a cleanup or a deletion across lanes for one -> run `skill:simplify` yourself, once, over the source code the lanes landed, `git -C <primary checkout> diff <start>..$trunk` with `<start>` the trunk commit the earliest lane was created from -> commit each change it calls for on the trunk -> run each test suite once on the trunk -> report each lane's landed SHA and subject.
+The landed changes hold no source code, only prose such as docs or instruction text ? skip the `skill:simplify` run.
+Hold every push until the `skill:simplify` run has committed its changes or been skipped.
 A worktree the current work created outlives its branch's merge ? run `git -C <path> status --short` -> uncommitted changes show ? report them and keep the worktree : run `wt -C <primary checkout> prune`.
 
 <!-- rule: writing-code -->
