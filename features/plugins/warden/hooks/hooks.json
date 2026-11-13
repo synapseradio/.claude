@@ -87,12 +87,6 @@
 						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-unsafe-soft-reset.sh\"",
 						"timeout": 5,
 						"statusMessage": "Checking the command for a soft reset that could lose work"
-					},
-					{
-						"type": "command",
-						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-hook-covered-check.sh\"",
-						"timeout": 5,
-						"statusMessage": "Checking the command for a check the git hooks already run"
 					}
 				]
 			},

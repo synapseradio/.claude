@@ -37,7 +37,6 @@ Run these two commands in Claude Code, with the path of your copy of this reposi
 | `deny-indirect-execution` | Bash | Command substitution `$( )`, backticks, process substitution `<( )`, `>( )`, or `=( )`, and subshells; a plain `$( )` holding `pwd`, `git rev-parse`, `git branch --show-current`, or `wt stack base` passes, and so does either git query with `-C <path>` after `git`, where the path is a literal of letters, digits, and `_./=:@%+,-` or a double-quoted string opening with `$HOME/` | Refuses |
 | `ask-git-amend` | Bash | `git commit --amend` | Asks |
 | `deny-unsafe-soft-reset` | Bash | A `git reset --soft` that could lose work or rewrite published history; one over unpushed commits on a feature branch, as the command's first step, passes | Refuses |
-| `deny-hook-covered-check` | Bash | Running by hand a check the repository's git hooks already run on commit or push; test runs pass | Refuses |
 | `deny-unset-model` | Agent | A subagent spawn that names no model, unless it is a fork or its agent definition pins one, and a `critic` or `Plan` spawn on haiku | Refuses |
 
 ## When a guard steps in

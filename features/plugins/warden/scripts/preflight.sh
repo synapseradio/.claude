@@ -259,21 +259,13 @@ main() {
   check ask-git-amend.sh allow 'commits anew' 'git commit -m "fix: x"'
 
   if write_hook_repo; then
-    check_in_repo deny-hook-covered-check.sh deny 'runs a hook-run script' \
-      'bun run lint'
-    check_in_repo deny-hook-covered-check.sh deny 'runs a hook-run tool' \
-      'biome check src'
-    check_in_repo deny-hook-covered-check.sh allow 'runs a longer script name' \
-      'bun run lint:fix'
-    check_in_repo deny-hook-covered-check.sh allow 'runs the tests' \
-      'bun run test'
     check_in_repo deny-unsafe-soft-reset.sh deny 'resets the default branch' \
       'git reset --soft HEAD~1'
     check_in_repo deny-unsafe-soft-reset.sh allow 'reads the status' \
       'git status'
   else
     printf 'FAIL  %-30s %-30s could not write the fixture repository\n' \
-      deny-hook-covered-check.sh 'fixture'
+      deny-unsafe-soft-reset.sh 'fixture'
     FAILURES=$((FAILURES + 1))
   fi
 
