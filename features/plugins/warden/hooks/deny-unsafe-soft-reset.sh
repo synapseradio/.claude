@@ -45,24 +45,21 @@
 
 set -euo pipefail
 
-# A hook run from a linked worktree inherits these, and git would then judge
-# the repository that holds the hook and not the one the command names.
-unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_COMMON_DIR \
-  GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE \
-  GIT_CEILING_DIRECTORIES
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 # shellcheck source=lib/command_words.sh
 source "${SCRIPT_DIR}/lib/command_words.sh"
+# shellcheck source=lib/git_guard.sh
+source "${SCRIPT_DIR}/lib/git_guard.sh"
+
+# Git would otherwise judge the repository that holds the hook and not the
+# one the command names.
+git_guard::unset_repository_env
 
 readonly DENIAL_ADVICE='To squash a branch, use wt -C <worktree> step squash <target>: it rewrites only the branch'\''s own commits and leaves published history alone.'
 
-# Words in the command text that change which repository or directory git
-# reads. env and sudo can change directory, and a GIT_ variable can name
-# another repository.
-readonly WRAPPER_PATTERN='(^|[^[:alnum:]_.-])(env|sudo)([[:space:]]|$)'
-readonly CHDIR_OPTION_PATTERN='[[:space:]](-[A-Za-z]*[CD]|--chdir)([[:space:]=]|$)'
+# Words in the command text that name another repository for git to read; a
+# GIT_ variable can do it.
 readonly GIT_VARIABLE_PATTERN='(^|[^[:alnum:]_])GIT_[A-Z_]+='
 
 # Global git options whose next word is a value.
@@ -72,6 +69,9 @@ readonly GLOBAL_VALUE_OPTIONS=' -c --git-dir --work-tree --namespace --exec-path
 PR_CHDIRS=()
 PR_REV=''
 PR_PROBLEM=''
+
+# The soft reset lines collect_reset_line found.
+RESET_LINES=()
 
 #######################################
 # Emit a deny decision and exit.
@@ -352,74 +352,62 @@ judge_reset_lines() {
   return 0
 }
 
-main() {
-  local envelope command cwd line detail result_file worker watcher status=0
-  local cd_seen=0 other_steps=0 after_step=0
-  local -a reset_lines=()
+#######################################
+# Record a program line when it is git reset with --soft.
+# Globals:
+#   RESET_LINES
+# Arguments:
+#   $1 - the program line.
+# Returns:
+#   0 when the line is a soft reset, 1 otherwise.
+#######################################
+collect_reset_line() {
+  if ! parse_reset_line "$1"; then
+    return 1
+  fi
+  RESET_LINES+=("$1")
+}
 
-  envelope="$(cat)"
-  command="$(jq -r '.tool_input.command // ""' <<<"${envelope}")"
-  cwd="$(jq -r '.cwd // ""' <<<"${envelope}")"
+main() {
+  local command cwd status=0
+
+  git_guard::read_envelope
+  command="${GG_COMMAND}"
+  cwd="${GG_CWD}"
 
   if [[ -z "${command}" ]]; then
     return 0
   fi
 
   # The resolver lists programs in the order they run, so a reset with any
-  # other program listed ahead of it follows another step.
-  while IFS= read -r line; do
-    if parse_reset_line "${line}"; then
-      reset_lines+=("${line}")
-      if ((other_steps > 0)); then
-        after_step=1
-      fi
-      other_steps=$((other_steps + 1))
-      continue
-    fi
-    case "${line}" in
-    cd | cd\ * | pushd | pushd\ * | popd | popd\ * | builtin\ *) cd_seen=1 ;;
-    esac
-    if ! command_words::hands_script_to_shell "${line}"; then
-      other_steps=$((other_steps + 1))
-    fi
-  done < <(command_words::resolve "${command}")
+  # other program listed ahead of it follows another step, an earlier reset
+  # included.
+  git_guard::scan_programs collect_reset_line 1 "${command}"
 
-  if ((${#reset_lines[@]} == 0)); then
+  if ((${#RESET_LINES[@]} == 0)); then
     return 0
   fi
 
-  if ((cd_seen)); then
+  if ((GG_CD_SEEN)); then
     deny 'the command changes directory, so the guard cannot resolve which repository the reset runs in'
   fi
-  if [[ "${command}" =~ ${WRAPPER_PATTERN} && "${command}" =~ ${CHDIR_OPTION_PATTERN} ]]; then
+  if git_guard::wrapper_may_chdir "${command}"; then
     deny 'the command runs git behind a wrapper that can change directory'
   fi
   if [[ "${command}" =~ ${GIT_VARIABLE_PATTERN} ]]; then
     deny 'the command sets a GIT_ variable, which can point git at another repository'
   fi
-  if ((after_step)); then
+  if ((GG_AFTER_STEP)); then
     deny 'the soft reset follows another step in the command, and that step may have pushed, switched branches, or committed. Run the soft reset as the first step of its own command'
   fi
 
-  result_file="$(mktemp "${TMPDIR:-/tmp}/deny-unsafe-soft-reset.XXXXXX")" ||
-    deny 'the guard could not create a scratch file to judge with'
-  judge_reset_lines "${cwd}" "${reset_lines[@]}" >"${result_file}" 2>/dev/null </dev/null &
-  worker=$!
-  (
-    sleep "${WARDEN_SOFT_RESET_DEADLINE:-4}"
-    kill "${worker}"
-  ) >/dev/null 2>&1 </dev/null &
-  watcher=$!
-  wait "${worker}" 2>/dev/null || status=$?
-  kill "${watcher}" >/dev/null 2>&1 || true
-  # Reaping the killed watcher here keeps bash 3.2's job notice off stderr.
-  wait "${watcher}" 2>/dev/null || true
-  detail="$(<"${result_file}")"
-  command rm -f "${result_file}"
-
-  if ((status != 0)); then
-    deny "${detail:-git did not answer before the deadline}"
-  fi
+  git_guard::run_with_deadline "${WARDEN_SOFT_RESET_DEADLINE:-4}" deny-unsafe-soft-reset \
+    judge_reset_lines "${cwd}" "${RESET_LINES[@]}" || status=$?
+  case "${status}" in
+  0) ;;
+  2) deny 'the guard could not create a scratch file to judge with' ;;
+  *) deny "${GG_DETAIL:-git did not answer before the deadline}" ;;
+  esac
   return 0
 }
 

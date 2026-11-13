@@ -38,26 +38,27 @@
 
 set -euo pipefail
 
-# A hook run from a linked worktree inherits these, and git would then judge
-# every path in the repository that holds the hook and not in its own.
-unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_COMMON_DIR \
-  GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE \
-  GIT_CEILING_DIRECTORIES
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 # shellcheck source=lib/command_words.sh
 source "${SCRIPT_DIR}/lib/command_words.sh"
+# shellcheck source=lib/git_guard.sh
+source "${SCRIPT_DIR}/lib/git_guard.sh"
 # shellcheck source=lib/git_restorable.sh
 source "${SCRIPT_DIR}/lib/git_restorable.sh"
+
+# Git would otherwise judge every path in the repository that holds the hook
+# and not in its own.
+git_guard::unset_repository_env
 
 readonly DENIAL_REASON='rm runs only on files committed and unchanged in git, where git can restore them. For anything else, delete with trash <path> instead: it moves the path to the Trash, where it can be recovered. Deleting still needs the confirmation the task calls for.'
 
 # Words in the command text that make the operands of an rm unknowable.
 readonly XARGS_PATTERN='(^|[^[:alnum:]_.-])xargs([^[:alnum:]_.-]|$)'
 readonly FIND_EXEC_PATTERN='[[:space:]]-(exec|execdir|ok|okdir)([[:space:]]|$)'
-readonly WRAPPER_PATTERN='(^|[^[:alnum:]_.-])(env|sudo)([[:space:]]|$)'
-readonly CHDIR_OPTION_PATTERN='[[:space:]](-[A-Za-z]*[CD]|--chdir)([[:space:]=]|$)'
+
+# The rm lines collect_rm_line found.
+RM_LINES=()
 
 #######################################
 # Emit a deny decision and exit.
@@ -183,45 +184,49 @@ judge_rm_lines() {
   return 0
 }
 
-main() {
-  local envelope command cwd line detail result_file worker watcher status=0
-  local cd_seen=0 other_steps=0 after_step=0
-  local -a rm_lines=()
+#######################################
+# Record a program line when it is rm.
+# Globals:
+#   RM_LINES
+# Arguments:
+#   $1 - the program line.
+# Returns:
+#   0 when the line is rm, 1 otherwise.
+#######################################
+collect_rm_line() {
+  case "$1" in
+  rm | rm\ *)
+    RM_LINES+=("$1")
+    return 0
+    ;;
+  esac
+  return 1
+}
 
-  envelope="$(cat)"
-  command="$(jq -r '.tool_input.command // ""' <<<"${envelope}")"
-  cwd="$(jq -r '.cwd // ""' <<<"${envelope}")"
+main() {
+  local command cwd status=0
+
+  git_guard::read_envelope
+  command="${GG_COMMAND}"
+  cwd="${GG_CWD}"
 
   if [[ -z "${command}" ]]; then
     return 0
   fi
 
-  # The resolver lists programs in the order they run, so a program with any
-  # non-rm program listed ahead of it follows another step.
-  while IFS= read -r line; do
-    case "${line}" in
-    rm | rm\ *)
-      rm_lines+=("${line}")
-      if ((other_steps > 0)); then
-        after_step=1
-      fi
-      continue
-      ;;
-    cd | cd\ * | pushd | pushd\ * | popd | popd\ * | builtin\ *) cd_seen=1 ;;
-    esac
-    if ! command_words::hands_script_to_shell "${line}"; then
-      other_steps=$((other_steps + 1))
-    fi
-  done < <(command_words::resolve "${command}")
+  # The resolver lists programs in the order they run, so an rm with any
+  # non-rm program listed ahead of it follows another step. A step that is
+  # itself rm does not count.
+  git_guard::scan_programs collect_rm_line 0 "${command}"
 
-  if ((${#rm_lines[@]} == 0)); then
+  if ((${#RM_LINES[@]} == 0)); then
     return 0
   fi
 
-  if ((cd_seen)); then
+  if ((GG_CD_SEEN)); then
     deny 'the command changes directory, so the guard cannot resolve what rm names'
   fi
-  if [[ "${command}" =~ ${WRAPPER_PATTERN} && "${command}" =~ ${CHDIR_OPTION_PATTERN} ]]; then
+  if git_guard::wrapper_may_chdir "${command}"; then
     deny 'the command runs rm behind a wrapper that can change directory'
   fi
   if [[ "${command}" =~ ${XARGS_PATTERN} ]]; then
@@ -231,29 +236,17 @@ main() {
     deny 'rm runs behind find -exec, which supplies operands and directories the guard cannot see'
   fi
 
-  if ((after_step)); then
+  if ((GG_AFTER_STEP)); then
     deny 'rm follows another step in the command, and that step may have written what rm removes. If the output is known to be throwaway, send it to /dev/null in place of writing a file and deleting it'
   fi
 
-  result_file="$(mktemp "${TMPDIR:-/tmp}/deny-rm.XXXXXX")" ||
-    deny 'the guard could not create a scratch file to judge with'
-  judge_rm_lines "${cwd}" "${rm_lines[@]}" >"${result_file}" 2>/dev/null </dev/null &
-  worker=$!
-  (
-    sleep "${WARDEN_RM_DEADLINE:-4}"
-    kill "${worker}"
-  ) >/dev/null 2>&1 </dev/null &
-  watcher=$!
-  wait "${worker}" 2>/dev/null || status=$?
-  kill "${watcher}" >/dev/null 2>&1 || true
-  # Reaping the killed watcher here keeps bash 3.2's job notice off stderr.
-  wait "${watcher}" 2>/dev/null || true
-  detail="$(<"${result_file}")"
-  command rm -f "${result_file}"
-
-  if ((status != 0)); then
-    deny "${detail:-git did not answer before the deadline}"
-  fi
+  git_guard::run_with_deadline "${WARDEN_RM_DEADLINE:-4}" deny-rm \
+    judge_rm_lines "${cwd}" "${RM_LINES[@]}" || status=$?
+  case "${status}" in
+  0) ;;
+  2) deny 'the guard could not create a scratch file to judge with' ;;
+  *) deny "${GG_DETAIL:-git did not answer before the deadline}" ;;
+  esac
   return 0
 }
 
