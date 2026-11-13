@@ -6,9 +6,19 @@
 # The hook communicates through stdout: a permissionDecision JSON object asks,
 # and empty stdout stays silent.
 
+# Single quotes are intentional throughout: the guard has to receive the
+# literal text, never its expansion (SC2016). setup sets HOOK and the
+# helpers read it, which shellcheck cannot see (SC2034).
+# shellcheck disable=SC2016,SC2034
+
+setup_file() {
+  export BATS_TEST_TIMEOUT=10
+}
+
 setup() {
   HOOK="${BATS_TEST_DIRNAME}/../hooks/ask-remote-data-send.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  isolate_home
 }
 
 @test "loopback data-send by name stays silent" {

@@ -8,16 +8,20 @@
 # cover other git subcommands, a commit without --amend, and --amend inside
 # a message, a quoted string, or as an argument to another program.
 
+# setup sets HOOK and the helpers read it, which shellcheck cannot see
+# (SC2034).
+# shellcheck disable=SC2034
+
+setup_file() {
+  export BATS_TEST_TIMEOUT=10
+}
+
 setup() {
-  export HOME="${BATS_TEST_TMPDIR}/home"
-  export XDG_CONFIG_HOME="${HOME}/.config"
-  export XDG_DATA_HOME="${HOME}/.local/share"
-  export XDG_CACHE_HOME="${HOME}/.cache"
-  export GIT_CONFIG_GLOBAL="${HOME}/gitconfig"
-  export GIT_CONFIG_NOSYSTEM=1
-  mkdir -p "${HOME}"
   HOOK="${BATS_TEST_DIRNAME}/../hooks/ask-git-amend.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  isolate_home
+  export GIT_CONFIG_GLOBAL="${HOME}/gitconfig"
+  export GIT_CONFIG_NOSYSTEM=1
 }
 
 @test "git commit --amend asks" {

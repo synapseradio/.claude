@@ -8,18 +8,19 @@
 # may sit at. The silent cases cover a version, a tag, a scoped version, and
 # the neighbors that run nothing fetched.
 
+# Single quotes are intentional throughout: the guard has to receive the
+# literal text, never its expansion (SC2016). setup sets HOOK and the
+# helpers read it, which shellcheck cannot see (SC2034).
+# shellcheck disable=SC2016,SC2034
+
 setup_file() {
   export BATS_TEST_TIMEOUT=10
 }
 
 setup() {
-  export HOME="${BATS_TEST_TMPDIR}/home"
-  export XDG_CONFIG_HOME="${HOME}/.config"
-  export XDG_DATA_HOME="${HOME}/.local/share"
-  export XDG_CACHE_HOME="${HOME}/.cache"
-  mkdir -p "${HOME}"
   HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-unpinned-bunx.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  isolate_home
 }
 
 @test "bunx with a bare package is denied" {

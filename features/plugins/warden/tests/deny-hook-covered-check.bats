@@ -21,15 +21,10 @@ setup() {
   export HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-hook-covered-check.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
 
-  export HOME="${BATS_TEST_TMPDIR}/home"
-  export XDG_CONFIG_HOME="${HOME}/.config"
-  export XDG_DATA_HOME="${HOME}/.local/share"
-  export XDG_CACHE_HOME="${HOME}/.cache"
-  export XDG_STATE_HOME="${HOME}/.local/state"
+  isolate_home
   export GIT_CONFIG_GLOBAL="${HOME}/gitconfig"
   export GIT_CONFIG_NOSYSTEM=1
   unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
-  mkdir -p "${HOME}"
   : >"${GIT_CONFIG_GLOBAL}"
 
   REPO="${BATS_TEST_TMPDIR}/repo"

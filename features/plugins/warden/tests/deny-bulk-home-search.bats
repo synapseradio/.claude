@@ -6,9 +6,18 @@
 # HOME is pinned to a fixed path so every case reads the same whatever
 # machine runs it. The guard reads paths as text and opens nothing.
 
+# setup sets HOOK and the helpers read it, which shellcheck cannot see
+# (SC2034).
+# shellcheck disable=SC2034
+
+setup_file() {
+  export BATS_TEST_TIMEOUT=10
+}
+
 setup() {
   HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-bulk-home-search.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  isolate_home
   export HOME=/Users/tester
 }
 

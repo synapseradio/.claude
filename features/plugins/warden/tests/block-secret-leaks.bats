@@ -19,6 +19,7 @@ setup_file() {
 setup() {
   HOOK="${BATS_TEST_DIRNAME}/../hooks/block-secret-leaks.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  isolate_home
 }
 
 @test "echo of an API key is denied" {
@@ -116,27 +117,22 @@ setup() {
 }
 
 @test "a search for the word env inside a quoted pattern stays silent" {
-  isolate_home
   assert_silent "rg -n 'git|env|tee' /x"
 }
 
 @test "a search for the word set after a pipe stays silent" {
-  isolate_home
   assert_silent 'cat f | grep set | head'
 }
 
 @test "a search for the word printenv stays silent" {
-  isolate_home
   assert_silent 'rg -n printenv /x'
 }
 
 @test "a search pattern that spells an echo of a secret stays silent" {
-  isolate_home
   assert_silent "rg -n 'echo.*\\\$TOKEN' /x"
 }
 
 @test "bare env behind an assignment, a separator, or a redirect is denied" {
-  isolate_home
   assert_denies 'FOO=1 env'
   assert_denies 'cd /x && env'
   assert_denies 'env > /tmp/out'
@@ -144,56 +140,47 @@ setup() {
 }
 
 @test "bare set behind a separator is denied" {
-  isolate_home
   assert_denies 'echo a; set'
   assert_denies 'cd /x && set | sort'
 }
 
 @test "printenv behind a wrapper, a substitution, or a shell string is denied" {
-  isolate_home
   assert_denies 'sudo printenv'
   assert_denies 'echo "$(printenv)"'
   assert_denies "bash -c 'printenv | sort'"
 }
 
 @test "printenv handed to a launcher the resolver does not unwrap is denied" {
-  isolate_home
   assert_denies 'timeout 5 printenv'
   assert_denies 'docker exec c printenv'
   assert_denies 'ssh host printenv'
 }
 
 @test "bare env handed to a launcher the resolver does not unwrap is denied" {
-  isolate_home
   assert_denies 'timeout 5 env'
   assert_denies 'ssh host env'
   assert_denies 'ssh host env > /tmp/out'
 }
 
 @test "an echo of a secret inside a quoted remote command is denied" {
-  isolate_home
   assert_denies "ssh host 'echo \$API_TOKEN'"
 }
 
 @test "a pattern given with -e to grep or rg stays silent for each dump word" {
-  isolate_home
   assert_silent 'rg -n -e env -e printenv /x'
   assert_silent 'grep --regexp=printenv /x'
   assert_silent "grep -rn 'echo \$TOKEN' /x"
 }
 
 @test "a file named after the pattern of grep is still checked for a dump word" {
-  isolate_home
   assert_denies 'grep foo printenv'
 }
 
 @test "an echo of a secret handed to another launcher is denied" {
-  isolate_home
   assert_denies 'docker run --rm alpine echo "$API_TOKEN"'
   assert_denies "bash -c 'echo \$API_TOKEN'"
 }
 
 @test "a here-document run by a shell that dumps the environment is denied" {
-  isolate_home
   assert_denies $'bash <<\'EOF\'\nprintenv\nEOF'
 }

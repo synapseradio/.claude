@@ -22,13 +22,9 @@ setup_file() {
 }
 
 setup() {
-  export HOME="${BATS_TEST_TMPDIR}/home"
-  export XDG_CONFIG_HOME="${HOME}/.config"
-  export XDG_DATA_HOME="${HOME}/.local/share"
-  export XDG_CACHE_HOME="${HOME}/.cache"
-  mkdir -p "${HOME}"
   HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-indirect-execution.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  isolate_home
 }
 
 @test "command substitution is denied" {

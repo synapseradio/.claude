@@ -27,6 +27,7 @@ setup_file() {
 setup() {
   HOOK="${BATS_TEST_DIRNAME}/../hooks/block-secret-file-reads.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  isolate_home
 
   # The helper points WARDEN_BANNED_READS at this test's own temporary
   # directory, so the defaults are what a case sees until it writes that
@@ -255,7 +256,6 @@ setup() {
 }
 
 @test "a grep or rg pattern that names a secret path stays silent" {
-  isolate_home
   assert_silent 'grep -rn id_rsa /x'
   assert_silent 'rg -l .env /x'
   assert_silent 'grep -rn "id_rsa" /x'
@@ -263,7 +263,6 @@ setup() {
 }
 
 @test "a pattern given with -e or --regexp stays silent" {
-  isolate_home
   assert_silent 'grep -e id_rsa /x'
   assert_silent 'grep -rne id_rsa /x'
   assert_silent 'grep --regexp=id_rsa /x'
@@ -272,13 +271,11 @@ setup() {
 }
 
 @test "a value option does not make the next word the pattern" {
-  isolate_home
   assert_silent 'rg -g "*.md" -A 3 id_rsa /x'
   assert_silent 'cat notes.txt | grep -m 1 id_rsa'
 }
 
 @test "a file named after the pattern of grep or rg is denied" {
-  isolate_home
   assert_denies 'grep foo ~/.ssh/id_rsa'
   assert_denies 'grep -rn id_rsa ~/.ssh/'
   assert_denies 'rg foo .env'
@@ -288,7 +285,6 @@ setup() {
 }
 
 @test "a pattern file named with -f or --file is read and denied" {
-  isolate_home
   assert_denies 'grep -f ~/.ssh/id_rsa x'
   assert_denies 'grep --file=~/.ssh/id_rsa x'
   assert_denies 'rg --file ~/.ssh/id_rsa x'
@@ -296,11 +292,9 @@ setup() {
 }
 
 @test "rg --files lists the directory it is given and is denied for a secret one" {
-  isolate_home
   assert_denies 'rg --files ~/.ssh/'
 }
 
 @test "a here-document body that reads a secret path is denied" {
-  isolate_home
   assert_denies $'bash <<\'EOF\'\ncat ~/.ssh/id_rsa\nEOF'
 }

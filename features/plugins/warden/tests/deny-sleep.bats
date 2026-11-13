@@ -18,6 +18,7 @@ setup_file() {
 setup() {
   HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-sleep.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  isolate_home
 }
 
 @test "a bare sleep is denied" {
@@ -85,20 +86,17 @@ setup() {
 }
 
 @test "sleep named inside a quoted regex stays silent" {
-  isolate_home
   assert_silent "rg -n '(git|sleep)[ ]' /x"
   assert_silent "grep -E 'make;sleep|wait' scripts/"
   assert_silent 'rg -n "&& sleep 5" scripts/'
 }
 
 @test "sleep after && and inside a substitution is denied" {
-  isolate_home
   assert_denies 'make && sleep 5'
   assert_denies 'echo "$(sleep 5)"'
 }
 
 @test "sleep behind a wrapper or in a shell string is denied" {
-  isolate_home
   assert_denies 'nohup sleep 5 &'
   assert_denies "bash -c 'sleep 5'"
   assert_denies 'FOO=1 sleep 5'

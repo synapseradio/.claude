@@ -18,13 +18,11 @@
 BATS_TEST_TIMEOUT=10
 
 setup() {
-  export HOME="${BATS_TEST_TMPDIR}/home"
-  export XDG_CONFIG_HOME="${HOME}/.config"
-  export XDG_DATA_HOME="${HOME}/.local/share"
-  export XDG_CACHE_HOME="${HOME}/.cache"
+  HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-unsafe-soft-reset.sh"
+  load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  isolate_home
   export GIT_CONFIG_GLOBAL="${HOME}/.gitconfig"
   export GIT_CONFIG_NOSYSTEM=1
-  mkdir -p "${HOME}"
   printf '[user]\n\tname = Test\n\temail = test@example.com\n' \
     >"${GIT_CONFIG_GLOBAL}"
   # A hook run from a linked worktree inherits these, and a scratch
@@ -33,8 +31,6 @@ setup() {
   unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_COMMON_DIR \
     GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE \
     GIT_CEILING_DIRECTORIES
-  HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-unsafe-soft-reset.sh"
-  load "${BATS_TEST_DIRNAME}/hook-helper.bash"
   make_repo
 }
 

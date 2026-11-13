@@ -8,6 +8,10 @@
 # a temporary Claude directory, a temporary project, and a temporary plugin
 # install, so no case reads the machine's own agents.
 
+# setup sets HOOK and the helpers read it, which shellcheck cannot see
+# (SC2034).
+# shellcheck disable=SC2034
+
 setup_file() {
   export BATS_TEST_TIMEOUT=10
 }
@@ -15,6 +19,7 @@ setup_file() {
 setup() {
   HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-unset-model.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  isolate_home
 
   export CLAUDE_CONFIG_DIR="${BATS_TEST_TMPDIR}/config"
   mkdir -p "${CLAUDE_CONFIG_DIR}/agents" "${CLAUDE_CONFIG_DIR}/plugins" \

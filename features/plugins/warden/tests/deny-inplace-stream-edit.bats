@@ -8,9 +8,18 @@
 # cases cover read-only stream editing, which stays allowed, and a mention of
 # the flag inside a quoted argument, which edits nothing.
 
+# setup sets HOOK and the helpers read it, which shellcheck cannot see
+# (SC2034).
+# shellcheck disable=SC2034
+
+setup_file() {
+  export BATS_TEST_TIMEOUT=10
+}
+
 setup() {
   HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-inplace-stream-edit.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  isolate_home
 }
 
 @test "sed -i is denied" {
