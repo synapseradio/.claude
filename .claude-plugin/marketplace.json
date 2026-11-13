@@ -51,9 +51,9 @@
 			]
 		},
 		{
-			"name": "planning",
-			"source": "./features/plugins/planning",
-			"version": "0.1.6",
+			"name": "prep",
+			"source": "./features/plugins/prep",
+			"version": "0.2.0",
 			"description": "Holds the planning loop as a skill."
 		},
 		{

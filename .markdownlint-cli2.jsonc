@@ -51,6 +51,11 @@
 		"agent-memory/**",
 		"agents/**",
 		"skills/**",
+
+		// A skill's markdown is text a model reads as instructions, templates
+		// and examples included, so a fixer that rewrites its lists, fences,
+		// or spacing changes what the skill says.
+		"**/skills/**/*.md",
 		"workflows/**",
 		"shell-snapshots/**",
 		"session-env/**",

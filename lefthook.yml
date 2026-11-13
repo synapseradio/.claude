@@ -60,8 +60,8 @@ pre-commit:
             root: features/plugins/harness-config/
             glob: "*"
             run: claude plugin validate .
-          - name: planning
-            root: features/plugins/planning/
+          - name: prep
+            root: features/plugins/prep/
             glob: "*"
             run: claude plugin validate .
           - name: rulesets

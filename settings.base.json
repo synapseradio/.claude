@@ -668,7 +668,7 @@
 		"context-gauge@claude-root": true,
 		"epistemic-marks@claude-root": true,
 		"harness-config@claude-root": true,
-		"planning@claude-root": true,
+		"prep@claude-root": true,
 		"rulesets@claude-root": true,
 		"warden@claude-root": true
 	},
