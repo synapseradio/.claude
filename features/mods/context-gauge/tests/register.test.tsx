@@ -1,5 +1,6 @@
 import type {
 	ApiContentBlock,
+	ConfigRow,
 	ContextCategory,
 	HookStream,
 	On,
@@ -21,8 +22,8 @@ import type {
 import { describe, expect, mock, test } from "claude-code/testing";
 
 import { FREE_GLYPH, legendSample, TEXTURE_GLYPHS } from "../hooks/fallback";
-import { LEGEND_GAP, SAMPLE_CELLS, SPACE } from "../hooks/layout";
-import { CATEGORY_STYLES } from "../hooks/palette";
+import { LEGEND_GAP, PREFIX, SAMPLE_CELLS, SPACE } from "../hooks/layout";
+import { PALETTES } from "../hooks/palette";
 import { PX_HEIGHT, PX_PER_CELL, samplePixels } from "../hooks/pixels";
 import { ROW_INSET } from "../hooks/register";
 
@@ -295,7 +296,7 @@ async function compact(
 type Drawn = {
 	gauge: FoundElement | undefined;
 	bar: FoundElement | undefined;
-	totals: FoundElement | undefined;
+	barLine: FoundElement | undefined;
 	legend: string;
 	lines: FoundElement[];
 	images: FoundElement[];
@@ -307,7 +308,7 @@ async function drawn($: Engine, viewport: Viewport = VIEWPORT): Promise<Drawn> {
 	const ui = await mount($, viewport);
 	const gauge = await ui.find({ key: "gauge" });
 	const bar = await ui.find({ key: "bar" });
-	const totals = await ui.find({ key: "totals" });
+	const barLine = await ui.find({ key: "bar-line" });
 	const legend = (await ui.find({ key: "legend" }))?.text ?? "";
 	const lines: FoundElement[] = [];
 	for (let n = 0; ; n++) {
@@ -318,11 +319,12 @@ async function drawn($: Engine, viewport: Viewport = VIEWPORT): Promise<Drawn> {
 	const images = await ui.findAll({ type: "Image" });
 	const texts = await ui.findAll({ type: "Text" });
 	await ui.unmount();
-	return { gauge, bar, totals, legend, lines, images, texts };
+	return { gauge, bar, barLine, legend, lines, images, texts };
 }
 
 /** The props the gauge's tests read off a drawn element. */
 type DrawnProps = {
+	dimColor?: unknown;
 	color?: unknown;
 	backgroundColor?: unknown;
 	weight?: unknown;
@@ -343,15 +345,19 @@ function barWidth(bar: FoundElement | undefined): number {
 	return cells(bar?.text ?? "");
 }
 
-/** Cells the bar line takes: the percentage, a space, the bar, and the totals with their space where they stay on it. */
+/** Cells the gauge line takes with its bar beside the prefix: the prefix, the percentage, a space, the totals, a space and the bar. */
 function gaugeCells(d: Drawn): number {
 	const percent = d.texts.find((t) => /^\d+%$/u.test(t.text))?.text ?? "";
 	const totals =
-		d.totals === undefined
-			? (/\d+k\/\d+k$/u.exec(d.gauge?.text ?? "")?.[0] ?? "")
-			: "";
-	const tail = totals === "" ? 0 : SPACE.length + totals.length;
-	return percent.length + SPACE.length + barWidth(d.bar) + tail;
+		d.texts.find((t) => /^\(\d+k\/\d+k\)$/u.test(t.text))?.text ?? "";
+	return (
+		PREFIX.length +
+		percent.length +
+		SPACE.length +
+		totals.length +
+		SPACE.length +
+		barWidth(d.bar)
+	);
 }
 
 /** Cells a legend line takes: each item's key and its text, and the gaps between items. */
@@ -376,7 +382,7 @@ describe("the gauge under the prompt", () => {
 		const d = await drawn($);
 
 		expect(d.texts[0]?.text).toBe("engine hint line");
-		expect(d.gauge?.text.trimStart().startsWith("30%")).toBe(true);
+		expect(d.gauge?.text.startsWith("context used: 30% (30k/100k)")).toBe(true);
 		expect(ICONS.test(d.texts.map((t) => t.text).join(""))).toBe(false);
 	});
 
@@ -384,26 +390,30 @@ describe("the gauge under the prompt", () => {
 		engine(on);
 		await startSession($);
 
-		const label = (await drawn($)).texts.find((t) => t.text === "system");
+		const label = (await drawn($)).texts.find(
+			(t) => t.text === "system prompt & tools",
+		);
 
-		expect(propsOf(label).color).toBe(CATEGORY_STYLES.system.swatch.hex);
+		expect(propsOf(label).color).toBe(PALETTES.dark.system.swatch.hex);
 		expect(propsOf(label).backgroundColor).toBeUndefined();
 		expect(propsOf(label).weight).toBe("bold");
 	});
 
-	test("the percentage, the totals and every legend figure are bold in the terminal's own colour", async ($, on) => {
+	test("the percentage and every legend figure are bold, the totals dim at normal weight, in the terminal's own colour", async ($, on) => {
 		engine(on);
 		await startSession($);
 
 		const { texts } = await drawn($);
 		const percent = texts.find((t) => t.text === "30%");
-		const totals = texts.find((t) => t.text === "30k/100k");
+		const totals = texts.find((t) => t.text === "(30k/100k)");
 		const figures = texts.filter((t) => /^\d+k$/u.test(t.text));
 
 		expect(propsOf(percent).color).toBeUndefined();
 		expect(propsOf(percent).backgroundColor).toBeUndefined();
 		expect(propsOf(percent).weight).toBe("bold");
-		expect(propsOf(totals).weight).toBe("bold");
+		expect(propsOf(totals).dimColor).toBe(true);
+		expect(propsOf(totals).weight).toBeUndefined();
+		expect(propsOf(totals).color).toBeUndefined();
 		expect(figures.map((f) => f.text)).toEqual(["6k", "4k", "20k"]);
 		expect(figures.every((f) => propsOf(f).weight === "bold")).toBe(true);
 	});
@@ -428,8 +438,8 @@ describe("the gauge under the prompt", () => {
 		const keys = (await drawn($)).images.filter((i) => i.key !== "bar");
 
 		expect(keys.map((k) => propsOf(k).source)).toEqual(
-			(["system", "skills", "unattributed"] as const).map((id) =>
-				samplePixels(id, SAMPLE_CELLS),
+			(["system", "skills", "uncounted"] as const).map((id) =>
+				samplePixels(id, SAMPLE_CELLS, "dark"),
 			),
 		);
 		expect(keys.every((k) => propsOf(k).columns === SAMPLE_CELLS)).toBe(true);
@@ -442,7 +452,7 @@ describe("counting what the conversation keeps", () => {
 		await startSession($);
 		await append($, "prompt", TYPED, 4000);
 
-		expect(await legendText($)).toMatch(/user\s+~1k/u);
+		expect(await legendText($)).toMatch(/your messages\s+~1k/u);
 	});
 
 	test("a tool result shows as results text, a Read result as read text", async ($, on) => {
@@ -452,8 +462,8 @@ describe("counting what the conversation keeps", () => {
 		await append($, "tool-result", READ, 4000);
 
 		const legend = await legendText($);
-		expect(legend).toMatch(/results\s+~2k/u);
-		expect(legend).toMatch(/read\s+~1k/u);
+		expect(legend).toMatch(/tool results\s+~2k/u);
+		expect(legend).toMatch(/file reads\s+~1k/u);
 	});
 
 	test("a row a subagent's conversation keeps leaves the gauge as it was", async ($, on) => {
@@ -486,7 +496,7 @@ describe("the live total", () => {
 		await step($);
 		await append($, "tool-result", BASH, 4000);
 
-		expect(await gaugeText($)).toMatch(/33k\/100k$/u);
+		expect(await gaugeText($)).toMatch(/\(33k\/100k\)/u);
 	});
 
 	test("a response's own rows, appended before it resolves, count once", async ($, on) => {
@@ -496,7 +506,7 @@ describe("the live total", () => {
 		await append($, "response", { kind: "model", model: "test" }, 4000);
 		await step($);
 
-		expect(await gaugeText($)).toMatch(/32k\/100k$/u);
+		expect(await gaugeText($)).toMatch(/\(32k\/100k\)/u);
 	});
 
 	test("a row appended while a request is in flight stays in the total once the response anchors it", async ($, on) => {
@@ -513,7 +523,7 @@ describe("the live total", () => {
 		arrive();
 		await inFlight;
 
-		expect(await gaugeText($)).toMatch(/33k\/100k$/u);
+		expect(await gaugeText($)).toMatch(/\(33k\/100k\)/u);
 	});
 
 	test("the output a response's answer leaves unexplained shows as thinking", async ($, on) => {
@@ -531,7 +541,7 @@ describe("the live total", () => {
 		await startSession($);
 		await step($, "sub");
 
-		expect(await gaugeText($)).toMatch(/30k\/100k$/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/100k\)/u);
 	});
 
 	test("each response refreshes the breakdown", async ($, on) => {
@@ -543,7 +553,7 @@ describe("the live total", () => {
 		await startSession($);
 		await step($);
 
-		expect(await legendText($)).toMatch(/mcp\s+/u);
+		expect(await legendText($)).toMatch(/MCP servers\s+/u);
 	});
 
 	test("a breakdown that fails to refresh leaves the last one drawn", async ($, on) => {
@@ -558,8 +568,8 @@ describe("the live total", () => {
 		await step($);
 
 		const d = await drawn($);
-		expect(d.gauge?.text).toMatch(/32k\/100k$/u);
-		expect(d.legend).toMatch(/system\s+/u);
+		expect(d.gauge?.text).toMatch(/\(32k\/100k\)/u);
+		expect(d.legend).toMatch(/system prompt & tools\s+/u);
 	});
 });
 
@@ -572,7 +582,7 @@ describe("compaction and /clear", () => {
 		await compact($, "manual");
 
 		const d = await drawn($);
-		expect(d.gauge?.text).toMatch(/5k\/100k$/u);
+		expect(d.gauge?.text).toMatch(/\(5k\/100k\)/u);
 		expect(d.legend).not.toMatch(/user/u);
 	});
 
@@ -584,7 +594,7 @@ describe("compaction and /clear", () => {
 		await append($, "compaction", ENGINE, 8000);
 		await $.classic.SessionStart({ source: "compact" });
 
-		expect(await gaugeText($)).toMatch(/30k\/100k$/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/100k\)/u);
 	});
 
 	test("the compaction's summary row starts the estimates over", async ($, on) => {
@@ -594,7 +604,7 @@ describe("compaction and /clear", () => {
 		await append($, "compaction", ENGINE, 8000);
 
 		const legend = await legendText($);
-		expect(legend).toMatch(/summary\s+~2k/u);
+		expect(legend).toMatch(/compaction summary\s+~2k/u);
 		expect(legend).not.toMatch(/user/u);
 	});
 
@@ -610,7 +620,7 @@ describe("compaction and /clear", () => {
 			if (order === "row last") await append($, "compaction", ENGINE, 8000);
 
 			const legend = await legendText($);
-			expect(legend).toMatch(/summary\s+~2k/u);
+			expect(legend).toMatch(/compaction summary\s+~2k/u);
 			expect(legend).not.toMatch(/user/u);
 		});
 	}
@@ -626,8 +636,8 @@ describe("compaction and /clear", () => {
 			if (kind === "subagent's") await compact($, "auto", "sub");
 
 			const d = await drawn($);
-			expect(d.gauge?.text).toMatch(/30k\/100k$/u);
-			expect(d.legend).toMatch(/user\s+~1k/u);
+			expect(d.gauge?.text).toMatch(/\(30k\/100k\)/u);
+			expect(d.legend).toMatch(/your messages\s+~1k/u);
 		});
 	}
 
@@ -636,12 +646,12 @@ describe("compaction and /clear", () => {
 		await startSession($);
 		await append($, "compaction", ENGINE, 8000);
 		await append($, "prompt", TYPED, 4000);
-		expect(await legendText($)).toMatch(/summary.+user/u);
+		expect(await legendText($)).toMatch(/compaction summary.+your messages/u);
 		await $.classic.SessionStart({ source: "clear" });
 
 		const legend = await legendText($);
 		expect(legend).not.toMatch(/user/u);
-		expect(legend).not.toMatch(/summary/u);
+		expect(legend).not.toMatch(/compaction summary/u);
 	});
 });
 
@@ -653,7 +663,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/30k\/500k$/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/500k\)/u);
 	});
 
 	test("policy, flag, local, project and user sources take precedence in that order", async ($, on) => {
@@ -664,7 +674,7 @@ describe("the ceiling from settings", () => {
 		engine(on, { window: 1_000_000, sources });
 		respond(on, usage(10_000, 19_000, 1000));
 		await startSession($);
-		expect(await gaugeText($)).toMatch(/30k\/700k$/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/700k\)/u);
 
 		const higher: readonly [SettingsSource, string][] = [
 			["local", "600k"],
@@ -676,7 +686,9 @@ describe("the ceiling from settings", () => {
 				autoCompactWindow: Number.parseInt(figure, 10) * 1000,
 			};
 			await step($);
-			expect(await gaugeText($)).toMatch(new RegExp(`30k/${figure}$`, "u"));
+			expect(await gaugeText($)).toMatch(
+				new RegExp(`\\(30k/${figure}\\)`, "u"),
+			);
 		}
 	});
 
@@ -684,14 +696,14 @@ describe("the ceiling from settings", () => {
 		engine(on, { settingsFail: true });
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/30k\/100k$/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/100k\)/u);
 	});
 
 	test("a window past the model's window stops at the model's window", async ($, on) => {
 		engine(on, { sources: { user: { autoCompactWindow: 500_000 } } });
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/30k\/100k$/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/100k\)/u);
 	});
 
 	test("the model's modelSettings entry beats the top-level window", async ($, on) => {
@@ -710,7 +722,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/30k\/300k$/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/300k\)/u);
 	});
 
 	test("CLAUDE_CODE_AUTO_COMPACT_WINDOW beats the settings window", async ($, on) => {
@@ -721,7 +733,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/30k\/200k$/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/200k\)/u);
 	});
 
 	test("a settings env block beats the shell's variable", async ($, on) => {
@@ -738,7 +750,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/30k\/300k$/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/300k\)/u);
 	});
 
 	test("DISABLE_AUTO_COMPACT=1 makes the ceiling the model's window", async ($, on) => {
@@ -749,7 +761,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/30k\/400k$/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/400k\)/u);
 	});
 
 	test("autoCompactEnabled false makes the ceiling the model's window", async ($, on) => {
@@ -761,7 +773,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/30k\/400k$/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/400k\)/u);
 	});
 
 	test("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE takes its share of the window", async ($, on) => {
@@ -774,7 +786,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/30k\/150k$/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/150k\)/u);
 	});
 
 	test("a changed source takes effect at the next response", async ($, on) => {
@@ -784,12 +796,12 @@ describe("the ceiling from settings", () => {
 		engine(on, { window: 1_000_000, sources });
 		respond(on, usage(10_000, 19_000, 1000));
 		await startSession($);
-		expect(await gaugeText($)).toMatch(/30k\/500k$/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/500k\)/u);
 
 		sources.user = { autoCompactWindow: 300_000 };
 		await step($);
 
-		expect(await gaugeText($)).toMatch(/30k\/300k$/u);
+		expect(await gaugeText($)).toMatch(/\(30k\/300k\)/u);
 	});
 });
 
@@ -811,15 +823,14 @@ async function sevenCategories($: Engine): Promise<void> {
 }
 
 describe("the layout", () => {
-	test("the bar line ends where the legend's widest line ends, on the totals", async ($, on) => {
+	test("the gauge line fills the row less ROW_INSET, the bar after the prefix", async ($, on) => {
 		engine(on);
 		await startSession($);
 
 		const d = await drawn($);
-		const widest = widestOf(d.lines.map(lineCells));
 
-		expect(gaugeCells(d)).toBe(widest);
-		expect(d.gauge?.text.endsWith("30k/100k")).toBe(true);
+		expect(gaugeCells(d)).toBe(VIEWPORT.columns - ROW_INSET);
+		expect(d.barLine).toBeUndefined();
 	});
 
 	test("each legend item is its key, a space, its label, a space and its figure, LEGEND_GAP cells from the next", async ($, on) => {
@@ -830,29 +841,29 @@ describe("the layout", () => {
 		const line = await ui.find({ key: "legend-0" });
 		const items = await ui.findAll({
 			type: "Box",
-			text: /^ [a-z]+ ~?[\d.]+[kM]?$/u,
+			text: /^ [a-z& ]+ ~?[\d.]+[kM]?$/u,
 		});
 		await ui.unmount();
 
 		expect(items.map((item) => item.text)).toEqual([
-			" system 6k",
-			" skills 4k",
-			" unattributed 20k",
+			" system prompt & tools 6k",
+			" skill list 4k",
+			" not yet counted 20k",
 		]);
 		expect(propsOf(line).columnGap).toBe(LEGEND_GAP);
 	});
 
-	// The fixture's items take 12, 12 and 19 cells: the first two and their
-	// gap fit a 30-column row less ROW_INSET, and the third would need 21 more.
+	// The fixture's items take 27, 16 and 22 cells: the first two and their
+	// gap fit a 48-column row less ROW_INSET, and the third would need 24 more.
 	test("the legend breaks onto a new line where the next item would not fit", async ($, on) => {
 		engine(on);
 		await startSession($);
 
-		const { lines } = await drawn($, { columns: 30, rows: 24 });
+		const { lines } = await drawn($, { columns: 48, rows: 24 });
 
 		expect(lines.map((l) => l.text)).toEqual([
-			" system 6k skills 4k",
-			" unattributed 20k",
+			" system prompt & tools 6k skill list 4k",
+			" not yet counted 20k",
 		]);
 	});
 
@@ -872,7 +883,7 @@ describe("the layout", () => {
 		});
 	}
 
-	test("with seven categories every legend line fits the row and the bar line spans the widest", async ($, on) => {
+	test("with seven categories every legend line fits the row", async ($, on) => {
 		engine(on);
 		await startSession($);
 		await sevenCategories($);
@@ -883,20 +894,18 @@ describe("the layout", () => {
 
 		expect(items).toBe(7);
 		expect(widestOf(widths)).toBeLessThanOrEqual(VIEWPORT.columns - ROW_INSET);
-		expect(gaugeCells(d)).toBe(widestOf(widths));
 	});
 
-	test("on a row too narrow for the percentage, the totals and a cell per category, the totals wrap under the bar", async ($, on) => {
+	test("on a row too narrow for the prefix and a cell per category, the bar draws on its own line spanning the row", async ($, on) => {
 		engine(on);
 		await startSession($);
 		await sevenCategories($);
 
 		const d = await drawn($, { columns: 20, rows: 24 });
 
-		expect(d.totals?.text.trim()).toBe("30k/100k");
-		expect(d.gauge?.text).not.toMatch(/100k/u);
-		expect(d.gauge?.text.startsWith("30%")).toBe(true);
-		expect(barWidth(d.bar)).toBeGreaterThanOrEqual(7);
+		expect(d.gauge?.text).toBe("context used: 30% (30k/100k)");
+		expect(d.barLine?.type).toBe("Box");
+		expect(barWidth(d.bar)).toBe(20 - ROW_INSET);
 	});
 
 	test("a bar the legend would stretch past an Image's widest stops at its widest", async ($, on) => {
@@ -912,14 +921,14 @@ describe("the layout", () => {
 		expect(source.width).toBeLessThanOrEqual(IMAGE_MAX_PX);
 	});
 
-	test("a window with nothing used draws no Image", async ($, on) => {
+	test("a window with nothing used draws its bar all free space", async ($, on) => {
 		engine(on, { rows: [] });
 		await startSession($);
 
-		const { images, gauge } = await drawn($);
+		const d = await drawn($);
 
-		expect(images).toEqual([]);
-		expect(gauge?.text).toMatch(/^0%/u);
+		expect(d.images).toHaveLength(1);
+		expect(d.gauge?.text).toMatch(/^context used: 0% \(0\/100k\)/u);
 	});
 });
 
@@ -974,9 +983,9 @@ describe("the character fallback", () => {
 		await settleBlit($, clock);
 
 		const ui = await mount($);
-		const item = await ui.find({ key: "item-system-system" });
+		const item = await ui.find({ key: "item-system-system prompt & tools" });
 		await ui.unmount();
-		const sample = legendSample("system", SAMPLE_CELLS, "bmp");
+		const sample = legendSample("system", SAMPLE_CELLS, "bmp", "dark");
 
 		expect(item?.children[0]).toEqual({
 			type: "Text",
@@ -1005,4 +1014,151 @@ describe("the character fallback", () => {
 
 		expect((await drawn($)).bar?.type).toBe("Image");
 	});
+});
+
+describe("the theme setting", () => {
+	/** A Claude Code `/config` row, the engine's, holding `value`. */
+	function configRow(key: string, value: string): ConfigRow {
+		return {
+			key,
+			label: key,
+			kind: "choice",
+			value,
+			provider: { plugin: "engine", tier: "core" },
+			isLocked: false,
+		};
+	}
+
+	/** Answers `$.config.list` with Claude Code's `theme` row at `value`, and every `config.set` as written. */
+	function claudeCodeTheme(on: On, value: string): void {
+		on("config.list", () => ({ value: [configRow("theme", value)] }));
+		on("config.set", (_, e) => ({ value: e.value }));
+	}
+
+	/** The colour the first legend label draws in. */
+	async function labelColour($: Engine): Promise<unknown> {
+		const label = (await drawn($)).texts.find(
+			(t) => t.text === "system prompt & tools",
+		);
+		return propsOf(label).color;
+	}
+
+	/** Sets Claude Code's `theme` row to `value`, as the person does in the menu. */
+	function pickTheme($: Engine, value: string) {
+		return $.config.set({
+			key: "theme",
+			value,
+			previous: "dark",
+			provider: { plugin: "engine", tier: "core" },
+			origin: { kind: "composer" },
+		});
+	}
+
+	const LIGHT = PALETTES.light.system.swatch.hex;
+	const DARK = PALETTES.dark.system.swatch.hex;
+
+	test("without the option, the gauge draws dark", async ($, on) => {
+		engine(on);
+		await startSession($);
+
+		expect(await labelColour($)).toBe(DARK);
+	});
+
+	test(
+		"dark draws dark hexes",
+		{ options: { theme: "dark" } },
+		async ($, on) => {
+			engine(on);
+			await startSession($);
+
+			expect(await labelColour($)).toBe(DARK);
+		},
+	);
+
+	test(
+		"light draws light hexes",
+		{ options: { theme: "light" } },
+		async ($, on) => {
+			engine(on);
+			await startSession($);
+
+			expect(await labelColour($)).toBe(LIGHT);
+		},
+	);
+
+	test(
+		"an unknown value draws dark",
+		{ options: { theme: "sepia" } },
+		async ($, on) => {
+			engine(on);
+			await startSession($);
+
+			expect(await labelColour($)).toBe(DARK);
+		},
+	);
+
+	test(
+		"follow takes light from a Claude Code theme of light",
+		{ options: { theme: "follow" } },
+		async ($, on) => {
+			engine(on);
+			claudeCodeTheme(on, "light");
+			await startSession($);
+
+			expect(await labelColour($)).toBe(LIGHT);
+		},
+	);
+
+	test(
+		"follow takes dark from dark-daltonized",
+		{ options: { theme: "follow" } },
+		async ($, on) => {
+			engine(on);
+			claudeCodeTheme(on, "dark-daltonized");
+			await startSession($);
+
+			expect(await labelColour($)).toBe(DARK);
+		},
+	);
+
+	test(
+		"follow takes dark from auto",
+		{ options: { theme: "follow" } },
+		async ($, on) => {
+			engine(on);
+			claudeCodeTheme(on, "auto");
+			await startSession($);
+
+			expect(await labelColour($)).toBe(DARK);
+		},
+	);
+
+	test(
+		"follow redraws in light once Claude Code's theme is set to light",
+		{ options: { theme: "follow" } },
+		async ($, on) => {
+			engine(on);
+			claudeCodeTheme(on, "dark");
+			await startSession($);
+			expect(await labelColour($)).toBe(DARK);
+
+			await pickTheme($, "light");
+
+			expect(await labelColour($)).toBe(LIGHT);
+		},
+	);
+
+	test(
+		"a fixed theme ignores a change of Claude Code's theme",
+		{ options: { theme: "dark" } },
+		async ($, on) => {
+			engine(on);
+			claudeCodeTheme(on, "dark");
+			await startSession($);
+
+			await pickTheme($, "light");
+
+			expect(await labelColour($)).toBe(DARK);
+		},
+	);
 });

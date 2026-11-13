@@ -2,6 +2,7 @@
 
 import type { UsageModel } from "../types";
 import type { BarRun } from "./palette";
+import { PX_PER_CELL } from "./pixels";
 import type { GaugeRow } from "./rows";
 
 /** Cells a legend key takes. */
@@ -12,6 +13,12 @@ export const LEGEND_GAP = 2;
 
 /** The spacer on each side of the bar and around a legend label; widths count it. */
 export const SPACE = " ";
+
+/** The gauge line's opening words, drawn before the percentage. */
+export const PREFIX = "context used: ";
+
+/** The bar's widest, in cells, inside the widest Image the engine takes (2048 px). */
+export const MAX_BAR_CELLS: number = Math.floor(2048 / PX_PER_CELL);
 
 /** Each figure size's unit, suffix and decimals, largest first; M starts where a whole k figure would round up to 1000k. */
 const MAGNITUDES = [
@@ -108,44 +115,20 @@ export function legendLines(
 	return lines;
 }
 
-/** Cells the widest legend line takes. */
-export function widestLine(lines: readonly LegendLine[]): number {
-	return lines.reduce((widest, line) => Math.max(widest, line.cells), 0);
-}
+/** The bar's cells, and whether it draws on its own line under the prefix. */
+export type GaugeLine = { cells: number; barOwnLine: boolean };
 
-/** Bar cells that let the bar line span the widest legend line, never fewer than one per used category. */
-export function barCells(
-	widest: number,
-	percent: string,
-	totals: string,
-	used: number,
-): number {
-	return Math.max(
-		used,
-		widest - percent.length - totals.length - 2 * SPACE.length,
-	);
-}
-
-/** The bar line's shape: the bar's cells, and whether the totals wrap onto their own line under the bar. */
-export type BarLine = { cells: number; totalsWrap: boolean };
-
-/** The bar line in a row of `room` cells: the totals wrap where the percentage, the bar and the totals outgrow it, a wrapped bar spans the widest legend line inside the row, and the bar keeps one cell per used category either way. */
-export function barLine(
-	widest: number,
+/** The bar in a row of `room` cells after a `prefix` of cells: it fills the rest of the line, on its own line spanning the room where the line leaves fewer cells than `used` categories, and keeps one cell per category where the room holds fewer; it never passes MAX_BAR_CELLS except for that one cell per category. */
+export function gaugeLine(
 	room: number,
-	percent: string,
-	totals: string,
+	prefix: number,
 	used: number,
-): BarLine {
-	const cells = barCells(widest, percent, totals, used);
-	const inline =
-		percent.length + SPACE.length + cells + SPACE.length + totals.length;
-	if (inline <= room) return { cells, totalsWrap: false };
+): GaugeLine {
+	const beside = room - prefix;
+	if (beside >= used)
+		return { cells: Math.min(beside, MAX_BAR_CELLS), barOwnLine: false };
 	return {
-		cells: Math.max(
-			used,
-			Math.min(widest, room) - percent.length - SPACE.length,
-		),
-		totalsWrap: true,
+		cells: Math.max(used, Math.min(room, MAX_BAR_CELLS)),
+		barOwnLine: true,
 	};
 }

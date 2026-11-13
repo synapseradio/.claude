@@ -1,6 +1,15 @@
 {
 	"name": "context-gauge",
-	"version": "0.5.0",
+	"version": "0.6.0",
 	"description": "A colored, multi-layer context-usage gauge under the prompt",
-	"types": "./types/index.d.ts"
+	"types": "./types/index.d.ts",
+	"userConfig": {
+		"theme": {
+			"type": "string",
+			"title": "Gauge colours",
+			"description": "Palette for the gauge: follow Claude Code's theme, or always light or dark",
+			"options": ["follow", "light", "dark"],
+			"default": "dark"
+		}
+	}
 }

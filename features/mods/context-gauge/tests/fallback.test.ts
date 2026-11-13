@@ -10,10 +10,12 @@ import {
 	lookOf,
 	TEXTURE_GLYPHS,
 } from "../hooks/fallback";
-import type { BarRun } from "../hooks/palette";
-import { BAR_ORDER } from "../hooks/palette";
+import type { BarRun, Theme } from "../hooks/palette";
+import { BAR_ORDER, PALETTES } from "../hooks/palette";
 
 const SETS: readonly GlyphSet[] = ["sextant", "bmp"];
+
+const THEMES: readonly Theme[] = ["light", "dark"];
 
 /** Every id a bar run can carry, free space last. */
 const RUN_IDS: readonly BarRun["id"][] = Array.from<BarRun["id"]>(
@@ -124,17 +126,19 @@ describe("fallback bar", () => {
 	// A zero-token category drops out of the bar, so any two categories can
 	// meet, and free space meets whichever category comes last.
 	test("any two segments that can meet differ in glyph or colour", async () => {
-		for (const set of SETS) {
-			RUN_IDS.forEach((a, i) => {
-				for (const b of RUN_IDS.slice(i + 1)) {
-					const la = lookOf(a, set);
-					const lb = lookOf(b, set);
-					const apart = la.glyph !== lb.glyph || la.color !== lb.color;
-					expect(`${set} ${a} ${b} ${apart ? "apart" : "alike"}`).toBe(
-						`${set} ${a} ${b} apart`,
-					);
-				}
-			});
+		for (const theme of THEMES) {
+			for (const set of SETS) {
+				RUN_IDS.forEach((a, i) => {
+					for (const b of RUN_IDS.slice(i + 1)) {
+						const la = lookOf(a, set, theme);
+						const lb = lookOf(b, set, theme);
+						const apart = la.glyph !== lb.glyph || la.color !== lb.color;
+						expect(
+							`${theme} ${set} ${a} ${b} ${apart ? "apart" : "alike"}`,
+						).toBe(`${theme} ${set} ${a} ${b} apart`);
+					}
+				});
+			}
 		}
 	});
 
@@ -142,14 +146,14 @@ describe("fallback bar", () => {
 		for (const set of SETS) {
 			for (const bar of GENERATED) {
 				const kept = bar.filter((r) => r.cells > 0);
-				const runs = fallbackRuns(bar, set);
+				const runs = fallbackRuns(bar, set, "dark");
 				const drawn = runs.reduce((sum, r) => sum + cells(r.text), 0);
 				const wanted = kept.reduce((sum, r) => sum + r.cells, 0);
 				expect(`${set} ${drawn}`).toBe(`${set} ${wanted}`);
 				expect(runs.map((r) => r.id)).toEqual(kept.map((r) => r.id));
 				runs.forEach((run, i) => {
 					const segment = kept[i];
-					const look = lookOf(run.id, set);
+					const look = lookOf(run.id, set, "dark");
 					expect(run).toEqual({
 						id: segment?.id,
 						color: look.color,
@@ -164,7 +168,7 @@ describe("fallback bar", () => {
 		for (const set of SETS) {
 			const allowed = new Set(glyphsOf(set));
 			for (const bar of GENERATED) {
-				for (const run of fallbackRuns(bar, set)) {
+				for (const run of fallbackRuns(bar, set, "dark")) {
 					const strays = Array.from(run.text).filter((c) => !allowed.has(c));
 					expect(`${set} ${run.id} ${strays.join("")}`).toBe(
 						`${set} ${run.id} `,
@@ -177,9 +181,9 @@ describe("fallback bar", () => {
 	test("a one-cell segment draws its texture's whole glyph", async () => {
 		for (const set of SETS) {
 			for (const id of RUN_IDS) {
-				const [run] = fallbackRuns([{ id, cells: 1 }], set);
+				const [run] = fallbackRuns([{ id, cells: 1 }], set, "dark");
 				expect(`${set} ${id} ${run?.text}`).toBe(
-					`${set} ${id} ${lookOf(id, set).glyph}`,
+					`${set} ${id} ${lookOf(id, set, "dark").glyph}`,
 				);
 			}
 		}
@@ -189,17 +193,32 @@ describe("fallback bar", () => {
 		for (const set of SETS) {
 			for (const id of BAR_ORDER) {
 				for (const n of [1, 2, 3]) {
-					const look = lookOf(id, set);
-					const sample = legendSample(id, n, set);
+					const look = lookOf(id, set, "dark");
+					const sample = legendSample(id, n, set, "dark");
 					expect(sample).toEqual({
 						id,
 						color: look.color,
 						text: look.glyph.repeat(n),
 					});
-					expect(fallbackRuns([{ id, cells: n }], set)).toEqual([sample]);
+					expect(fallbackRuns([{ id, cells: n }], set, "dark")).toEqual([
+						sample,
+					]);
 				}
 			}
 		}
+	});
+
+	test("a look takes its colour from the theme's palette", async () => {
+		for (const theme of THEMES) {
+			for (const id of BAR_ORDER) {
+				expect(`${theme} ${id} ${lookOf(id, "bmp", theme).color}`).toBe(
+					`${theme} ${id} ${PALETTES[theme][id].swatch.hex}`,
+				);
+			}
+		}
+		expect(lookOf("system", "bmp", "light").color).not.toBe(
+			lookOf("system", "bmp", "dark").color,
+		);
 	});
 
 	test("each terminal's environment picks the glyph set it draws", async () => {

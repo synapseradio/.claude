@@ -1,7 +1,7 @@
-/** The gauge's categories in bar order, and the Open Color swatch and texture each draws with. */
+/** The gauge's categories in bar order, and the swatch and texture each draws with in the light and the dark palette. */
 
-/** One Open Color shade: its hue, its index 0 to 9, and its hex. */
-export type Swatch = { hue: string; shade: number; hex: string };
+/** One colour, as a hex. */
+export type Swatch = { hex: string };
 
 /** The gauge's categories, in the order the bar and the legend draw them. */
 export const BAR_ORDER = [
@@ -12,16 +12,19 @@ export const BAR_ORDER = [
 	"skills",
 	"summary",
 	"hooks",
-	"attachments",
+	"plugins",
+	"reminders",
+	"files",
 	"user",
+	"senders",
 	"commands",
-	"deliveries",
 	"calls",
+	"writes",
 	"results",
 	"read",
 	"thinking",
 	"replies",
-	"unattributed",
+	"uncounted",
 	"other",
 ] as const;
 
@@ -38,34 +41,60 @@ export type Texture = (typeof TEXTURES)[number];
 /** How a category draws: its colour and its texture. */
 export type CategoryStyle = { swatch: Swatch; texture: Texture };
 
-// Open Color 1.9.1, https://github.com/yeun/open-color/blob/v1.9.1/open-color.json
-const PINK: Swatch = { hue: "pink", shade: 6, hex: "#e64980" };
-const GRAPE: Swatch = { hue: "grape", shade: 7, hex: "#ae3ec9" };
-const LIME: Swatch = { hue: "lime", shade: 9, hex: "#5c940d" };
-const CYAN: Swatch = { hue: "cyan", shade: 7, hex: "#1098ad" };
-const INDIGO: Swatch = { hue: "indigo", shade: 6, hex: "#4c6ef5" };
+/** The palettes the gauge draws in: for a light terminal and for a dark one. */
+export type Theme = "light" | "dark";
 
-/** Each category's colour and texture: colours cycle every five categories, textures every four. */
-export const CATEGORY_STYLES: Readonly<Record<CategoryId, CategoryStyle>> = {
-	system: { swatch: PINK, texture: "solid" },
-	mcp: { swatch: GRAPE, texture: "diagonal" },
-	agents: { swatch: LIME, texture: "vertical" },
-	memory: { swatch: CYAN, texture: "dots" },
-	skills: { swatch: INDIGO, texture: "solid" },
-	summary: { swatch: PINK, texture: "diagonal" },
-	hooks: { swatch: GRAPE, texture: "vertical" },
-	attachments: { swatch: LIME, texture: "dots" },
-	user: { swatch: CYAN, texture: "solid" },
-	commands: { swatch: INDIGO, texture: "diagonal" },
-	deliveries: { swatch: PINK, texture: "vertical" },
-	calls: { swatch: GRAPE, texture: "dots" },
-	results: { swatch: LIME, texture: "solid" },
-	read: { swatch: CYAN, texture: "diagonal" },
-	thinking: { swatch: INDIGO, texture: "vertical" },
-	replies: { swatch: PINK, texture: "dots" },
-	unattributed: { swatch: GRAPE, texture: "solid" },
-	other: { swatch: LIME, texture: "diagonal" },
+/** Each theme's category colours and textures; textures cycle every four categories, so bar neighbours differ in texture. */
+export const PALETTES: Readonly<
+	Record<Theme, Readonly<Record<CategoryId, CategoryStyle>>>
+> = {
+	light: {
+		system: { swatch: { hex: "#114488" }, texture: "solid" },
+		mcp: { swatch: { hex: "#cc3333" }, texture: "diagonal" },
+		agents: { swatch: { hex: "#0000dd" }, texture: "vertical" },
+		memory: { swatch: { hex: "#9977dd" }, texture: "dots" },
+		skills: { swatch: { hex: "#991100" }, texture: "solid" },
+		summary: { swatch: { hex: "#6655cc" }, texture: "diagonal" },
+		hooks: { swatch: { hex: "#559911" }, texture: "vertical" },
+		plugins: { swatch: { hex: "#dd0088" }, texture: "dots" },
+		reminders: { swatch: { hex: "#5511aa" }, texture: "solid" },
+		files: { swatch: { hex: "#1199bb" }, texture: "diagonal" },
+		user: { swatch: { hex: "#771166" }, texture: "vertical" },
+		senders: { swatch: { hex: "#cc44ff" }, texture: "dots" },
+		commands: { swatch: { hex: "#886644" }, texture: "solid" },
+		calls: { swatch: { hex: "#ff33cc" }, texture: "diagonal" },
+		writes: { swatch: { hex: "#007777" }, texture: "vertical" },
+		results: { swatch: { hex: "#ff5500" }, texture: "dots" },
+		read: { swatch: { hex: "#aa11aa" }, texture: "solid" },
+		thinking: { swatch: { hex: "#005500" }, texture: "diagonal" },
+		replies: { swatch: { hex: "#cc7788" }, texture: "vertical" },
+		uncounted: { swatch: { hex: "#8800ff" }, texture: "dots" },
+		other: { swatch: { hex: "#554444" }, texture: "solid" },
+	},
+	dark: {
+		system: { swatch: { hex: "#bb9966" }, texture: "solid" },
+		mcp: { swatch: { hex: "#3366dd" }, texture: "diagonal" },
+		agents: { swatch: { hex: "#cccc66" }, texture: "vertical" },
+		memory: { swatch: { hex: "#cc2288" }, texture: "dots" },
+		skills: { swatch: { hex: "#33aaff" }, texture: "solid" },
+		summary: { swatch: { hex: "#ff0066" }, texture: "diagonal" },
+		hooks: { swatch: { hex: "#ddbbff" }, texture: "vertical" },
+		plugins: { swatch: { hex: "#889900" }, texture: "dots" },
+		reminders: { swatch: { hex: "#8866bb" }, texture: "solid" },
+		files: { swatch: { hex: "#ffbb99" }, texture: "diagonal" },
+		user: { swatch: { hex: "#aa66ff" }, texture: "vertical" },
+		senders: { swatch: { hex: "#dd3300" }, texture: "dots" },
+		commands: { swatch: { hex: "#33aa99" }, texture: "solid" },
+		calls: { swatch: { hex: "#aa00ff" }, texture: "diagonal" },
+		writes: { swatch: { hex: "#007799" }, texture: "vertical" },
+		results: { swatch: { hex: "#66cc33" }, texture: "dots" },
+		read: { swatch: { hex: "#dd88aa" }, texture: "solid" },
+		thinking: { swatch: { hex: "#008833" }, texture: "diagonal" },
+		replies: { swatch: { hex: "#ff55cc" }, texture: "vertical" },
+		uncounted: { swatch: { hex: "#77ddcc" }, texture: "dots" },
+		other: { swatch: { hex: "#aa6666" }, texture: "solid" },
+	},
 };
 
-/** Free space, the window's unused remainder. */
-export const FREE_SWATCH: Swatch = { hue: "gray", shade: 6, hex: "#868e96" };
+/** Free space, the window's unused remainder, in both palettes. */
+export const FREE_SWATCH: Swatch = { hex: "#868e96" };

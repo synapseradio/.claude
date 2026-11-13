@@ -2,12 +2,12 @@ import { describe, expect, test } from "claude-code/testing";
 
 import {
 	abbrev,
-	barCells,
-	barLine,
 	barRuns,
+	gaugeLine,
 	largestRemainder,
 	legendLines,
-	widestLine,
+	MAX_BAR_CELLS,
+	PREFIX,
 } from "../hooks/layout";
 import type { BarRun, CategoryId } from "../hooks/palette";
 import type { GaugeRow } from "../hooks/rows";
@@ -30,10 +30,7 @@ function runCells(runs: readonly BarRun[]): number {
 	return total(runs.map((r) => r.cells));
 }
 
-const PERCENT = "30%";
-const TOTALS = "30k/100k";
-
-/** Seven categories of 100 tokens each, labels four to twelve letters long. */
+/** Seven categories of 100 tokens each, labels four to nine letters long. */
 const SEVEN: readonly GaugeRow[] = [
 	row("system", 100),
 	row("skills", 100),
@@ -41,7 +38,7 @@ const SEVEN: readonly GaugeRow[] = [
 	row("user", 100, true),
 	row("calls", 100, true),
 	row("read", 100, true),
-	row("unattributed", 100),
+	row("uncounted", 100),
 ];
 
 /** Legend items of 12, 12 and 14 cells: the first two with their gap take 26. */
@@ -141,9 +138,8 @@ describe("barRuns", () => {
 		expect(runCells(barRuns(windowOf(30_000, 100_000), THREE, 2))).toBe(2);
 	});
 
-	test("where the legend leaves fewer cells than rows, each row still takes one cell", () => {
-		const widest = widestLine(legendLines(SEVEN, 20));
-		const width = barCells(widest, PERCENT, TOTALS, SEVEN.length);
+	test("where the room leaves fewer cells than rows, each row still takes one cell", () => {
+		const { cells: width } = gaugeLine(5, 30, SEVEN.length);
 		const runs = barRuns(windowOf(700, 1000), SEVEN, width);
 
 		expect(width).toBe(SEVEN.length);
@@ -186,59 +182,41 @@ describe("legendLines", () => {
 	});
 });
 
-describe("widestLine", () => {
-	test("the widest of several lines sets the width", () => {
-		expect(widestLine(legendLines(THREE, 26))).toBe(26);
-	});
-
-	test("no lines take no cells", () => {
-		expect(widestLine([])).toBe(0);
+describe("PREFIX", () => {
+	test("the gauge line opens on the words and a trailing space", () => {
+		expect(PREFIX).toBe("context used: ");
 	});
 });
 
-describe("barCells", () => {
-	test("the bar line, percentage, bar, totals and two spaces, spans the widest legend line", () => {
-		const cells = barCells(40, PERCENT, TOTALS, 3);
-
-		expect(PERCENT.length + 1 + cells + 1 + TOTALS.length).toBe(40);
+describe("gaugeLine", () => {
+	test("the bar takes the cells the prefix leaves on the line", () => {
+		expect(gaugeLine(77, 30, 3)).toEqual({ cells: 47, barOwnLine: false });
 	});
 
-	test("never fewer cells than used categories", () => {
-		expect(barCells(12, PERCENT, TOTALS, 7)).toBe(7);
+	test("the bar stops at the widest Image however wide the room", () => {
+		expect(gaugeLine(300, 30, 3)).toEqual({
+			cells: MAX_BAR_CELLS,
+			barOwnLine: false,
+		});
+		expect(MAX_BAR_CELLS).toBe(204);
 	});
-});
 
-describe("barLine", () => {
-	test("where the bar line fits the row, the totals stay on it", () => {
-		expect(barLine(40, 77, PERCENT, TOTALS, 3)).toEqual({
-			cells: barCells(40, PERCENT, TOTALS, 3),
-			totalsWrap: false,
+	test("the bar takes the line's last cells where they equal the used categories", () => {
+		expect(gaugeLine(33, 30, 3)).toEqual({ cells: 3, barOwnLine: false });
+	});
+
+	test("where the prefix leaves fewer cells than used categories, the bar moves to its own line and spans the room", () => {
+		expect(gaugeLine(32, 30, 3)).toEqual({ cells: 32, barOwnLine: true });
+	});
+
+	test("a bar on its own line stops at the widest Image", () => {
+		expect(gaugeLine(300, 299, 3)).toEqual({
+			cells: MAX_BAR_CELLS,
+			barOwnLine: true,
 		});
 	});
 
-	test("where the percentage, the totals and one cell per category outgrow the row, the totals wrap", () => {
-		// 3 + 1 + 18 + 1 + 8 = 31 cells against a 27-cell row.
-		const line = barLine(25, 27, PERCENT, TOTALS, 18);
-
-		expect(line.totalsWrap).toBe(true);
-	});
-
-	test("with the totals wrapped, the bar spans the widest legend line after the percentage", () => {
-		const line = barLine(25, 27, PERCENT, TOTALS, 18);
-
-		expect(PERCENT.length + 1 + line.cells).toBe(25);
-	});
-
-	test("with the totals wrapped, the bar stays inside the row where a legend item is wider than it", () => {
-		const line = barLine(19, 17, PERCENT, TOTALS, 3);
-
-		expect(PERCENT.length + 1 + line.cells).toBe(17);
-	});
-
-	test("a row too narrow even for the percentage and one cell per category keeps every cell", () => {
-		expect(barLine(8, 10, PERCENT, TOTALS, 18)).toEqual({
-			cells: 18,
-			totalsWrap: true,
-		});
+	test("where the room is under the used categories, the bar keeps one cell per category on its own line", () => {
+		expect(gaugeLine(5, 30, 18)).toEqual({ cells: 18, barOwnLine: true });
 	});
 });

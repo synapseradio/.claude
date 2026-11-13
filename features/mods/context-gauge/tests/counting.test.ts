@@ -18,11 +18,12 @@ function attachmentRow(
 	door: Row["door"],
 	origin: Row["origin"],
 	content: ApiContentBlock[],
+	name = "x",
 ): Row {
 	return {
 		door,
 		origin,
-		message: { type: "attachment", name: "x", role: "user", content },
+		message: { type: "attachment", name, role: "user", content },
 	};
 }
 
@@ -59,20 +60,28 @@ describe("what one appended row counts", () => {
 		expect(effect.counts).toEqual([{ id: "user", chars: 12 }]);
 	});
 
-	test("a prompt from any other origin is a delivery", async () => {
+	test("a prompt from a task notification is another sender's message", async () => {
 		const effect = rowEffect(
 			userRow("prompt", { kind: "task-notification" }, [text(900)]),
 		);
 
-		expect(effect.counts).toEqual([{ id: "deliveries", chars: 900 }]);
+		expect(effect.counts).toEqual([{ id: "senders", chars: 900 }]);
 	});
 
-	test("a delivery is a delivery, even one the person queued", async () => {
+	test("a delivery the person queued at the composer is their own message", async () => {
 		const effect = rowEffect(
 			attachmentRow("delivery", { kind: "composer" }, [text(454)]),
 		);
 
-		expect(effect.counts).toEqual([{ id: "deliveries", chars: 454 }]);
+		expect(effect.counts).toEqual([{ id: "user", chars: 454 }]);
+	});
+
+	test("a delivery from a scheduled trigger is another sender's message", async () => {
+		const effect = rowEffect(
+			attachmentRow("delivery", { kind: "scheduled-trigger" }, [text(61)]),
+		);
+
+		expect(effect.counts).toEqual([{ id: "senders", chars: 61 }]);
 	});
 
 	test("a command row is command text", async () => {
@@ -102,6 +111,23 @@ describe("what one appended row counts", () => {
 
 		expect(effect.counts).toEqual([{ id: "calls", chars: 20 }]);
 	});
+
+	for (const name of ["Write", "Edit", "NotebookEdit"]) {
+		test(`a ${name} tool use is a file write, its name and its input as JSON`, async () => {
+			const effect = rowEffect(
+				responseRow({
+					type: "tool_use",
+					id: "toolu_3",
+					name,
+					input: { file_path: "a" },
+				}),
+			);
+
+			expect(effect.counts).toEqual([
+				{ id: "writes", chars: name.length + 17 },
+			]);
+		});
+	}
 
 	test("a thinking block counts nothing, whatever text it holds", async () => {
 		const effect = rowEffect(
@@ -167,7 +193,7 @@ describe("what one appended row counts", () => {
 		expect(effect.counts).toEqual([{ id: "results", chars: 70 }]);
 	});
 
-	test("a settings hook's context is hooks text", async () => {
+	test("a settings hook's context is hook output", async () => {
 		const effect = rowEffect(
 			attachmentRow(
 				"hook-context",
@@ -179,18 +205,79 @@ describe("what one appended row counts", () => {
 		expect(effect.counts).toEqual([{ id: "hooks", chars: 300 }]);
 	});
 
-	test("an attachment is attachments text", async () => {
+	test("an attachment a hook authored is hook output", async () => {
 		const effect = rowEffect(
-			attachmentRow("attachment", { kind: "engine" }, [text(80)]),
+			attachmentRow(
+				"attachment",
+				{ kind: "hook", event: "PostToolUse" },
+				[text(45)],
+				"hook_success",
+			),
 		);
 
-		expect(effect.counts).toEqual([{ id: "attachments", chars: 80 }]);
+		expect(effect.counts).toEqual([{ id: "hooks", chars: 45 }]);
 	});
 
-	test("a note is attachments text", async () => {
+	for (const door of ["attachment", "note"] as const) {
+		test(`a ${door} a plugin authored is plugin context`, async () => {
+			const effect = rowEffect(
+				attachmentRow(door, { kind: "plugin", event: "prompt.submit" }, [
+					text(33),
+				]),
+			);
+
+			expect(effect.counts).toEqual([{ id: "plugins", chars: 33 }]);
+		});
+	}
+
+	for (const name of [
+		"skill_listing",
+		"instructions",
+		"nested_memory",
+		"mcp_instructions_delta",
+		"agent_listing_delta",
+	]) {
+		test(`the ${name} attachment counts nothing, its breakdown row reports it`, async () => {
+			const effect = rowEffect(
+				attachmentRow("attachment", { kind: "engine" }, [text(500)], name),
+			);
+
+			expect(effect.counts).toEqual([]);
+		});
+	}
+
+	for (const name of [
+		"file",
+		"edited_text_file",
+		"compact_file_reference",
+		"plan_file_reference",
+	]) {
+		test(`the ${name} attachment is an attached file`, async () => {
+			const effect = rowEffect(
+				attachmentRow("attachment", { kind: "engine" }, [text(80)], name),
+			);
+
+			expect(effect.counts).toEqual([{ id: "files", chars: 80 }]);
+		});
+	}
+
+	test("any other engine attachment is a Claude Code reminder", async () => {
+		const effect = rowEffect(
+			attachmentRow(
+				"attachment",
+				{ kind: "engine" },
+				[text(80)],
+				"date_change",
+			),
+		);
+
+		expect(effect.counts).toEqual([{ id: "reminders", chars: 80 }]);
+	});
+
+	test("an engine note is a Claude Code reminder", async () => {
 		const effect = rowEffect(userRow("note", { kind: "engine" }, [text(29)]));
 
-		expect(effect.counts).toEqual([{ id: "attachments", chars: 29 }]);
+		expect(effect.counts).toEqual([{ id: "reminders", chars: 29 }]);
 	});
 
 	test("a compaction replaces the window, its text the summary", async () => {
@@ -253,18 +340,21 @@ describe("adding counts to the estimates", () => {
 	test("each count adds its characters to its category", async () => {
 		const once = addCounts(NO_ESTIMATES, [
 			{ id: "user", chars: 40 },
-			{ id: "calls", chars: 20 },
+			{ id: "writes", chars: 20 },
 		]);
 		const twice = addCounts(once, [{ id: "user", chars: 2 }]);
 
 		expect(twice).toEqual({
 			summary: 0,
 			hooks: 0,
-			attachments: 0,
+			plugins: 0,
+			reminders: 0,
+			files: 0,
 			user: 42,
+			senders: 0,
 			commands: 0,
-			deliveries: 0,
-			calls: 20,
+			calls: 0,
+			writes: 20,
 			results: 0,
 			read: 0,
 			thinking: 0,

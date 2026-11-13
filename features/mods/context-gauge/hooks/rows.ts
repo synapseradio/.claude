@@ -9,6 +9,30 @@ const CHARS_PER_TOKEN = 4;
 
 type NamedId = Exclude<CategoryId, "other">;
 
+/** What the legend calls each named category. */
+const LABELS: Readonly<Record<NamedId, string>> = {
+	system: "system prompt & tools",
+	mcp: "MCP servers",
+	agents: "agent descriptions",
+	memory: "memory files",
+	skills: "skill list",
+	summary: "compaction summary",
+	hooks: "hook output",
+	plugins: "plugin context",
+	reminders: "Claude Code reminders",
+	files: "attached files",
+	user: "your messages",
+	senders: "messages from other senders",
+	commands: "slash commands",
+	calls: "tool calls",
+	writes: "file writes",
+	results: "tool results",
+	read: "file reads",
+	thinking: "thinking",
+	replies: "Claude's replies",
+	uncounted: "not yet counted",
+};
+
 /** The gauge's category for each breakdown row name the engine reports. */
 const ROW_IDS: ReadonlyMap<string, NamedId> = new Map([
 	["System prompt", "system"],
@@ -24,11 +48,14 @@ const ROW_IDS: ReadonlyMap<string, NamedId> = new Map([
 export const NO_ESTIMATES: MessageEstimates = {
 	summary: 0,
 	hooks: 0,
-	attachments: 0,
+	plugins: 0,
+	reminders: 0,
+	files: 0,
 	user: 0,
+	senders: 0,
 	commands: 0,
-	deliveries: 0,
 	calls: 0,
+	writes: 0,
 	results: 0,
 	read: 0,
 	thinking: 0,
@@ -55,7 +82,7 @@ export type GaugeRow = {
 };
 
 function named(id: NamedId, tokens: number, estimated: boolean): GaugeRow {
-	return { id, label: id, tokens, estimated };
+	return { id, label: LABELS[id], tokens, estimated };
 }
 
 function splitMessages(tokens: number, chars: MessageEstimates): GaugeRow[] {
@@ -66,7 +93,7 @@ function splitMessages(tokens: number, chars: MessageEstimates): GaugeRow[] {
 		named(id, Math.round((chars[id] / CHARS_PER_TOKEN) * scale), true),
 	);
 	const rest = Math.max(0, Math.round(tokens - seen));
-	return counted.concat(named("unattributed", rest, false));
+	return counted.concat(named("uncounted", rest, false));
 }
 
 /** Sums the tokens of rows sharing an id and label, keeping the first one's place. */

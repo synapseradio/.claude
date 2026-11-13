@@ -6,8 +6,8 @@
 // only the Uint8Array base64 and hex methods
 // (https://www.typescriptlang.org/docs/handbook/triple-slash-directives.html#-reference-lib-).
 /// <reference lib="esnext.typedarrays" />
-import type { BarRun, CategoryId, Swatch, Texture } from "./palette";
-import { CATEGORY_STYLES, FREE_SWATCH } from "./palette";
+import type { BarRun, CategoryId, Swatch, Texture, Theme } from "./palette";
+import { FREE_SWATCH, PALETTES } from "./palette";
 
 /** An Image source in its rgba form: base64 of width × height pixels, four bytes each, row by row. */
 export type Pixels = { rgba: string; width: number; height: number };
@@ -47,21 +47,21 @@ function textureOn(texture: Texture, runX: number, row: number): boolean {
 
 type Paint = { swatch: Swatch; rows: Rows; texture: Texture };
 
-function paintOf(id: BarRun["id"]): Paint {
+function paintOf(id: BarRun["id"], theme: Theme): Paint {
 	if (id === "free") {
 		return { swatch: FREE_SWATCH, rows: FREE_LINE, texture: "solid" };
 	}
-	const { swatch, texture } = CATEGORY_STYLES[id];
+	const { swatch, texture } = PALETTES[theme][id];
 	return { swatch, rows: BAND, texture };
 }
 
-/** The bar as RGBA: each run in its category's colour and texture inside a centred band, a 1-pixel transparent seam where one run meets the next, free space as a thin centred line in FREE_SWATCH. */
-export function barPixels(runs: readonly BarRun[]): Pixels {
+/** The bar as RGBA: each run in its category's colour in the theme's palette and texture inside a centred band, a 1-pixel transparent seam where one run meets the next, free space as a thin centred line in FREE_SWATCH. */
+export function barPixels(runs: readonly BarRun[], theme: Theme): Pixels {
 	const width = runs.reduce((n, run) => n + run.cells, 0) * PX_PER_CELL;
 	const px = new Uint8Array(width * PX_HEIGHT * 4);
 	let start = 0;
 	for (const run of runs) {
-		const { swatch, rows, texture } = paintOf(run.id);
+		const { swatch, rows, texture } = paintOf(run.id, theme);
 		const rgb = Number.parseInt(swatch.hex.slice(1), 16);
 		const end = start + run.cells * PX_PER_CELL;
 		const drawFrom = start === 0 ? start : start + 1;
@@ -82,6 +82,10 @@ export function barPixels(runs: readonly BarRun[]): Pixels {
 }
 
 /** A legend key: `cells` cells of a category's run, pixel for pixel what a run of that category starts with. */
-export function samplePixels(id: CategoryId, cells: number): Pixels {
-	return barPixels([{ id, cells }]);
+export function samplePixels(
+	id: CategoryId,
+	cells: number,
+	theme: Theme,
+): Pixels {
+	return barPixels([{ id, cells }], theme);
 }

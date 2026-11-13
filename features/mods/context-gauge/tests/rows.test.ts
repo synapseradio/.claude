@@ -7,11 +7,14 @@ function estimates(chars: Partial<MessageEstimates>): MessageEstimates {
 	return {
 		summary: chars.summary ?? 0,
 		hooks: chars.hooks ?? 0,
-		attachments: chars.attachments ?? 0,
+		plugins: chars.plugins ?? 0,
+		reminders: chars.reminders ?? 0,
+		files: chars.files ?? 0,
 		user: chars.user ?? 0,
+		senders: chars.senders ?? 0,
 		commands: chars.commands ?? 0,
-		deliveries: chars.deliveries ?? 0,
 		calls: chars.calls ?? 0,
+		writes: chars.writes ?? 0,
 		results: chars.results ?? 0,
 		read: chars.read ?? 0,
 		thinking: chars.thinking ?? 0,
@@ -31,7 +34,11 @@ describe("gauge rows", () => {
 			NO_ESTIMATES,
 		);
 
-		expect(rows.map((r) => r.label)).toEqual(["system", "agents", "skills"]);
+		expect(rows.map((r) => r.label)).toEqual([
+			"system prompt & tools",
+			"agent descriptions",
+			"skill list",
+		]);
 	});
 
 	test("the system prompt and the system tools make one system row", async () => {
@@ -44,7 +51,7 @@ describe("gauge rows", () => {
 		);
 
 		expect(rows.map((r) => [r.id, r.label, r.tokens])).toEqual([
-			["system", "system", 8000],
+			["system", "system prompt & tools", 8000],
 		]);
 	});
 
@@ -59,8 +66,8 @@ describe("gauge rows", () => {
 		);
 
 		expect(rows.map((r) => [r.id, r.label, r.tokens])).toEqual([
-			["mcp", "mcp", 2000],
-			["skills", "skills", 100],
+			["mcp", "MCP servers", 2000],
+			["skills", "skill list", 100],
 		]);
 	});
 
@@ -74,7 +81,7 @@ describe("gauge rows", () => {
 		);
 
 		expect(rows.map((r) => [r.id, r.label])).toEqual([
-			["memory", "memory"],
+			["memory", "memory files"],
 			["other", "workflow scripts"],
 		]);
 	});
@@ -82,12 +89,15 @@ describe("gauge rows", () => {
 	test("messages split into the counted categories at four characters a token, in bar order", async () => {
 		const rows = gaugeRows([{ name: "Messages", tokens: 10_000 }], {
 			summary: 2000,
-			hooks: 8000,
-			attachments: 400,
+			hooks: 6000,
+			plugins: 400,
+			reminders: 800,
+			files: 1200,
 			user: 4000,
+			senders: 1200,
 			commands: 800,
-			deliveries: 1200,
-			calls: 2000,
+			calls: 1600,
+			writes: 400,
 			results: 6000,
 			read: 12_000,
 			thinking: 0,
@@ -95,43 +105,58 @@ describe("gauge rows", () => {
 		});
 
 		expect(rows.map((r) => [r.label, r.tokens, r.estimated])).toEqual([
-			["summary", 500, true],
-			["hooks", 2000, true],
-			["attachments", 100, true],
-			["user", 1000, true],
-			["commands", 200, true],
-			["deliveries", 300, true],
-			["calls", 500, true],
-			["results", 1500, true],
-			["read", 3000, true],
-			["replies", 400, true],
-			["unattributed", 500, false],
+			["compaction summary", 500, true],
+			["hook output", 1500, true],
+			["plugin context", 100, true],
+			["Claude Code reminders", 200, true],
+			["attached files", 300, true],
+			["your messages", 1000, true],
+			["messages from other senders", 300, true],
+			["slash commands", 200, true],
+			["tool calls", 400, true],
+			["file writes", 100, true],
+			["tool results", 1500, true],
+			["file reads", 3000, true],
+			["Claude's replies", 400, true],
+			["not yet counted", 500, false],
 		]);
 	});
 
-	test("messages the estimates fall short of show as an unattributed row of the difference", async () => {
+	test("the remainder is the uncounted row, its label saying so", async () => {
+		const rows = gaugeRows(
+			[{ name: "Messages", tokens: 100 }],
+			estimates({ user: 40 }),
+		);
+
+		expect(rows.map((r) => [r.id, r.label])).toEqual([
+			["user", "your messages"],
+			["uncounted", "not yet counted"],
+		]);
+	});
+
+	test("messages the estimates fall short of show as a not yet counted row of the difference", async () => {
 		const rows = gaugeRows(
 			[{ name: "Messages", tokens: 10_000 }],
 			estimates({ user: 4000, replies: 8000 }),
 		);
 
 		expect(rows.map((r) => [r.label, r.tokens, r.estimated])).toEqual([
-			["user", 1000, true],
-			["replies", 2000, true],
-			["unattributed", 7000, false],
+			["your messages", 1000, true],
+			["Claude's replies", 2000, true],
+			["not yet counted", 7000, false],
 		]);
 	});
 
-	test("estimates larger than the messages row shrink to fit it, leaving nothing unattributed", async () => {
+	test("estimates larger than the messages row shrink to fit it, leaving nothing uncounted", async () => {
 		const rows = gaugeRows(
 			[{ name: "Messages", tokens: 1000 }],
 			estimates({ hooks: 4000, read: 2000, replies: 2000 }),
 		);
 
 		expect(rows.map((r) => [r.label, r.tokens])).toEqual([
-			["hooks", 500],
-			["read", 250],
-			["replies", 250],
+			["hook output", 500],
+			["file reads", 250],
+			["Claude's replies", 250],
 		]);
 	});
 });

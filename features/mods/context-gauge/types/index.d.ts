@@ -24,11 +24,14 @@ export type CompactionSetting = {
 export type MessageEstimates = {
 	summary: number;
 	hooks: number;
-	attachments: number;
+	plugins: number;
+	reminders: number;
+	files: number;
 	user: number;
+	senders: number;
 	commands: number;
-	deliveries: number;
 	calls: number;
+	writes: number;
 	results: number;
 	read: number;
 	thinking: number;
@@ -49,6 +52,8 @@ declare module "claude-code" {
 			pending: number;
 			/** The glyphs the bar draws in where its Image draws its alt, or null while the Image draws. */
 			glyphs: "sextant" | "bmp" | null;
+			/** The palette the gauge draws in. */
+			theme: "light" | "dark";
 		};
 	}
 }

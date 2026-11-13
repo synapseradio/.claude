@@ -15,9 +15,38 @@ export type RowEffect = { reset: boolean; counts: readonly Counted[] };
 
 type Row = Pick<SessionAppendInput, "door" | "origin" | "message">;
 
-type BlockKind = "text" | "tool_use" | "tool_result" | "unmeasured";
+type BlockKind =
+	| "text"
+	| "tool_use"
+	| "file_write"
+	| "tool_result"
+	| "unmeasured";
 
 type Measured = { kind: BlockKind; chars: number };
+
+/** Attachment names whose text a breakdown row already reports, so counting them again would double it. */
+export const BREAKDOWN_OWNED: ReadonlySet<string> = new Set([
+	"skill_listing",
+	"instructions",
+	"nested_memory",
+	"mcp_instructions_delta",
+	"agent_listing_delta",
+]);
+
+/** Attachment names that carry the text of a file. */
+export const FILE_ATTACHMENTS: ReadonlySet<string> = new Set([
+	"file",
+	"edited_text_file",
+	"compact_file_reference",
+	"plan_file_reference",
+]);
+
+/** Tools whose calls write a file. */
+export const FILE_WRITERS: ReadonlySet<string> = new Set([
+	"Write",
+	"Edit",
+	"NotebookEdit",
+]);
 
 function jsonChars(value: unknown): number {
 	return value === undefined ? 0 : JSON.stringify(value).length;
@@ -45,25 +74,43 @@ function measure(block: ApiContentBlock): Measured {
 	if (type === "text" && typeof text === "string")
 		return { kind: "text", chars: text.length };
 	if (type === "tool_use" && typeof name === "string")
-		return { kind: "tool_use", chars: name.length + jsonChars(input) };
+		return {
+			kind: FILE_WRITERS.has(name) ? "file_write" : "tool_use",
+			chars: name.length + jsonChars(input),
+		};
 	if (type === "tool_result")
 		return { kind: "tool_result", chars: resultChars(content) };
 	return { kind: "unmeasured", chars: 0 };
+}
+
+function sender({ origin }: Row): CountedId {
+	return origin.kind === "composer" || origin.kind === "bridge"
+		? "user"
+		: "senders";
+}
+
+function injected({ origin, message }: Row): CountedId | null {
+	if (origin.kind === "hook") return "hooks";
+	if (origin.kind === "plugin") return "plugins";
+	if (origin.kind !== "engine") return "reminders";
+	const { name } = message;
+	if (name !== undefined && BREAKDOWN_OWNED.has(name)) return null;
+	return name !== undefined && FILE_ATTACHMENTS.has(name)
+		? "files"
+		: "reminders";
 }
 
 function category(row: Row, kind: BlockKind): CountedId | null {
 	const { origin } = row;
 	switch (row.door) {
 		case "prompt":
-			return origin.kind === "composer" || origin.kind === "bridge"
-				? "user"
-				: "deliveries";
 		case "delivery":
-			return "deliveries";
+			return sender(row);
 		case "command":
 			return "commands";
 		case "response":
 			if (kind === "text") return "replies";
+			if (kind === "file_write") return "writes";
 			return kind === "tool_use" ? "calls" : null;
 		case "tool-result":
 		case "tool-message":
@@ -71,10 +118,9 @@ function category(row: Row, kind: BlockKind): CountedId | null {
 				? "read"
 				: "results";
 		case "hook-context":
-			return "hooks";
 		case "attachment":
 		case "note":
-			return "attachments";
+			return injected(row);
 		case "compaction":
 			return "summary";
 		case "notice":
@@ -107,11 +153,14 @@ export function addCounts(
 	return {
 		summary: added("summary"),
 		hooks: added("hooks"),
-		attachments: added("attachments"),
+		plugins: added("plugins"),
+		reminders: added("reminders"),
+		files: added("files"),
 		user: added("user"),
+		senders: added("senders"),
 		commands: added("commands"),
-		deliveries: added("deliveries"),
 		calls: added("calls"),
+		writes: added("writes"),
 		results: added("results"),
 		read: added("read"),
 		thinking: added("thinking"),

@@ -5,6 +5,7 @@ import type {
 	EngineInterface,
 	Hook,
 	MatchedHook,
+	PluginOptions,
 	Register,
 	RenderElement,
 	SessionAppendInput,
@@ -25,17 +26,18 @@ import {
 import type { LegendLine } from "./layout";
 import {
 	abbrev,
-	barLine,
 	barRuns,
+	gaugeLine,
 	LEGEND_GAP,
 	legendLines,
+	MAX_BAR_CELLS,
+	PREFIX,
 	SAMPLE_CELLS,
 	SPACE,
-	widestLine,
 } from "./layout";
 import { thinkingTokens, usageModel, windowAfter } from "./live";
-import type { BarRun } from "./palette";
-import { CATEGORY_STYLES } from "./palette";
+import type { BarRun, Theme } from "./palette";
+import { PALETTES } from "./palette";
 import type { Pixels } from "./pixels";
 import { barPixels, PX_PER_CELL, samplePixels } from "./pixels";
 import { readCompaction } from "./read-settings";
@@ -68,6 +70,36 @@ const glyphs = atom(
 	null as GlyphSet | null,
 );
 
+const theme = atom(
+	{ plugin: "context-gauge", key: "theme" } as const,
+	"dark" as Theme,
+);
+
+/** What the mod's `theme` option asks for: a fixed palette, or Claude Code's own theme. */
+type ThemeSetting = Theme | "follow";
+
+/** Reads the mod's `theme` option; a value other than the three reads as dark. */
+function themeSetting(options: PluginOptions): ThemeSetting {
+	const { theme: asked } = options;
+	return asked === "follow" || asked === "light" ? asked : "dark";
+}
+
+/** The palette a Claude Code theme name picks: any name starting `light`, else dark. */
+function paletteOf(claudeCodeTheme: unknown): Theme {
+	return typeof claudeCodeTheme === "string" &&
+		claudeCodeTheme.startsWith("light")
+		? "light"
+		: "dark";
+}
+
+/** Reads Claude Code's own `theme` row into the theme atom; a row that cannot be read leaves the last palette. */
+async function followClaudeCode($: EngineInterface): Promise<void> {
+	const rows = await $.config.list().catch(() => null);
+	const row = rows?.find((r) => r.key === "theme");
+	if (row === undefined) return;
+	await update($, theme, () => paletteOf(row.value));
+}
+
 const CHARS_PER_TOKEN = 4;
 
 /** Terminal width when the surface has not measured itself. */
@@ -80,12 +112,6 @@ const DEFAULT_COLUMNS = 80;
  * cells onto the next row of the hint.
  */
 export const ROW_INSET = 3;
-
-/** The widest Image source the engine takes, in pixels. */
-const IMAGE_MAX_PX = 2048;
-
-/** The bar's widest, in cells, inside the widest Image. */
-const MAX_BAR_CELLS = Math.floor(IMAGE_MAX_PX / PX_PER_CELL);
 
 /** The bar Image's key, which its blit names. */
 const BAR_KEY = "bar";
@@ -219,11 +245,12 @@ function barGlyphs(
 	ui: Terminal,
 	runs: readonly BarRun[],
 	fallback: GlyphSet,
+	theme: Theme,
 ): RenderElement {
 	const { Box, Text } = ui;
 	return (
 		<Box key={BAR_KEY} flexShrink={0}>
-			{fallbackRuns(runs, fallback).map((run, i) => (
+			{fallbackRuns(runs, fallback, theme).map((run, i) => (
 				<Text key={`run-${i}`} color={run.color}>
 					{run.text}
 				</Text>
@@ -243,6 +270,7 @@ function legend(
 	ui: Terminal,
 	lines: readonly LegendLine[],
 	fallback: GlyphSet | null,
+	theme: Theme,
 ): RenderElement {
 	const { Box, Image, Text } = ui;
 	return (
@@ -256,16 +284,19 @@ function legend(
 								{fallback === null ? (
 									<Image
 										key={`key-${id}`}
-										source={samplePixels(row.id, SAMPLE_CELLS)}
+										source={samplePixels(row.id, SAMPLE_CELLS, theme)}
 										columns={SAMPLE_CELLS}
 										rows={1}
 										alt={SPACE}
 									/>
 								) : (
-									glyphKey(ui, legendSample(row.id, SAMPLE_CELLS, fallback))
+									glyphKey(
+										ui,
+										legendSample(row.id, SAMPLE_CELLS, fallback, theme),
+									)
 								)}
 								<Text>{SPACE}</Text>
-								<Text weight="bold" color={CATEGORY_STYLES[row.id].swatch.hex}>
+								<Text weight="bold" color={PALETTES[theme][row.id].swatch.hex}>
 									{row.label}
 								</Text>
 								<Text>{SPACE}</Text>
@@ -294,6 +325,7 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 		anchorTokens,
 		pendingChars,
 		fallback,
+		palette,
 	] = await Promise.all([
 		next(e),
 		read($, context),
@@ -302,6 +334,7 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 		read($, anchor),
 		read($, pending),
 		read($, glyphs),
+		read($, theme),
 	]);
 	if (breakdown === null) return hint;
 	const live = { anchor: anchorTokens, pending: pendingChars };
@@ -313,40 +346,37 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 	const rows = gaugeRows(model.categories, counted);
 	const room = (e.viewport?.columns ?? DEFAULT_COLUMNS) - ROW_INSET;
 	const percent = `${model.percent}%`;
-	const totals = `${abbrev(model.used)}/${abbrev(model.max)}`;
+	const totals = `(${abbrev(model.used)}/${abbrev(model.max)})`;
 	const lines = legendLines(rows, room);
-	const shape = barLine(widestLine(lines), room, percent, totals, rows.length);
+	const prefixCells =
+		PREFIX.length +
+		percent.length +
+		SPACE.length +
+		totals.length +
+		SPACE.length;
+	const shape = gaugeLine(room, prefixCells, rows.length);
 	const runs = barRuns(model, rows, Math.min(shape.cells, MAX_BAR_CELLS));
 	let barElement: RenderElement | null = null;
-	if (fallback !== null) barElement = barGlyphs(ui, runs, fallback);
+	if (fallback !== null) barElement = barGlyphs(ui, runs, fallback, palette);
 	else if (runs.length > 0) {
-		const source = barPixels(runs);
+		const source = barPixels(runs, palette);
 		$.clock.after(0, () => checkBar($, e.requestId, source));
 		barElement = barImage(ui, source);
 	}
 
-	const totalsText = <Text weight="bold">{totals}</Text>;
 	return (
 		<Box flexDirection="column">
 			{hint}
 			<Box key="gauge">
+				<Text>{PREFIX}</Text>
 				<Text weight="bold">{percent}</Text>
 				<Text>{SPACE}</Text>
-				{barElement}
-				{shape.totalsWrap ? null : (
-					<>
-						<Text>{SPACE}</Text>
-						{totalsText}
-					</>
-				)}
+				<Text dimColor={true}>{totals}</Text>
+				{shape.barOwnLine ? null : <Text>{SPACE}</Text>}
+				{shape.barOwnLine ? null : barElement}
 			</Box>
-			{shape.totalsWrap ? (
-				<Box key="totals">
-					<Text>{SPACE.repeat(percent.length + SPACE.length)}</Text>
-					{totalsText}
-				</Box>
-			) : null}
-			{legend(ui, lines, fallback)}
+			{shape.barOwnLine ? <Box key="bar-line">{barElement}</Box> : null}
+			{legend(ui, lines, fallback, palette)}
 		</Box>
 	);
 };
@@ -355,6 +385,19 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 const refreshOnStart: Hook<"session.start"> = async ($, e, next) => {
 	await refresh($);
 	return next(e);
+};
+
+/** Takes Claude Code's new theme once its `theme` row is written. */
+const followThemeChange: MatchedHook<"config.set", { key: "theme" }> = async (
+	$,
+	e,
+	next,
+) => {
+	const result = await next(e);
+	if (result.deny === undefined) {
+		await update($, theme, () => paletteOf(result.value));
+	}
+	return result;
 };
 
 /** Counts each row the main conversation keeps, as it is kept. */
@@ -402,8 +445,17 @@ const resetOnStart: Hook<"classic.SessionStart"> = async ($, e, next) => {
 };
 
 /** Registers the gauge: one hook per event it counts, anchors, resets or draws on. */
-export const register: Register = (on) => {
-	on("session.start", refreshOnStart);
+export const register: Register = (on, options) => {
+	const setting = themeSetting(options);
+	on("session.start", async ($, e, next) => {
+		await (setting === "follow"
+			? followClaudeCode($)
+			: update($, theme, () => setting));
+		return refreshOnStart($, e, next);
+	});
+	if (setting === "follow") {
+		on("config.set", { key: "theme" }, followThemeChange);
+	}
 	on("session.append", countKept).catch(passThrough);
 	on("turn.step", anchorStep);
 	on("session.compact", resetOnCompact).catch(passThrough);

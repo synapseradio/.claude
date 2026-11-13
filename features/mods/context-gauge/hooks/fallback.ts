@@ -1,8 +1,8 @@
 /** The character bar drawn where the pixel bar cannot draw: one glyph per texture, in each category's swatch. */
 
 import type { UiBlitResult } from "claude-code";
-import type { BarRun, CategoryId, Texture } from "./palette";
-import { CATEGORY_STYLES, FREE_SWATCH } from "./palette";
+import type { BarRun, CategoryId, Texture, Theme } from "./palette";
+import { FREE_SWATCH, PALETTES } from "./palette";
 
 /** The glyph vocabularies: sextants for terminals that draw them themselves, BMP glyphs for the rest. */
 export type GlyphSet = "sextant" | "bmp";
@@ -66,20 +66,31 @@ export function deniedBeforeMount(blit: UiBlitResult): boolean {
 }
 
 /** A run's look: its category's texture glyph and swatch, or free space's own. */
-export function lookOf(id: BarRun["id"], set: GlyphSet): Look {
+export function lookOf(id: BarRun["id"], set: GlyphSet, theme: Theme): Look {
 	if (id === "free") return { glyph: FREE_GLYPH, color: FREE_SWATCH.hex };
-	const style = CATEGORY_STYLES[id];
+	const style = PALETTES[theme][id];
 	return { glyph: TEXTURE_GLYPHS[set][style.texture], color: style.swatch.hex };
 }
 
-function runOf(id: BarRun["id"], cells: number, set: GlyphSet): Run {
-	const look = lookOf(id, set);
+function runOf(
+	id: BarRun["id"],
+	cells: number,
+	set: GlyphSet,
+	theme: Theme,
+): Run {
+	const look = lookOf(id, set, theme);
 	return { id, color: look.color, text: look.glyph.repeat(cells) };
 }
 
 /** The bar's Text runs: one per bar run with cells, in order, its glyph repeated once per cell. */
-export function fallbackRuns(runs: readonly BarRun[], set: GlyphSet): Run[] {
-	return runs.filter((r) => r.cells > 0).map((r) => runOf(r.id, r.cells, set));
+export function fallbackRuns(
+	runs: readonly BarRun[],
+	set: GlyphSet,
+	theme: Theme,
+): Run[] {
+	return runs
+		.filter((r) => r.cells > 0)
+		.map((r) => runOf(r.id, r.cells, set, theme));
 }
 
 /** A legend key: `cells` cells of what a bar run of the category draws. */
@@ -87,6 +98,7 @@ export function legendSample(
 	id: CategoryId,
 	cells: number,
 	set: GlyphSet,
+	theme: Theme,
 ): Run {
-	return runOf(id, cells, set);
+	return runOf(id, cells, set, theme);
 }
