@@ -21,6 +21,7 @@ Planning runs as a loop. Each pass below states when it is entered, what it does
 - plan-changing fork: a fork whose result could change the plan's next steps
 - trunk: the branch every lane is created from and lands on
 - primary checkout: the repository's original working tree, from which every lane's worktree is created
+- worktree tool: the tool the session's rules or the repository's own files name for creating, rebasing, squashing, merging, and removing worktrees, and git itself where neither names one
 - lane: one or more work units on a branch of their own, in a git worktree of their own, changing files no other running lane changes, and landing on the trunk as one commit
 - worker: the one agent that answers for a work unit; with lanes, the one agent that answers for a lane and its worktree, from the lane's first change to its landing, spawning agents of its own only for work inside that worktree
 - orchestrator: the executor while it runs lanes, working one lane itself while each other lane's agent runs in the background, and tracking every lane as a task
@@ -79,8 +80,8 @@ The work changes files in a git repository ? find its lanes in this pass, runnin
 - List the files each work unit changes, with a must verify line for each unit whose files a read has yet to show.
 - Join into one lane every work unit that changes a file another unit changes. Give each other unit a lane of its own. Plan every lane's worktree as created up front, before any lane's work starts. A lane that waits on another writes the red tests for its new behavior at once, and holds the rest of its work until that lane lands.
 - Name the trunk, the primary checkout by absolute path, the exact commands of the checks covering each lane's files, and, by exact name, each skill you loaded while planning that bears on a lane's task.
-- Read `.config/wt.toml` on the trunk for a pre-start hook that provisions dependencies in a new worktree. No hook provisions them ? find the commands that do, as each lane's provisioning, and write a must determine line proposing a repo-local pre-start hook that runs them. Answered yes, adding that hook becomes a lane of its own, and this plan's lanes, each created before it lands, provision themselves.
-- Read every hook the lanes run, in `.config/wt.toml` and the repository's commit hooks, for a step that shares a cache, lock, or output path with another step, and hand each one to settle as a plan-changing fork: run those steps in sequence, as a pipeline of `[[<hook>]]` entries in `.config/wt.toml` or its commit-hook equivalent, or give the step state of its own.
+- Read the worktree tool's configuration on the trunk for a hook that runs once as a new worktree is created, finishes before work starts in it, and provisions its dependencies. No hook provisions them ? find the commands that do, as each lane's provisioning, and write a must determine line proposing a repo-local hook of that kind that runs them. Answered yes, adding that hook becomes a lane of its own, and this plan's lanes, each created before it lands, provision themselves.
+- Read every hook the lanes run, in the worktree tool's configuration and the repository's commit hooks, for a step that shares a cache, lock, or output path with another step, and hand each one to settle as a plan-changing fork: run those steps in sequence, as ordered steps of one hook, in the worktree tool's configuration or the commit-hook configuration, whichever holds them, or give the step state of its own.
 - Write a lane line for each lane.
 
 Ends: each must verify line has had its check run, each result stands in the readiness file, each work unit stands in a unit line naming what it waits on, and, where the work changes files in a git repository, each work unit stands in exactly one lane line. Next: settle.
@@ -139,22 +140,22 @@ Lane block, one per lane:
 
 ```markdown
 ### Lane [branch]
-- worktree: the orchestrator creates it up front, with every other lane's worktree and before any lane's work starts, from the primary checkout with `wt --yes switch --create [branch] --base [trunk] --no-cd`; address it by the absolute path wt prints, written `<worktree>` below
-- provisioning: [the pre-start hook in `.config/wt.toml` provisions it, or the commands to run in `<worktree>` before its first commit]
+- worktree: the orchestrator creates it up front, with every other lane's worktree and before any lane's work starts, from the primary checkout, as a new worktree on a new branch [branch] created from [trunk], through a command that runs the hooks for a new worktree, waits on no prompt, and leaves the primary checkout's branch and the orchestrator's working directory as they were; address it by the absolute path that command reports, or by the path it was given where it reports none, written `<worktree>` below
+- provisioning: [the hook that provisions it as it is created, named with the file that holds it, or the commands to run in `<worktree>` before its first commit]
 - files: [each path the lane may change, relative to the root; no other lane changes any of them]
 - checks: [each command to run before each commit, with its passing result]
 - skills: [each skill you loaded while planning that bears on this lane's task, by exact name, which this lane's agent loads through the Skill tool before its first change; or none]
 - worker: [the agent that works and lands this lane, or the orchestrator]; the worker alone answers for `<worktree>`, and every change, commit, check, and landing step in it is the worker's
 - delegates: [none, or each agent the worker may spawn, in the order they run, a test writer ahead of the worker's own implementation for one]; the worker writes each one's prompt, each works only inside `<worktree>` on this lane's files, reports to the worker, and holds up this lane alone
-- waits on: [none, or each lane that lands before this lane's work past its red tests starts]; the orchestrator messages the worker as each one lands, and the worker runs `wt -C <worktree> step rebase [trunk]` before that work starts
+- waits on: [none, or each lane that lands before this lane's work past its red tests starts]; the orchestrator messages the worker as each one lands, and the worker rebases this lane's branch onto [trunk], from `<worktree>`, before that work starts
 - commit: through the hooks with `git -C <worktree> commit -m '<message>' -- <paths>`; `git -C <worktree> status --short` prints nothing after each commit
 - land, once the checks pass:
-  1. Squash the lane to one commit with `wt -C <worktree> step squash [trunk]`, then confirm `git -C <worktree> log --oneline [trunk]..HEAD` lists one commit.
+  1. Squash the lane's commits since [trunk] into one commit, from `<worktree>`, then confirm `git -C <worktree> log --oneline [trunk]..HEAD` lists one commit.
   2. Run `git -C <worktree> fetch`, then `git -C <worktree> rev-list --left-right --count [trunk]...[trunk]@{upstream}`. Both counts above zero ? stop and report both counts.
-  3. Run `wt -C <worktree> merge [trunk]`. The trunk moved or the fast-forward was refused ? repeat steps 2 and 3, at most twice more.
+  3. Merge the lane into [trunk] from `<worktree>`, in one command where the session's worktree tool offers one: rebase the lane onto [trunk], fast-forward [trunk] to the lane's one commit, and, once the fast-forward holds, remove `<worktree>` and the branch [branch]. The trunk moved or the fast-forward was refused ? repeat steps 2 and 3, at most twice more.
   4. Confirm `git -C [primary checkout] log --oneline -1 [trunk]` shows the lane's one commit.
-  5. Run `wt -C [primary checkout] prune`.
-  The worker runs every step itself. A worker that cannot run git or wt hands every git and wt command in these steps to the orchestrator. The lane lands without a `skill:simplify` run: the orchestrator runs it once, in the finish block, over every lane's landed changes.
+  5. Prune from [primary checkout]: remove each worktree whose branch [trunk] already holds, together with that branch.
+  The worker runs every step itself. A worker that cannot run git or the session's worktree tool hands every command in these steps to the orchestrator. The lane lands without a `skill:simplify` run: the orchestrator runs it once, in the finish block, over every lane's landed changes.
 - work:
   [the lane's work units in order, each as entries or a document section]
 ```
