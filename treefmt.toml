@@ -1,0 +1,69 @@
+# Reproduces the pre-commit formatting hooks in lefthook.yml, one formatter per
+# hook command, so `just fmt` and the hook leave a file the same way.
+# https://github.com/numtide/treefmt/blob/v2.6.0/docs/site/getting-started/configure.md
+
+on-unmatched = "debug"
+
+# Generated or vendored paths no hook formats. rulesets/-render is rewritten by
+# the render job, so formatting it would make `render --check` drift.
+excludes = [
+  "rulesets/-render/**",
+  "node_modules/**",
+  ".venv/**",
+  "bun.lock",
+  "uv.lock",
+]
+
+[formatter.biome]
+command = "node_modules/.bin/biome"
+options = [
+  "check",
+  "--write",
+  "--no-errors-on-unmatched",
+  "--files-ignore-unknown=true",
+]
+includes = [
+  "*.js",
+  "*.jsx",
+  "*.mjs",
+  "*.cjs",
+  "*.ts",
+  "*.tsx",
+  "*.mts",
+  "*.cts",
+  "*.json",
+  "*.jsonc",
+]
+
+[formatter.markdownlint]
+command = "node_modules/.bin/markdownlint-cli2"
+options = ["--fix"]
+includes = ["*.md"]
+
+# Lower priority runs first: ruff check applies its fixes before ruff format
+# lays the file out.
+[formatter.ruff-check]
+command = "uv"
+options = ["run", "--frozen", "ruff", "check", "--fix"]
+includes = ["*.py"]
+priority = 1
+
+[formatter.ruff-format]
+command = "uv"
+options = ["run", "--frozen", "ruff", "format"]
+includes = ["*.py"]
+priority = 2
+
+[formatter.yamlfmt]
+command = "yamlfmt"
+includes = ["*.yaml", "*.yml"]
+
+[formatter.taplo]
+command = "taplo"
+options = ["fmt"]
+includes = ["*.toml"]
+
+[formatter.shfmt]
+command = "shfmt"
+options = ["-i", "2", "-w"]
+includes = ["*.sh", "*.bash", "*.bats"]
