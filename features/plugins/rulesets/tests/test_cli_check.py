@@ -4,18 +4,19 @@
 The command serves the person who edits a rulesets directory and runs check before trusting a
 delivery, and the pre-push job that runs it unattended: each finding arrives on one line with
 its file and line, in the words the engine uses outward, and the exit status says whether an
-error stands. Each case builds its rulesets directory under `tmp_path` and runs `cli.py` as a
-script, as the skill and the job do.
+error stands. Each case builds its rulesets directory under `tmp_path` and calls the command
+line's `main` in-process; one case runs `cli.py` as a script, since its subject is the script's
+process starting outside the library's directory.
 
 Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_cli_check.py`.
 """
 
+import os
 import pathlib
 import subprocess
 import sys
 
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-CLI = PLUGIN_ROOT / "lib" / "rulesets" / "cli.py"
+from delivery_world import CLI, run_cli
 
 
 def build(tmp_path, config=None, stems=(), bodies=None) -> pathlib.Path:
@@ -31,13 +32,7 @@ def build(tmp_path, config=None, stems=(), bodies=None) -> pathlib.Path:
 
 
 def run(*arguments) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, str(CLI), *arguments],
-        capture_output=True,
-        text=True,
-        check=False,
-        cwd=CLI.parent,
-    )
+    return run_cli([str(argument) for argument in arguments], os.environ)
 
 
 def check(root) -> subprocess.CompletedProcess[str]:

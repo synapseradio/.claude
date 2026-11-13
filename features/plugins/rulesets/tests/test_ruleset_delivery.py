@@ -28,7 +28,7 @@ from delivery_world import (
     matcher_admits,
     select_commands,
 )
-from launcher_stubs import launch, path_of, stub
+from launcher_stubs import launch, stub
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
@@ -110,13 +110,6 @@ class TestEveryContextReceivesItsRulesByHook:
         assert definition.read_bytes() == before
 
 
-ALL_PARTS = [str(number) for number in range(1, 11)]
-
-
-def part_numbers(commands) -> list[str]:
-    return [command.rsplit("--part ", 1)[1] for command in commands if "--part " in command]
-
-
 class TestTheHarnessMatchersAreHonoredByTheWorldThatRunsTheHooks:
     @pytest.mark.parametrize(
         ("matcher", "value", "admitted"),
@@ -146,27 +139,6 @@ class TestTheHarnessMatchersAreHonoredByTheWorldThatRunsTheHooks:
 
         assert select_commands(groups, "startup") == ["only-at-startup", "always"]
         assert select_commands(groups, "resume") == ["always"]
-
-
-class TestEveryDeliveryEntryRunsWhateverStartsTheContext:
-    @pytest.mark.parametrize("source", ["startup", "resume", "clear", "compact", "fork"])
-    def test_every_session_start_entry_runs_for_each_source(self, world, source) -> None:
-        assert part_numbers(world.commands_for("SessionStart", source)) == ALL_PARTS
-
-    @pytest.mark.parametrize(
-        "agent_type",
-        ["general-purpose", "Explore", "Plan", "fork", "critic", "plugin:reviewer", ""],
-    )
-    def test_every_subagent_start_entry_runs_for_each_agent_type(self, world, agent_type) -> None:
-        assert part_numbers(world.commands_for("SubagentStart", agent_type)) == ALL_PARTS
-
-    @pytest.mark.parametrize("target", [OPUS, "claude-haiku-4-5", "glm-5", ""])
-    def test_every_model_switch_entry_runs_for_each_target(self, world, target) -> None:
-        assert part_numbers(world.commands_for("PostModelSwitch", target)) == ALL_PARTS
-
-    @pytest.mark.parametrize("reason", ["clear", "resume", "logout", "prompt_input_exit", "other"])
-    def test_the_session_end_entry_runs_for_each_reason(self, world, reason) -> None:
-        assert [c for c in world.commands_for("SessionEnd", reason) if c.endswith("--end")]
 
 
 def engine_files(world) -> dict[pathlib.Path, bytes]:
@@ -655,20 +627,6 @@ class TestDeliveryRunsOnPython315OrLater:
         output = json.loads(result.stdout)
         assert "3.15" in output["systemMessage"]
         assert "hookSpecificOutput" not in output, "the agent's context holds no such line"
-
-    def test_a_session_on_python_3_14_starts_without_rules_and_shows_the_person_the_requirement(
-        self, world, tmp_path
-    ) -> None:
-        world.rule("core-rules")
-        world.write_config(DECLARED + "defaults: core-rules\n")
-        stub(tmp_path, "python3", minor=14, has_yaml=True)
-        world.environment["PATH"] = path_of(tmp_path)
-
-        delivery = world.start_session()
-
-        assert delivery.context == ""
-        assert len(delivery.messages) == 1
-        assert "3.15" in delivery.message
 
     def test_a_session_on_python_3_15_with_the_yaml_library_receives_its_rules_and_no_requirement_message(
         self, world

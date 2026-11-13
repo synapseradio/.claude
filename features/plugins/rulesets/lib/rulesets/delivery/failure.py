@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import contextlib
 import pathlib
-import sys
 import time
 import traceback
 from collections.abc import Callable
+from typing import TextIO
 
 from rulesets.audit import log
 from rulesets.audit.delivery_record import (
@@ -41,28 +41,28 @@ def run_guarded(
     raw_payload: str,
     hooks: pathlib.Path,
     locations: Locations,
+    stderr: TextIO,
 ) -> str:
     """The output of `entry`, or where it raises, the output of a failed delivery.
 
     A failure of the environment, an `OSError`, is named alone. Any other failure is a defect,
-    and its traceback goes to stderr. The first part of a delivery writes the delivery record
+    and its traceback goes to `stderr`. The first part of a delivery writes the delivery record
     carrying the failure notice, and shows the notice on an event whose message the person sees.
-    Where no record can be written, and for every later part, stderr carries the failure alone.
+    Where no record can be written, and for every later part, `stderr` carries the failure alone.
     """
-
     try:
         return entry()
     except Exception as failure:
         description = f"{type(failure).__name__}: {failure}"
         if not isinstance(failure, OSError):
-            traceback.print_exc(file=sys.stderr)
+            traceback.print_exc(file=stderr)
         if not first_part or isinstance(request, SessionEnd):
-            print(f"deliver.py: delivery failed ({description})", file=sys.stderr)
+            print(f"deliver.py: delivery failed ({description})", file=stderr)
             return ""
         notice = failure_notice(description, rerun_command(raw_payload, locations, hooks))
         shown = MESSAGE_SHOWN.get(request.event, False)
         if not _record(locations, request, notice, shown):
-            print(f"deliver.py: delivery failed ({description})", file=sys.stderr)
+            print(f"deliver.py: delivery failed ({description})", file=stderr)
         return hook_output(request.event, PartOutput(message=notice.subject)) if shown else ""
 
 
@@ -73,13 +73,11 @@ def _record(
     message_sent: bool,
 ) -> bool:
     """Append the failed delivery's record; False where the log cannot be written."""
-
     return append_failed(locations, _failed_record(request, notice, message_sent))
 
 
 def append_failed(locations: Locations, record: DeliveryRecord) -> bool:
     """Append a failed delivery's record to its session's log; False where the log cannot be written."""
-
     with contextlib.suppress(OSError):
         log.append(
             log.session_dir(locations, record.session_id) / log.DELIVERIES_FILE,
@@ -127,7 +125,6 @@ def failed_record(
     switch: SwitchLine | None,
 ) -> DeliveryRecord:
     """The record of a delivery that failed before it read any fact: it carries only the notice."""
-
     return DeliveryRecord(
         session_id=session_id,
         agent_id=agent_id,

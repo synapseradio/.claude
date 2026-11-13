@@ -1,50 +1,24 @@
 #!/usr/bin/env python3
 """Record one `Agent` spawn and the model its caller names, if any; print nothing and exit 0."""
 
-import json
 import os
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "lib"))
 
-from rulesets import spawn_log
-from rulesets.locations import Locations
+from rulesets.hook_entry import record_spawn
 
 
 def main() -> int:
     try:
-        record(json.loads(sys.stdin.read()), Locations.from_environment(os.environ))
+        stdin = sys.stdin.buffer.read()
     except Exception:
         return 0
-    return 0
-
-
-def record(payload: object, locations: Locations) -> None:
-    """Append one record per spawn, joined on the prompt and the agent type.
-
-    A spawn naming no model is recorded with no model, so it keeps its own place among the
-    spawns a delegate start claims in order.
-    """
-
-    if not isinstance(payload, dict):
-        return
-    tool_input = payload.get("tool_input")
-    session_id = payload.get("session_id")
-    if not isinstance(tool_input, dict) or not isinstance(session_id, str) or not session_id:
-        return
-    model = tool_input.get("model")
-    spawn_log.append_spawn(
-        session_id,
-        _text(payload.get("prompt_id")),
-        _text(tool_input.get("subagent_type")),
-        None if model == "" else model,
-        locations.state,
-    )
-
-
-def _text(value: object) -> str | None:
-    return value if isinstance(value, str) and value else None
+    result = record_spawn(sys.argv, stdin, os.environ)
+    sys.stderr.write(result.stderr)
+    sys.stdout.write(result.stdout)
+    return result.exit_code
 
 
 if __name__ == "__main__":

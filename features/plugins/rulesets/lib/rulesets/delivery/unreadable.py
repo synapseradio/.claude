@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import sys
+from typing import TextIO
 
 from rulesets.audit.delivery_record import RecordKind, Scope
 from rulesets.delivery.failure import append_failed, failed_record
@@ -18,14 +18,13 @@ _RECORDED: dict[str, tuple[Scope, RecordKind]] = {
 }
 
 
-def report_unreadable(request: Unreadable, locations: Locations) -> str:
-    """The hook output for a payload no delivery can answer; stderr always carries the reason.
+def report_unreadable(request: Unreadable, locations: Locations, stderr: TextIO) -> str:
+    """The hook output for a payload no delivery can answer; `stderr` always carries the reason.
 
     A payload that names its session also leaves a record carrying the reason, and where the
     event shows the person a message, the output is that message.
     """
-
-    print(f"deliver.py: no delivery ({request.reason})", file=sys.stderr)
+    print(f"deliver.py: no delivery ({request.reason})", file=stderr)
     notice = Notice("delivery-failure", f"delivery failed ({request.reason})")
     shown = MESSAGE_SHOWN.get(request.event or "", False)
     if request.session_id is not None and request.event in _RECORDED:

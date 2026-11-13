@@ -36,13 +36,11 @@ type Plan = Delivering | Silent
 
 def new_generation() -> str:
     """The name of one delivery, made by its first part."""
-
     return uuid.uuid4().hex
 
 
 def plan_document(plan: Plan) -> dict[str, object]:
     """The JSON form of a plan, as the slot and a delegate's stored delivery keep it."""
-
     match plan:
         case Silent(generation):
             return {"generation": generation}
@@ -62,7 +60,6 @@ def plan_document(plan: Plan) -> dict[str, object]:
 
 def plan_of(document: dict[str, object]) -> Plan:
     """The plan a `plan_document` wrote."""
-
     generation = document["generation"]
     if "parts" not in document:
         return Silent(generation)
@@ -78,26 +75,25 @@ def plan_of(document: dict[str, object]) -> Plan:
 
 def write_plan(slot: pathlib.Path, plan: Plan) -> None:
     """Write the plan in one atomic replace."""
-
     temporary = slot / f"{PLAN_FILE}.tmp"
     temporary.write_text(json.dumps(plan_document(plan)), encoding="utf-8")
     temporary.replace(slot / PLAN_FILE)
 
 
-def await_plan(slot: pathlib.Path, part: int) -> Plan | None:
-    """The plan of the delivery this part belongs to, once the part before it has exited.
+def await_plan(slot: pathlib.Path, part: int, locks: ordering.Locks) -> Plan | None:
+    """The plan of the delivery this part belongs to, once the part before it has let go of its lock.
 
     A part takes each plan once: it waits past the plan it last took, so an identical payload
     delivered again meets the new delivery's plan and never the earlier one. None where no
     new plan appeared before the deadline. The plan is read again once the part before has
-    exited, so a failure of the first part reaches every later part as a silent plan.
+    let go, so a failure of the first part reaches every later part as a silent plan. This
+    part's own lock goes into `locks`.
     """
-
     plan = _fresh_plan(slot, part)
     if plan is None:
         return None
     _mark_taken(slot, part, plan.generation)
-    ordering.hold(slot, plan.generation, part)
+    ordering.hold(slot, plan.generation, part, locks)
     ordering.wait_for_predecessor(slot, plan.generation, part)
     settled = _read_plan(slot)
     return settled if settled is not None and settled.generation == plan.generation else None

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import dataclasses
+import os
 import pathlib
+import pwd
 from collections.abc import Mapping
 
 
@@ -21,7 +23,18 @@ class Locations:
 
     @classmethod
     def from_environment(cls, environ: Mapping[str, str]) -> Locations:
-        """The locations under `CLAUDE_CONFIG_DIR`, or `~/.claude` where it is unset or empty."""
+        """The locations under `CLAUDE_CONFIG_DIR`, or `~/.claude` where it is unset or empty.
 
+        `~` is the home directory `environ` names, found as `os.path.expanduser` finds it:
+        https://docs.python.org/3.15/library/os.path.html#os.path.expanduser
+        """
         configured = environ.get("CLAUDE_CONFIG_DIR")
-        return cls(pathlib.Path(configured) if configured else pathlib.Path.home() / ".claude")
+        return cls(pathlib.Path(configured) if configured else home_directory(environ) / ".claude")
+
+
+def home_directory(environ: Mapping[str, str]) -> pathlib.Path:
+    """The directory `~` names under `environ`: its `HOME`, or the user's password entry without one."""
+    home = environ.get("HOME")
+    if home is None:
+        home = pwd.getpwuid(os.getuid()).pw_dir
+    return pathlib.Path(home.rstrip("/") or "/")

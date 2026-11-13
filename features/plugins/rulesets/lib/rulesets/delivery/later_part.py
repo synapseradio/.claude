@@ -12,6 +12,7 @@ from rulesets.delivery.hook_output import PartOutput
 from rulesets.delivery.plan import Delivering, await_plan
 from rulesets.delivery.request import ModelSwitch, SessionStart, SubagentStart
 from rulesets.locations import Locations
+from rulesets.ordering import Locks
 
 
 def deliver_later(
@@ -19,10 +20,13 @@ def deliver_later(
     locations: Locations,
     slot: pathlib.Path,
     part: int,
+    locks: Locks,
 ) -> PartOutput:
-    """The text of part `part`, which is recorded as emitted, or nothing where the plan has no such part."""
+    """The text of part `part`, which is recorded as emitted, or nothing where the plan has no such part.
 
-    plan = await_plan(slot, part)
+    The part's lock goes into `locks`, so the next part waits until they are released.
+    """
+    plan = await_plan(slot, part, locks)
     if not isinstance(plan, Delivering):
         return PartOutput()
     for planned in plan.parts:

@@ -4,9 +4,10 @@ The harness appends hook context in the order the hooks exit, so parts that
 exit in sequence reach the context in sequence. Every slot of one event reads
 the same stdin, so a hash of it names the directory the slots of that event
 share. A delivery is named by the generation its first part makes. Each part
-takes an exclusive lock on its own file for its lifetime, and part k blocks on
-part k-1's lock of the same generation, which the kernel releases when that
-process exits.
+takes an exclusive lock on its own file until its holder releases it or its
+process exits, and part k blocks on part k-1's lock of the same generation.
+flock treats two opens of one file as independent, even within one process,
+so parts run as calls in one process wait on each other as processes do.
 https://man7.org/linux/man-pages/man2/flock.2.html
 """
 
@@ -23,39 +24,47 @@ ORDER_DEADLINE = 3.0
 STARTUP_POLL = 0.005
 STALE_AFTER = 3600
 
-_held: list[int] = []
+
+class Locks:
+    """The part locks one delivery holds, each kept until `release` or the process's exit."""
+
+    def __init__(self) -> None:
+        self._descriptors: list[int] = []
+
+    def keep(self, descriptor: int) -> None:
+        self._descriptors.append(descriptor)
+
+    def release(self) -> None:
+        while self._descriptors:
+            os.close(self._descriptors.pop())
 
 
 def slot_dir(state: pathlib.Path | str, raw_payload: str) -> pathlib.Path:
     """The directory the slots answering one payload share."""
-
     key = hashlib.sha256(raw_payload.encode("utf-8")).hexdigest()[:16]
     return pathlib.Path(state) / "order" / key
 
 
 def private_slot_dir(state: pathlib.Path | str) -> pathlib.Path:
     """A directory no other run shares, for a run that stands apart from any delivery."""
-
     return pathlib.Path(state) / "order" / f"alone-{uuid.uuid4().hex}"
 
 
-def hold(slots: pathlib.Path, generation: str, part: int) -> None:
-    """Lock `part`'s file of `generation` until this process exits; part 1 also clears stale directories."""
-
+def hold(slots: pathlib.Path, generation: str, part: int, locks: Locks) -> None:
+    """Lock `part`'s file of `generation` until `locks` is released; part 1 also clears stale directories."""
     if part == 1:
         _prune(slots.parent, keep=slots)
     slots.mkdir(parents=True, exist_ok=True)
     fd = os.open(slots / f"{generation}.{part}.lock", os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
     fcntl.flock(fd, fcntl.LOCK_EX)
-    _held.append(fd)
+    locks.keep(fd)
     (slots / f"{generation}.{part}.ready").touch()
 
 
 def wait_for_predecessor(
     slots: pathlib.Path, generation: str, part: int, deadline: float = ORDER_DEADLINE
 ) -> bool:
-    """Block until part-1's process of `generation` has exited; False where the deadline passed first."""
-
+    """Block until part-1 of `generation` has released its lock; False where the deadline passed first."""
     if part == 1:
         return True
     start = time.monotonic()

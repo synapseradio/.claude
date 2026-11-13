@@ -1,16 +1,40 @@
-"""A configuration directory and the hooks wired in `hooks/hooks.json`, run the way the harness runs them."""
+"""A configuration directory, and the entry functions of the hooks `hooks/hooks.json` wires, called in-process.
 
+Each hook script is one call of its entry function in `rulesets.hook_entry`, so a call here with
+the script's argv, the payload's bytes, and the world's environment answers as the script does.
+`test_hooks_json.py` holds the commands themselves to the scripts and arguments called here.
+"""
+
+import contextlib
+import functools
+import io
 import json
 import os
 import pathlib
 import re
+import shlex
 import subprocess
+import sys
+from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-HOOKS_JSON = PLUGIN_ROOT / "hooks" / "hooks.json"
+HOOKS = PLUGIN_ROOT / "hooks"
+HOOKS_JSON = HOOKS / "hooks.json"
+LAUNCHER = HOOKS / "with-python.sh"
+DELIVER = HOOKS / "deliver.py"
 TOGGLE_SKILL = PLUGIN_ROOT / "skills" / "rulesets" / "SKILL.md"
 CLI = PLUGIN_ROOT / "lib" / "rulesets" / "cli.py"
+
+sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
+
+from rulesets import cli  # noqa: E402  (path must be set before this import)
+from rulesets.hook_entry import (  # noqa: E402
+    HookResult,
+    deliver,
+    record_load,
+    record_spawn,
+)
 
 OPUS = "claude-opus-5-5"
 HAIKU = "claude-haiku-4-5"
@@ -19,16 +43,52 @@ DECLARED = "models: opus haiku\n"
 # Variables the engine reads, which the developer's own shell may set.
 _ENGINE_PREFIXES = ("ANTHROPIC_", "CLAUDE_CODE_", "CLAUDE_CONTEXT_", "RULESETS_")
 
+type HookEntry = Callable[[Sequence[str], bytes, Mapping[str, str]], HookResult]
 
-# The payload field each event's matcher filters on.
-_MATCHED_FIELD = {
-    "SessionStart": "source",
-    "SubagentStart": "agent_type",
-    "PostModelSwitch": "to_model",
-    "SessionEnd": "reason",
-    "PreToolUse": "tool_name",
-    "InstructionsLoaded": "load_reason",
+_RECORD_HOOKS: dict[str, HookEntry] = {
+    "record-load.py": record_load,
+    "record-spawn.py": record_spawn,
 }
+
+
+def call_hook(
+    entry: HookEntry, argv: list[str], stdin: bytes, environ: Mapping[str, str]
+) -> subprocess.CompletedProcess[str]:
+    """`entry` called as its script calls it, with the part locks it took let go once it returns.
+
+    The script's process exits after writing what the entry returned, which lets go of its locks;
+    the release here stands in for that exit.
+    """
+    result = entry(argv, stdin, environ)
+    result.release()
+    return subprocess.CompletedProcess(argv, result.exit_code, result.stdout, result.stderr)
+
+
+def call_main(
+    main: Callable[[list[str]], int], arguments: Sequence[str]
+) -> subprocess.CompletedProcess[str]:
+    """A command line's `main` called in-process on `arguments`, with what it printed and its status.
+
+    argparse ends a run it rejects by raising `SystemExit` with the status a process would exit with:
+    https://docs.python.org/3.15/library/argparse.html#exiting-methods
+    """
+    stdout, stderr = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+        try:
+            status = main(list(arguments))
+        except SystemExit as exited:
+            status = exited.code
+    return subprocess.CompletedProcess(
+        list(arguments), status, stdout.getvalue(), stderr.getvalue()
+    )
+
+
+def run_cli(
+    arguments: Sequence[str], environ: Mapping[str, str]
+) -> subprocess.CompletedProcess[str]:
+    """`cli.py` on `arguments`, called in-process under the configuration `environ` names."""
+    return call_main(functools.partial(cli.main, environ=environ), arguments)
+
 
 _EXACT_MATCHER = re.compile(r"[\w\- ,|]+")
 
@@ -40,7 +100,6 @@ def matcher_admits(matcher: str | None, value: str) -> bool:
     admits every value, a matcher of plain characters lists exact values, and any other matcher
     is an unanchored regular expression.
     """
-
     if matcher in (None, "", "*"):
         return True
     if _EXACT_MATCHER.fullmatch(matcher):
@@ -50,7 +109,6 @@ def matcher_admits(matcher: str | None, value: str) -> bool:
 
 def select_commands(groups: list[dict], value: str) -> list[str]:
     """The commands of the hook groups whose matcher admits `value`, in file order."""
-
     return [
         hook["command"]
         for group in groups
@@ -59,16 +117,8 @@ def select_commands(groups: list[dict], value: str) -> list[str]:
     ]
 
 
-def matched_value(event: str, payload: dict) -> str:
-    """The text the harness matches the event's hook groups against."""
-
-    value = payload.get(_MATCHED_FIELD[event])
-    return value if isinstance(value, str) else ""
-
-
 def delivered(rule: str, body: str) -> str:
     """A rule's body as a context receives it: the rule's marker, a blank line, then the body."""
-
     return f"<!-- rule: {rule} -->\n\n{body}"
 
 
@@ -77,7 +127,6 @@ _MARKER_AND_BLANK = re.compile(r"^<!-- rule: \S+ -->\n\n", re.MULTILINE)
 
 def without_markers(text: str) -> str:
     """`text` less the marker and blank line delivery writes before each rule's body."""
-
     return _MARKER_AND_BLANK.sub("", text)
 
 
@@ -88,7 +137,7 @@ class Delivery:
     `received_parts` hold the exact bytes.
     """
 
-    def __init__(self, outputs: dict[int, str]):
+    def __init__(self, outputs: dict[int, str]) -> None:
         self.outputs = outputs
         parsed = {part: json.loads(text) for part, text in outputs.items() if text.strip()}
         self.received = "".join(
@@ -110,13 +159,11 @@ class Delivery:
     @property
     def part_texts(self) -> dict[int, str]:
         """The rule text from each part that sent any, less the markers, by part number."""
-
         return {part: without_markers(text) for part, text in self.received_parts.items()}
 
     @property
     def received_parts(self) -> dict[int, str]:
         """The agent's context from each part that sent any, exactly, by part number."""
-
         found = {part: json.loads(text) for part, text in self.outputs.items() if text.strip()}
         return {
             part: output["hookSpecificOutput"]["additionalContext"]
@@ -132,7 +179,7 @@ class Delivery:
 class World:
     """One configuration directory with a rulesets directory, and the hooks run against it."""
 
-    def __init__(self, tmp_path: pathlib.Path):
+    def __init__(self, tmp_path: pathlib.Path) -> None:
         self.config = tmp_path / "config"
         self.rulesets = self.config / "rulesets"
         self.environment: dict[str, str] = {}
@@ -148,7 +195,6 @@ class World:
 
     def toggle_flags(self, settings: dict[str, str], session_id: str = "s1") -> None:
         """The session state file a flag toggle leaves: each flag named `set` or `unset`."""
-
         path = self.config / ".tmp" / "rulesets-engine" / "session" / f"{session_id}.yaml"
         path.parent.mkdir(parents=True, exist_ok=True)
         lines = ["flags:\n", *(f"  {flag}: {setting}" for flag, setting in settings.items())]
@@ -160,7 +206,6 @@ class World:
     @property
     def transcripts(self) -> pathlib.Path:
         """The project directory the harness keeps every transcript of one project in."""
-
         return self.config / "projects" / "-work-project"
 
     def record_files(self, session_id: str = "s1") -> pathlib.Path:
@@ -174,20 +219,17 @@ class World:
 
     def emitted_records(self, session_id: str = "s1") -> list[dict]:
         """The `emitted` records every later part of the session wrote, by part number."""
-
         files = sorted(self.record_files(session_id).glob("emitted-*.jsonl"))
         lines = [line for file in files for line in file.read_text(encoding="utf-8").splitlines()]
         return sorted((json.loads(line) for line in lines), key=lambda record: record["part"])
 
     def model_record(self, session_id: str = "s1") -> dict | None:
         """The session's model record as the engine keeps it, or None where none is written."""
-
         path = self.config / ".tmp" / "rulesets-engine" / "models" / f"{session_id}.json"
         return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
 
     def user_agent(self, agent_type: str, model: str) -> None:
         """An agent definition file that pins its model."""
-
         path = self.config / "agents" / f"{agent_type}.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
@@ -199,16 +241,9 @@ class World:
         self, stdin: str, environment: dict[str, str] | None = None
     ) -> subprocess.CompletedProcess[str]:
         """The PreToolUse entry wired for the `Agent` tool, fed `stdin` as the harness feeds it."""
-
         env = {**self._environ(), **(environment or {})}
-        return subprocess.run(
-            ["bash", "-c", self._command("PreToolUse", 'record-spawn.py"', "Agent")],
-            input=stdin,
-            capture_output=True,
-            text=True,
-            env=env,
-            check=False,
-        )
+        argv = [str(HOOKS / "record-spawn.py")]
+        return call_hook(record_spawn, argv, stdin.encode("utf-8"), env)
 
     def spawn(
         self,
@@ -218,7 +253,6 @@ class World:
         session_id: str = "s1",
     ) -> subprocess.CompletedProcess[str]:
         """A caller spawning `agent_type`, as the PreToolUse payload of the `Agent` tool shows it."""
-
         tool_input = {
             "prompt": "Review the diff",
             "description": "Review the diff",
@@ -241,26 +275,16 @@ class World:
 
     def _environ(self) -> dict[str, str]:
         kept = {k: v for k, v in os.environ.items() if not k.startswith(_ENGINE_PREFIXES)}
+        scratch = self.config.parent
         return {
             **kept,
+            "HOME": str(scratch / "home"),
+            "XDG_CACHE_HOME": str(scratch / "cache"),
+            "GIT_CONFIG_GLOBAL": str(scratch / "gitconfig"),
             "CLAUDE_CONFIG_DIR": str(self.config),
             "CLAUDE_PLUGIN_ROOT": str(PLUGIN_ROOT),
             **self.environment,
         }
-
-    def commands_for(self, event: str, value: str = "") -> list[str]:
-        """The commands `hooks.json` runs for an event whose matcher field holds `value`."""
-
-        groups = json.loads(HOOKS_JSON.read_text(encoding="utf-8"))["hooks"][event]
-        return select_commands(groups, value)
-
-    def _command(self, event: str, last_argument: str, value: str = "") -> str:
-        commands = self.commands_for(event, value)
-        found = [c for c in commands if c.endswith(last_argument)]
-        assert found, (
-            f"no {event} entry ending {last_argument!r} runs where the matcher field is {value!r}"
-        )
-        return found[0]
 
     def toggle(self, arguments: str, session_id: str = "s1") -> subprocess.CompletedProcess[str]:
         """The skill's toggle command, its placeholders filled as the harness and the model fill them.
@@ -268,8 +292,9 @@ class World:
         The harness substitutes `${CLAUDE_SESSION_ID}` and `${CLAUDE_PLUGIN_ROOT}` in a skill's
         text, and the model replaces `ACTION` with the action's words.
         https://code.claude.com/docs/en/skills.md
+        The command runs `cli.py` through the launcher, so its words after the script's path are
+        the arguments `cli.main` is called with.
         """
-
         assert TOGGLE_SKILL.is_file(), "the plugin ships skills/rulesets/SKILL.md"
         lines = TOGGLE_SKILL.read_text(encoding="utf-8").splitlines()
         commands = [line for line in lines if " toggle --session " in line]
@@ -280,31 +305,26 @@ class World:
             .replace("${CLAUDE_PLUGIN_ROOT}", str(PLUGIN_ROOT))
             .replace("ACTION", arguments)
         )
-        return subprocess.run(
-            ["bash", "-c", filled],
-            capture_output=True,
-            text=True,
-            env=self._environ(),
-            check=False,
+        words = shlex.split(filled)
+        assert words[:3] == ["bash", str(LAUNCHER), str(CLI)], (
+            f"the skill's toggle command runs cli.py through the launcher: {filled}"
         )
+        return run_cli(words[3:], self._environ())
 
     def delivery_check(
         self, session_id: str = "s1", root: pathlib.Path | None = None
     ) -> subprocess.CompletedProcess[str]:
-        """The `delivery-check` subcommand, run through the launcher as the skill runs it."""
-
+        """The `delivery-check` subcommand, as the skill runs it."""
         return self._audit_command("delivery-check", session_id, root)
 
     def load_check(
         self, session_id: str = "s1", root: pathlib.Path | None = None
     ) -> subprocess.CompletedProcess[str]:
-        """The `load-check` subcommand, run through the launcher."""
-
+        """The `load-check` subcommand."""
         return self._audit_command("load-check", session_id, root)
 
     def deliveries(self, session_id: str = "s1") -> subprocess.CompletedProcess[str]:
-        """The `deliveries` subcommand, run through the launcher."""
-
+        """The `deliveries` subcommand."""
         return self._audit_command("deliveries", session_id, None)
 
     def _audit_command(
@@ -313,18 +333,11 @@ class World:
         arguments = [subcommand, "--session", session_id]
         if root is not None:
             arguments += ["--root", str(root)]
-        return subprocess.run(
-            ["bash", str(PLUGIN_ROOT / "hooks" / "with-python.sh"), str(CLI), *arguments],
-            capture_output=True,
-            text=True,
-            env=self._environ(),
-            check=False,
-        )
+        return run_cli(arguments, self._environ())
 
     @property
     def project(self) -> pathlib.Path:
         """The project directory beside the configuration directory."""
-
         return self.config.parent / "project"
 
     def load_records(self, session_id: str = "s1") -> list[dict]:
@@ -339,17 +352,10 @@ class World:
         environment: dict[str, str] | None = None,
         load_reason: str = "session_start",
     ) -> subprocess.CompletedProcess[str]:
-        """The InstructionsLoaded entry for a load of `load_reason`, fed `stdin` as the harness feeds it."""
-
+        """The InstructionsLoaded entry, fed `stdin` as the harness feeds it, which it does for every `load_reason`."""
         env = {**self._environ(), **(environment or {})}
-        return subprocess.run(
-            ["bash", "-c", self._command("InstructionsLoaded", 'record-load.py"', load_reason)],
-            input=stdin,
-            capture_output=True,
-            text=True,
-            env=env,
-            check=False,
-        )
+        argv = [str(HOOKS / "record-load.py")]
+        return call_hook(record_load, argv, stdin.encode("utf-8"), env)
 
     def load(
         self,
@@ -359,7 +365,6 @@ class World:
         **extra,
     ) -> subprocess.CompletedProcess[str]:
         """The harness loading an instruction file, as the InstructionsLoaded payload shows it."""
-
         payload = {
             "session_id": session_id,
             "transcript_path": str(self.transcripts / f"{session_id}.jsonl"),
@@ -374,16 +379,12 @@ class World:
 
     def end_session(self, session_id: str = "s1") -> None:
         """The SessionEnd hook entry, fed the payload on stdin."""
-
-        done = subprocess.run(
-            ["bash", "-c", self._command("SessionEnd", "--end", "other")],
-            input=json.dumps(
-                {"session_id": session_id, "hook_event_name": "SessionEnd", "reason": "other"}
-            ),
-            capture_output=True,
-            text=True,
-            env=self._environ(),
-            check=False,
+        payload = {"session_id": session_id, "hook_event_name": "SessionEnd", "reason": "other"}
+        done = call_hook(
+            deliver,
+            [str(DELIVER), "--end"],
+            json.dumps(payload).encode("utf-8"),
+            self._environ(),
         )
         assert done.returncode == 0, done.stderr
 
@@ -391,26 +392,21 @@ class World:
         self, event: str, payload: dict, part: int
     ) -> subprocess.CompletedProcess[str]:
         """One hook entry of an event, fed the payload on stdin, with its exit status and stderr."""
-
-        return subprocess.run(
-            ["bash", "-c", self._command(event, f"--part {part}", matched_value(event, payload))],
-            input=json.dumps({**payload, "hook_event_name": event}),
-            capture_output=True,
-            text=True,
-            env=self._environ(),
-            check=False,
+        return call_hook(
+            deliver,
+            [str(DELIVER), "--part", str(part)],
+            json.dumps({**payload, "hook_event_name": event}).encode("utf-8"),
+            self._environ(),
         )
 
     def run_part(self, event: str, payload: dict, part: int) -> str:
         """The stdout of one hook entry of an event, fed the payload on stdin."""
-
         done = self.run_part_process(event, payload, part)
         assert done.returncode == 0, done.stderr
         return done.stdout
 
     def run_shell(self, command: str) -> subprocess.CompletedProcess[str]:
         """A shell command, run with the environment the hooks run in."""
-
         return subprocess.run(
             ["bash", "-c", command],
             capture_output=True,
@@ -422,19 +418,23 @@ class World:
     def run_hook_bytes(
         self, event: str, last_argument: str, stdin: bytes, matched: str = ""
     ) -> subprocess.CompletedProcess[bytes]:
-        """One hook entry of an event whose matcher field holds `matched`, fed raw bytes on stdin."""
+        """One hook entry, named by its command's last argument, fed raw bytes on stdin.
 
-        return subprocess.run(
-            ["bash", "-c", self._command(event, last_argument, matched)],
-            input=stdin,
-            capture_output=True,
-            env=self._environ(),
-            check=False,
+        `last_argument` is `--part K` or `--end` for `deliver.py`, or a record script's name with
+        the closing quote its command gives it.
+        """
+        script = last_argument.removesuffix('"')
+        if script in _RECORD_HOOKS:
+            entry, argv = _RECORD_HOOKS[script], [str(HOOKS / script)]
+        else:
+            entry, argv = deliver, [str(DELIVER), *last_argument.split()]
+        done = call_hook(entry, argv, stdin, self._environ())
+        return subprocess.CompletedProcess(
+            argv, done.returncode, done.stdout.encode("utf-8"), done.stderr.encode("utf-8")
         )
 
     def run_event(self, event: str, payload: dict, parts: range = range(1, 11)) -> Delivery:
         """Every entry of the event at once, as the harness runs them."""
-
         with ThreadPoolExecutor(max_workers=len(parts)) as pool:
             outputs = list(pool.map(lambda part: self.run_part(event, payload, part), parts))
         return Delivery(dict(zip(parts, outputs, strict=True)))
@@ -453,7 +453,6 @@ class World:
         session_id: str = "s1",
     ) -> Delivery:
         """The PostModelSwitch entries, fed a payload shaped as the harness shapes it."""
-
         payload = {
             "session_id": session_id,
             "from_model": from_model,

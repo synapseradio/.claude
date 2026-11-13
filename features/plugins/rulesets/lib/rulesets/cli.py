@@ -14,6 +14,7 @@ import argparse
 import os
 import pathlib
 import sys
+from collections.abc import Mapping, Sequence
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
@@ -199,8 +200,8 @@ def _action(action: str, name: str | None) -> ToggleAction | None:
             return None
 
 
-def _toggle(session: str, action: ToggleAction) -> int:
-    locations = Locations.from_environment(os.environ)
+def _toggle(session: str, action: ToggleAction, environ: Mapping[str, str]) -> int:
+    locations = Locations.from_environment(environ)
     if isinstance(action, Clear):
         remove_state(locations, session)
         return 0
@@ -220,8 +221,8 @@ def _toggle(session: str, action: ToggleAction) -> int:
     return 0
 
 
-def _explain(arguments: argparse.Namespace) -> int:
-    root = arguments.root or Locations.from_environment(os.environ).rulesets
+def _explain(arguments: argparse.Namespace, environ: Mapping[str, str]) -> int:
+    root = arguments.root or Locations.from_environment(environ).rulesets
     directory = read_directory(root)
     config = directory.config.config if isinstance(directory.config, Present) else None
     facts = named_context(
@@ -237,8 +238,8 @@ def _explain(arguments: argparse.Namespace) -> int:
             return 0
 
 
-def _adopt(arguments: argparse.Namespace) -> int:
-    locations = Locations.from_environment(os.environ)
+def _adopt(arguments: argparse.Namespace, environ: Mapping[str, str]) -> int:
+    locations = Locations.from_environment(environ)
     match adopt(arguments.source, arguments.out, arguments.expect, locations):
         case Refused(reason):
             print(f"cli.py: {reason}", file=sys.stderr)
@@ -251,11 +252,11 @@ def _adopt(arguments: argparse.Namespace) -> int:
             return 1 if comparison.failed else 0
 
 
-def _compare(arguments: argparse.Namespace) -> int:
+def _compare(arguments: argparse.Namespace, environ: Mapping[str, str]) -> int:
     if not arguments.directory.is_dir():
         print(f"cli.py: no rulesets directory at {arguments.directory}", file=sys.stderr)
         return _USAGE_ERROR
-    locations = Locations.from_environment(os.environ)
+    locations = Locations.from_environment(environ)
     try:
         report = compare(arguments.source, arguments.directory, arguments.expect, locations)
     except SourceError as failure:
@@ -266,17 +267,17 @@ def _compare(arguments: argparse.Namespace) -> int:
     return 1 if report.failed else 0
 
 
-def _existing_root(root: pathlib.Path | None) -> pathlib.Path | None:
+def _existing_root(root: pathlib.Path | None, environ: Mapping[str, str]) -> pathlib.Path | None:
     """The rulesets directory `root` names, or the configured one; None, after saying so, where none stands."""
-    chosen = root or Locations.from_environment(os.environ).rulesets
+    chosen = root or Locations.from_environment(environ).rulesets
     if chosen.is_dir():
         return chosen
     print(f"cli.py: no rulesets directory at {chosen}", file=sys.stderr)
     return None
 
 
-def _eject(arguments: argparse.Namespace) -> int:
-    root = _existing_root(arguments.root)
+def _eject(arguments: argparse.Namespace, environ: Mapping[str, str]) -> int:
+    root = _existing_root(arguments.root, environ)
     if root is None:
         return _USAGE_ERROR
     for line in eject(read_directory(root), arguments.out).lines():
@@ -284,8 +285,8 @@ def _eject(arguments: argparse.Namespace) -> int:
     return 0
 
 
-def _estimate(arguments: argparse.Namespace) -> int:
-    root = _existing_root(arguments.root)
+def _estimate(arguments: argparse.Namespace, environ: Mapping[str, str]) -> int:
+    root = _existing_root(arguments.root, environ)
     if root is None:
         return _USAGE_ERROR
     baseline = None
@@ -314,8 +315,8 @@ def _render_tree(directory: RulesetsDirectory, check_only: bool) -> int:
             return 0
 
 
-def _render(arguments: argparse.Namespace) -> int:
-    root = _existing_root(arguments.root)
+def _render(arguments: argparse.Namespace, environ: Mapping[str, str]) -> int:
+    root = _existing_root(arguments.root, environ)
     if root is None:
         return _USAGE_ERROR
     directory = read_directory(root)
@@ -331,8 +332,8 @@ def _render(arguments: argparse.Namespace) -> int:
     return 0
 
 
-def _split(arguments: argparse.Namespace) -> int:
-    root = _existing_root(arguments.root)
+def _split(arguments: argparse.Namespace, environ: Mapping[str, str]) -> int:
+    root = _existing_root(arguments.root, environ)
     if root is None:
         return _USAGE_ERROR
     match split(arguments.file, root):
@@ -345,48 +346,49 @@ def _split(arguments: argparse.Namespace) -> int:
             return 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None, environ: Mapping[str, str] = os.environ) -> int:
+    """Run the command `argv` names, `sys.argv[1:]` where None, under the configuration `environ` names."""
     parser = _build_parser()
     arguments = parser.parse_args(argv)
     if arguments.command == "toggle":
         action = _action(arguments.action, arguments.name)
         if action is None:
             parser.error("a flag name goes with the actions flag and unflag, and with no other")
-        status = _toggle(arguments.session, action)
+        status = _toggle(arguments.session, action, environ)
         if status == 0:
             effect = _EFFECTS[arguments.action].format(name=arguments.name)
             print(f"Delegates started from now on {effect}.")
         return status
     if arguments.command == "explain":
-        return _explain(arguments)
+        return _explain(arguments, environ)
     if arguments.command == "adopt":
-        return _adopt(arguments)
+        return _adopt(arguments, environ)
     if arguments.command == "compare":
-        return _compare(arguments)
+        return _compare(arguments, environ)
     if arguments.command == "eject":
-        return _eject(arguments)
+        return _eject(arguments, environ)
     if arguments.command == "estimate":
-        return _estimate(arguments)
+        return _estimate(arguments, environ)
     if arguments.command == "render":
-        return _render(arguments)
+        return _render(arguments, environ)
     if arguments.command == "split":
-        return _split(arguments)
+        return _split(arguments, environ)
     if arguments.command == "delivery-check":
-        locations = Locations.from_environment(os.environ)
+        locations = Locations.from_environment(environ)
         root = arguments.root or locations.rulesets
         differences = delivery_check(locations, arguments.session, root)
         for difference in differences:
             print(difference.line())
         return 1 if differences else 0
     if arguments.command == "load-check":
-        locations = Locations.from_environment(os.environ)
+        locations = Locations.from_environment(environ)
         root = arguments.root or locations.rulesets
         findings = load_check(locations, arguments.session, root)
         for finding in findings:
             print(finding.line())
         return 1 if findings else 0
     if arguments.command == "deliveries":
-        for context in deliveries(Locations.from_environment(os.environ), arguments.session):
+        for context in deliveries(Locations.from_environment(environ), arguments.session):
             print(context.line())
         return 0
     if not arguments.root.is_dir():
@@ -399,4 +401,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:], os.environ))
