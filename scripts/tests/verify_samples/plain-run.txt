@@ -1,0 +1,7 @@
+verify: 4 suites, logs in <run-dir>
+SKIP mod-gauge (mod, no test("...") name holds a.b)
+FAIL py-a (pytest, 1 failed, 2 passed, <seconds>s) log=<run-dir>/py-a.log
+  FAILED pkg_a/tests/test_a1.py::test_two - AssertionError: boom
+SKIP py-b (pytest, nothing selected)
+PASS sh-bats (bats, 3 passed, <seconds>s)
+verify: 1 passed, 1 failed, 2 skipped

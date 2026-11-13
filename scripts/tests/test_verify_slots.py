@@ -14,12 +14,14 @@ a stub that records the marker as present ran after the release.
 """
 
 import fcntl
+import json
 import subprocess
 import sys
 import zlib
 
 import pytest
 from verify_fixtures import RUN_TIMEOUT, WORKTREE, Sandbox, pair, read_until
+from verify_stubs import barrier_starts, install_barrier_stubs
 
 TAKER = """\
 import sys
@@ -254,3 +256,96 @@ def test_on_wait_is_never_called_while_a_slot_is_free(sb) -> None:
     assert out.decode() == "got 1\n", (
         f"one of two slots is free: stdout {out.decode()!r}, stderr {err.decode(errors='replace')}"
     )
+
+
+SEVEN_SUITES = {
+    "rulesets": ("pytest", 26),
+    "scripts": ("pytest", 17),
+    "warden": ("bats", 14),
+    "epistemic-marks": ("pytest", 10),
+    "harness-config": ("bats", 6),
+    "scripts-bats": ("bats", 6),
+    "context-gauge": ("mod", 1),
+}
+
+FAIR_SHARES_OF_TWELVE = {
+    "rulesets": 3,
+    "scripts": 2,
+    "warden": 2,
+    "epistemic-marks": 2,
+    "harness-config": 1,
+    "scripts-bats": 1,
+    "context-gauge": 1,
+}
+
+TEST_FILE = {"pytest": "test_{n}.py", "bats": "case_{n}.bats", "mod": "case_{n}.test.ts"}
+LANGS = {"pytest": '["py"]', "bats": '["bats", "sh"]', "mod": '["ts"]'}
+RUNNER_FOLDER = {"pytest": "{name}/tests", "bats": "{name}/tests", "mod": "{name}"}
+
+
+def seven_suite_files() -> dict[str, str]:
+    jobs, files = [], {".gitignore": "node_modules/\n", "pyproject.toml": "[project]\nname = 'p'\n"}
+    for name, (kind, count) in SEVEN_SUITES.items():
+        folder = RUNNER_FOLDER[kind].format(name=name)
+        jobs.append(
+            f'[[job]]\nname = "{name}"\nkind = "{kind}"\ntests = ["{folder}"]\n'
+            f'sources = ["{name}/**"]\nlangs = {LANGS[kind]}\n'
+        )
+        for number in range(count):
+            files[f"{folder}/{TEST_FILE[kind].format(n=number)}"] = "x\n"
+    files["scripts/verify/jobs.toml"] = "\n".join(jobs)
+    return files
+
+
+@pytest.fixture
+def seven(tmp_path) -> Sandbox:
+    sandbox = Sandbox(tmp_path, seven_suite_files())
+    install_barrier_stubs(sandbox, expected=len(SEVEN_SUITES))
+    return sandbox
+
+
+def workers_in(args: list[str]) -> int:
+    """The worker count a pytest `-n` or bats `--jobs` flag asks for; one where neither is given."""
+    for flag in ("-n", "--jobs"):
+        if flag in args:
+            return int(args[args.index(flag) + 1])
+    return 1
+
+
+def suite_of(args: list[str]) -> str:
+    """The suite whose tests folder a recorded command names."""
+    named = [
+        name
+        for name, (kind, _) in SEVEN_SUITES.items()
+        if RUNNER_FOLDER[kind].format(name=name) in args
+    ]
+    assert len(named) == 1, f"wanted one suite in {args}, got {named}"
+    return named[0]
+
+
+def test_seven_suites_on_a_free_pool_of_twelve_all_start_and_none_waits(seven) -> None:
+    """Each stub holds its slots until all seven have started, so a suite that took the whole pool starves a sibling."""
+    result = seven.run("test", extra_env={"VERIFY_SLOTS": "12"})
+
+    assert result.returncode == 0, f"exit {result.returncode}: {result.stderr}"
+    assert "waiting for a slot" not in result.stdout + result.stderr, (
+        f"a suite waited though the pool held a slot for each:\n{result.stdout}{result.stderr}"
+    )
+    started = sorted(suite_of(call["args"]) for call in barrier_starts(seven))
+    assert started == sorted(SEVEN_SUITES), f"suites that started: {started}"
+
+
+def test_each_of_seven_suites_runs_with_its_fair_share_of_twelve_slots(seven) -> None:
+    seven.run("test", extra_env={"VERIFY_SLOTS": "12"})
+
+    shares = {suite_of(call["args"]): workers_in(call["args"]) for call in barrier_starts(seven)}
+    assert shares == FAIR_SHARES_OF_TWELVE, f"workers each suite started with: {shares}"
+
+
+def test_list_shows_the_fair_share_of_twelve_slots_as_each_suites_workers(seven) -> None:
+    result = seven.run("test", "--list", "--json", extra_env={"VERIFY_SLOTS": "12"})
+
+    report = json.loads(result.stdout)
+
+    shares = {suite_of(row["command"]): workers_in(row["command"]) for row in report["suites"]}
+    assert shares == FAIR_SHARES_OF_TWELVE, f"workers each listed command asks for: {shares}"

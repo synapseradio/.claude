@@ -5,7 +5,11 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Literal
 
+import progress
+
 type Kind = Literal["pytest", "bats", "mod", "lint"]
+
+TEST_TIMEOUT_SECONDS = 10
 
 
 @dataclass(frozen=True)
@@ -34,9 +38,20 @@ class Task:
             return self.command[0]
         return self.build(1)[0]
 
+    @property
+    def root(self) -> str:
+        """The repository-relative folder a mod's printed test paths start from; "" for every other kind."""
+        return self.argv(1)[-1] if self.kind == "mod" else ""
+
+    @property
+    def env(self) -> dict[str, str]:
+        """Variables the task's program reads on top of the runner's environment; bats takes its per-test limit from one."""
+        return {"BATS_TEST_TIMEOUT": str(TEST_TIMEOUT_SECONDS)} if self.kind == "bats" else {}
+
 
 def pytest_command(paths: list[str], k: str | None, workers: int) -> list[str]:
     command = ["uv", "run", "--frozen", "pytest", *paths, "-p", "no:cacheprovider", "-rf"]
+    command += [*progress.extra_argv("pytest"), f"--timeout={TEST_TIMEOUT_SECONDS}"]
     if workers > 1:
         command += ["-n", str(workers)]
     if k is not None:
@@ -45,7 +60,7 @@ def pytest_command(paths: list[str], k: str | None, workers: int) -> list[str]:
 
 
 def bats_command(paths: list[str], k: str | None, workers: int) -> list[str]:
-    command = ["bats", "--formatter", "tap"]
+    command = ["bats", "--formatter", "tap", *progress.extra_argv("bats")]
     if workers > 1:
         command += ["--jobs", str(workers)]
     if k is not None:

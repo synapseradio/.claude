@@ -2,11 +2,11 @@
 """Entry point behind `just test`, `lint`, `fmt`, `verify`, and `suites`.
 
     cli.py test|lint|fmt|verify [paths...] [--diff [BASE] | --prepush] [--lang L,...]
-           [--file SUBSTR] [-k SUBSTR] [--list] [--json] [--jobs N] [--serial]
+           [--file SUBSTR] [-k SUBSTR] [--list] [--json] [--jobs N] [--serial] [--verbose]
     cli.py list [--json]
 
 Exit codes: 0 pass or nothing to do, 1 a check failed, 2 usage, 3 a program
-is missing, 5 an explicit scope selected nothing.
+is missing, 5 an explicit scope selected nothing, 130 interrupted.
 """
 
 import argparse
@@ -18,7 +18,9 @@ from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
 
+import events
 import fmt
+from display import Display, LiveDisplay, display_for
 from manifest import LANGS, Manifest, ManifestError, load
 from repo import GitError, Repo, child_env
 from report import (
@@ -32,7 +34,7 @@ from report import (
     warn,
     worst,
 )
-from run import Finished, Missing, Runner, missing, run_dir
+from run import Finished, Interrupted, Missing, Runner, missing, run_dir, shares_for
 from scope import (
     Diff,
     InScope,
@@ -95,6 +97,9 @@ def parser_for(command: str) -> argparse.ArgumentParser:
     parser.add_argument("--json", action="store_true", help="print one JSON object")
     parser.add_argument("--jobs", type=positive, help="cap the workers a suite takes")
     parser.add_argument("--serial", action="store_true", help="run one suite at a time")
+    parser.add_argument(
+        "--verbose", action="store_true", help="print each suite's tests as a tree once it ends"
+    )
     return parser
 
 
@@ -137,9 +142,9 @@ def log_root() -> Path:
     return Path(os.environ.get("VERIFY_LOG_DIR") or "/tmp/claude-verify")
 
 
-def planned_rows(selection: Selection) -> list[dict]:
+def planned_rows(selection: Selection, shares: dict[str, int]) -> list[dict]:
     rows = [
-        {"name": task.name, "runner": task.kind, "command": task.argv(task.wants)}
+        {"name": task.name, "runner": task.kind, "command": task.argv(shares[task.name])}
         for task in selection.tasks
     ]
     return rows + [
@@ -178,15 +183,17 @@ def run_parts(ctx: Context, planned: dict[str, Selection | Nothing]) -> dict[str
             parts[part] = selection
     if not parts:
         return reports
+    tasks = [task for selection in parts.values() for task in selection.tasks]
+    pool = slot_pool()
     if ctx.args.list:
+        shares = shares_for(tasks, pool.size, ctx.args.jobs, ctx.args.serial)
         for part, selection in parts.items():
-            rows = planned_rows(selection)
+            rows = planned_rows(selection, shares)
             reports[part] = Report(None, list(selection.notes), planned=rows)
             if not ctx.args.json:
                 print_planned(rows, reports[part].notes)
         return reports
 
-    tasks = [task for selection in parts.values() for task in selection.tasks]
     absent = missing(ctx.repo.root, [task.program for task in tasks], ctx.env)
     exit_if_missing(absent)
 
@@ -194,38 +201,47 @@ def run_parts(ctx: Context, planned: dict[str, Selection | Nothing]) -> dict[str
     owner = {task.name: part for part, selection in parts.items() for task in selection.tasks}
     for part, selection in parts.items():
         reports[part] = Report(str(logs), list(selection.notes))
+    screen: Display | None = None
     if not ctx.args.json:
-        sizes = [
-            counted(len(selection.tasks) + len(selection.skipped), PARTS[part][1])
-            for part, selection in parts.items()
-        ]
-        say(f"verify: {', '.join(sizes)}, logs in {logs}")
-        for part in parts:
-            for note in reports[part].notes:
-                say(f"note: {note}")
+        screen = display_for(sys.stdout, verbose=ctx.args.verbose, plain=False)
 
     def record(outcome: Outcome, part: str) -> None:
         reports[part].outcomes.append(outcome)
-        if not ctx.args.json:
-            say(outcome.line())
-
-    for part, selection in parts.items():
-        for skip in selection.skipped:
-            record(Outcome.skipped(skip), part)
+        if screen is not None:
+            screen.handle(events.SuiteEnded(outcome.name, outcome.status, outcome.line()))
 
     def done(finished: Finished) -> None:
         record(
             Outcome.of(finished, isinstance(ctx.scope.change, Prepush)), owner[finished.task.name]
         )
 
-    runner = Runner(ctx.repo.root, ctx.env, slot_pool(), logs, ctx.args.jobs)
-    runner.run_all(tasks, ctx.args.serial, done)
-
-    for part in parts:
-        exit_policy(reports[part], ctx.scope.describe())
-    if not ctx.args.json:
-        outcomes = [outcome for part in parts for outcome in reports[part].outcomes]
-        say(tally(outcomes))
+    runner = Runner(
+        ctx.repo.root, ctx.env, pool, logs, ctx.args.jobs, isinstance(screen, LiveDisplay)
+    )
+    try:
+        if screen is not None:
+            sizes = [
+                counted(len(selection.tasks) + len(selection.skipped), PARTS[part][1])
+                for part, selection in parts.items()
+            ]
+            screen.note(f"verify: {', '.join(sizes)}, logs in {logs}")
+            for part in parts:
+                for note in reports[part].notes:
+                    screen.note(f"note: {note}")
+        for part, selection in parts.items():
+            for skip in selection.skipped:
+                record(Outcome.skipped(skip), part)
+        runner.run_all(tasks, ctx.args.serial, done, screen.handle if screen else lambda _: None)
+        for part in parts:
+            exit_policy(reports[part], ctx.scope.describe())
+        if screen is not None:
+            screen.note(tally([outcome for part in parts for outcome in reports[part].outcomes]))
+    except Interrupted as stop:
+        raise Exit(130, "verify: interrupted") from stop
+    finally:
+        if screen is not None:
+            screen.close()
+    if screen is not None:
         for part in parts:
             if reports[part].exit == 5:
                 warn(f"verify: {reports[part].notes[-1]}")

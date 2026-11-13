@@ -7,19 +7,33 @@ checks the runner's own work: the commands it builds, the environment it hands
 them, the report it prints, and its exit code.
 """
 
+import fcntl
+import importlib
 import json
 import pathlib
 import re
+import signal
+from dataclasses import dataclass
 
 import pytest
 from verify_fixtures import (
     BATS_TWO_FAILURES,
     GIT_LOCATORS,
     PYTEST_ONE_FAILURE,
+    RUN_TIMEOUT,
     Sandbox,
     find_line,
     indented_block,
+    load_cli,
     pair,
+)
+from verify_plain_run import normalize, run_scenario
+from verify_stubs import (
+    install_real_pytest,
+    install_sleeper,
+    is_alive,
+    kill_leftovers,
+    sleeper_pids,
 )
 
 SECONDS = r"\d+(?:\.\d+)?s"
@@ -239,3 +253,167 @@ class TestExitCodes:
 
         assert result.returncode == 5, f"exit {result.returncode}: {result.stderr}"
         assert "no test matches" in result.stdout + result.stderr
+
+
+SAMPLES = pathlib.Path(__file__).parent
+PLAIN_RUN_SAMPLE = SAMPLES / "verify_samples" / "plain-run.txt"
+PYTEST_VERBOSE_SAMPLE = (SAMPLES / "progress_samples" / "pytest.txt").read_text()
+BATS_TIMING_SAMPLE = (SAMPLES / "progress_samples" / "bats-tap-timing.txt").read_text()
+
+
+def test_a_plain_run_prints_what_the_runner_printed_before_progress_was_added(tmp_path) -> None:
+    """The sample is the output of the runner at commit 1d827c2, captured through the sandbox before the wiring changed."""
+    result = run_scenario(Sandbox(tmp_path))
+
+    assert normalize(result.stdout) == PLAIN_RUN_SAMPLE.read_text(encoding="utf-8")
+
+
+class TestVerbose:
+    def run_piped(self, sb) -> list[str]:
+        sb.respond("uv", "pkg_a", PYTEST_VERBOSE_SAMPLE, exit_code=1)
+        sb.respond("bats", "shell", BATS_TIMING_SAMPLE, exit_code=1)
+        process = sb.popen("test", "pkg_a", "shell", "--verbose")
+        out, err = process.communicate(timeout=RUN_TIMEOUT)
+        assert process.returncode == 1, f"exit {process.returncode}: {err.decode()}"
+        return out.decode().splitlines()
+
+    def test_each_suite_prints_its_pytest_tree_right_after_its_verdict(self, sb) -> None:
+        lines = self.run_piped(sb)
+
+        verdict, _ = find_line(lines, r"FAIL py-a \(.*")
+        tree, _ = find_line(lines, r"✗ py-a")
+        assert lines[tree - 1].startswith(
+            "  FAILED tests/test_sample.py::test_rejects_wrong_sum"
+        ), "the tree follows the suite's verdict and its failing ids, before the next suite's line"
+        assert tree > verdict
+        assert lines[tree : tree + 5] == [
+            "✗ py-a",
+            "  tests/test_sample.py",
+            "    ✓ test_adds_numbers",
+            "    ✗ test_rejects_wrong_sum",
+            "    ○ test_skipped_case",
+        ]
+
+    def test_each_suite_prints_its_bats_tree_with_the_seconds_each_test_took(self, sb) -> None:
+        lines = self.run_piped(sb)
+
+        tree, _ = find_line(lines, r"✗ sh-bats")
+        assert lines[tree - 1].startswith("  not ok 2 rejects wrong sum"), (
+            "the tree follows the suite's verdict and its failing ids"
+        )
+        assert lines[tree : tree + 4] == [
+            "✗ sh-bats",
+            "  ✓ adds numbers (0.002s)",
+            "  ✗ rejects wrong sum (0.001s)",
+            "  ○ skipped case (0.002s)",
+        ]
+
+
+class TestAnInterruptedRun:
+    @dataclass(frozen=True)
+    class Aftermath:
+        code: int
+        pids: list[int]
+        alive: list[int]
+        held_slots: list[str]
+
+    def interrupt_a_sleeping_suite(self, sb) -> Aftermath:
+        install_sleeper(sb, "uv")
+        process = sb.popen("test", "pkg_a", extra_env={"VERIFY_SLOTS": "3"})
+        pids: list[int] = []
+        try:
+            pids = sleeper_pids(sb)
+            process.send_signal(signal.SIGINT)
+            process.communicate(timeout=RUN_TIMEOUT)
+            alive = [pid for pid in pids if is_alive(pid)]
+            return self.Aftermath(process.returncode, pids, alive, held_slots(sb, 3))
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=RUN_TIMEOUT)
+            kill_leftovers(pids)
+
+    def test_sigint_ends_the_run_with_130(self, sb) -> None:
+        aftermath = self.interrupt_a_sleeping_suite(sb)
+
+        assert aftermath.code == 130, f"exit {aftermath.code}"
+
+    def test_sigint_leaves_neither_the_suite_nor_its_child_running(self, sb) -> None:
+        aftermath = self.interrupt_a_sleeping_suite(sb)
+
+        assert aftermath.alive == [], (
+            f"processes {aftermath.alive} of {aftermath.pids} outlived the interrupted run"
+        )
+
+    def test_sigint_leaves_every_slot_free(self, sb) -> None:
+        aftermath = self.interrupt_a_sleeping_suite(sb)
+
+        assert aftermath.held_slots == [], (
+            f"slots still held after the interrupted run exited: {aftermath.held_slots}"
+        )
+
+
+def held_slots(sb: Sandbox, size: int) -> list[str]:
+    held = []
+    for index in range(size):
+        with open(sb.slot(index), "a") as handle:
+            try:
+                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                held.append(sb.slot(index).name)
+    return held
+
+
+class TestAJsonRun:
+    @pytest.mark.parametrize("flags", [("--json",), ("--verbose", "--json")])
+    def test_stdout_holds_one_json_object_and_nothing_else(self, sb, flags) -> None:
+        sb.respond("uv", "pkg_a", PYTEST_VERBOSE_SAMPLE, exit_code=1)
+        sb.respond("bats", "shell", BATS_TIMING_SAMPLE, exit_code=1)
+
+        process = sb.popen("test", "pkg_a", "shell", *flags)
+        out, err = process.communicate(timeout=RUN_TIMEOUT)
+
+        assert process.returncode == 1, f"exit {process.returncode}: {err.decode()}"
+        decoder = json.JSONDecoder()
+        text = out.decode()
+        report, end = decoder.raw_decode(text)
+        assert isinstance(report, dict) and {"suites", "summary", "exit"} <= set(report), report
+        assert text[end:].strip() == "", f"stdout carries text after the object: {text[end:]!r}"
+        assert text[:1] == "{", f"stdout carries text before the object: {text[:80]!r}"
+
+
+SLOW_SUITE = {
+    ".gitignore": "node_modules/\n",
+    "pyproject.toml": '[project]\nname = "proj"\n',
+    "scripts/verify/jobs.toml": (
+        '[[job]]\nname = "slow"\nkind = "pytest"\ntests = ["slow/tests"]\n'
+        'sources = ["slow/**"]\nlangs = ["py"]\n'
+    ),
+    "slow/tests/test_stalls.py": (
+        "import time\n\n\n"
+        "def test_stalls_past_the_limit():\n    time.sleep(4)\n\n\n"
+        "def test_returns_at_once():\n    pass\n"
+    ),
+}
+
+
+class TestATestPastTheLimit:
+    def test_a_test_sleeping_past_the_limit_fails_by_its_name(self, tmp_path, monkeypatch) -> None:
+        """The limit is 10 seconds in the runner; the case shortens it to 1 so that it needs 4 seconds, not 11.
+
+        https://pypi.org/project/pytest-timeout/
+        """
+        load_cli()
+        tasks = importlib.import_module("tasks")
+        monkeypatch.setattr(tasks, "TEST_TIMEOUT_SECONDS", 1, raising=False)
+        sb = Sandbox(tmp_path, SLOW_SUITE)
+        install_real_pytest(sb)
+
+        result = sb.run("test", "--json")
+
+        (suite,) = json.loads(result.stdout)["suites"]
+        assert suite["status"] == "fail", f"a test outlasting the limit passed: {suite}"
+        assert len(suite["failures"]) == 1, suite["failures"]
+        assert "slow/tests/test_stalls.py::test_stalls_past_the_limit" in suite["failures"][0], (
+            f"the failing id names the test that was stopped: {suite['failures']}"
+        )
