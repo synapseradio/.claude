@@ -20,6 +20,8 @@
 !.yamllint.yaml
 !.taplo.toml
 !Brewfile
+!justfile
+!treefmt.toml
 
 !.config/
 !.config/wt.toml
