@@ -3,13 +3,7 @@
 # Locate this checkout, the primary checkout, and whether this checkout is a
 # linked worktree. Call repo_root::init once from inside the checkout.
 
-# The scripts that source this file read these variables, which shellcheck
-# cannot follow from here.
-# shellcheck disable=SC2034
-REPO_ROOT=''
-PRIMARY_ROOT=''
-REPO_GIT_DIR=''
-REPO_GIT_COMMON_DIR=''
+export REPO_ROOT='' PRIMARY_ROOT='' REPO_GIT_DIR='' REPO_GIT_COMMON_DIR=''
 
 #######################################
 # Set REPO_ROOT, PRIMARY_ROOT, REPO_GIT_DIR, and REPO_GIT_COMMON_DIR from the
