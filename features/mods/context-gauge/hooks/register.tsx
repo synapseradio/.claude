@@ -30,7 +30,6 @@ import {
 	gaugeLine,
 	LEGEND_GAP,
 	legendLines,
-	MAX_BAR_CELLS,
 	PREFIX,
 	SAMPLE_CELLS,
 	SPACE,
@@ -355,7 +354,7 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 		totals.length +
 		SPACE.length;
 	const shape = gaugeLine(room, prefixCells, rows.length);
-	const runs = barRuns(model, rows, Math.min(shape.cells, MAX_BAR_CELLS));
+	const runs = barRuns(model, rows, shape.cells);
 	let barElement: RenderElement | null = null;
 	if (fallback !== null) barElement = barGlyphs(ui, runs, fallback, palette);
 	else if (runs.length > 0) {
