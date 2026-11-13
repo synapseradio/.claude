@@ -6,6 +6,11 @@
 
 export BATS_TEST_TIMEOUT=10
 
+setup_file() {
+  load '../../tests/test_helper'
+  build_fixture_repo_once
+}
+
 setup() {
   load '../../tests/test_helper'
   SETUP="${BATS_TEST_DIRNAME}/../../setup.sh"

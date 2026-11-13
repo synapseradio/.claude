@@ -28,8 +28,7 @@ setup_sandbox_test_env() {
 
   export GIT_CONFIG_GLOBAL="${HOME}/.gitconfig"
   export GIT_CONFIG_NOSYSTEM=1
-  printf '[user]\n\tname = Test\n\temail = test@example.com\n[init]\n\tdefaultBranch = main\n' \
-    >"${GIT_CONFIG_GLOBAL}"
+  write_git_config "${GIT_CONFIG_GLOBAL}"
   unset GIT_DIR GIT_INDEX_FILE GIT_PREFIX GIT_WORK_TREE GIT_COMMON_DIR
 
   export CALL_LOG="${BATS_TEST_TMPDIR}/calls.log"
@@ -41,21 +40,37 @@ setup_sandbox_test_env() {
 }
 
 #######################################
-# Write an executable stub that appends "<name> <args>" to CALL_LOG, then
-# runs the body read from STDIN.
+# Write the git identity and default branch every fixture repository needs.
+# Arguments:
+#   The config file.
+#######################################
+write_git_config() {
+  printf '[user]\n\tname = Test\n\temail = test@example.com\n[init]\n\tdefaultBranch = main\n' \
+    >"$1"
+}
+
+#######################################
+# Write a stub that appends "<name> <args>" to CALL_LOG, then runs the body
+# read from STDIN. The file is not yet executable.
+# Arguments:
+#   The command name.
+#######################################
+write_stub_file() {
+  local name="$1" body
+  IFS= read -r -d '' body || true
+  printf '%s\n%s\n%s' '#!/bin/bash' \
+    "printf '%s\\n' \"${name} \$*\" >>\"\${CALL_LOG}\"" \
+    "${body}" >"${STUB_BIN}/${name}"
+}
+
+#######################################
+# Write an executable stub; see write_stub_file.
 # Arguments:
 #   The command name.
 #######################################
 write_stub() {
-  local name="$1"
-  {
-    cat <<EOF
-#!/bin/bash
-printf '%s\\n' "${name} \$*" >>"\${CALL_LOG}"
-EOF
-    cat
-  } >"${STUB_BIN}/${name}"
-  chmod +x "${STUB_BIN}/${name}"
+  write_stub_file "$1"
+  chmod +x "${STUB_BIN}/$1"
 }
 
 #######################################
@@ -92,25 +107,26 @@ refute_logged() {
 #   None
 #######################################
 stub_toolchain() {
-  write_stub bun <<'EOF'
+  write_stub_file bun <<'EOF'
 if [[ "${1:-}" == install ]]; then
   if (( ${BUN_STATUS:-0} != 0 )); then exit "${BUN_STATUS}"; fi
   mkdir -p node_modules/.bin
   : >node_modules/.bin/biome
 fi
 EOF
-  write_stub uv <<'EOF'
+  write_stub_file uv <<'EOF'
 if [[ "${1:-}" == sync ]]; then
   mkdir -p .venv/bin
   : >.venv/bin/python
 fi
 EOF
-  write_stub brew <<'EOF'
+  write_stub_file brew <<'EOF'
 if [[ "${1:-} ${2:-}" == "bundle check" ]]; then exit "${BREW_CHECK_STATUS:-0}"; fi
 EOF
-  write_stub claude <<'EOF'
+  write_stub_file claude <<'EOF'
 exit 0
 EOF
+  chmod +x "${STUB_BIN}/bun" "${STUB_BIN}/uv" "${STUB_BIN}/brew" "${STUB_BIN}/claude"
 }
 
 #######################################
@@ -136,21 +152,43 @@ EOF
 }
 
 #######################################
-# Create a git repository holding the files the setup steps hash.
+# Create a git repository holding the files the setup steps hash. Git runs
+# against a home and a config beside the repository, never the caller's.
 # Arguments:
 #   The repository directory.
 #######################################
 make_fixture_repo() {
   local repo="$1"
-  mkdir -p "${repo}"
-  git -C "${repo}" init -q
-  printf 'lock 1\n' >"${repo}/bun.lock"
-  printf '{}\n' >"${repo}/package.json"
-  printf 'lock 1\n' >"${repo}/uv.lock"
-  printf '[project]\n' >"${repo}/pyproject.toml"
-  printf 'brew "just"\n' >"${repo}/Brewfile"
-  git -C "${repo}" add -A
-  git -C "${repo}" commit -q -m 'fixture'
+  mkdir -p "${repo}" "${repo}.home"
+  (
+    export HOME="${repo}.home"
+    export XDG_CONFIG_HOME="${HOME}/.config"
+    export GIT_CONFIG_GLOBAL="${HOME}/.gitconfig"
+    export GIT_CONFIG_NOSYSTEM=1
+    unset GIT_DIR GIT_INDEX_FILE GIT_PREFIX GIT_WORK_TREE GIT_COMMON_DIR
+    write_git_config "${GIT_CONFIG_GLOBAL}"
+    git -C "${repo}" init -q
+    printf 'lock 1\n' >"${repo}/bun.lock"
+    printf '{}\n' >"${repo}/package.json"
+    printf 'lock 1\n' >"${repo}/uv.lock"
+    printf '[project]\n' >"${repo}/pyproject.toml"
+    printf 'brew "just"\n' >"${repo}/Brewfile"
+    git -C "${repo}" add -A
+    git -C "${repo}" commit -q -m 'fixture'
+  )
+}
+
+#######################################
+# Build the fixture repository once for a test file; call from setup_file.
+# Globals:
+#   BATS_FILE_TMPDIR
+#   FIXTURE_REPO (set, exported)
+# Arguments:
+#   None
+#######################################
+build_fixture_repo_once() {
+  export FIXTURE_REPO="${BATS_FILE_TMPDIR}/fixture"
+  make_fixture_repo "${FIXTURE_REPO}"
 }
 
 #######################################
@@ -162,10 +200,17 @@ add_linked_worktree() {
   git -C "$1" worktree add -q -b linked "$2"
 }
 
+#######################################
+# Sandbox the test, stub the toolchain, and enter a private copy of the
+# fixture repository built by build_fixture_repo_once.
+# Arguments:
+#   The copy's directory name under BATS_TEST_TMPDIR.
+#######################################
 enter_fixture_repo() {
   setup_sandbox_test_env
   stub_toolchain
-  make_fixture_repo "${BATS_TEST_TMPDIR}/$1"
+  cp -R "${FIXTURE_REPO:?build_fixture_repo_once runs in setup_file}" \
+    "${BATS_TEST_TMPDIR}/$1" || return 1
   cd "${BATS_TEST_TMPDIR}/$1" || return 1
 }
 
