@@ -186,19 +186,26 @@ check_raw_text() {
 
 main() {
   local cmd line
+  local -a parts=()
   cmd="$(jq -r '.tool_input.command // ""')"
 
   if [[ -z "${cmd}" ]]; then
     exit 0
   fi
 
+  # The command is split once; the programs and the bare-env check both read
+  # its parts.
   while IFS= read -r line; do
-    check_program "${line}"
-  done < <(command_words::resolve "${cmd}")
+    parts+=("${line}")
+  done < <(command_words::split "${cmd}")
 
   while IFS= read -r line; do
+    check_program "${line}"
+  done < <(command_words::resolve_parts ${parts[@]+"${parts[@]}"})
+
+  for line in ${parts[@]+"${parts[@]}"}; do
     check_bare_env "${line}"
-  done < <(command_words::split "${cmd}")
+  done
 
   if command_words::opens_heredoc "${cmd}"; then
     check_raw_text "${cmd}"

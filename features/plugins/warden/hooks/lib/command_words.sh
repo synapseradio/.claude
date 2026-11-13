@@ -477,6 +477,29 @@ command_words::hands_script_to_shell() {
 }
 
 #######################################
+# Print each program that the parts of a command, as command_words::split
+# prints them, would run. A caller that needs the parts for another step
+# splits once and resolves them here.
+# Globals:
+#   CW_DEPTH
+# Arguments:
+#   The parts, one argument each.
+# Outputs:
+#   One line per program on stdout: its name, then its arguments.
+#######################################
+command_words::resolve_parts() {
+  local part
+  local -a words
+  ((CW_DEPTH < 3)) || return 0
+  CW_DEPTH=$((CW_DEPTH + 1))
+  for part in "$@"; do
+    IFS=' ' read -r -a words <<<"${part}"
+    command_words::emit_command ${words[@]+"${words[@]}"}
+  done
+  CW_DEPTH=$((CW_DEPTH - 1))
+}
+
+#######################################
 # Print each program the command text would run.
 # Globals:
 #   CW_DEPTH
@@ -487,12 +510,10 @@ command_words::hands_script_to_shell() {
 #######################################
 command_words::resolve() {
   local line
-  local -a words
+  local -a parts=()
   ((CW_DEPTH < 3)) || return 0
-  CW_DEPTH=$((CW_DEPTH + 1))
   while IFS= read -r line; do
-    IFS=' ' read -r -a words <<<"${line}"
-    command_words::emit_command ${words[@]+"${words[@]}"}
+    parts+=("${line}")
   done < <(command_words::split "$1")
-  CW_DEPTH=$((CW_DEPTH - 1))
+  command_words::resolve_parts ${parts[@]+"${parts[@]}"}
 }
