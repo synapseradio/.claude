@@ -6,17 +6,28 @@ from fnmatch import fnmatchcase
 from pathlib import Path, PurePosixPath
 from typing import Literal, cast
 
-LANGS = frozenset({"py", "bats", "ts", "sh", "md", "yaml", "toml", "json"})
+LANG_EXTENSIONS = {
+    "py": (".py",),
+    "md": (".md",),
+    "sh": (".sh", ".bash"),
+    "bats": (".bats",),
+    "ts": (".ts", ".tsx", ".mts", ".cts"),
+    "json": (".json", ".jsonc"),
+    "yaml": (".yaml", ".yml"),
+    "toml": (".toml",),
+}
+
+LANGS = frozenset(LANG_EXTENSIONS)
 
 type Runner = Literal["pytest", "bats", "mod"]
-
-RUNNERS: tuple[Runner, ...] = ("pytest", "bats", "mod")
 
 TEST_FILE_NAMES: dict[Runner, tuple[str, ...]] = {
     "pytest": ("test_*.py",),
     "bats": ("*.bats",),
     "mod": ("*.test.ts", "*.test.tsx"),
 }
+
+RUNNERS: tuple[Runner, ...] = tuple(TEST_FILE_NAMES)
 
 
 class ManifestError(Exception):
@@ -133,12 +144,16 @@ def parse_job(entry: dict) -> Suite | Lint:
     return Lint(name, sources, langs, command, mode, fixes)
 
 
-def load(path: Path) -> Manifest:
+def read_toml(path: Path) -> dict:
     try:
-        entries = tomllib.loads(path.read_text(encoding="utf-8")).get("job", [])
+        return tomllib.loads(path.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError) as error:
         message = f"{path}: {error}"
         raise ManifestError(message) from error
+
+
+def load(path: Path) -> Manifest:
+    entries = read_toml(path).get("job", [])
     jobs = [parse_job(entry) for entry in entries]
     names = [job.name for job in jobs]
     duplicated = sorted({name for name in names if names.count(name) > 1})
