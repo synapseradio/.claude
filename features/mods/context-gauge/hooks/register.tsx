@@ -367,11 +367,13 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 		<Box flexDirection="column">
 			{hint}
 			<Box key="gauge">
-				<Text>{PREFIX}</Text>
-				<Text weight="bold">{percent}</Text>
-				<Text>{SPACE}</Text>
-				<Text dimColor={true}>{totals}</Text>
-				{shape.barOwnLine ? null : <Text>{SPACE}</Text>}
+				<Box key="label" flexShrink={0}>
+					<Text>{PREFIX}</Text>
+					<Text weight="bold">{percent}</Text>
+					<Text>{SPACE}</Text>
+					<Text dimColor={true}>{totals}</Text>
+					{shape.barOwnLine ? null : <Text>{SPACE}</Text>}
+				</Box>
 				{shape.barOwnLine ? null : barElement}
 			</Box>
 			{shape.barOwnLine ? <Box key="bar-line">{barElement}</Box> : null}
