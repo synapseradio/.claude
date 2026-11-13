@@ -187,6 +187,9 @@ class LiveDisplay:
                 self._end(event)
 
     def close(self) -> None:
+        self._progress.live.transient = any(
+            task.fields["state"] != "ended" for task in self._progress.tasks
+        )
         self._progress.stop()
 
     def _row(self, suite: str) -> TaskID:

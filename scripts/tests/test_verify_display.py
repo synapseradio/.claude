@@ -8,6 +8,7 @@ recording console captured, never `rich` objects.
 
 import io
 import pathlib
+import re
 import sys
 
 import pytest
@@ -49,6 +50,40 @@ class Screen:
     @property
     def text(self) -> str:
         return self.console.export_text(clear=False)
+
+
+CONTROL_SEQUENCE = re.compile(r"\x1b\[([0-9;?]*)([A-Za-z])")
+
+
+def terminal_after(written: str) -> list[str]:
+    """The lines a terminal shows after receiving `written`: carriage return, line feed, cursor up, and erase line."""
+    rows: list[list[str]] = [[]]
+    row = col = 0
+    position = 0
+    while position < len(written):
+        sequence = CONTROL_SEQUENCE.match(written, position)
+        if sequence:
+            arguments, final = sequence.groups()
+            if final == "A":
+                row = max(0, row - int(arguments or 1))
+            elif final == "K" and arguments == "2":
+                rows[row] = []
+            position = sequence.end()
+            continue
+        char = written[position]
+        position += 1
+        if char == "\r":
+            col = 0
+        elif char == "\n":
+            row, col = row + 1, 0
+            while len(rows) <= row:
+                rows.append([])
+        else:
+            line = rows[row]
+            line.extend(" " * (col - len(line)))
+            line[col : col + 1] = [char]
+            col += 1
+    return ["".join(line).rstrip() for line in rows]
 
 
 @pytest.fixture
@@ -508,3 +543,62 @@ def test_live_close_without_any_event_leaves_the_screen_clean(screen: Screen) ->
     assert CURSOR_HIDE not in screen.raw.getvalue() or screen.raw.getvalue().rfind(
         CURSOR_SHOW
     ) > screen.raw.getvalue().rfind(CURSOR_HIDE)
+
+
+def test_live_close_with_a_suite_unfinished_leaves_no_bar_on_the_terminal(screen: Screen) -> None:
+    shown = live(screen)
+    feed(
+        shown,
+        events.SuiteStarted("alpha", 1),
+        events.TestsCounted("alpha", 10),
+        ended("alpha", "t1"),
+        ended("alpha", "t2"),
+        ended("alpha", "t3"),
+    )
+
+    shown.close()
+
+    shown_lines = terminal_after(screen.raw.getvalue())
+    assert not any("alpha" in line or "/10" in line for line in shown_lines), (
+        "no row of the cut-short suite remains"
+    )
+
+
+def test_live_close_with_a_suite_waiting_leaves_no_row_on_the_terminal(screen: Screen) -> None:
+    shown = live(screen)
+    feed(shown, events.SuiteWaiting("alpha"))
+
+    shown.close()
+
+    assert not any("waiting for a slot" in line for line in terminal_after(screen.raw.getvalue()))
+
+
+def test_live_close_with_a_suite_unfinished_keeps_the_text_printed_above_the_bars(
+    screen: Screen,
+) -> None:
+    shown = live(screen)
+    feed(
+        shown,
+        events.SuiteStarted("alpha", 1),
+        events.TestsCounted("alpha", 3),
+        ended("alpha", "test_it_breaks", "fail"),
+    )
+    shown.note("verify: interrupted")
+
+    shown.close()
+
+    shown_lines = terminal_after(screen.raw.getvalue())
+    assert "\u2717 alpha \u203a t/test_x.py \u203a test_it_breaks" in shown_lines
+    assert "verify: interrupted" in shown_lines
+    assert not any("0/3" in line or "1/3" in line for line in shown_lines)
+
+
+def test_live_close_after_every_suite_ended_keeps_the_finished_rows(
+    screen: Screen, one_suite_run: list[events.Event]
+) -> None:
+    shown = live(screen)
+    feed(shown, *one_suite_run)
+
+    shown.close()
+
+    assert any("alpha" in line and "2/2" in line for line in terminal_after(screen.raw.getvalue()))
