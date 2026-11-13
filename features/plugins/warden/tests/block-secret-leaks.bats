@@ -156,6 +156,37 @@ setup() {
   assert_denies "bash -c 'printenv | sort'"
 }
 
+@test "printenv handed to a launcher the resolver does not unwrap is denied" {
+  isolate_home
+  assert_denies 'timeout 5 printenv'
+  assert_denies 'docker exec c printenv'
+  assert_denies 'ssh host printenv'
+}
+
+@test "bare env handed to a launcher the resolver does not unwrap is denied" {
+  isolate_home
+  assert_denies 'timeout 5 env'
+  assert_denies 'ssh host env'
+  assert_denies 'ssh host env > /tmp/out'
+}
+
+@test "an echo of a secret inside a quoted remote command is denied" {
+  isolate_home
+  assert_denies "ssh host 'echo \$API_TOKEN'"
+}
+
+@test "a pattern given with -e to grep or rg stays silent for each dump word" {
+  isolate_home
+  assert_silent 'rg -n -e env -e printenv /x'
+  assert_silent 'grep --regexp=printenv /x'
+  assert_silent "grep -rn 'echo \$TOKEN' /x"
+}
+
+@test "a file named after the pattern of grep is still checked for a dump word" {
+  isolate_home
+  assert_denies 'grep foo printenv'
+}
+
 @test "an echo of a secret handed to another launcher is denied" {
   isolate_home
   assert_denies 'docker run --rm alpine echo "$API_TOKEN"'

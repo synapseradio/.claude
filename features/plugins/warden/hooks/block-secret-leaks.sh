@@ -7,15 +7,20 @@
 # environment variable whose name matches a secret-shaped pattern such as
 # *API_KEY*, *TOKEN*, *SECRET*, *PASSWORD*, *CREDENTIAL*, *PRIVATE_KEY*, etc.
 #
-# The decision reads the programs lib/command_words.sh resolves, so a word
-# inside a quoted argument or a search pattern names no program:
-#   - printenv, as a program;
-#   - bare env and bare set, as a program with no arguments (a redirect
-#     aside), behind any wrapper the resolver steps over;
-#   - an output command (OUTPUT_CMD) followed in the same program by a word
-#     that holds a reference to a secret-shaped variable. The output command
-#     may sit behind another launcher, as in `docker run img echo ...`, so any
-#     word of the program counts, a quoted word apart.
+# The decision reads the programs lib/command_words.sh resolves. Each program
+# line is judged by its words, wherever they stand in it, so that a launcher
+# the resolver does not unwrap, as in `timeout 5 printenv`, `docker exec c
+# printenv`, or `ssh host env`, hides nothing. One word is left out: the
+# pattern operand of grep and rg, which names what to search for and runs
+# nothing (lib/search_operands.sh). The judgments:
+#   - the word printenv;
+#   - env as the last word, a redirect aside; bare env behind a wrapper the
+#     resolver does step over is read from the parts of the command instead,
+#     since the resolver prints nothing for it;
+#   - bare set, as the program with no arguments, a redirect aside;
+#   - an output command (OUTPUT_CMD) followed by a word that holds a
+#     reference to a secret-shaped variable, looking inside a quoted word
+#     too, as in `ssh host 'echo ...'`.
 #
 # The resolver skips here-document bodies, which a shell fed on stdin runs,
 # so a command that opens a here-document is also read as raw text, line by
@@ -32,6 +37,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 # shellcheck source=lib/command_words.sh
 source "${SCRIPT_DIR}/lib/command_words.sh"
+# shellcheck source=lib/search_operands.sh
+source "${SCRIPT_DIR}/lib/search_operands.sh"
 
 readonly SECRET_WORD='(API_?KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE_?KEY|ACCESS_?KEY|AUTH_?TOKEN|SESSION_?TOKEN|BEARER)'
 
@@ -71,14 +78,19 @@ deny() {
 #   0 when they do, 1 otherwise.
 #######################################
 prints_secret() {
-  local seen=0 word
-  for word in "$@"; do
-    if ((seen)) && [[ "${word}" =~ ${SECRET_REFERENCE} ]]; then
-      return 0
-    fi
-    if [[ "${word##*/}" =~ ^${OUTPUT_CMD}$ ]]; then
-      seen=1
-    fi
+  local seen=0 argument word
+  local -a parts
+  for argument in "$@"; do
+    # A quoted word comes with its spaces as placeholders.
+    IFS=' ' read -r -a parts <<<"${argument//${CW_SPACE}/ }"
+    for word in ${parts[@]+"${parts[@]}"}; do
+      if ((seen)) && [[ "${word}" =~ ${SECRET_REFERENCE} ]]; then
+        return 0
+      fi
+      if [[ "${word##*/}" =~ ^${OUTPUT_CMD}$ ]]; then
+        seen=1
+      fi
+    done
   done
   return 1
 }
@@ -90,16 +102,34 @@ prints_secret() {
 #######################################
 check_program() {
   local -a words
+  local word last=''
   IFS=' ' read -r -a words <<<"$1"
   ((${#words[@]} > 0)) || return 0
+  case "${words[0]}" in
+  grep | rg | ripgrep)
+    [[ "${words[0]}" == ripgrep ]] && words[0]=rg
+    IFS=' ' read -r -a words <<<"$(search_without_pattern "${words[0]}" "${words[@]:1}")"
+    ;;
+  esac
 
   if prints_secret "${words[@]}"; then
     deny "Refused: command would print an env var matching a secret pattern (API_KEY/TOKEN/SECRET/...). If this is intentional, run it yourself."
   fi
 
   # printenv: its sole purpose is showing env.
-  if [[ "${words[0]}" == printenv ]]; then
-    deny "Refused: printenv would print env vars to stdout. If this is intentional, run it yourself."
+  for word in "${words[@]}"; do
+    if [[ "${word}" == printenv ]]; then
+      deny "Refused: printenv would print env vars to stdout. If this is intentional, run it yourself."
+    fi
+  done
+
+  # env ending the program dumps the environment, whatever launches it.
+  for word in "${words[@]}"; do
+    [[ "${word}" == '>'* ]] && break
+    last="${word}"
+  done
+  if [[ "${last}" == env ]]; then
+    deny "Refused: bare 'env' would dump every env var to stdout. If this is intentional, run it yourself."
   fi
 
   # `set` with no args dumps every shell variable.
