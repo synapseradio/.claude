@@ -4,9 +4,9 @@
 # git reset --soft run only where it rewrites nothing but unpushed commits on
 # a feature branch, and points everything else at wt step squash.
 #
-# Every case builds a scratch bare remote and a clone of it under
-# BATS_TEST_TMPDIR. The clone sits on a feature branch holding two commits no
-# remote has. The first group covers what passes; the groups after it cover
+# The file builds a scratch bare remote and a clone of it once, and each case
+# copies both under BATS_TEST_TMPDIR. The clone sits on a feature branch
+# holding two commits no remote has. The first group covers what passes; the groups after it cover
 # each condition that denies, the -C form, and the command positions the
 # guard reads (after a separator, in a sh -c string, behind env).
 
@@ -17,12 +17,21 @@
 
 BATS_TEST_TIMEOUT=10
 
+setup_file() {
+  export FIXTURE="${BATS_FILE_TMPDIR}/fixture"
+  load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  export HOME="${BATS_FILE_TMPDIR}/home"
+  mkdir -p "${HOME}"
+  isolate_git_config
+  build_fixture
+}
+
 setup() {
   HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-unsafe-soft-reset.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
   isolate_home
   isolate_git_config
-  make_repo
+  copy_fixture
 }
 
 #######################################
@@ -39,26 +48,40 @@ commit_file() {
 }
 
 #######################################
-# Build a bare remote holding main, a clone of it, and a feature branch with
-# two commits that no remote has.
+# Build, once for the file, a bare remote holding main, a clone of it, and a
+# feature branch with two commits that no remote has.
 # Globals:
-#   REMOTE, WORK, BATS_TEST_TMPDIR
+#   FIXTURE, WORK
 #######################################
-make_repo() {
-  local seed="${BATS_TEST_TMPDIR}/seed"
-  REMOTE="${BATS_TEST_TMPDIR}/remote.git"
-  WORK="${BATS_TEST_TMPDIR}/work"
-  git init -q --bare -b main "${REMOTE}"
+build_fixture() {
+  local seed="${FIXTURE}/seed" remote="${FIXTURE}/remote.git"
+  WORK="${FIXTURE}/work"
+  git init -q --bare -b main "${remote}"
   git init -q -b main "${seed}"
   printf 'base\n' >"${seed}/base.txt"
   git -C "${seed}" add -A
   git -C "${seed}" commit -q -m seed
-  git -C "${seed}" remote add origin "${REMOTE}"
+  git -C "${seed}" remote add origin "${remote}"
   git -C "${seed}" push -q origin main
-  git clone -q "${REMOTE}" "${WORK}"
+  git clone -q "${remote}" "${WORK}"
   git -C "${WORK}" checkout -q -b feature
   commit_file one
   commit_file two
+}
+
+#######################################
+# Give this case its own copy of the fixture's remote and clone, the clone
+# pointed at the copied remote. A case may push, add a remote, or move
+# origin/HEAD without touching another case.
+# Globals:
+#   FIXTURE, REMOTE, WORK, BATS_TEST_TMPDIR
+#######################################
+copy_fixture() {
+  REMOTE="${BATS_TEST_TMPDIR}/remote.git"
+  WORK="${BATS_TEST_TMPDIR}/work"
+  cp -R "${FIXTURE}/remote.git" "${REMOTE}"
+  cp -R "${FIXTURE}/work" "${WORK}"
+  git -C "${WORK}" remote set-url origin "${REMOTE}"
 }
 
 #######################################
