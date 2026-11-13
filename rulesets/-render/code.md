@@ -128,9 +128,8 @@ Keep in view the larger work your code joins, and write for a maintainer who rea
 
 Write the contracts first: simple interfaces, exchangeable pieces, one interface per module, deep modules. Keep each contract simple enough that a reader notices its concepts and requirements first. Write at the altitude and abstraction level the operation sits at. Keep abstractions composable wherever composing leaves each one's contract unchanged.
 
-### Tools
+### Toolchain
 
-Know your tools and lean on them for every job they do well: formatter, linter, type checker, language server, package manager, codemod.
 Before the first source file, set up the language's standard toolchain, extending what the repository has: manifest, one version pin every tool reads, package layout, formatter, linter, strict type checker, commit hook -> write each line to pass it.
 A repository's commit hook skips a formatter, safe autofix, or linter its toolchain offers ? add it, run on the staged files with the fixed files restaged.
 Import through the module system, with runtime load-path edits kept out; name each module so it imports by name and shadows nothing.

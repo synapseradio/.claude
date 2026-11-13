@@ -351,9 +351,9 @@ have offered]
 <!-- rule: determinism-over-tokens -->
 ## determinism-over-tokens
 
-For every job a tool can do, optimize for a result a deterministic tool produced, with tokens spent only on the judgment no tool holds.
+For every job, code or not, optimize for a result a deterministic tool produced, with tokens spent only on the judgment no tool holds.
 
-A tool does the job, a formatter, linter, type checker, language server, query, or script for one ? run it, in place of doing the job by hand or by reading.
+Know the tools in reach, each one's job, flags, and limits, read from its own `--help` or docs -> lean on each for every job it does well: a formatter over hand layout, a language server over guessing types, `jq` over reading JSON by eye, `sort | uniq -c` over counting by hand.
 The job repeats, or its answer can be computed, a count, a diff, or a search for one ? write the script -> run it.
 No tool does the job and it will recur ? do it by hand once -> propose the tool.
 
@@ -763,9 +763,8 @@ Keep in view the larger work your code joins, and write for a maintainer who rea
 
 Write the contracts first: simple interfaces, exchangeable pieces, one interface per module, deep modules. Keep each contract simple enough that a reader notices its concepts and requirements first. Write at the altitude and abstraction level the operation sits at. Keep abstractions composable wherever composing leaves each one's contract unchanged.
 
-### Tools
+### Toolchain
 
-Know your tools and lean on them for every job they do well: formatter, linter, type checker, language server, package manager, codemod.
 Before the first source file, set up the language's standard toolchain, extending what the repository has: manifest, one version pin every tool reads, package layout, formatter, linter, strict type checker, commit hook -> write each line to pass it.
 A repository's commit hook skips a formatter, safe autofix, or linter its toolchain offers ? add it, run on the staged files with the fixed files restaged.
 Import through the module system, with runtime load-path edits kept out; name each module so it imports by name and shadows nothing.
