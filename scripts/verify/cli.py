@@ -15,15 +15,27 @@ import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 
 import fmt
 from manifest import LANGS, Manifest, ManifestError, load
 from repo import GitError, Repo, child_env
-from report import Outcome, Report, counted, emit_json, say, warn
-from run import Finished, Runner, missing, run_dir
+from report import (
+    Outcome,
+    Report,
+    counted,
+    emit_json,
+    exit_policy,
+    say,
+    tally,
+    warn,
+    worst,
+)
+from run import Finished, Missing, Runner, missing, run_dir
 from scope import (
     Diff,
+    InScope,
     Nothing,
     Prepush,
     Scope,
@@ -36,7 +48,6 @@ from scope import (
 from slots import SlotPool, default_dir
 
 COMMANDS = ("test", "lint", "fmt", "verify", "list")
-NOUNS = {"lint": "lint job", "test": "suite"}
 
 
 class Exit(Exception):
@@ -57,8 +68,12 @@ def langs(value: str) -> list[str]:
     return names
 
 
+def is_positive_int(value: str) -> bool:
+    return value.isdigit() and int(value) >= 1
+
+
 def positive(value: str) -> int:
-    if not value.isdigit() or int(value) < 1:
+    if not is_positive_int(value):
         message = f"wanted a whole number of at least 1, got {value}"
         raise argparse.ArgumentTypeError(message)
     return int(value)
@@ -103,10 +118,14 @@ class Context:
     args: argparse.Namespace
     env: dict[str, str]
 
+    @cached_property
+    def inscope(self) -> InScope:
+        return resolve(self.repo, self.scope)
+
 
 def slot_pool() -> SlotPool:
     configured = os.environ.get("VERIFY_SLOTS", "")
-    if configured and (not configured.isdigit() or int(configured) < 1):
+    if configured and not is_positive_int(configured):
         raise Exit(
             2, f"verify: VERIFY_SLOTS must be a whole number of at least 1, got {configured}"
         )
@@ -137,6 +156,16 @@ def print_planned(rows: list[dict], notes: list[str]) -> None:
         say(f"note: {note}")
 
 
+def announce(nothing: Nothing, json: bool) -> None:
+    if not json:
+        (say if nothing.exit == 0 else warn)(f"verify: {nothing.message}")
+
+
+def exit_if_missing(absent: list[Missing]) -> None:
+    if absent:
+        raise Exit(3, "\n".join(item.message() for item in absent))
+
+
 def run_parts(ctx: Context, planned: dict[str, Selection | Nothing]) -> dict[str, Report]:
     """Run every selected task of every part in one batch; returns one report per part."""
     reports: dict[str, Report] = {}
@@ -144,23 +173,22 @@ def run_parts(ctx: Context, planned: dict[str, Selection | Nothing]) -> dict[str
     for part, selection in planned.items():
         if isinstance(selection, Nothing):
             reports[part] = Report(None, [*selection.notes, selection.message], exit=selection.exit)
-            if not ctx.args.json:
-                (say if selection.exit == 0 else warn)(f"verify: {selection.message}")
+            announce(selection, ctx.args.json)
         else:
             parts[part] = selection
     if not parts:
         return reports
     if ctx.args.list:
         for part, selection in parts.items():
-            reports[part] = Report(None, list(selection.notes), planned=planned_rows(selection))
+            rows = planned_rows(selection)
+            reports[part] = Report(None, list(selection.notes), planned=rows)
             if not ctx.args.json:
-                print_planned(reports[part].planned or [], reports[part].notes)
+                print_planned(rows, reports[part].notes)
         return reports
 
     tasks = [task for selection in parts.values() for task in selection.tasks]
     absent = missing(ctx.repo.root, [task.program for task in tasks], ctx.env)
-    if absent:
-        raise Exit(3, "\n".join(item.message() for item in absent))
+    exit_if_missing(absent)
 
     logs = run_dir(log_root(), ctx.repo.log_name(), os.getpid())
     owner = {task.name: part for part, selection in parts.items() for task in selection.tasks}
@@ -168,7 +196,7 @@ def run_parts(ctx: Context, planned: dict[str, Selection | Nothing]) -> dict[str
         reports[part] = Report(str(logs), list(selection.notes))
     if not ctx.args.json:
         sizes = [
-            counted(len(selection.tasks) + len(selection.skipped), NOUNS[part])
+            counted(len(selection.tasks) + len(selection.skipped), PARTS[part][1])
             for part, selection in parts.items()
         ]
         say(f"verify: {', '.join(sizes)}, logs in {logs}")
@@ -193,47 +221,37 @@ def run_parts(ctx: Context, planned: dict[str, Selection | Nothing]) -> dict[str
     runner = Runner(ctx.repo.root, ctx.env, slot_pool(), logs, ctx.args.jobs)
     runner.run_all(tasks, ctx.args.serial, done)
 
-    for part, report in reports.items():
-        if part not in parts:
-            continue
-        statuses = {outcome.status for outcome in report.outcomes}
-        if "fail" in statuses:
-            report.exit = 1
-        elif statuses == {"skip"}:
-            report.exit = 5
-            report.notes.append(f"no test matches {ctx.scope.describe()}")
+    for part in parts:
+        exit_policy(reports[part], ctx.scope.describe())
     if not ctx.args.json:
         outcomes = [outcome for part in parts for outcome in reports[part].outcomes]
-        say(Report(str(logs), [], outcomes).tally())
+        say(tally(outcomes))
         for part in parts:
             if reports[part].exit == 5:
                 warn(f"verify: {reports[part].notes[-1]}")
     return reports
 
 
+def reject_k(ctx: Context, command: str) -> None:
+    if ctx.scope.k is not None:
+        raise Exit(2, f"verify: {command} takes no -k; -k selects test cases by name")
+
+
 def plan_test(ctx: Context) -> Selection | Nothing:
-    return select_tests(ctx.repo, ctx.manifest, ctx.scope, resolve(ctx.repo, ctx.scope))
+    return select_tests(ctx.repo, ctx.manifest, ctx.scope, ctx.inscope)
 
 
 def plan_lint(ctx: Context) -> Selection | Nothing:
-    if ctx.scope.k is not None:
-        raise Exit(2, "verify: lint takes no -k; -k selects test cases by name")
-    return select_lints(ctx.repo, ctx.manifest, ctx.scope, resolve(ctx.repo, ctx.scope))
+    reject_k(ctx, "lint")
+    return select_lints(ctx.repo, ctx.manifest, ctx.scope, ctx.inscope)
 
 
-@dataclass(frozen=True)
-class Formatted:
-    exit: int
-    command: list[str] | None
-
-    def as_json(self) -> dict:
-        return {"exit": self.exit, "command": self.command}
+PARTS = {"lint": (plan_lint, "lint job"), "test": (plan_test, "suite")}
 
 
-def run_fmt(ctx: Context) -> Formatted:
+def run_fmt(ctx: Context) -> tuple[int, list[str] | None]:
     """Run treefmt over the scope: exit 0, 1 for a treefmt failure, or 5 for an empty explicit scope."""
-    if ctx.scope.k is not None:
-        raise Exit(2, "verify: fmt takes no -k; -k selects test cases by name")
+    reject_k(ctx, "fmt")
     try:
         formatters = fmt.formatters(ctx.repo.root / "treefmt.toml")
     except ManifestError as error:
@@ -241,20 +259,18 @@ def run_fmt(ctx: Context) -> Formatted:
     names = [f.name for f in formatters if any(f.covers(lang) for lang in ctx.scope.langs)]
     if ctx.scope.langs and not names:
         warn(f"verify: no formatter matches {ctx.scope.describe()}")
-        return Formatted(5, None)
-    files = select_format(ctx.repo, ctx.scope, resolve(ctx.repo, ctx.scope))
+        return 5, None
+    files = select_format(ctx.repo, ctx.scope, ctx.inscope)
     if isinstance(files, Nothing):
-        if not ctx.args.json:
-            (say if files.exit == 0 else warn)(f"verify: {files.message}")
-        return Formatted(files.exit, None)
+        announce(files, ctx.args.json)
+        return files.exit, None
     command = fmt.command(files, names)
     if ctx.args.list:
         if not ctx.args.json:
             say(f"fmt (treefmt): {shlex.join(command)}")
-        return Formatted(0, command)
+        return 0, command
     absent = missing(ctx.repo.root, ["treefmt", *(f.command for f in formatters)], ctx.env)
-    if absent:
-        raise Exit(3, "\n".join(item.message() for item in absent))
+    exit_if_missing(absent)
     result = subprocess.run(
         command,
         cwd=ctx.repo.root,
@@ -263,27 +279,18 @@ def run_fmt(ctx: Context) -> Formatted:
         stdout=sys.stderr if ctx.args.json else None,
         check=False,
     )
-    return Formatted(0 if result.returncode == 0 else 1, command)
-
-
-def worst(codes: list[int]) -> int:
-    """A failure outranks a pass; 5 stands only where every part selected nothing."""
-    if 1 in codes:
-        return 1
-    if codes and all(code == 5 for code in codes):
-        return 5
-    return 0
+    return (0 if result.returncode == 0 else 1), command
 
 
 def verify(ctx: Context) -> int:
-    formatted = run_fmt(ctx)
-    planned = {"lint": plan_lint(ctx), "test": plan_test(ctx)}
+    fmt_exit, fmt_command = run_fmt(ctx)
+    planned = {part: plan(ctx) for part, (plan, _) in PARTS.items()}
     reports = run_parts(ctx, planned)
-    code = worst([formatted.exit, reports["lint"].exit, reports["test"].exit])
+    code = worst([fmt_exit, reports["lint"].exit, reports["test"].exit])
     if ctx.args.json:
         emit_json(
             {
-                "fmt": formatted.as_json(),
+                "fmt": {"exit": fmt_exit, "command": fmt_command},
                 "lint": reports["lint"].as_json(),
                 "test": reports["test"].as_json(),
                 "exit": code,
@@ -293,8 +300,7 @@ def verify(ctx: Context) -> int:
 
 
 def single(ctx: Context, part: str) -> int:
-    selection = plan_test(ctx) if part == "test" else plan_lint(ctx)
-    report = run_parts(ctx, {part: selection})[part]
+    report = run_parts(ctx, {part: PARTS[part][0](ctx)})[part]
     if ctx.args.json:
         emit_json(report.as_json())
     return report.exit
@@ -328,10 +334,10 @@ def dispatch(argv: list[str]) -> int:
     try:
         match command:
             case "fmt":
-                formatted = run_fmt(ctx)
+                fmt_exit, fmt_command = run_fmt(ctx)
                 if ctx.args.json:
-                    emit_json(formatted.as_json())
-                return formatted.exit
+                    emit_json({"exit": fmt_exit, "command": fmt_command})
+                return fmt_exit
             case "verify":
                 return verify(ctx)
             case _:

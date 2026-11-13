@@ -190,19 +190,10 @@ class Report:
     planned: list[dict] | None = None
 
     def summary(self) -> dict[str, int]:
-        statuses = [outcome.status for outcome in self.outcomes]
-        return {
-            "passed": statuses.count("pass"),
-            "failed": statuses.count("fail"),
-            "skipped": statuses.count("skip"),
-        }
+        return summary_of(self.outcomes)
 
     def tally(self) -> str:
-        summary = self.summary()
-        return (
-            f"verify: {summary['passed']} passed, {summary['failed']} failed, "
-            f"{summary['skipped']} skipped"
-        )
+        return tally(self.outcomes)
 
     def as_json(self) -> dict:
         if self.planned is not None:
@@ -214,6 +205,23 @@ class Report:
             "exit": self.exit,
             "notes": self.notes,
         }
+
+
+def summary_of(outcomes: list[Outcome]) -> dict[str, int]:
+    statuses = [outcome.status for outcome in outcomes]
+    return {
+        "passed": statuses.count("pass"),
+        "failed": statuses.count("fail"),
+        "skipped": statuses.count("skip"),
+    }
+
+
+def tally(outcomes: list[Outcome]) -> str:
+    summary = summary_of(outcomes)
+    return (
+        f"verify: {summary['passed']} passed, {summary['failed']} failed, "
+        f"{summary['skipped']} skipped"
+    )
 
 
 def counted(count: int, noun: str) -> str:
@@ -230,3 +238,21 @@ def warn(line: str) -> None:
 
 def emit_json(value: dict) -> None:
     print(json.dumps(value, indent=2))
+
+
+def worst(codes: list[int]) -> int:
+    """A failure outranks a pass; 5 stands only where every part selected nothing."""
+    if 1 in codes:
+        return 1
+    if codes and all(code == 5 for code in codes):
+        return 5
+    return 0
+
+
+def exit_policy(report: Report, describe: str) -> None:
+    statuses = {outcome.status for outcome in report.outcomes}
+    if "fail" in statuses:
+        report.exit = 1
+    elif statuses == {"skip"}:
+        report.exit = 5
+        report.notes.append(f"no test matches {describe}")
