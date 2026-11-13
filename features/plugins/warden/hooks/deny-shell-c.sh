@@ -30,17 +30,24 @@ source "${SCRIPT_DIR}/lib/command_words.sh"
 readonly DENIAL_REASON="A shell run with -c executes a string that never stands as a command of its own. Write the step as a script file in the scratchpad and run that file, with the shell under test where the point is how that shell behaves (zsh <file>, /bin/bash <file>). A CLI whose credentials load only in an interactive shell runs as zsh -ic '<command>', which prompts."
 readonly ASK_REASON="zsh -ic runs a string in an interactive shell, which a CLI whose credentials load only there needs. Approve only that use."
 
+# What shell_c_decision decided about the last program line: "deny", "ask", or
+# empty.
+SHELL_C_DECISION=''
+
 #######################################
 # Classify a program line's use of a shell with -c.
+# Globals:
+#   SHELL_C_DECISION
 # Arguments:
 #   The program's name, then its arguments.
 # Outputs:
-#   "deny" for a shell run with -c, "ask" for zsh run with -i and -c,
-#   nothing otherwise.
+#   Nothing; SHELL_C_DECISION is "deny" for a shell run with -c, "ask" for
+#   zsh run with -i and -c, empty otherwise.
 #######################################
 shell_c_decision() {
   local program="$1" word skip=0 interactive=0 runs_string=0
   shift
+  SHELL_C_DECISION=''
 
   case "${program}" in
   bash | sh | zsh | dash | ksh) ;;
@@ -66,9 +73,9 @@ shell_c_decision() {
 
   ((runs_string)) || return 0
   if [[ "${program}" == zsh ]] && ((interactive)); then
-    echo ask
+    SHELL_C_DECISION=ask
   else
-    echo deny
+    SHELL_C_DECISION=deny
   fi
 }
 
@@ -88,7 +95,7 @@ decide() {
 }
 
 main() {
-  local command line decision asked=0
+  local command line asked=0
   local -a words
   command="$(jq -r '.tool_input.command // ""')"
 
@@ -98,9 +105,9 @@ main() {
 
   while IFS= read -r line; do
     IFS=' ' read -r -a words <<<"${line}"
-    decision="$(shell_c_decision "${words[@]}")"
-    [[ "${decision}" == deny ]] && decide deny
-    [[ "${decision}" == ask ]] && asked=1
+    shell_c_decision "${words[@]}"
+    [[ "${SHELL_C_DECISION}" == deny ]] && decide deny
+    [[ "${SHELL_C_DECISION}" == ask ]] && asked=1
   done < <(command_words::resolve "${command}")
 
   if ((asked)); then
