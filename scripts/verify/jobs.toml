@@ -1,0 +1,183 @@
+# The job manifest scripts/verify/cli.py reads: every test suite and lint
+# check, the languages it covers, and the source globs that select it.
+# Globs follow pathlib's PurePath.full_match: `*` stays inside one directory
+# and `**` spans any depth.
+# https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match
+
+[[job]]
+name = "rulesets"
+kind = "pytest"
+tests = ["features/plugins/rulesets/tests"]
+sources = ["features/plugins/rulesets/**", "pyproject.toml", "uv.lock"]
+langs = ["py"]
+
+[[job]]
+name = "epistemic-marks"
+kind = "pytest"
+tests = ["features/plugins/epistemic-marks/tests"]
+sources = ["features/plugins/epistemic-marks/**", "pyproject.toml", "uv.lock"]
+langs = ["py"]
+
+[[job]]
+name = "scripts"
+kind = "pytest"
+tests = ["scripts/hooks", "scripts/tests"]
+sources = [
+  "scripts/**",
+  ".claude-plugin/marketplace.json",
+  "settings.base.json",
+  "features/*/*/.claude-plugin/plugin.json",
+  "pyproject.toml",
+  "uv.lock",
+]
+langs = ["py"]
+
+[[job]]
+name = "warden"
+kind = "bats"
+tests = ["features/plugins/warden/tests"]
+sources = ["features/plugins/warden/**"]
+langs = ["bats", "sh"]
+
+[[job]]
+name = "harness-config"
+kind = "bats"
+tests = ["features/plugins/harness-config/tests"]
+sources = ["features/plugins/harness-config/**"]
+langs = ["bats", "sh"]
+
+[[job]]
+name = "context-gauge"
+kind = "mod"
+tests = ["features/mods/context-gauge"]
+sources = ["features/mods/context-gauge/**"]
+langs = ["ts"]
+
+[[job]]
+name = "scripts-bats"
+kind = "bats"
+tests = ["scripts/setup/tests", "scripts/render/tests"]
+sources = [
+  "scripts/setup.sh",
+  "scripts/setup/**",
+  "scripts/render.sh",
+  "scripts/render/**",
+  "scripts/lib/**",
+  "scripts/tests/test_helper.bash",
+]
+langs = ["bats", "sh"]
+
+[[job]]
+name = "biome"
+kind = "lint"
+mode = "files"
+command = [
+  "node_modules/.bin/biome",
+  "check",
+  "--no-errors-on-unmatched",
+  "--files-ignore-unknown=true",
+]
+sources = [
+  "**/*.js",
+  "**/*.jsx",
+  "**/*.mjs",
+  "**/*.cjs",
+  "**/*.ts",
+  "**/*.tsx",
+  "**/*.mts",
+  "**/*.cts",
+  "**/*.json",
+  "**/*.jsonc",
+]
+langs = ["ts", "json"]
+
+[[job]]
+name = "markdownlint"
+kind = "lint"
+mode = "files"
+command = ["node_modules/.bin/markdownlint-cli2"]
+sources = ["**/*.md"]
+langs = ["md"]
+
+[[job]]
+name = "ruff"
+kind = "lint"
+mode = "files"
+command = ["uv", "run", "--frozen", "ruff", "check"]
+sources = ["**/*.py"]
+langs = ["py"]
+
+[[job]]
+name = "yamllint"
+kind = "lint"
+mode = "files"
+command = ["uv", "run", "--frozen", "yamllint", "--strict"]
+sources = ["**/*.yaml", "**/*.yml"]
+langs = ["yaml"]
+
+[[job]]
+name = "taplo"
+kind = "lint"
+mode = "files"
+command = ["taplo", "check"]
+sources = ["**/*.toml"]
+langs = ["toml"]
+
+[[job]]
+name = "shellcheck"
+kind = "lint"
+mode = "files"
+command = ["shellcheck"]
+sources = ["**/*.sh", "**/*.bash", "**/*.bats"]
+langs = ["sh", "bats"]
+
+# tsc refuses file arguments beside a tsconfig.json, so it checks the whole
+# project.
+# https://github.com/microsoft/TypeScript/blob/main/tsc/internal/execute/tsc.go
+[[job]]
+name = "tsc-context-gauge"
+kind = "lint"
+mode = "once"
+command = ["node_modules/.bin/tsc", "-p", "features/mods/context-gauge"]
+sources = [
+  "features/mods/context-gauge/**/*.ts",
+  "features/mods/context-gauge/**/*.tsx",
+  "features/mods/context-gauge/**/*.mts",
+  "features/mods/context-gauge/**/*.cts",
+]
+langs = ["ts"]
+
+# The engine's own static check of a plugin: everything it would refuse at
+# load fails the check.
+# https://code.claude.com/docs/en/plugins-reference
+[[job]]
+name = "plugin-validate"
+kind = "lint"
+mode = "dirs"
+marker = ".claude-plugin/plugin.json"
+command = ["claude", "plugin", "validate"]
+sources = ["features/**"]
+langs = ["json"]
+
+[[job]]
+name = "marketplace-validate"
+kind = "lint"
+mode = "once"
+command = ["claude", "plugin", "validate", "."]
+sources = [".claude-plugin/marketplace.json"]
+langs = ["json"]
+
+[[job]]
+name = "rulesets-check"
+kind = "lint"
+mode = "once"
+command = [
+  "bash",
+  "features/plugins/rulesets/hooks/with-python.sh",
+  "features/plugins/rulesets/lib/rulesets/cli.py",
+  "check",
+  "--root",
+  "rulesets",
+]
+sources = ["rulesets/**", "features/plugins/rulesets/**"]
+langs = ["md", "yaml", "py"]
