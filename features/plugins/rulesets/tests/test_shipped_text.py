@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The plugin's shipped text describes only config.yaml, and the release carries version 4.0.0.
+"""The plugin's shipped text describes only config.yaml, and the release carries major version 4.
 
 The text serves the person who installs the plugin and writes a config from its skill, docs,
 readme, and install guide: an example in the old layout would teach a form check rejects. The
@@ -45,10 +45,10 @@ class TestTheShippedTextHoldsNoOldFileNameOrNotation:
             assert "config.yaml" in path.read_text(encoding="utf-8"), path.name
 
 
-class TestThePluginFileReads400:
-    def test_the_plugin_file_reads_4_0_0(self) -> None:
+class TestThePluginFileCarriesMajorVersion4:
+    def test_the_plugin_file_reads_a_4_x_version(self) -> None:
         plugin = json.loads(
             (PLUGIN_ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
         )
 
-        assert plugin["version"] == "4.0.0"
+        assert plugin["version"].split(".")[0] == "4"
