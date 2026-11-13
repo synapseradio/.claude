@@ -59,7 +59,7 @@
 		{
 			"name": "context-gauge",
 			"source": "./features/mods/context-gauge",
-			"version": "0.5.0",
+			"version": "0.6.1",
 			"description": "A colored, multi-layer context-usage gauge under the prompt"
 		}
 	]
