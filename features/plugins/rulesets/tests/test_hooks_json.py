@@ -16,7 +16,16 @@ import json
 import shlex
 
 import pytest
-from delivery_world import DELIVER, HOOKS, HOOKS_JSON, OPUS, HookResult, deliver, select_commands
+from delivery_world import (
+    DELIVER,
+    HOOKS,
+    HOOKS_JSON,
+    OPUS,
+    HookResult,
+    deliver,
+    scratch_environment,
+    select_commands,
+)
 
 PLUGIN_ROOT_VARIABLE = "${CLAUDE_PLUGIN_ROOT}"
 LAUNCHER_WORD = f"{PLUGIN_ROOT_VARIABLE}/hooks/with-python.sh"
@@ -66,12 +75,7 @@ def split_command(command: str) -> tuple[bool, str, list[str]]:
 
 @pytest.fixture
 def environ(tmp_path) -> dict[str, str]:
-    return {
-        "HOME": str(tmp_path / "home"),
-        "XDG_CACHE_HOME": str(tmp_path / "cache"),
-        "GIT_CONFIG_GLOBAL": str(tmp_path / "gitconfig"),
-        "CLAUDE_CONFIG_DIR": str(tmp_path / "config"),
-    }
+    return scratch_environment(tmp_path)
 
 
 def parses_under_deliver(arguments: list[str], environ: dict[str, str]) -> HookResult:

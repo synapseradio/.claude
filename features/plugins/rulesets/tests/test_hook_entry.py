@@ -11,23 +11,12 @@ Run with `.venv/bin/python -m pytest features/plugins/rulesets/tests/test_hook_e
 import json
 import pathlib
 import shlex
-import sys
 
 import pytest
+from delivery_world import HOOKS, OPUS, core_rules_config, scratch_environment
+from rulesets.hook_entry import HookResult, deliver, record_load, record_spawn
+from rulesets.locations import Locations
 
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-HOOKS = PLUGIN_ROOT / "hooks"
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets.hook_entry import (  # noqa: E402  (path must be set before this import)
-    HookResult,
-    deliver,
-    record_load,
-    record_spawn,
-)
-from rulesets.locations import Locations  # noqa: E402
-
-OPUS = "claude-opus-5-5"
 RULE = "Hold every rule as mandatory: café, naïve, 日本語.\n"
 CONTEXT = json.dumps(f"<!-- rule: core-rules -->\n\n{RULE}")[1:-1]
 SESSION_START = {
@@ -41,23 +30,12 @@ SESSION_START = {
 @pytest.fixture
 def config(tmp_path) -> pathlib.Path:
     """A configuration directory whose pool gives every context one rule."""
-    directory = tmp_path / "config"
-    (directory / "rulesets" / "rules").mkdir(parents=True)
-    (directory / "rulesets" / "rules" / "core-rules.md").write_text(RULE, encoding="utf-8")
-    (directory / "rulesets" / "config.yaml").write_text(
-        "models: opus haiku\ndefaults: core-rules\n", encoding="utf-8"
-    )
-    return directory
+    return core_rules_config(tmp_path, RULE)
 
 
 @pytest.fixture
 def environ(tmp_path, config) -> dict[str, str]:
-    return {
-        "HOME": str(tmp_path / "home"),
-        "XDG_CACHE_HOME": str(tmp_path / "cache"),
-        "GIT_CONFIG_GLOBAL": str(tmp_path / "gitconfig"),
-        "CLAUDE_CONFIG_DIR": str(config),
-    }
+    return scratch_environment(tmp_path)
 
 
 def payload(fields: dict) -> bytes:

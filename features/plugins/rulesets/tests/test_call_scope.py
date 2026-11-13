@@ -11,19 +11,14 @@ Run with `.venv/bin/python -m pytest features/plugins/rulesets/tests/test_call_s
 
 import json
 import pathlib
-import sys
 import time
 
 import pytest
-
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-DELIVER = str(PLUGIN_ROOT / "hooks" / "deliver.py")
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets import ordering  # noqa: E402  (path must be set before this import)
-from rulesets.cli import main  # noqa: E402
-from rulesets.documents import home_relative  # noqa: E402
-from rulesets.hook_entry import deliver  # noqa: E402
+from delivery_world import DELIVER, core_rules_config, scratch_environment
+from rulesets import ordering
+from rulesets.cli import main
+from rulesets.documents import home_relative
+from rulesets.hook_entry import deliver
 
 SESSION_START = json.dumps(
     {"session_id": "s1", "source": "startup", "model": "claude-opus-5-5"}
@@ -32,27 +27,17 @@ SESSION_START = json.dumps(
 
 @pytest.fixture
 def environ(tmp_path) -> dict[str, str]:
-    config = tmp_path / "config"
-    (config / "rulesets" / "rules").mkdir(parents=True)
-    (config / "rulesets" / "rules" / "core-rules.md").write_text("Rule text.\n", encoding="utf-8")
-    (config / "rulesets" / "config.yaml").write_text(
-        "models: opus haiku\ndefaults: core-rules\n", encoding="utf-8"
-    )
-    return {
-        "HOME": str(tmp_path / "home"),
-        "XDG_CACHE_HOME": str(tmp_path / "cache"),
-        "GIT_CONFIG_GLOBAL": str(tmp_path / "gitconfig"),
-        "CLAUDE_CONFIG_DIR": str(config),
-    }
+    core_rules_config(tmp_path, "Rule text.\n")
+    return scratch_environment(tmp_path)
 
 
 class TestEachDeliveryCallOwnsItsPartLocks:
     def test_a_later_part_goes_ahead_once_the_part_before_it_is_released(self, environ) -> None:
-        first = deliver([DELIVER, "--part", "1"], SESSION_START, environ)
+        first = deliver([str(DELIVER), "--part", "1"], SESSION_START, environ)
         first.release()
 
         start = time.monotonic()
-        second = deliver([DELIVER, "--part", "2"], SESSION_START, environ)
+        second = deliver([str(DELIVER), "--part", "2"], SESSION_START, environ)
         elapsed = time.monotonic() - start
         second.release()
 

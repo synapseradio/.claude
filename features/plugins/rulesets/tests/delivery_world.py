@@ -43,6 +43,25 @@ DECLARED = "models: opus haiku\n"
 # Variables the engine reads, which the developer's own shell may set.
 _ENGINE_PREFIXES = ("ANTHROPIC_", "CLAUDE_CODE_", "CLAUDE_CONTEXT_", "RULESETS_")
 
+
+def scratch_environment(scratch: pathlib.Path) -> dict[str, str]:
+    """The variables that point a hook at a scratch directory's home, cache, git config, and `config` directory."""
+    return {
+        "HOME": str(scratch / "home"),
+        "XDG_CACHE_HOME": str(scratch / "cache"),
+        "GIT_CONFIG_GLOBAL": str(scratch / "gitconfig"),
+        "CLAUDE_CONFIG_DIR": str(scratch / "config"),
+    }
+
+
+def core_rules_config(scratch: pathlib.Path, rule_text: str) -> pathlib.Path:
+    """The `config` directory under `scratch`, its pool giving every context one rule, `core-rules`."""
+    world = World(scratch)
+    world.rule("core-rules", rule_text)
+    world.write_config(DECLARED + "defaults: core-rules\n")
+    return world.config
+
+
 type HookEntry = Callable[[Sequence[str], bytes, Mapping[str, str]], HookResult]
 
 _RECORD_HOOKS: dict[str, HookEntry] = {
@@ -275,13 +294,9 @@ class World:
 
     def _environ(self) -> dict[str, str]:
         kept = {k: v for k, v in os.environ.items() if not k.startswith(_ENGINE_PREFIXES)}
-        scratch = self.config.parent
         return {
             **kept,
-            "HOME": str(scratch / "home"),
-            "XDG_CACHE_HOME": str(scratch / "cache"),
-            "GIT_CONFIG_GLOBAL": str(scratch / "gitconfig"),
-            "CLAUDE_CONFIG_DIR": str(self.config),
+            **scratch_environment(self.config.parent),
             "CLAUDE_PLUGIN_ROOT": str(PLUGIN_ROOT),
             **self.environment,
         }
@@ -416,7 +431,7 @@ class World:
         )
 
     def run_hook_bytes(
-        self, event: str, last_argument: str, stdin: bytes, matched: str = ""
+        self, last_argument: str, stdin: bytes
     ) -> subprocess.CompletedProcess[bytes]:
         """One hook entry, named by its command's last argument, fed raw bytes on stdin.
 

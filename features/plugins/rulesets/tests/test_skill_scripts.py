@@ -11,7 +11,7 @@ import subprocess
 from collections.abc import Callable
 from unittest import mock
 
-from delivery_world import PLUGIN_ROOT, World, call_main, run_cli
+from delivery_world import PLUGIN_ROOT, World, call_main, run_cli, scratch_environment
 
 SCRIPTS = PLUGIN_ROOT / "skills" / "rulesets" / "scripts"
 
@@ -43,28 +43,18 @@ flag strict:
 """
 
 
-def scratch_environment(world: World) -> dict[str, str]:
-    scratch = world.config.parent
-    return {
-        "HOME": str(scratch / "home"),
-        "XDG_CACHE_HOME": str(scratch / "cache"),
-        "GIT_CONFIG_GLOBAL": str(scratch / "gitconfig"),
-        "CLAUDE_CONFIG_DIR": str(world.config),
-    }
-
-
 def run(world: World, script: str, *arguments: object) -> subprocess.CompletedProcess[str]:
     """One skill script's `main`, under the world's configuration directory.
 
     The scripts find the configuration directory in `os.environ`, so the call sets the world's
     there and restores the process's own when it returns.
     """
-    with mock.patch.dict(os.environ, scratch_environment(world)):
+    with mock.patch.dict(os.environ, scratch_environment(world.config.parent)):
         return call_main(MAINS[script], [str(argument) for argument in arguments])
 
 
 def render(world: World, root: pathlib.Path) -> None:
-    done = run_cli(["render", "--root", str(root)], scratch_environment(world))
+    done = run_cli(["render", "--root", str(root)], scratch_environment(world.config.parent))
     assert done.returncode == 0, done.stderr
 
 
@@ -205,7 +195,7 @@ class TestScaffold:
         fresh = tmp_path / "fresh"
 
         made = run(world, "scaffold.py", "--root", fresh)
-        checked = run_cli(["check", "--root", str(fresh)], scratch_environment(world))
+        checked = run_cli(["check", "--root", str(fresh)], scratch_environment(world.config.parent))
 
         assert made.returncode == 0, made.stdout + made.stderr
         assert (fresh / "config.yaml").is_file()

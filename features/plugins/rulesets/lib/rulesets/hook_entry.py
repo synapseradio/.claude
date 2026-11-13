@@ -1,28 +1,25 @@
 """What each hook script does, as a function of the argv, stdin, and environment its process receives.
 
-A script in `hooks/` calls the function here that bears its name with its own `sys.argv`, the bytes
-of its stdin, and `os.environ`, then writes the result's stderr and stdout and exits with its
-code. No function here reads `sys.argv`, `sys.stdin`, or `os.environ`, and none writes to
-`sys.stdout` or `sys.stderr`.
+A script in `hooks/` passes the function here that bears its name to `script_process.run_script`,
+which calls it with the process's `sys.argv`, the bytes of its stdin, and `os.environ`, writes the
+result's stderr and stdout, and returns its code. No function here reads `sys.argv`, `sys.stdin`,
+or `os.environ`, and none writes to `sys.stdout` or `sys.stderr`. The two recording hooks live in
+`record_entry`, which the record scripts import without the delivery stack.
 """
 
 from __future__ import annotations
 
 import argparse
 import contextlib
-import dataclasses
 import io
 import json
 import os
 import pathlib
 import sys
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import NoReturn, TextIO
 
-from rulesets import ordering, spawn_log
-from rulesets.audit import log
-from rulesets.audit.json_fields import UnreadableRecord
-from rulesets.audit.load_record import LoadRecord
+from rulesets import ordering
 from rulesets.delivery.failure import run_guarded
 from rulesets.delivery.first_part import deliver_first
 from rulesets.delivery.hook_output import PartOutput, hook_output
@@ -43,33 +40,16 @@ from rulesets.delivery.rerun import RERUN_FLAG
 from rulesets.delivery.switch import deliver_switch
 from rulesets.delivery.unreadable import report_unreadable
 from rulesets.locations import Locations
+from rulesets.record_entry import HookResult, record_load, record_spawn
 from rulesets.session.lifecycle import on_session_end, on_session_start
+
+__all__ = ["HookResult", "deliver", "record_load", "record_spawn"]
 
 DELIVER_DESCRIPTION = """One part of one delivery: `deliver.py --part K` reads a hook payload on stdin and prints the hook output.
 
 `deliver.py --part 1 --rerun` runs the first part apart from any delivery, as a failure notice's command does.
 `deliver.py --end` reads a session-end payload and ends the session's state. Every run exits 0.
 """
-
-
-def _hold_nothing() -> None:
-    return None
-
-
-@dataclasses.dataclass(frozen=True)
-class HookResult:
-    """What one hook run exits with and writes, as text its process encodes in UTF-8.
-
-    `release` lets go of the part locks the run took, as the run's process exiting does, and
-    the next part of the same delivery waits until then. Two results compare without it.
-    """
-
-    exit_code: int
-    stdout: str
-    stderr: str
-    release: Callable[[], None] = dataclasses.field(
-        default=_hold_nothing, compare=False, repr=False
-    )
 
 
 def deliver(argv: Sequence[str], stdin: bytes, environ: Mapping[str, str]) -> HookResult:
@@ -122,32 +102,8 @@ def deliver(argv: Sequence[str], stdin: bytes, environ: Mapping[str, str]) -> Ho
     return HookResult(0, stdout.getvalue(), stderr.getvalue(), locks.release)
 
 
-def record_load(argv: Sequence[str], stdin: bytes, environ: Mapping[str, str]) -> HookResult:
-    """`record-load.py`: record each instruction file the harness loads; print nothing and exit 0."""
-    with contextlib.suppress(Exception):
-        _append_load(json.loads(_stdin_text(stdin)), Locations.from_environment(environ))
-    return HookResult(0, "", "")
-
-
-def record_spawn(argv: Sequence[str], stdin: bytes, environ: Mapping[str, str]) -> HookResult:
-    """`record-spawn.py`: record one `Agent` spawn and the model its caller names, if any; print nothing and exit 0."""
-    with contextlib.suppress(Exception):
-        _append_spawn(json.loads(_stdin_text(stdin)), Locations.from_environment(environ))
-    return HookResult(0, "", "")
-
-
 def _result(exit_code: int, stdout: io.StringIO, stderr: io.StringIO) -> HookResult:
     return HookResult(exit_code, stdout.getvalue(), stderr.getvalue())
-
-
-def _stdin_text(stdin: bytes) -> str:
-    r"""`stdin` as `sys.stdin.read()` returns it under the hooks' interpreter.
-
-    Python 3.15 starts in UTF-8 mode, where stdin decodes as UTF-8 with `surrogateescape` and,
-    in text mode, translates every line ending to `\n`:
-    https://docs.python.org/3.15/library/os.html#utf8-mode
-    """
-    return io.TextIOWrapper(io.BytesIO(stdin), encoding="utf-8", errors="surrogateescape").read()
 
 
 class _ParserExit(Exception):
@@ -237,38 +193,3 @@ def _first_part(
             if replayed is not None:
                 return replayed
             return deliver_first(request, locations, environ, slot, generation)
-
-
-def _append_load(payload: object, locations: Locations) -> None:
-    """Append the load to its session's log; skip a payload that names no file, reason, or session."""
-    try:
-        loaded = LoadRecord.from_payload(payload)
-    except UnreadableRecord:
-        return
-    log.append(log.session_dir(locations, loaded.session_id) / log.LOADS_FILE, loaded.to_json())
-
-
-def _append_spawn(payload: object, locations: Locations) -> None:
-    """Append one record per spawn, joined on the prompt and the agent type.
-
-    A spawn naming no model is recorded with no model, so it keeps its own place among the
-    spawns a delegate start claims in order.
-    """
-    if not isinstance(payload, dict):
-        return
-    tool_input = payload.get("tool_input")
-    session_id = payload.get("session_id")
-    if not isinstance(tool_input, dict) or not isinstance(session_id, str) or not session_id:
-        return
-    model = tool_input.get("model")
-    spawn_log.append_spawn(
-        session_id,
-        _text(payload.get("prompt_id")),
-        _text(tool_input.get("subagent_type")),
-        None if model == "" else model,
-        locations.state,
-    )
-
-
-def _text(value: object) -> str | None:
-    return value if isinstance(value, str) and value else None

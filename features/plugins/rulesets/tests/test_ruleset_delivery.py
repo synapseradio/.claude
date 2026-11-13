@@ -790,20 +790,11 @@ NOT_UTF_8 = b'{"session_id": "s1", "source": "\xff\xfe"}'
 
 class TestEveryHookExitsZeroOnAPayloadThatIsNotUtf8:
     @pytest.mark.parametrize(
-        ("event", "last_argument"),
-        [
-            ("SessionStart", "--part 1"),
-            ("SessionStart", "--part 2"),
-            ("SubagentStart", "--part 1"),
-            ("PostModelSwitch", "--part 1"),
-            ("SessionEnd", "--end"),
-            ("PreToolUse", 'record-spawn.py"'),
-            ("InstructionsLoaded", 'record-load.py"'),
-        ],
+        "last_argument",
+        ["--part 1", "--part 2", "--end", 'record-spawn.py"', 'record-load.py"'],
     )
-    def test_the_hook_exits_zero_and_prints_nothing(self, world, event, last_argument) -> None:
-        matched = "Agent" if event == "PreToolUse" else "session_start"
-        result = world.run_hook_bytes(event, last_argument, NOT_UTF_8, matched)
+    def test_the_hook_exits_zero_and_prints_nothing(self, world, last_argument) -> None:
+        result = world.run_hook_bytes(last_argument, NOT_UTF_8)
 
         assert (result.returncode, result.stdout) == (0, b"")
 
@@ -846,7 +837,7 @@ class TestAnUnreadablePayloadLeavesATrace:
     def test_a_payload_that_is_not_json_prints_the_reason_to_stderr_and_nothing_else(
         self, world
     ) -> None:
-        result = world.run_hook_bytes("SessionStart", "--part 1", b"{not json")
+        result = world.run_hook_bytes("--part 1", b"{not json")
 
         assert (result.returncode, result.stdout) == (0, b"")
         assert b"not UTF-8 JSON" in result.stderr
