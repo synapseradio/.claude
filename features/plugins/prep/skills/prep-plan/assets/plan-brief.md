@@ -111,9 +111,9 @@ Every final report opens `landed [SHA] [subject]` or `blocked: [question]`, then
 - check: [the command before its commit, its passing result, and the defect it catches]
 - report: [the final report's first line and what follows it]
 
-[with lanes: the lane blocks and the finish block, from templates/lane-block.md, in place of the bare unit blocks]
-[with several repositories: a repository block each, from templates/repo-block.md]
-[with a handoff: Work split per session, each part ending in a handoff note from templates/handoff-note.md]
+[with lanes: the lane blocks and the finish block, from assets/lane-block.md, in place of the bare unit blocks]
+[with several repositories: a repository block each, from assets/repo-block.md]
+[with a handoff: Work split per session, each part ending in a handoff note from assets/handoff-note.md]
 
 ## Tooling
 

@@ -1,0 +1,23 @@
+{
+	"skill_name": "prep-plan",
+	"evals": [
+		{
+			"id": 1,
+			"prompt": "the csv export in this repo writes due dates in local time, so the same invoice shows a different date depending on which office ran the export. it's one function in one file. plan the fix",
+			"expected_output": "A lean plan: one user story whose subject is a person, a Boundaries part stating the function's signature as it stays, one unit with a test written first, the state of the checks before work, and no contracts section, coordination section, or lane block.",
+			"files": []
+		},
+		{
+			"id": 2,
+			"prompt": "we need three things in the status meter and they all end up touching render.tsx: a colour per category, light and dark palettes, and a config setting to pick the palette. I want as much of it as possible built at the same time by separate agents. make a plan another agent can run without me",
+			"expected_output": "A brief-form plan: user stories, a Contracts section stating each signature and type in full, module units that share a wave with render.tsx given to one integrator unit behind them, a Coordination section with a roster, numbered wave steps, and a messages table, and a lane block per lane with the commands of the worktree tool found on the machine.",
+			"files": []
+		},
+		{
+			"id": 3,
+			"prompt": "plan the new export screen: the web app repo gets the screen, the api repo gets the endpoint and schema it calls. the api change has to be deployed before the web app ships, and I won't be around for the deploy",
+			"expected_output": "A brief-form plan with a block per repository, the endpoint and schema fixed as a cross-repository contract so both sides build in the same wave, the deploy held as a session boundary that gates only shipping, and a handoff note for the session that follows the deploy.",
+			"files": []
+		}
+	]
+}

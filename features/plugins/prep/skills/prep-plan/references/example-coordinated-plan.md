@@ -4,7 +4,11 @@ Three features that would each have edited one render file in turn. The size pas
 
 To stay short, this example writes one lane block in full and elides the other three, and leaves out Tooling, Invitations, and Verification. A real plan writes every block whole.
 
-<example>
+**Example 2:**
+
+Input: "Plan the usage meter work: a colour per category, light and dark palettes, and a setting to pick one. Get as much of it as possible running at once."
+
+Output:
 
 ````markdown
 # Usage meter: named categories, light and dark palettes, a theme setting

@@ -2,7 +2,11 @@
 
 A one-file bug fix. The size pass answered one unit, so the plan has no contracts section, no coordination, and no lanes. It still carries a user story, the boundary the fix must keep, a test written first, and the state of the checks before work. The machine had a justfile and a hook manager, so the plan names a recipe and the hook in place of raw commands.
 
-<example>
+**Example 1:**
+
+Input: "Invoices exported by our Auckland office show due dates a day off from the ones Los Angeles exports. Plan a fix."
+
+Output:
 
 ````markdown
 # Export invoice due dates in UTC, for accountants reconciling across offices

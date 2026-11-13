@@ -1,6 +1,6 @@
 # Worktree tools
 
-Read this when the plan has lanes, to fill the command slots of `templates/lane-block.md` for the tool this machine has. Every lane does the same five things whatever the tool: create a worktree on a new branch, provision it, squash its commits into one, land that commit on the trunk, and remove the worktree and branch. The plan states each as an outcome and gives the detected tool's command for it.
+Read this when the plan has lanes, to fill the command slots of `assets/lane-block.md` for the tool this machine has. Every lane does the same five things whatever the tool: create a worktree on a new branch, provision it, squash its commits into one, land that commit on the trunk, and remove the worktree and branch. The plan states each as an outcome and gives the detected tool's command for it.
 
 ## Which tool
 
@@ -47,7 +47,7 @@ The `wt` command, <https://worktrunk.dev>. Its `-C <path>` names the worktree a 
 | land | `wt -C <worktree> merge [trunk]`, which rebases onto the trunk, fast-forwards the trunk, and removes the worktree and the branch |
 | remove | done by `merge`; `wt -C [primary checkout] step prune --dry-run` lists anything left |
 
-These commands run the repository's worktrunk hooks. `--yes` skips worktrunk's approval prompts. Add it to the plan's commands only where the plan's approver accepts running those hooks unasked, and say so in the plan's Decisions.
+These commands run the repository's worktrunk hooks. Where a hook command has yet to be approved on this machine, worktrunk asks first, and in a shell with nobody to answer the command stops with `Cannot prompt for approval in non-interactive environment`. `--yes` skips the question. Add it to the plan's commands only where the plan's approver accepts running those hooks unasked, and say so in the plan's Decisions; otherwise give the plan a first step in which a person approves them once.
 
 ## Another tool
 

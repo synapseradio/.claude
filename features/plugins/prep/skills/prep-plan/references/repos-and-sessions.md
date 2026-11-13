@@ -14,7 +14,7 @@ Read the first part when the change touches more than one repository, and the se
 
 ### Write
 
-- Give each repository a block from `templates/repo-block.md`, holding its root, trunk, checks, and units. Entry paths inside a block resolve against that block's root.
+- Give each repository a block from `assets/repo-block.md`, holding its root, trunk, checks, and units. Entry paths inside a block resolve against that block's root.
 - State cross-repository contracts in the plan's Contracts section, each naming the repository that owns it.
 - With workers, give each repository's work to workers that stay inside it. An agent that edits two repositories carries two sets of rules and hooks, and mixes them.
 - Give Verification one check that runs across the repositories as a person would use them together, after every block lands.
@@ -39,7 +39,7 @@ A session ends where its context fills, or where the work must wait: on a review
 
 ### Write
 
-- Split Work into one part per session, each ending in a handoff step that fills `templates/handoff-note.md`.
+- Split Work into one part per session, each ending in a handoff step that fills `assets/handoff-note.md`.
 - Write each part so its session needs only the plan file and the note before it. Repeat nothing the plan holds; the note carries what the session learned and what the plan could not know.
 - Open each later part with a step that reads the note and confirms the awaited event with its command.
 

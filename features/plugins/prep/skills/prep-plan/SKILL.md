@@ -1,6 +1,6 @@
 ---
 name: prep-plan
-description: Use on every request to plan, in plan mode or outside it, such as 'plan this', 'make a plan', 'how should we approach this', or 'what are the steps'; on every request to write a plan file; on every request to prepare work for another agent or a later session to carry out, such as a brief, a handoff plan, or a spec to build from; and on every entry into plan mode. Settles up front what the executor would otherwise guess, who the change serves as user stories, every interface and boundary, what runs in parallel, and how agents coordinate, then sizes the plan to the task, from a lean one-commit plan to coordinated waves across worktrees, repositories, and sessions, using the worktree, hook, task, and tracker tools the machine has. Runs as a loop of passes that ends through ExitPlanMode, so the plan reaches an executor that holds only the plan file.
+description: Use on every request to plan, in plan mode or outside it, such as 'plan this', 'make a plan', 'how should we approach this', or 'what are the steps'; on every request to write a plan file; on every request to prepare work for another agent or a later session to carry out, such as a brief, a handoff plan, or a spec to build from; and on every entry into plan mode. Settles up front what the executor would otherwise guess, who the change serves as user stories, every interface and boundary, what runs in parallel, and how agents coordinate, then sizes the plan to the task, from a lean one-commit plan to coordinated waves across worktrees, repositories, and sessions, using the worktree, hook, task, and tracker tools the machine has. Runs as a loop of passes that ends through ExitPlanMode, so the plan reaches an executor that holds only the plan file. Use it whenever work is about to be planned, scoped, broken into steps, briefed, or handed to another agent or session, even when the request never says 'plan'.
 ---
 
 # Prep plan
@@ -9,7 +9,7 @@ For every plan file you write and every exit from plan mode, optimize for an exe
 
 A plan settles, before work starts, each decision its executor would otherwise guess: who the change serves, where its boundaries sit, what each piece builds against, what runs at the same time, and who tells whom what. The executor is often a mid-sized model at medium effort coordinating other agents. Whatever the plan leaves implicit reaches it as a sequential run, a merge conflict, or a boundary built wrong. What happens inside a boundary is the executor's to decide.
 
-This skill's directory is `${CLAUDE_SKILL_DIR}`; where that name shows unexpanded, use the base directory the skill was loaded from. The paths below, `references/`, `templates/`, `examples/`, and `scripts/`, resolve against it. Read a supporting file only where a line below sends you to it, so a small task loads none of what a large one needs. The last section lists them all.
+This skill's directory is `${CLAUDE_SKILL_DIR}`; where that name shows unexpanded, use the base directory the skill was loaded from. The paths below, `references/`, `assets/`, and `scripts/`, resolve against it. Read a supporting file only where a line below sends you to it, so a small task loads none of what a large one needs. The last section lists them all.
 
 ## Terms
 
@@ -174,14 +174,14 @@ Act: fill the template the size lines select, replacing each bracket with what i
 
 ```text
 form
-  | one unit, one agent = templates/plan-lean.md
-  | otherwise = templates/plan-brief.md, with, by size answer:
-      lanes = a lane block per lane and the finish block, templates/lane-block.md
-      several repositories = a repository block each, templates/repo-block.md
-      a handoff = a handoff note per session boundary, templates/handoff-note.md
+  | one unit, one agent = assets/plan-lean.md
+  | otherwise = assets/plan-brief.md, with, by size answer:
+      lanes = a lane block per lane and the finish block, assets/lane-block.md
+      several repositories = a repository block each, assets/repo-block.md
+      a handoff = a handoff note per session boundary, assets/handoff-note.md
 ```
 
-Unsure what a finished plan of either form reads like ? read `examples/lean-plan.md` or `examples/coordinated-plan.md`.
+Unsure what a finished plan of either form reads like ? read `references/example-lean-plan.md` or `references/example-coordinated-plan.md`.
 
 Writing lines, for every plan:
 
@@ -230,12 +230,12 @@ Ends: ExitPlanMode returns. Approval ends the loop and lifts the limit on what y
 | [references/worktree-tools.md](references/worktree-tools.md) | choosing the worktree tool, and each tool's commands for a lane's steps | the plan has lanes |
 | [references/tool-leverage.md](references/tool-leverage.md) | what a commit hook, task runner, tracker, memory store, or session skill changes in a plan | that job has a tool line |
 | [references/repos-and-sessions.md](references/repos-and-sessions.md) | contracts and landing order across repositories; handoffs between sessions | several repositories, or a handoff |
-| [templates/plan-lean.md](templates/plan-lean.md) | the plan form for one unit and one agent | writing a lean plan |
-| [templates/plan-brief.md](templates/plan-brief.md) | the plan form for several units, with Contracts and Coordination | writing any larger plan |
-| [templates/lane-block.md](templates/lane-block.md) | the lane block and the finish block | the plan has lanes |
-| [templates/repo-block.md](templates/repo-block.md) | the block for one repository | several repositories |
-| [templates/handoff-note.md](templates/handoff-note.md) | the note one session leaves the next | a handoff |
-| [examples/lean-plan.md](examples/lean-plan.md) | a finished one-file fix | unsure what a lean plan reads like |
-| [examples/coordinated-plan.md](examples/coordinated-plan.md) | a finished plan with contracts, waves, lanes, a researcher, and an integrator | unsure what a coordinated plan reads like |
+| [assets/plan-lean.md](assets/plan-lean.md) | the plan form for one unit and one agent | writing a lean plan |
+| [assets/plan-brief.md](assets/plan-brief.md) | the plan form for several units, with Contracts and Coordination | writing any larger plan |
+| [assets/lane-block.md](assets/lane-block.md) | the lane block and the finish block | the plan has lanes |
+| [assets/repo-block.md](assets/repo-block.md) | the block for one repository | several repositories |
+| [assets/handoff-note.md](assets/handoff-note.md) | the note one session leaves the next | a handoff |
+| [references/example-lean-plan.md](references/example-lean-plan.md) | a request and the finished one-file fix plan it produced | unsure what a lean plan reads like |
+| [references/example-coordinated-plan.md](references/example-coordinated-plan.md) | a request and the finished plan it produced, with contracts, waves, lanes, a researcher, and an integrator | unsure what a coordinated plan reads like |
 | `scripts/detect-tools.py` | prints, as JSON, the repository's trunk and primary checkout and the tools found for worktrees, commit hooks, task running, and tracking | frame, once per repository |
 | `scripts/plan-waves.py` | prints the waves the unit and contract lines allow, what each open contract holds back, hotspots, and problems | gather and verify, with several units |

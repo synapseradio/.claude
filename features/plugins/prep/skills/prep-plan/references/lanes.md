@@ -26,7 +26,7 @@ Run these reads as one batch of parallel calls, so the questions they raise reac
 
 ## Write
 
-Fill one lane block per lane, then the finish block, from `templates/lane-block.md`.
+Fill one lane block per lane, then the finish block, from `assets/lane-block.md`.
 
 - Write each lane block so the coordinator hands it whole as the core of that lane's prompt, leaving each angle-bracketed placeholder for the run to fill.
 - List in each lane's owns line every path its units change, with the functions or regions the lane owns in each path another lane also changes.

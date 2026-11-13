@@ -22,7 +22,7 @@ Read this when a wave holds two or more sizeable units, so the plan runs as a co
 
 ## Write
 
-Fill the Coordination section of `templates/plan-brief.md`. It holds these parts.
+Fill the Coordination section of `assets/plan-brief.md`. It holds these parts.
 
 ### Roster
 
