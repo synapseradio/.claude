@@ -15,6 +15,15 @@
 # .env. A guard that denied the left-hand side of any pair would be turned
 # off within a day.
 
+# Single quotes are intentional throughout: the guard has to receive the
+# literal text, never its expansion (SC2016). setup sets HOOK and the
+# helpers read it, which shellcheck cannot see (SC2034).
+# shellcheck disable=SC2016,SC2030,SC2031,SC2034
+
+setup_file() {
+  export BATS_TEST_TIMEOUT=10
+}
+
 setup() {
   HOOK="${BATS_TEST_DIRNAME}/../hooks/block-secret-file-reads.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
@@ -243,4 +252,55 @@ setup() {
 
 @test "the Read branch stays silent on a source file" {
   assert_silent_read "${FAKE_HOME}/projects/app/README.md"
+}
+
+@test "a grep or rg pattern that names a secret path stays silent" {
+  isolate_home
+  assert_silent 'grep -rn id_rsa /x'
+  assert_silent 'rg -l .env /x'
+  assert_silent 'grep -rn "id_rsa" /x'
+  assert_silent 'rg -n -i secrets.env docs'
+}
+
+@test "a pattern given with -e or --regexp stays silent" {
+  isolate_home
+  assert_silent 'grep -e id_rsa /x'
+  assert_silent 'grep -rne id_rsa /x'
+  assert_silent 'grep --regexp=id_rsa /x'
+  assert_silent 'rg --regexp .env /x'
+  assert_silent 'rg -n -e .env -e id_rsa /x'
+}
+
+@test "a value option does not make the next word the pattern" {
+  isolate_home
+  assert_silent 'rg -g "*.md" -A 3 id_rsa /x'
+  assert_silent 'cat notes.txt | grep -m 1 id_rsa'
+}
+
+@test "a file named after the pattern of grep or rg is denied" {
+  isolate_home
+  assert_denies 'grep foo ~/.ssh/id_rsa'
+  assert_denies 'grep -rn id_rsa ~/.ssh/'
+  assert_denies 'rg foo .env'
+  assert_denies 'grep -e foo -e bar ~/.ssh/id_rsa'
+  assert_denies 'sudo grep foo ~/.ssh/id_rsa'
+  assert_denies 'ssh host grep foo ~/.ssh/id_rsa'
+}
+
+@test "a pattern file named with -f or --file is read and denied" {
+  isolate_home
+  assert_denies 'grep -f ~/.ssh/id_rsa x'
+  assert_denies 'grep --file=~/.ssh/id_rsa x'
+  assert_denies 'rg --file ~/.ssh/id_rsa x'
+  assert_denies 'grep -f .env /x'
+}
+
+@test "rg --files lists the directory it is given and is denied for a secret one" {
+  isolate_home
+  assert_denies 'rg --files ~/.ssh/'
+}
+
+@test "a here-document body that reads a secret path is denied" {
+  isolate_home
+  assert_denies $'bash <<\'EOF\'\ncat ~/.ssh/id_rsa\nEOF'
 }

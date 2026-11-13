@@ -22,6 +22,21 @@ HOOK_STATUS=0
 export WARDEN_BANNED_READS="${BATS_TEST_TMPDIR}/banned-reads.conf"
 
 #######################################
+# Point HOME and the XDG directories at this test's own directory, so a case
+# reads and writes nothing in the home directory of whoever runs the tests.
+# Globals:
+#   HOME, XDG_CONFIG_HOME, XDG_DATA_HOME, XDG_CACHE_HOME, XDG_STATE_HOME
+#######################################
+isolate_home() {
+  export HOME="${BATS_TEST_TMPDIR}/home"
+  export XDG_CONFIG_HOME="${HOME}/.config"
+  export XDG_DATA_HOME="${HOME}/.local/share"
+  export XDG_CACHE_HOME="${HOME}/.cache"
+  export XDG_STATE_HOME="${HOME}/.local/state"
+  mkdir -p "${HOME}"
+}
+
+#######################################
 # Feed one envelope to the guard under test.
 # Globals:
 #   HOOK, HOOK_OUTPUT, HOOK_STATUS

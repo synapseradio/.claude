@@ -9,6 +9,10 @@
 # configuration is written per case; the guard reads it from the repository
 # that holds the session's working directory.
 
+# Single quotes are intentional: a hook command is written as the literal text
+# the guard reads (SC2016).
+# shellcheck disable=SC2016
+
 setup_file() {
   export BATS_TEST_TIMEOUT=10
 }
@@ -130,6 +134,42 @@ lefthook_runs() {
 @test "a bare tool the hook passes files to is denied" {
   lefthook_runs 'shellcheck {staged_files}'
   assert_denies_in "${REPO}" 'shellcheck scripts/build.sh'
+}
+
+@test "getconf inside a hook command records no check" {
+  lefthook_runs 'bats --jobs "$(getconf _NPROCESSORS_ONLN)" {staged_files}'
+  assert_silent_in "${REPO}" 'getconf _NPROCESSORS_ONLN'
+  assert_silent_in "${REPO}" 'getconf PAGESIZE'
+}
+
+@test "a run carrying a flag the hook lacks is a different check" {
+  lefthook_runs 'tsc -p .'
+  assert_silent_in "${REPO}" 'tsc -p . --noUnusedLocals --noUnusedParameters'
+  assert_silent_in "${REPO}" 'tsc -p . --noUnusedLocals'
+  assert_silent_in "${REPO}" 'tsc --strict -p .'
+}
+
+@test "the run of the hook itself is still denied beside an extra-flag run" {
+  lefthook_runs 'tsc -p .'
+  assert_denies_in "${REPO}" 'tsc -p .'
+  assert_denies_in "${REPO}" 'tsc -p . 2>&1 | tail -5'
+}
+
+@test "a flag followed by a word is read as taking it and does not set the check apart" {
+  lefthook_runs 'tsc --noEmit'
+  assert_denies_in "${REPO}" 'tsc --noEmit -p tsconfig.json'
+  assert_denies_in "${REPO}" 'tsc --noEmit --project tsconfig.json'
+}
+
+@test "a flag the hook passes after its first word is no extra flag" {
+  lefthook_runs 'tsc -p . --noEmit'
+  assert_denies_in "${REPO}" 'tsc -p . --noEmit'
+  assert_silent_in "${REPO}" 'tsc -p . --noEmit --noUnusedLocals'
+}
+
+@test "a run with an extra flag after the arguments stays silent for a bare tool" {
+  lefthook_runs 'shellcheck {staged_files}'
+  assert_silent_in "${REPO}" 'shellcheck scripts/build.sh --external-sources'
 }
 
 @test "each command of a chained hook run is covered" {

@@ -17,6 +17,10 @@
 # helpers read it, which shellcheck cannot see (SC2034).
 # shellcheck disable=SC2016,SC2034
 
+setup_file() {
+  export BATS_TEST_TIMEOUT=10
+}
+
 setup() {
   export HOME="${BATS_TEST_TMPDIR}/home"
   export XDG_CONFIG_HOME="${HOME}/.config"
@@ -123,6 +127,39 @@ setup() {
 
 @test "pwd in a substitution stays silent" {
   assert_silent 'ls "$(pwd)/src"'
+}
+
+@test "git -C with a literal path in an exempt query stays silent" {
+  assert_silent 'echo "$(git -C /Users/x/repo rev-parse --short HEAD)"'
+  assert_silent 'echo $(git -C /Users/x/repo branch --show-current)'
+}
+
+@test "git -C with a double-quoted HOME path in an exempt query stays silent" {
+  assert_silent 'echo "$(git -C "$HOME/.claude" branch --show-current)"'
+  assert_silent 'sha=$(git -C "$HOME/.claude/features" rev-parse HEAD)'
+}
+
+@test "git -C with a query outside the exemption list is denied" {
+  assert_denies 'echo $(git -C /x log)'
+  assert_denies 'echo "$(git -C "$HOME/.claude" branch -D topic)"'
+}
+
+@test "git -C with a path holding a substitution or a backtick is denied" {
+  assert_denies 'echo "$(git -C "$HOME/$(rm x)" rev-parse HEAD)"'
+  assert_denies 'echo "$(git -C "$HOME/`rm x`" rev-parse HEAD)"'
+  assert_denies 'echo $(git -C /x/`rm x` rev-parse HEAD)'
+}
+
+@test "git -C with a variable other than a leading HOME is denied" {
+  assert_denies 'echo "$(git -C "$OTHER/x" rev-parse HEAD)"'
+  assert_denies 'echo "$(git -C "/x/$HOME" rev-parse HEAD)"'
+  assert_denies 'echo $(git -C /x/$USER rev-parse HEAD)'
+}
+
+@test "git -C with a second step or a further git option is denied" {
+  assert_denies 'echo $(git -C /x rev-parse HEAD; rm x)'
+  assert_denies 'echo $(git -C /x -c core.pager=less rev-parse HEAD)'
+  assert_denies 'echo "$(git -C "$HOME/x" rev-parse HEAD > out)"'
 }
 
 @test "substitution text in single quotes stays silent" {

@@ -6,6 +6,15 @@
 # separator, inside a loop body, and named by path. The silent cases cover a
 # word that only contains sleep and a mention inside a quoted argument.
 
+# Single quotes are intentional throughout: the guard has to receive the
+# literal text, never its expansion (SC2016). setup sets HOOK and the
+# helpers read it, which shellcheck cannot see (SC2034).
+# shellcheck disable=SC2016,SC2034
+
+setup_file() {
+  export BATS_TEST_TIMEOUT=10
+}
+
 setup() {
   HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-sleep.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
@@ -73,4 +82,24 @@ setup() {
 
 @test "an empty command stays silent" {
   assert_silent ''
+}
+
+@test "sleep named inside a quoted regex stays silent" {
+  isolate_home
+  assert_silent "rg -n '(git|sleep)[ ]' /x"
+  assert_silent "grep -E 'make;sleep|wait' scripts/"
+  assert_silent 'rg -n "&& sleep 5" scripts/'
+}
+
+@test "sleep after && and inside a substitution is denied" {
+  isolate_home
+  assert_denies 'make && sleep 5'
+  assert_denies 'echo "$(sleep 5)"'
+}
+
+@test "sleep behind a wrapper or in a shell string is denied" {
+  isolate_home
+  assert_denies 'nohup sleep 5 &'
+  assert_denies "bash -c 'sleep 5'"
+  assert_denies 'FOO=1 sleep 5'
 }

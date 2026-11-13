@@ -49,6 +49,11 @@
 # shellcheck disable=SC2088
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+# shellcheck source=lib/command_words.sh
+source "${SCRIPT_DIR}/lib/command_words.sh"
+
 # Commands that read file contents from a path argument or redirect.
 readonly READ_CMDS='(cat|tac|less|more|head|tail|bat|xxd|od|strings|hexdump|grep|rg|ripgrep|sed|awk|jq|yq|nl|file|wc|md5sum|sha1sum|sha256sum|sha512sum|cksum|cp|mv|install|tar|zip|gzip|bzip2|xz|7z|openssl|base64|gpg|ssh-keygen|ssh-add)'
 
@@ -107,6 +112,21 @@ readonly BANNED_READS_LEAF='warden/banned-reads.conf'
 MODE=''
 SUBJECT=''
 
+# The programs of a Bash command, one per line, with the pattern operand of
+# grep and rg removed (see search_without_pattern). READ_READY is 1 once it is
+# built; READ_HEREDOC is 1 when the command opens a here-document, whose body
+# the resolver skips.
+READ_SUBJECT=''
+READ_READY=0
+READ_HEREDOC=0
+
+# Options whose next word is a value, for grep and for rg. Single letters are
+# the option characters; a letter inside a cluster takes the rest of the word
+# as its value, or the next word where nothing follows it.
+readonly GREP_VALUE_LETTERS='ABCDdefm'
+readonly RG_VALUE_LETTERS='ABCEMTdefgjmrt'
+readonly SEARCH_LONG_VALUE_OPTIONS=' --after-context --before-context --context --binary-files --devices --directories --exclude --exclude-dir --exclude-from --include --label --max-count --glob --iglob --type --type-not --type-add --max-columns --max-depth --maxdepth --threads --max-filesize --replace --encoding --ignore-file --sort --sortr --engine '
+
 #######################################
 # Emit a deny decision and exit.
 # Globals:
@@ -128,17 +148,164 @@ deny() {
 }
 
 #######################################
-# Test whether a read-style command appears on the same logical line as a
-# secret path pattern. Logical lines are split on the shell separators
-# `|`, `;`, `&`, and newlines.
+# Print one grep or rg program with its pattern operands taken out, so a
+# word that only names what to search for is not read as a path to open.
+# The pattern is the first word that is no option, unless -e or --regexp
+# gives it, in which case each of those operands is a pattern; -f and --file
+# name a file of patterns, which is read, so that operand stays. rg --files
+# has no pattern.
+# Arguments:
+#   $1 - grep or rg.
+#   The rest - the words after the program name.
+# Outputs:
+#   The program name and the words that remain, on one line.
+#######################################
+search_without_pattern() {
+  local program="$1" letters word kept="$1" rest letter index
+  local pattern_first=1 skip=0 positional_only=0
+  shift
+  if [[ "${program}" == grep ]]; then
+    letters="${GREP_VALUE_LETTERS}"
+  else
+    letters="${RG_VALUE_LETTERS}"
+  fi
+
+  for word in "$@"; do
+    # The word after an option that takes a value.
+    if [[ "${skip}" == drop ]]; then
+      skip=0
+      continue
+    fi
+    if [[ "${skip}" == keep ]]; then
+      skip=0
+      kept+=" ${word}"
+      continue
+    fi
+
+    if ((positional_only == 0)) && [[ "${word}" == -- ]]; then
+      positional_only=1
+      kept+=" ${word}"
+      continue
+    fi
+
+    if ((positional_only == 0)) && [[ "${word}" == --* ]]; then
+      case "${word}" in
+      --regexp=*)
+        pattern_first=0
+        continue
+        ;;
+      --regexp)
+        pattern_first=0
+        skip=drop
+        continue
+        ;;
+      --file=* | --files)
+        pattern_first=0
+        ;;
+      --file)
+        pattern_first=0
+        skip=keep
+        ;;
+      *)
+        [[ "${SEARCH_LONG_VALUE_OPTIONS}" == *" ${word} "* ]] && skip=keep
+        ;;
+      esac
+      kept+=" ${word}"
+      continue
+    fi
+
+    if ((positional_only == 0)) && [[ "${word}" == -?* ]]; then
+      # A cluster of short options; the first that takes a value ends it.
+      rest="${word#-}"
+      index=0
+      while ((index < ${#rest})); do
+        letter="${rest:index:1}"
+        if [[ "${letters}" == *"${letter}"* ]]; then
+          case "${letter}" in
+          e)
+            pattern_first=0
+            if ((index + 1 < ${#rest})); then
+              continue 2
+            fi
+            skip=drop
+            continue 2
+            ;;
+          f)
+            pattern_first=0
+            ;;
+          esac
+          if ((index + 1 == ${#rest})); then
+            skip=keep
+          fi
+          break
+        fi
+        index=$((index + 1))
+      done
+      kept+=" ${word}"
+      continue
+    fi
+
+    # A positional word: the first is the pattern unless an option gave one.
+    if ((pattern_first)); then
+      pattern_first=0
+      continue
+    fi
+    kept+=" ${word}"
+  done
+  printf '%s\n' "${kept}"
+}
+
+#######################################
+# Build READ_SUBJECT once: each program the command runs on a line of its
+# own, as lib/command_words.sh resolves them, so a separator or a command
+# name inside a quoted argument splits nothing and names nothing.
 # Globals:
-#   SUBJECT
+#   SUBJECT, READ_SUBJECT, READ_READY, READ_HEREDOC
+#######################################
+prepare_read_subject() {
+  local line program
+  local -a words
+  ((READ_READY == 0)) || return 0
+  READ_READY=1
+  READ_SUBJECT=''
+  if [[ "${SUBJECT}" =~ (^|[^\<])\<\<[^\<] ]]; then
+    READ_HEREDOC=1
+  fi
+  while IFS= read -r line; do
+    IFS=' ' read -r -a words <<<"${line}"
+    ((${#words[@]} > 0)) || continue
+    program="${words[0]}"
+    case "${program}" in
+    grep | rg | ripgrep)
+      [[ "${program}" == ripgrep ]] && program=rg
+      line="$(search_without_pattern "${program}" "${words[@]:1}")"
+      ;;
+    esac
+    READ_SUBJECT+="${line}"$'\n'
+  done < <(command_words::resolve "${SUBJECT}")
+}
+
+#######################################
+# Test whether a read-style command appears on the same program line as a
+# secret path pattern. A command that opens a here-document is also read as
+# raw text, split on the shell separators `|`, `;`, `&`, and newlines,
+# because the resolver skips the body a shell fed on stdin runs.
+# Globals:
+#   SUBJECT, READ_SUBJECT, READ_HEREDOC
 # Arguments:
 #   $1 - regex for the secret path
 #######################################
 read_cmd_hits_path() {
-  local path_re="$1"
-  rg -q "\b${READ_CMDS}\b[^|;&"$'\n'"]*${path_re}" <<<"${SUBJECT}"
+  local path_re="$1" scan
+  scan="\b${READ_CMDS}\b[^|;&"$'\n'"]*${path_re}"
+  prepare_read_subject
+  if rg -q "${scan}" <<<"${READ_SUBJECT}"; then
+    return 0
+  fi
+  if ((READ_HEREDOC)) && rg -q "${scan}" <<<"${SUBJECT}"; then
+    return 0
+  fi
+  return 1
 }
 
 #######################################

@@ -34,7 +34,7 @@ Run these two commands in Claude Code, with the path of your copy of this reposi
 | `deny-bulk-home-search` | Bash, Grep, Glob | A file search starting at the disk root, at the folder holding every home directory, or at your home directory itself | Refuses |
 | `deny-eval` | Bash | Running `eval` | Refuses |
 | `deny-shell-c` | Bash | Running `bash`, `sh`, `zsh`, `dash`, or `ksh` with `-c` | Refuses; asks for `zsh -ic` |
-| `deny-indirect-execution` | Bash | Command substitution `$( )`, backticks, process substitution `<( )`, `>( )`, or `=( )`, and subshells; a plain `$( )` holding `pwd`, `git rev-parse`, `git branch --show-current`, or `wt stack base` passes | Refuses |
+| `deny-indirect-execution` | Bash | Command substitution `$( )`, backticks, process substitution `<( )`, `>( )`, or `=( )`, and subshells; a plain `$( )` holding `pwd`, `git rev-parse`, `git branch --show-current`, or `wt stack base` passes, and so does either git query with `-C <path>` after `git`, where the path is a literal of letters, digits, and `_./=:@%+,-` or a double-quoted string opening with `$HOME/` | Refuses |
 | `ask-git-amend` | Bash | `git commit --amend` | Asks |
 | `deny-unsafe-soft-reset` | Bash | A `git reset --soft` that could lose work or rewrite published history; one over unpushed commits on a feature branch, as the command's first step, passes | Refuses |
 | `deny-hook-covered-check` | Bash | Running by hand a check the repository's git hooks already run on commit or push; test runs pass | Refuses |

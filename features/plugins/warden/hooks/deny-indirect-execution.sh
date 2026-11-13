@@ -17,6 +17,10 @@
 # One exemption: a $( ) whose whole text is a read-only query from
 # EXEMPT_QUERIES, written in letters, digits, spaces, and _./=:@%+,- alone,
 # so it can hold no second step, redirect, quote, or nested substitution.
+# A git query may carry `-C <path>` after git: the path is a literal in those
+# characters, or a double-quoted string opening with $HOME/ and holding only
+# those characters after it. Any other variable, backtick, or substitution in
+# the path leaves the text outside the exemption.
 #
 # Globals: none.
 # Stdin:   PreToolUse hook JSON envelope.
@@ -38,6 +42,13 @@ readonly -a EXEMPT_QUERIES=(
 
 readonly SAFE_QUERY_PATTERN='^[A-Za-z0-9 _./=:@%+,-]*$'
 
+# `git -C <path> <rest>`: the path is a literal word in the safe characters,
+# or a double-quoted string that opens with $HOME/. BASH_REMATCH[2] holds the
+# rest, which still has to pass SAFE_QUERY_PATTERN.
+# Single quotes are intentional: the pattern matches the literal `$HOME`.
+# shellcheck disable=SC2016
+readonly GIT_DIR_PATTERN='^git -C ("\$HOME/[A-Za-z0-9 _./=:@%+,-]*"|[A-Za-z0-9_./=:@%+,-]+) (.*)$'
+
 #######################################
 # Emit a deny decision and exit.
 # Outputs:
@@ -55,7 +66,9 @@ deny() {
 }
 
 #######################################
-# Report whether a substitution's text is an exempt read-only query.
+# Report whether a substitution's text is an exempt read-only query. A
+# `git -C <path>` prefix is set aside, as GIT_DIR_PATTERN describes, and the
+# query is then judged as `git` plus the rest.
 # Arguments:
 #   $1 - the text between $( and ).
 # Returns:
@@ -63,11 +76,15 @@ deny() {
 #######################################
 is_exempt_query() {
   local text="$1" query
-  [[ "${text}" =~ ${SAFE_QUERY_PATTERN} ]] || return 1
+  [[ "${text}" != *$'\n'* ]] || return 1
   # Collapse runs of spaces and trim, so spacing cannot dodge the match.
   text="$(printf '%s' "${text}" | tr -s ' ')"
   text="${text# }"
   text="${text% }"
+  if [[ "${text}" =~ ${GIT_DIR_PATTERN} ]]; then
+    text="git ${BASH_REMATCH[2]}"
+  fi
+  [[ "${text}" =~ ${SAFE_QUERY_PATTERN} ]] || return 1
   for query in "${EXEMPT_QUERIES[@]}"; do
     if [[ "${text}" == "${query}" || "${text}" == "${query} "* ]]; then
       return 0

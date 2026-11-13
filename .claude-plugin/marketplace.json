@@ -27,7 +27,7 @@
 		{
 			"name": "warden",
 			"source": "./features/plugins/warden",
-			"version": "2.7.0",
+			"version": "2.7.1",
 			"description": "PreToolUse guards. On the Bash tool, they deny printing a secret-shaped environment variable, reading a secret-shaped path, editing a file in place with a stream editor, waiting on sleep, deleting with rm in place of trash, a git reset --soft that could lose work or rewrite published history, eval, a shell run with -c, command substitution, backticks, process substitution, a subshell, a bunx run that names no version, a manual run of a check the repository's git hooks already run, and a file search rooted at the disk root or a whole home directory, also refused through the Grep and Glob tools. They ask before curl sends a body or a file to a host outside loopback, before a fetch-and-run command, zsh -ic, and git commit --amend. On the Agent tool, they deny a spawn that names no model, unless it is a fork or its agent definition pins one, and a critic or Plan spawn on haiku."
 		},
 		{

@@ -7,6 +7,15 @@
 # silent case names a command a normal session runs all day. Remove the
 # guard's patterns and the denial cases go red.
 
+# Single quotes are intentional throughout: the guard has to receive the
+# literal text, never its expansion (SC2016). setup sets HOOK and the
+# helpers read it, which shellcheck cannot see (SC2034).
+# shellcheck disable=SC2016,SC2034
+
+setup_file() {
+  export BATS_TEST_TIMEOUT=10
+}
+
 setup() {
   HOOK="${BATS_TEST_DIRNAME}/../hooks/block-secret-leaks.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
@@ -104,4 +113,56 @@ setup() {
 
 @test "a word ending in env stays silent" {
   assert_silent 'resend | sort'
+}
+
+@test "a search for the word env inside a quoted pattern stays silent" {
+  isolate_home
+  assert_silent "rg -n 'git|env|tee' /x"
+}
+
+@test "a search for the word set after a pipe stays silent" {
+  isolate_home
+  assert_silent 'cat f | grep set | head'
+}
+
+@test "a search for the word printenv stays silent" {
+  isolate_home
+  assert_silent 'rg -n printenv /x'
+}
+
+@test "a search pattern that spells an echo of a secret stays silent" {
+  isolate_home
+  assert_silent "rg -n 'echo.*\\\$TOKEN' /x"
+}
+
+@test "bare env behind an assignment, a separator, or a redirect is denied" {
+  isolate_home
+  assert_denies 'FOO=1 env'
+  assert_denies 'cd /x && env'
+  assert_denies 'env > /tmp/out'
+  assert_denies 'echo a; env'
+}
+
+@test "bare set behind a separator is denied" {
+  isolate_home
+  assert_denies 'echo a; set'
+  assert_denies 'cd /x && set | sort'
+}
+
+@test "printenv behind a wrapper, a substitution, or a shell string is denied" {
+  isolate_home
+  assert_denies 'sudo printenv'
+  assert_denies 'echo "$(printenv)"'
+  assert_denies "bash -c 'printenv | sort'"
+}
+
+@test "an echo of a secret handed to another launcher is denied" {
+  isolate_home
+  assert_denies 'docker run --rm alpine echo "$API_TOKEN"'
+  assert_denies "bash -c 'echo \$API_TOKEN'"
+}
+
+@test "a here-document run by a shell that dumps the environment is denied" {
+  isolate_home
+  assert_denies $'bash <<\'EOF\'\nprintenv\nEOF'
 }

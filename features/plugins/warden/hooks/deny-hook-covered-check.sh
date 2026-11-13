@@ -54,7 +54,7 @@ readonly STARTED="${SECONDS}"
 # Programs that are no check: a signature naming one would refuse ordinary
 # work. The hook runners are here too, so a shim that calls lefthook does
 # not make `lefthook run` a refused command.
-readonly GENERIC_PROGRAMS=' git echo cat printf grep egrep fgrep rg sed awk find ls cd test [ [[ exit return true false : set export unset source . eval read wait trap bash sh zsh dash ksh node deno ruby perl php env xargs command exec time nohup nice sudo mkdir rmdir cp mv rm trash touch ln chmod jq yq curl wget tee head tail sort uniq wc diff cmp date sleep tr cut basename dirname pwd which type declare local shift if then else fi do done for while case esac lefthook call_lefthook husky pre-commit '
+readonly GENERIC_PROGRAMS=' git echo cat printf grep egrep fgrep rg sed awk find ls cd test [ [[ exit return true false : set export unset source . eval read wait trap bash sh zsh dash ksh node deno ruby perl php env xargs command exec time nohup nice sudo mkdir rmdir cp mv rm trash touch ln chmod jq yq curl wget tee head tail sort uniq wc diff cmp date sleep tr cut basename dirname pwd getconf which type declare local shift if then else fi do done for while case esac lefthook call_lefthook husky pre-commit '
 
 # Programs that name a check only with a subcommand after them.
 readonly NEEDS_SUBCOMMAND=' make just task cargo go docker uv pip pip3 gradle mvn dotnet kubectl terraform gh helm brew '
@@ -73,14 +73,16 @@ readonly DENIAL_REASON_HEAD="The repository's git hooks run this check on commit
 # The signature of the program under inspection, set by command_signature:
 # SIG_HEAD names the program or package script, SIG_SUB its subcommand path
 # (empty when the signature covers every run of the program), SIG_FLAGS the
-# flags a matching run must carry, and SIG_WORDS the words of the run itself.
+# flags a matching run must carry, SIG_ALLOWED every flag the hook's own
+# command carries, and SIG_WORDS the words of the run itself.
 SIG_HEAD=''
 SIG_SUB=''
 SIG_FLAGS=''
+SIG_ALLOWED=''
 SIG_WORDS=''
 
 # The signatures the current repository's hooks produce, one per line, each
-# "head<US>sub<US>flags<US>source<US>command". LOADED_DIR is the directory they
+# "head<US>sub<US>flags<US>allowed<US>source<US>command". LOADED_DIR is the directory they
 # were read for, LOADED_OK whether any were found.
 HOOK_SIGS=''
 LOADED_DIR=''
@@ -262,12 +264,14 @@ script_signature() {
 #   - a tool without one: the program and its leading flags, minus the
 #     flags that only change how it runs, so `tsc --noEmit` needs --noEmit.
 #     Every run of that program with those flags matches, a file argument
-#     included, since a bare word after a program may be a subcommand.
+#     included, since a bare word after a program may be a subcommand. A run
+#     that carries a flag the hook's command lacks, wherever in the run it
+#     sits, is another check (see has_extra_flag).
 # A package runner in front (bunx, npx, uv run, python -m) is dropped first.
 # A generic program, a test run, and a program name holding a shell
 # expansion have no signature.
 # Globals:
-#   SIG_HEAD, SIG_SUB, SIG_FLAGS, SIG_WORDS
+#   SIG_HEAD, SIG_SUB, SIG_FLAGS, SIG_ALLOWED, SIG_WORDS
 # Arguments:
 #   The program's name, then its arguments.
 # Returns:
@@ -275,10 +279,11 @@ script_signature() {
 #######################################
 command_signature() {
   local -a WORDS
-  local name sub flags='' index
+  local name sub flags='' allowed='' index
   SIG_HEAD=''
   SIG_SUB=''
   SIG_FLAGS=''
+  SIG_ALLOWED=''
   SIG_WORDS=''
   WORDS=("$@")
 
@@ -318,8 +323,16 @@ command_signature() {
     in_list "${IGNORED_FLAGS}" "${WORDS[index]}" && continue
     flags+="${flags:+ }${WORDS[index]}"
   done
+  # Every flag the command carries, after its first word as well as before.
+  for ((index = 1; index < ${#WORDS[@]}; index++)); do
+    [[ "${WORDS[index]}" == -- ]] && break
+    [[ "${WORDS[index]}" == -?* ]] || continue
+    in_list "${IGNORED_FLAGS}" "${WORDS[index]}" && continue
+    allowed+="${allowed:+ }${WORDS[index]}"
+  done
   SIG_HEAD="tool:${name}"
   SIG_FLAGS="${flags}"
+  SIG_ALLOWED="${allowed}"
   return 0
 }
 
@@ -347,7 +360,7 @@ add_commands() {
     command_signature ${words[@]+"${words[@]}"} || continue
     display="${line//${CW_SPACE}/ }"
     display="${display//${CW_NEWLINE}/ }"
-    HOOK_SIGS+="${SIG_HEAD}${UNIT}${SIG_SUB}${UNIT}${SIG_FLAGS}${UNIT}${source}${UNIT}${display}"$'\n'
+    HOOK_SIGS+="${SIG_HEAD}${UNIT}${SIG_SUB}${UNIT}${SIG_FLAGS}${UNIT}${SIG_ALLOWED}${UNIT}${source}${UNIT}${display}"$'\n'
   done <<<"${programs}"
 }
 
@@ -510,6 +523,34 @@ load_hook_signatures() {
 }
 
 #######################################
+# Succeed when a run carries a flag the hook's own command lacks, which makes
+# it another check. A flag followed by a word that is no flag is read as
+# taking that word, as in `-p tsconfig.json`: it selects what to check and
+# does not set the check apart. A flag written with =, one that only changes
+# how the tool runs, and everything after -- are left out.
+# Arguments:
+#   $1 - every flag the hook's command carries, space-separated.
+#   $2 - the words of the run, space-padded.
+#######################################
+has_extra_flag() {
+  local allowed=" $1 " word next index
+  local -a run
+  IFS=' ' read -r -a run <<<"$2"
+  for ((index = 1; index < ${#run[@]}; index++)); do
+    word="${run[index]}"
+    [[ "${word}" == -- ]] && break
+    [[ "${word}" == -?* ]] || continue
+    in_list "${IGNORED_FLAGS}" "${word}" && continue
+    [[ "${word}" == *=* ]] && continue
+    [[ "${allowed}" == *" ${word} "* ]] && continue
+    next="${run[index + 1]-}"
+    [[ -n "${next}" && "${next}" != -* ]] && continue
+    return 0
+  done
+  return 1
+}
+
+#######################################
 # Find the hook command whose signature a program shares.
 # Globals:
 #   HOOK_SIGS
@@ -524,7 +565,7 @@ load_hook_signatures() {
 #######################################
 find_covering_hook() {
   local want_head="$1" want_sub="$2" padded_words="$3"
-  local entry head sub rest flags flag
+  local entry head sub rest flags allowed flag
   local -a required
   while IFS= read -r entry; do
     [[ -n "${entry}" ]] || continue
@@ -536,11 +577,17 @@ find_covering_hook() {
     [[ -z "${sub}" || "${sub}" == "${want_sub}" ]] || continue
     flags="${rest%%"${UNIT}"*}"
     rest="${rest#*"${UNIT}"}"
+    allowed="${rest%%"${UNIT}"*}"
+    rest="${rest#*"${UNIT}"}"
     required=()
     IFS=' ' read -r -a required <<<"${flags}"
     for flag in ${required[@]+"${required[@]}"}; do
       [[ "${padded_words}" == *" ${flag} "* ]] || continue 2
     done
+    if [[ "${head}" == tool:* && -z "${sub}" ]] &&
+      has_extra_flag "${allowed}" "${padded_words}"; then
+      continue
+    fi
     printf '%s\n' "${rest}"
     return 0
   done <<<"${HOOK_SIGS}"
