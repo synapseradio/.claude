@@ -1,0 +1,28 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.15.2, pytest-9.2.0, pluggy-1.7.0 -- <worktree>/.venv/bin/python
+rootdir: /private/tmp/progress-scratch/py
+plugins: xdist-3.8.0, timeout-2.4.0
+created: 2/2 workers
+2 workers [3 items]
+
+scheduling tests via LoadScheduling
+
+tests/test_sample.py::test_rejects_wrong_sum 
+tests/test_sample.py::test_adds_numbers 
+[gw0] [ 33%] PASSED tests/test_sample.py::test_adds_numbers 
+tests/test_sample.py::test_skipped_case 
+[gw0] [ 66%] SKIPPED tests/test_sample.py::test_skipped_case 
+[gw1] [100%] FAILED tests/test_sample.py::test_rejects_wrong_sum 
+
+=================================== FAILURES ===================================
+____________________________ test_rejects_wrong_sum ____________________________
+[gw1] darwin -- Python 3.15.2 <worktree>/.venv/bin/python
+
+    def test_rejects_wrong_sum():
+>       assert 1 + 1 == 3
+E       assert (1 + 1) == 3
+
+tests/test_sample.py:9: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_sample.py::test_rejects_wrong_sum - assert (1 + 1) == 3
+==================== 1 failed, 1 passed, 1 skipped in 0.67s ====================

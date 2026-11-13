@@ -1,0 +1,6 @@
+1..3
+ok 1 adds numbers in 2ms
+not ok 2 rejects wrong sum in 1ms
+# (in test file tests/sample.bats, line 6)
+#   `[ $((1 + 1)) -eq 3 ]' failed
+ok 3 skipped case in 2ms # skip not today
