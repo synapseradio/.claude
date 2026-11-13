@@ -200,8 +200,7 @@ main() {
     check_bare_env "${line}"
   done < <(command_words::split "${cmd}")
 
-  # A here-document opens with << and not <<<, the here-string.
-  if [[ "${cmd}" =~ (^|[^\<])\<\<[^\<] ]]; then
+  if command_words::opens_heredoc "${cmd}"; then
     check_raw_text "${cmd}"
   fi
 

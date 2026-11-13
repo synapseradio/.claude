@@ -154,7 +154,7 @@ prepare_read_subject() {
   ((READ_READY == 0)) || return 0
   READ_READY=1
   READ_SUBJECT=''
-  if [[ "${SUBJECT}" =~ (^|[^\<])\<\<[^\<] ]]; then
+  if command_words::opens_heredoc "${SUBJECT}"; then
     READ_HEREDOC=1
   fi
   while IFS= read -r line; do

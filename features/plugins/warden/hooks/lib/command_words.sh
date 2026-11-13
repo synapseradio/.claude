@@ -157,6 +157,18 @@ command_words::skip_heredocs() {
 }
 
 #######################################
+# Say whether the text opens a here-document: << and not <<<, the
+# here-string.
+# Arguments:
+#   $1 - the text.
+# Returns:
+#   0 when it does, 1 otherwise.
+#######################################
+command_words::opens_heredoc() {
+  [[ "$1" =~ (^|[^\<])\<\<[^\<] ]]
+}
+
+#######################################
 # Split command text into its parts and print each part on a line, its
 # words separated by spaces. Command substitutions and subshells print as
 # parts of their own, ahead of the part that holds them.
