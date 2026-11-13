@@ -397,6 +397,15 @@ class Sandbox:
             timeout=RUN_TIMEOUT,
         )
 
+    def run_expecting(
+        self, command: str, *args: str, expect: int = 0
+    ) -> subprocess.CompletedProcess:
+        result = self.run(command, *args)
+        assert result.returncode == expect, (
+            f"{command} {' '.join(args)} exited {result.returncode}, wanted {expect}: {result.stderr}"
+        )
+        return result
+
     def run_json(self, *args: str, expect: int = 0) -> dict:
         result = self.run(*args, "--json")
         assert result.returncode == expect, (

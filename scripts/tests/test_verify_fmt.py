@@ -38,11 +38,7 @@ def treefmt_call(sb) -> dict:
 
 
 def fmt(sb, *args: str, expect: int = 0) -> subprocess.CompletedProcess:
-    result = sb.run("fmt", *args)
-    assert result.returncode == expect, (
-        f"fmt {' '.join(args)} exited {result.returncode}, wanted {expect}: {result.stderr}"
-    )
-    return result
+    return sb.run_expecting("fmt", *args, expect=expect)
 
 
 class TestFmtScope:

@@ -8,7 +8,6 @@ with which arguments, and what the runner reports of the files a fixer changed. 
 the rulesets check is observed as the argv bash receives.
 """
 
-import json
 import pathlib
 import subprocess
 
@@ -50,11 +49,7 @@ def normalized(sb, call: dict) -> list[str]:
 
 
 def lint(sb, *args: str, expect: int = 0) -> subprocess.CompletedProcess:
-    result = sb.run("lint", *args)
-    assert result.returncode == expect, (
-        f"lint {' '.join(args)} exited {result.returncode}, wanted {expect}: {result.stderr}"
-    )
-    return result
+    return sb.run_expecting("lint", *args, expect=expect)
 
 
 def progs(sb) -> set[str]:
@@ -212,14 +207,14 @@ class TestFixingJobs:
     def test_a_file_outside_the_handed_files_is_not_reported(self, sb) -> None:
         ruff_rewrites(sb, "app/main.py", "top.py")
 
-        report = json.loads(lint(sb, "app/main.py", "--json").stdout)
+        report = sb.run_json("lint", "app/main.py")
 
         assert report["suites"][0]["fixed"] == ["app/main.py"], report["suites"][0]
 
     def test_json_carries_the_fixed_list_of_every_job(self, sb) -> None:
         ruff_rewrites(sb, "app/main.py", "top.py")
 
-        report = json.loads(lint(sb, "app/main.py", "top.py", "conf/b.toml", "--json").stdout)
+        report = sb.run_json("lint", "app/main.py", "top.py", "conf/b.toml")
 
         fixed = {suite["name"]: suite["fixed"] for suite in report["suites"]}
         assert fixed == {"ruff": ["app/main.py", "top.py"], "taplo": []}, fixed

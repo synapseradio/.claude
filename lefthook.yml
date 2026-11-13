@@ -40,4 +40,10 @@ pre-commit:
 pre-push:
   jobs:
     - name: verify
-      run: just lint --prepush && just test --prepush
+      group:
+        parallel: true
+        jobs:
+          - name: lint
+            run: just lint --prepush
+          - name: test
+            run: just test --prepush
