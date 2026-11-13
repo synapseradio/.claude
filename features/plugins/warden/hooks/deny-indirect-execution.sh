@@ -78,7 +78,9 @@ is_exempt_query() {
   local text="$1" query
   [[ "${text}" != *$'\n'* ]] || return 1
   # Collapse runs of spaces and trim, so spacing cannot dodge the match.
-  text="$(printf '%s' "${text}" | tr -s ' ')"
+  while [[ "${text}" == *'  '* ]]; do
+    text="${text//  / }"
+  done
   text="${text# }"
   text="${text% }"
   if [[ "${text}" =~ ${GIT_DIR_PATTERN} ]]; then
@@ -185,6 +187,9 @@ open_heredoc() {
 main() {
   local char next prev in_double=0 command_start=1 word_start=1 arith=0
   CMD="$(jq -r '.tool_input.command // ""')"
+  # Every form this hook denies, a substitution, a backtick, a process
+  # substitution, a =( ), or a subshell, holds a ( or a backtick.
+  [[ "${CMD}" == *'('* || "${CMD}" == *'`'* ]] || return 0
   LEN="${#CMD}"
   POS=0
   HEREDOC_DELIMS=()
