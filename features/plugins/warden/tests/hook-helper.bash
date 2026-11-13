@@ -37,6 +37,25 @@ isolate_home() {
 }
 
 #######################################
+# Give git a configuration of this test's own: a global file in HOME holding a
+# committer identity, no system file, and none of the variables that locate a
+# repository. A hook run from a linked worktree inherits those variables, and a
+# scratch repository that kept them would write into the repository that holds
+# the tests. Call isolate_home first.
+# Globals:
+#   HOME, GIT_CONFIG_GLOBAL, GIT_CONFIG_NOSYSTEM
+#######################################
+isolate_git_config() {
+  export GIT_CONFIG_GLOBAL="${HOME}/.gitconfig"
+  export GIT_CONFIG_NOSYSTEM=1
+  printf '[user]\n\tname = Test\n\temail = test@example.com\n' \
+    >"${GIT_CONFIG_GLOBAL}"
+  unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_COMMON_DIR \
+    GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE \
+    GIT_CEILING_DIRECTORIES
+}
+
+#######################################
 # Feed one envelope to the guard under test.
 # Globals:
 #   HOOK, HOOK_OUTPUT, HOOK_STATUS
@@ -190,6 +209,23 @@ assert_decision() {
   [[ -n "$(jq -r '.hookSpecificOutput.permissionDecisionReason // ""' \
     <<<"${HOOK_OUTPUT}")" ]] || {
     echo "decision carried no reason for the user to read: ${subject}" >&2
+    return 1
+  }
+}
+
+#######################################
+# Assert the last denial's reason contains a string.
+# Globals:
+#   HOOK_OUTPUT
+# Arguments:
+#   $1 - the text the reason must hold.
+#######################################
+assert_reason_contains() {
+  local reason
+  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
+    <<<"${HOOK_OUTPUT}")"
+  [[ "${reason}" == *"$1"* ]] || {
+    echo "reason lacks '$1': ${reason}" >&2
     return 1
   }
 }

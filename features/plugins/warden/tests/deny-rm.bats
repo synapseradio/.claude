@@ -23,16 +23,7 @@ setup() {
   HOOK="${BATS_TEST_DIRNAME}/../hooks/deny-rm.sh"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
   isolate_home
-  export GIT_CONFIG_GLOBAL="${HOME}/.gitconfig"
-  export GIT_CONFIG_NOSYSTEM=1
-  printf '[user]\n\tname = Test\n\temail = test@example.com\n' \
-    >"${GIT_CONFIG_GLOBAL}"
-  # A hook run from a linked worktree inherits these, and a scratch
-  # repository that kept them would write into the repository that holds
-  # the tests.
-  unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_COMMON_DIR \
-    GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE \
-    GIT_CEILING_DIRECTORIES
+  isolate_git_config
 }
 
 #######################################
@@ -65,23 +56,6 @@ make_plain_dir() {
   PLAIN="${BATS_TEST_TMPDIR}/plain"
   mkdir -p "${PLAIN}"
   printf 'loose\n' >"${PLAIN}/loose.txt"
-}
-
-#######################################
-# Assert the last denial's reason contains a string.
-# Globals:
-#   HOOK_OUTPUT
-# Arguments:
-#   $1 - the text the reason must hold.
-#######################################
-assert_reason_contains() {
-  local reason
-  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")"
-  [[ "${reason}" == *"$1"* ]] || {
-    echo "reason lacks '$1': ${reason}" >&2
-    return 1
-  }
 }
 
 @test "a bare rm is denied" {

@@ -22,10 +22,7 @@ setup() {
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
 
   isolate_home
-  export GIT_CONFIG_GLOBAL="${HOME}/gitconfig"
-  export GIT_CONFIG_NOSYSTEM=1
-  unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
-  : >"${GIT_CONFIG_GLOBAL}"
+  isolate_git_config
 
   REPO="${BATS_TEST_TMPDIR}/repo"
   mkdir -p "${REPO}/sub"
