@@ -244,16 +244,6 @@ main() {
   check deny-shell-c.sh ask 'runs an interactive zsh -c' "zsh -ic 'spu'"
   check deny-shell-c.sh allow 'counts matches with grep -c' 'grep -c eval f'
 
-  # shellcheck disable=SC2016
-  check deny-indirect-execution.sh deny 'substitutes a command' \
-    'echo "$(rm tracked)"'
-  check deny-indirect-execution.sh deny 'opens a subshell' '(cd sub && make)'
-  # shellcheck disable=SC2016
-  check deny-indirect-execution.sh allow 'queries the top level' \
-    'git -C "$(git rev-parse --show-toplevel)" status'
-  # shellcheck disable=SC2016
-  check deny-indirect-execution.sh allow 'quotes the syntax' "echo '\$(x)'"
-
   check ask-git-amend.sh ask 'amends a commit' \
     'git -C /tmp/repo commit --amend --no-edit'
   check ask-git-amend.sh allow 'commits anew' 'git commit -m "fix: x"'

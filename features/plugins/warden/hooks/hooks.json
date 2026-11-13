@@ -72,12 +72,6 @@
 					},
 					{
 						"type": "command",
-						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-indirect-execution.sh\"",
-						"timeout": 5,
-						"statusMessage": "Checking the command for substitutions and subshells"
-					},
-					{
-						"type": "command",
 						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-git-amend.sh\"",
 						"timeout": 5,
 						"statusMessage": "Checking the command for a commit amend"
