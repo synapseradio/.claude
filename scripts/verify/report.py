@@ -5,15 +5,15 @@ import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Literal
 
+from events import TestOutcome
 from run import Finished
 from scope import Skipped
 
 FAILURE_LINES = 20
 UNCOMMITTED_FIXES = "the pushed commits lack these fixes; commit them and push again"
 
-type Status = Literal["pass", "fail", "skip"]
+type Status = TestOutcome
 
 
 @dataclass(frozen=True)

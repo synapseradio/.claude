@@ -7,7 +7,6 @@ checks the runner's own work: the commands it builds, the environment it hands
 them, the report it prints, and its exit code.
 """
 
-import fcntl
 import importlib
 import json
 import pathlib
@@ -326,7 +325,7 @@ class TestAnInterruptedRun:
             process.send_signal(signal.SIGINT)
             process.communicate(timeout=RUN_TIMEOUT)
             alive = [pid for pid in pids if is_alive(pid)]
-            return self.Aftermath(process.returncode, pids, alive, held_slots(sb, 3))
+            return self.Aftermath(process.returncode, pids, alive, sb.held_slots(3))
         finally:
             if process.poll() is None:
                 process.kill()
@@ -351,17 +350,6 @@ class TestAnInterruptedRun:
         assert aftermath.held_slots == [], (
             f"slots still held after the interrupted run exited: {aftermath.held_slots}"
         )
-
-
-def held_slots(sb: Sandbox, size: int) -> list[str]:
-    held = []
-    for index in range(size):
-        with open(sb.slot(index), "a") as handle:
-            try:
-                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError:
-                held.append(sb.slot(index).name)
-    return held
 
 
 class TestAJsonRun:

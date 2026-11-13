@@ -20,7 +20,7 @@ from pathlib import Path
 
 import events
 import fmt
-from display import Display, LiveDisplay, display_for
+from display import Display, QuietDisplay, display_for
 from manifest import LANGS, Manifest, ManifestError, load
 from repo import GitError, Repo, child_env
 from report import (
@@ -201,47 +201,43 @@ def run_parts(ctx: Context, planned: dict[str, Selection | Nothing]) -> dict[str
     owner = {task.name: part for part, selection in parts.items() for task in selection.tasks}
     for part, selection in parts.items():
         reports[part] = Report(str(logs), list(selection.notes))
-    screen: Display | None = None
-    if not ctx.args.json:
-        screen = display_for(sys.stdout, verbose=ctx.args.verbose, plain=False)
+    screen: Display = (
+        QuietDisplay()
+        if ctx.args.json
+        else display_for(sys.stdout, verbose=ctx.args.verbose, plain=False)
+    )
 
     def record(outcome: Outcome, part: str) -> None:
         reports[part].outcomes.append(outcome)
-        if screen is not None:
-            screen.handle(events.SuiteEnded(outcome.name, outcome.status, outcome.line()))
+        screen.handle(events.SuiteEnded(outcome.name, outcome.status, outcome.line()))
 
     def done(finished: Finished) -> None:
         record(
             Outcome.of(finished, isinstance(ctx.scope.change, Prepush)), owner[finished.task.name]
         )
 
-    runner = Runner(
-        ctx.repo.root, ctx.env, pool, logs, ctx.args.jobs, isinstance(screen, LiveDisplay)
-    )
+    runner = Runner(ctx.repo.root, ctx.env, pool, logs, ctx.args.jobs, screen.shows_waits)
+    sizes = [
+        counted(len(selection.tasks) + len(selection.skipped), PARTS[part][1])
+        for part, selection in parts.items()
+    ]
     try:
-        if screen is not None:
-            sizes = [
-                counted(len(selection.tasks) + len(selection.skipped), PARTS[part][1])
-                for part, selection in parts.items()
-            ]
-            screen.note(f"verify: {', '.join(sizes)}, logs in {logs}")
-            for part in parts:
-                for note in reports[part].notes:
-                    screen.note(f"note: {note}")
+        screen.note(f"verify: {', '.join(sizes)}, logs in {logs}")
+        for part in parts:
+            for note in reports[part].notes:
+                screen.note(f"note: {note}")
         for part, selection in parts.items():
             for skip in selection.skipped:
                 record(Outcome.skipped(skip), part)
-        runner.run_all(tasks, ctx.args.serial, done, screen.handle if screen else lambda _: None)
+        runner.run_all(tasks, ctx.args.serial, done, screen.handle)
         for part in parts:
             exit_policy(reports[part], ctx.scope.describe())
-        if screen is not None:
-            screen.note(tally([outcome for part in parts for outcome in reports[part].outcomes]))
+        screen.note(tally([outcome for part in parts for outcome in reports[part].outcomes]))
     except Interrupted as stop:
         raise Exit(130, "verify: interrupted") from stop
     finally:
-        if screen is not None:
-            screen.close()
-    if screen is not None:
+        screen.close()
+    if not ctx.args.json:
         for part in parts:
             if reports[part].exit == 5:
                 warn(f"verify: {reports[part].notes[-1]}")
@@ -362,9 +358,9 @@ def dispatch(argv: list[str]) -> int:
         raise Exit(2, f"verify: {error}") from error
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     try:
-        return dispatch(sys.argv[1:])
+        return dispatch(sys.argv[1:] if argv is None else argv)
     except Exit as stop:
         warn(stop.message)
         return stop.code

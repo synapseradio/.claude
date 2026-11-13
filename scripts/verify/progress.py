@@ -56,11 +56,25 @@ def join_root(root: str, path: str) -> str:
     return f"{root}/{path}" if root and path else path
 
 
+class FirstCount:
+    """The suite's TestsCounted event for the first count its output prints, and none for any later one."""
+
+    def __init__(self, suite: str) -> None:
+        self.suite = suite
+        self.seen = False
+
+    def __call__(self, total: int) -> list[Event]:
+        if self.seen:
+            return []
+        self.seen = True
+        return [TestsCounted(self.suite, total)]
+
+
 class PytestParser:
     def __init__(self, suite: str, root: str) -> None:
         self.suite = suite
         self.root = root
-        self.counted = False
+        self.count = FirstCount(suite)
 
     def feed(self, line: str) -> list[Event]:
         finished = PYTEST_WORKER_FINISHED.match(line) or PYTEST_FINISHED.match(line)
@@ -75,22 +89,20 @@ class PytestParser:
                 )
             ]
         total = PYTEST_COUNT.search(line)
-        if total and not self.counted:
-            self.counted = True
-            return [TestsCounted(self.suite, int(total[1] or total[2]))]
+        if total:
+            return self.count(int(total[1] or total[2]))
         return []
 
 
 class BatsParser:
     def __init__(self, suite: str) -> None:
         self.suite = suite
-        self.counted = False
+        self.count = FirstCount(suite)
 
     def feed(self, line: str) -> list[Event]:
         total = BATS_COUNT.match(line)
-        if total and not self.counted:
-            self.counted = True
-            return [TestsCounted(self.suite, int(total[1]))]
+        if total:
+            return self.count(int(total[1]))
         finished = BATS_FINISHED.match(line)
         if not finished:
             return []
@@ -106,7 +118,7 @@ class ModParser:
         self.suite = suite
         self.root = root
         self.file = ""
-        self.counted = False
+        self.count = FirstCount(suite)
 
     def feed(self, line: str) -> list[Event]:
         finished = MOD_FINISHED.match(line)
@@ -126,9 +138,8 @@ class ModParser:
                 )
             ]
         total = MOD_COUNT.match(line)
-        if total and not self.counted:
-            self.counted = True
-            return [TestsCounted(self.suite, int(total[1]))]
+        if total:
+            return self.count(int(total[1]))
         header = MOD_HEADER.match(line)
         if header:
             self.file = header[1]

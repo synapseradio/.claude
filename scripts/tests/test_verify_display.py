@@ -19,6 +19,7 @@ VERIFY_DIR = pathlib.Path(__file__).resolve().parents[1] / "verify"
 sys.path.insert(0, str(VERIFY_DIR))
 import display  # noqa: E402  (path must be set before this import)
 import events  # noqa: E402
+import live_display  # noqa: E402
 
 CURSOR_HIDE = "\x1b[?25l"
 CURSOR_SHOW = "\x1b[?25h"
@@ -92,7 +93,7 @@ def screen() -> Screen:
 
 
 def live(screen: Screen, *, verbose: bool = False) -> display.Display:
-    return display.LiveDisplay(screen.console, verbose=verbose)
+    return live_display.LiveDisplay(screen.console, verbose=verbose)
 
 
 def plain(stream: io.StringIO, *, verbose: bool = False) -> display.Display:

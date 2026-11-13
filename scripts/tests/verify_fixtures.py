@@ -26,6 +26,8 @@ that sandbox is alive, because a run waiting on a held slot needs a timeout.
 
 import atexit
 import contextlib
+import fcntl
+import functools
 import io
 import itertools
 import json
@@ -45,10 +47,19 @@ import types
 from collections.abc import Iterator
 
 WORKTREE = pathlib.Path(__file__).resolve().parents[2]
-CLI = WORKTREE / "scripts" / "verify" / "cli.py"
-REAL_MANIFEST = WORKTREE / "scripts" / "verify" / "jobs.toml"
-
 VERIFY_DIR = WORKTREE / "scripts" / "verify"
+CLI = VERIFY_DIR / "cli.py"
+REAL_MANIFEST = VERIFY_DIR / "jobs.toml"
+
+# A commit starts a detached `git maintenance run --auto`, whose lock files
+# can vanish while a test copies the repository.
+# https://git-scm.com/docs/git-config#Documentation/git-config.txt-maintenanceauto
+GITCONFIG = (
+    "[user]\n\tname = t\n\temail = t@t\n"
+    "[init]\n\tdefaultBranch = main\n"
+    "[commit]\n\tgpgsign = false\n"
+    "[maintenance]\n\tauto = false\n"
+)
 
 GIT_LOCATORS = ("GIT_DIR", "GIT_INDEX_FILE", "GIT_PREFIX", "GIT_WORK_TREE", "GIT_COMMON_DIR")
 RUN_TIMEOUT = 20
@@ -281,19 +292,35 @@ print("released", flush=True)
 """
 
 
+def run_git(git: str, cwd: pathlib.Path, env: dict[str, str], *args: str) -> str:
+    result = subprocess.run(
+        [git, *args],
+        cwd=cwd,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=RUN_TIMEOUT,
+    )
+    assert result.returncode == 0, f"git {' '.join(args)} failed: {result.stderr}"
+    return result.stdout.strip()
+
+
 _templates: dict[tuple, pathlib.Path] = {}
-_template_root: list[pathlib.Path] = []
+
+
+@functools.cache
+def _template_root() -> pathlib.Path:
+    root = pathlib.Path(tempfile.mkdtemp(prefix="verify-fixtures-")).resolve()
+    atexit.register(shutil.rmtree, root, ignore_errors=True)
+    return root
 
 
 def template_repo(files: dict[str, str]) -> pathlib.Path:
     """The repository holding exactly `files` on branch `work`, built the first time it is asked for."""
     key = tuple(files.items())
     if key not in _templates:
-        if not _template_root:
-            root = pathlib.Path(tempfile.mkdtemp(prefix="verify-fixtures-")).resolve()
-            atexit.register(shutil.rmtree, root, ignore_errors=True)
-            _template_root.append(root)
-        directory = _template_root[0] / str(len(_templates))
+        directory = _template_root() / str(len(_templates))
         _build_template(directory, files)
         _templates[key] = directory / "proj"
     return _templates[key]
@@ -305,13 +332,7 @@ def _build_template(directory: pathlib.Path, files: dict[str, str]) -> None:
     gitconfig = directory / "gitconfig"
     repo = directory / "proj"
     repo.mkdir(parents=True)
-    # A commit starts a detached `git maintenance run --auto`, whose lock files
-    # can vanish while a test copies the template.
-    # https://git-scm.com/docs/git-config#Documentation/git-config.txt-maintenanceauto
-    gitconfig.write_text(
-        "[user]\n\tname = t\n\temail = t@t\n[init]\n\tdefaultBranch = main\n[commit]\n\tgpgsign = false\n"
-        "[maintenance]\n\tauto = false\n"
-    )
+    gitconfig.write_text(GITCONFIG)
     env = {
         "PATH": "/usr/bin:/bin",
         "HOME": str(directory),
@@ -320,27 +341,14 @@ def _build_template(directory: pathlib.Path, files: dict[str, str]) -> None:
         "GIT_CONFIG_GLOBAL": str(gitconfig),
         "GIT_CONFIG_NOSYSTEM": "1",
     }
-
-    def run_git(*args: str) -> None:
-        result = subprocess.run(
-            [git, *args],
-            cwd=repo,
-            env=env,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=RUN_TIMEOUT,
-        )
-        assert result.returncode == 0, f"git {' '.join(args)} failed: {result.stderr}"
-
-    run_git("init", "-q", "-b", "main")
+    run_git(git, repo, env, "init", "-q", "-b", "main")
     for relative, text in files.items():
         target = repo / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text)
-    run_git("add", "-A")
-    run_git("commit", "-q", "-m", "init")
-    run_git("checkout", "-q", "-b", "work")
+    run_git(git, repo, env, "add", "-A")
+    run_git(git, repo, env, "commit", "-q", "-m", "init")
+    run_git(git, repo, env, "checkout", "-q", "-b", "work")
 
 
 @contextlib.contextmanager
@@ -393,11 +401,7 @@ class Sandbox:
         (self.root / "tmp").mkdir()
         self.holders: list[Holder] = []
         gitconfig = self.root / "gitconfig"
-        gitconfig.write_text(
-            "[user]\n\tname = t\n\temail = t@t\n"
-            "[init]\n\tdefaultBranch = main\n"
-            "[commit]\n\tgpgsign = false\n"
-        )
+        gitconfig.write_text(GITCONFIG)
         git = shutil.which("git")
         assert git, "the sandbox links the machine's git into its PATH"
         (self.tools / "git").symlink_to(git)
@@ -466,17 +470,7 @@ class Sandbox:
         path.write_text(json.dumps(responses))
 
     def git(self, *args: str, cwd: pathlib.Path | None = None) -> str:
-        result = subprocess.run(
-            ["git", *args],
-            cwd=cwd or self.repo,
-            env=self.env,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=RUN_TIMEOUT,
-        )
-        assert result.returncode == 0, f"git {' '.join(args)} failed: {result.stderr}"
-        return result.stdout.strip()
+        return run_git("git", cwd or self.repo, self.env, *args)
 
     def write(self, relative: str, text: str) -> None:
         path = self.repo / relative
@@ -519,10 +513,7 @@ class Sandbox:
     @staticmethod
     def dispatch_like_main(cli, argv: list[str]) -> int:
         try:
-            return cli.dispatch(argv)
-        except cli.Exit as stop:
-            print(stop.message, file=sys.stderr, flush=True)
-            return stop.code
+            return cli.main(argv)
         except SystemExit as stop:
             if isinstance(stop.code, str):
                 print(stop.code, file=sys.stderr)
@@ -613,6 +604,17 @@ class Sandbox:
 
     def slot(self, index: int) -> pathlib.Path:
         return self.slot_dir / f"slot-{index}"
+
+    def held_slots(self, size: int) -> list[str]:
+        """The names of the pool's first `size` slots some process still holds a lock on."""
+        held = []
+        for index in range(size):
+            with open(self.slot(index), "a") as handle:
+                try:
+                    fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    held.append(self.slot(index).name)
+        return held
 
     def hold(self, *indexes: int) -> Holder:
         return Holder(self, [self.slot(index) for index in indexes])

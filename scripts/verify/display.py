@@ -1,29 +1,19 @@
 """What the person running `just test` sees: plain lines for pipes, live bars and a test tree for a terminal."""
 
-from collections.abc import Iterable
 from typing import Protocol, TextIO
 
 import events
 from events import Event
-from rich.console import Console, RenderableType
-from rich.progress import (
-    BarColumn,
-    Progress,
-    ProgressColumn,
-    Task,
-    TaskID,
-    TextColumn,
-    TimeElapsedColumn,
-)
-from rich.text import Text
 
 MARKS: dict[events.TestOutcome, str] = {"pass": "✓", "fail": "✗", "skip": "○"}
 PATH_SEPARATOR = " \u203a "
-WAITING_TEXT = "waiting for a slot"
-REFRESHES_PER_SECOND = 4
 
 
 class Display(Protocol):
+    """`shows_waits` says whether the display draws a waiting suite; one that does not leaves the stderr line to the slot pool."""
+
+    shows_waits: bool
+
     def note(self, text: str) -> None: ...
     def handle(self, event: Event) -> None: ...
     def close(self) -> None: ...
@@ -32,7 +22,9 @@ class Display(Protocol):
 def display_for(stream: TextIO, *, verbose: bool, plain: bool) -> Display:
     if plain or not _is_terminal(stream):
         return PlainDisplay(stream, verbose=verbose)
-    return LiveDisplay(Console(file=stream), verbose=verbose)
+    from live_display import live_display_on
+
+    return live_display_on(stream, verbose=verbose)
 
 
 def _is_terminal(stream: TextIO) -> bool:
@@ -77,8 +69,25 @@ class FinishedTests:
         return tree_lines(ended.suite, ended.status, tests) if self._enabled else []
 
 
+class QuietDisplay:
+    """Shows nothing, for a run whose stdout carries one JSON object."""
+
+    shows_waits = False
+
+    def note(self, text: str) -> None:
+        pass
+
+    def handle(self, event: Event) -> None:
+        pass
+
+    def close(self) -> None:
+        pass
+
+
 class PlainDisplay:
     """One line per fact, with no escape codes, byte for byte what the runner has always printed."""
+
+    shows_waits = False
 
     def __init__(self, stream: TextIO, *, verbose: bool) -> None:
         self._stream = stream
@@ -104,125 +113,3 @@ class PlainDisplay:
     def _write(self, line: str) -> None:
         self._stream.write(f"{line}\n")
         self._stream.flush()
-
-
-class _WaitingOrBar(ProgressColumn):
-    def __init__(self) -> None:
-        super().__init__()
-        self._bar = BarColumn(bar_width=30)
-
-    def render(self, task: Task) -> RenderableType:
-        if task.fields["state"] == "waiting":
-            return Text(WAITING_TEXT, style="dim")
-        return self._bar.render(task)
-
-
-class _Count(ProgressColumn):
-    def render(self, task: Task) -> Text:
-        if task.fields["state"] == "waiting":
-            return Text("")
-        total = task.fields["expected"]
-        return Text(
-            f"{int(task.completed)}/{'?' if total is None else total}", style="progress.download"
-        )
-
-
-class _Elapsed(ProgressColumn):
-    def __init__(self) -> None:
-        super().__init__()
-        self._elapsed = TimeElapsedColumn()
-
-    def render(self, task: Task) -> Text:
-        if task.fields["state"] == "waiting":
-            return Text("")
-        return self._elapsed.render(task)
-
-
-class _BarsAboveABlankLine(Progress):
-    """Ends every frame on its own empty line, so text printed above the bars starts a fresh line."""
-
-    def get_renderables(self) -> Iterable[RenderableType]:
-        yield from super().get_renderables()
-        yield Text("")
-
-
-class LiveDisplay:
-    """One row per suite on a refreshing region, with failures and finished trees printed above it.
-
-    The region refreshes on rich's own thread so elapsed times keep moving while a suite is
-    quiet; rich guards its task table with a lock, and every print goes through the live console.
-    """
-
-    def __init__(self, console: Console, *, verbose: bool = False) -> None:
-        self._console = console
-        self._finished = FinishedTests(enabled=verbose)
-        self._rows: dict[str, TaskID] = {}
-        self._progress = _BarsAboveABlankLine(
-            TextColumn("{task.description}", markup=False),
-            _WaitingOrBar(),
-            _Count(),
-            _Elapsed(),
-            TextColumn("{task.fields[mark]}"),
-            console=console,
-            refresh_per_second=REFRESHES_PER_SECOND,
-        )
-
-    def note(self, text: str) -> None:
-        self._print(text)
-
-    def handle(self, event: Event) -> None:
-        match event:
-            case events.SuiteWaiting(suite):
-                self._row(suite)
-            case events.SuiteStarted(suite):
-                self._start(suite)
-            case events.TestsCounted(suite, total):
-                self._progress.update(self._row(suite), total=max(total, 1), expected=total)
-            case events.TestEnded():
-                self._finished.record(event)
-                self._progress.advance(self._start(event.suite))
-                if event.outcome == "fail":
-                    self._print(failure_line(event))
-            case events.SuiteEnded():
-                self._end(event)
-
-    def close(self) -> None:
-        self._progress.live.transient = any(
-            task.fields["state"] != "ended" for task in self._progress.tasks
-        )
-        self._progress.stop()
-
-    def _row(self, suite: str) -> TaskID:
-        if suite not in self._rows:
-            self._rows[suite] = self._progress.add_task(
-                suite, start=False, total=None, state="waiting", expected=None, mark=""
-            )
-            self._progress.start()
-        return self._rows[suite]
-
-    def _start(self, suite: str) -> TaskID:
-        row = self._row(suite)
-        if self._progress.tasks[row].fields["state"] == "waiting":
-            self._progress.update(row, state="running")
-            self._progress.start_task(row)
-        return row
-
-    def _end(self, ended: events.SuiteEnded) -> None:
-        row = self._start(ended.suite)
-        done = int(self._progress.tasks[row].completed)
-        known = self._progress.tasks[row].fields["expected"]
-        self._progress.update(
-            row,
-            state="ended",
-            mark=MARKS[ended.status],
-            expected=done if known is None else known,
-            total=max(done, known or 0, 1),
-        )
-        self._progress.stop_task(row)
-        if ended.status == "fail":
-            self._print(ended.line)
-        self._print("\n".join(self._finished.tree(ended)))
-
-    def _print(self, text: str) -> None:
-        if text:
-            self._console.print(text, markup=False, highlight=False, emoji=False, soft_wrap=True)

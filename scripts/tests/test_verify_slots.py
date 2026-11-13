@@ -13,7 +13,6 @@ them only when the test writes to its stdin, writing a marker file first, so
 a stub that records the marker as present ran after the release.
 """
 
-import fcntl
 import json
 import subprocess
 import sys
@@ -158,13 +157,8 @@ def test_every_slot_is_free_once_the_run_ends(sb) -> None:
 
     assert result.returncode == 0, f"exit {result.returncode}: {result.stderr}"
     for index in range(3):
-        slot = sb.slot(index)
-        assert slot.is_file(), f"the pool keeps its slots at {sb.slot_dir}"
-        with open(slot, "a") as handle:
-            try:
-                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError:
-                pytest.fail(f"{slot.name} is still held after the run exited")
+        assert sb.slot(index).is_file(), f"the pool keeps its slots at {sb.slot_dir}"
+    assert sb.held_slots(3) == [], "slots still held after the run exited"
 
 
 def take_in_child(sb: Sandbox, size: int, name: str, announce: str) -> subprocess.Popen:
