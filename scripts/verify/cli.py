@@ -186,7 +186,9 @@ def run_parts(ctx: Context, planned: dict[str, Selection | Nothing]) -> dict[str
             record(Outcome.skipped(skip), part)
 
     def done(finished: Finished) -> None:
-        record(Outcome.of(finished), owner[finished.task.name])
+        record(
+            Outcome.of(finished, isinstance(ctx.scope.change, Prepush)), owner[finished.task.name]
+        )
 
     runner = Runner(ctx.repo.root, ctx.env, slot_pool(), logs, ctx.args.jobs)
     runner.run_all(tasks, ctx.args.serial, done)

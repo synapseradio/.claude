@@ -13,6 +13,7 @@ pre-commit:
 
           - name: lint
             run: just lint {staged_files}
+            stage_fixed: true
 
           - name: render-rulesets
             glob:

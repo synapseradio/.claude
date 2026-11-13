@@ -71,9 +71,11 @@ langs = ["bats", "sh"]
 name = "biome"
 kind = "lint"
 mode = "files"
+fixes = true
 command = [
   "node_modules/.bin/biome",
   "check",
+  "--write",
   "--no-errors-on-unmatched",
   "--files-ignore-unknown=true",
 ]
@@ -95,7 +97,8 @@ langs = ["ts", "json"]
 name = "markdownlint"
 kind = "lint"
 mode = "files"
-command = ["node_modules/.bin/markdownlint-cli2"]
+fixes = true
+command = ["node_modules/.bin/markdownlint-cli2", "--fix"]
 sources = ["**/*.md"]
 langs = ["md"]
 
@@ -103,7 +106,8 @@ langs = ["md"]
 name = "ruff"
 kind = "lint"
 mode = "files"
-command = ["uv", "run", "--frozen", "ruff", "check"]
+fixes = true
+command = ["uv", "run", "--frozen", "ruff", "check", "--fix"]
 sources = ["**/*.py"]
 langs = ["py"]
 

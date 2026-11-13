@@ -10,13 +10,17 @@ type Kind = Literal["pytest", "bats", "mod", "lint"]
 
 @dataclass(frozen=True)
 class Task:
-    """A suite or lint check ready to start, its command built from the workers it holds."""
+    """A suite or lint check ready to start, its command built from the workers it holds.
+
+    `fixable` lists the repository-relative files a fixing command may rewrite.
+    """
 
     name: str
     kind: Kind
     wants: int
     build: Callable[[int], list[str]]
     skip_exits: frozenset[int] = field(default_factory=frozenset)
+    fixable: tuple[str, ...] = ()
 
     @property
     def program(self) -> str:

@@ -10,6 +10,7 @@ from run import Finished
 from scope import Skipped
 
 FAILURE_LINES = 20
+UNCOMMITTED_FIXES = "the pushed commits lack these fixes; commit them and push again"
 
 type Status = Literal["pass", "fail", "skip"]
 
@@ -111,12 +112,15 @@ class Outcome:
     failures: list[str]
     command: list[str] | None
     reason: str | None = None
+    fixed: list[str] = field(default_factory=list)
 
     @classmethod
-    def of(cls, finished: Finished) -> Outcome:
+    def of(cls, finished: Finished, prepush: bool = False) -> Outcome:
+        """The verdict on a finished task; under `prepush`, files a fixer changed fail the job, because a push sends commits and not the working tree."""
         output = finished.log.read_text(encoding="utf-8", errors="replace")
         kind = finished.task.kind
-        if finished.exit == 0:
+        unpushable = prepush and bool(finished.fixed)
+        if finished.exit == 0 and not unpushable:
             status: Status = "pass"
         elif finished.exit in finished.task.skip_exits:
             status = "skip"
@@ -129,8 +133,15 @@ class Outcome:
             counts=counts_for(kind, output),
             seconds=round(finished.seconds, 2),
             log=str(finished.log),
-            failures=failure_lines(kind, output) if status == "fail" else [],
+            failures=(
+                [UNCOMMITTED_FIXES]
+                if unpushable and finished.exit == 0
+                else failure_lines(kind, output)
+                if status == "fail"
+                else []
+            ),
             command=finished.command,
+            fixed=list(finished.fixed),
         )
 
     @classmethod
@@ -138,15 +149,17 @@ class Outcome:
         return cls(skip.name, skip.kind, "skip", Counts(), 0.0, None, [], None, skip.reason)
 
     def line(self) -> str:
-        detail = ", ".join([self.kind, *self.counts.describe(), f"{self.seconds:.1f}s"])
+        fixed = [f"fixed {counted(len(self.fixed), 'file')}"] if self.fixed else []
+        detail = ", ".join([self.kind, *self.counts.describe(), *fixed, f"{self.seconds:.1f}s"])
+        listed = [f"  {path}" for path in self.fixed[:FAILURE_LINES]]
         match self.status:
             case "pass":
-                return f"PASS {self.name} ({detail})"
+                return "\n".join([f"PASS {self.name} ({detail})", *listed])
             case "skip":
                 return f"SKIP {self.name} ({self.kind}, {self.reason or 'nothing selected'})"
             case "fail":
                 lines = [f"FAIL {self.name} ({detail}) log={self.log}"]
-                return "\n".join([*lines, *(f"  {failure}" for failure in self.failures)])
+                return "\n".join([*lines, *listed, *(f"  {failure}" for failure in self.failures)])
 
     def as_json(self) -> dict:
         return {
@@ -162,6 +175,7 @@ class Outcome:
             "log": self.log,
             "failures": self.failures,
             "command": self.command,
+            "fixed": self.fixed,
         }
 
 

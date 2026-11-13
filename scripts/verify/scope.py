@@ -241,7 +241,9 @@ def lint_tasks(repo: Repo, job: Lint, hits: list[str]) -> list[Task]:
             present = sorted(path for path in hits if repo.exists(path))
             if not present:
                 return []
-            return [Task(job.name, "lint", 1, partial(fixed_command, [*command, *present]))]
+            fixable = tuple(present) if job.fixes else ()
+            build = partial(fixed_command, [*command, *present])
+            return [Task(job.name, "lint", 1, build, fixable=fixable)]
         case Once():
             return [Task(job.name, "lint", 1, partial(fixed_command, command))] if hits else []
         case Dirs(marker):

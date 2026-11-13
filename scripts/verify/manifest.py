@@ -69,8 +69,11 @@ type LintMode = Files | Once | Dirs
 
 @dataclass(frozen=True)
 class Lint(Job):
+    """A lint check; `fixes` marks a command that applies its tool's safe fixes to the files it is handed."""
+
     command: tuple[str, ...]
     mode: LintMode
+    fixes: bool = False
 
 
 @dataclass(frozen=True)
@@ -120,7 +123,14 @@ def parse_job(entry: dict) -> Suite | Lint:
         case other:
             message = f"job {name!r}: mode must be files, once, or dirs, got {other!r}"
             raise ManifestError(message)
-    return Lint(name, sources, langs, command, mode)
+    fixes = entry.get("fixes", False)
+    if not isinstance(fixes, bool):
+        message = f"job {name!r}: fixes must be true or false, got {fixes!r}"
+        raise ManifestError(message)
+    if fixes and not isinstance(mode, Files):
+        message = f"job {name!r}: fixes needs mode files, which hands the command its files"
+        raise ManifestError(message)
+    return Lint(name, sources, langs, command, mode, fixes)
 
 
 def load(path: Path) -> Manifest:

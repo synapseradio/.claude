@@ -11,7 +11,9 @@ Every program the runner starts is a stub: `uv`, `bats`, `claude`, `treefmt`,
 repository. A stub appends a start record (program, argv, cwd, environment,
 whether the release marker existed) to `calls.jsonl`, prints the canned output
 of the first response whose program matches and whose substring occurs in its
-argv, appends an end record, and exits with that response's code.
+argv, appends an end record, and exits with that response's code. A response
+may also name files to rewrite, which the stub does before printing, to
+simulate a fixer changing what it was handed.
 """
 
 import itertools
@@ -226,6 +228,9 @@ stdout, code = DEFAULT, 0
 for response in responses:
     if response["prog"] == prog and response["match"] in joined:
         stdout, code = response["stdout"], response["exit"]
+        for name in response.get("rewrite", []):
+            target = pathlib.Path(name)
+            target.write_text(target.read_text() + "# rewritten\\n")
         break
 sys.stdout.write(stdout)
 sys.stdout.flush()
@@ -319,11 +324,29 @@ class Sandbox:
         else:
             (self.stubs / prog).unlink()
 
-    def respond(self, prog: str, match: str, stdout: str, exit_code: int = 0) -> None:
-        """Make `prog` print `stdout` and exit `exit_code` when its argv contains `match`."""
+    def respond(
+        self,
+        prog: str,
+        match: str,
+        stdout: str,
+        exit_code: int = 0,
+        rewrite: list[str] | None = None,
+    ) -> None:
+        """Make `prog` print `stdout` and exit `exit_code` when its argv contains `match`.
+
+        Each path in `rewrite`, relative to the stub's working directory, gains a line first.
+        """
         path = self.state / "responses.json"
         responses = json.loads(path.read_text()) if path.exists() else []
-        responses.append({"prog": prog, "match": match, "stdout": stdout, "exit": exit_code})
+        responses.append(
+            {
+                "prog": prog,
+                "match": match,
+                "stdout": stdout,
+                "exit": exit_code,
+                "rewrite": rewrite or [],
+            }
+        )
         path.write_text(json.dumps(responses))
 
     def git(self, *args: str, cwd: pathlib.Path | None = None) -> str:

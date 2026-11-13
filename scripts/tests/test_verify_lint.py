@@ -3,16 +3,17 @@
 
 Each case copies `scripts/verify/jobs.toml` into a scratch tree laid out like
 this repository (see `verify_fixtures.REAL_TREE`), so it checks the manifest's
-lint jobs and the runner together: which check-only command each in-scope file
-reaches, with which arguments. Every program is a stub, `bash` included, so
+lint jobs and the runner together: which command each in-scope file reaches,
+with which arguments, and what the runner reports of the files a fixer changed. Every program is a stub, `bash` included, so
 the rulesets check is observed as the argv bash receives.
 """
 
+import json
 import pathlib
 import subprocess
 
 import pytest
-from verify_fixtures import RealManifestSandbox, find_line
+from verify_fixtures import RealManifestSandbox, find_line, indented_block
 
 RULESETS_CHECK = [
     "features/plugins/rulesets/hooks/with-python.sh",
@@ -61,13 +62,13 @@ def progs(sb) -> set[str]:
 
 
 class TestFileTakingJobsGetOnlyTheirInScopeFiles:
-    def test_a_python_file_reaches_ruff_check(self, sb) -> None:
+    def test_a_python_file_reaches_ruff_check_with_the_safe_fixer(self, sb) -> None:
         result = lint(sb, "app/main.py")
 
         assert progs(sb) == {"uv"}, [call["args"] for call in sb.calls()]
         call = sb.calls("uv")[0]
-        assert call["args"][:4] == ["run", "--frozen", "ruff", "check"], call["args"]
-        assert "--fix" not in call["args"], "lint never writes"
+        assert call["args"][:5] == ["run", "--frozen", "ruff", "check", "--fix"], call["args"]
+        assert "--unsafe-fixes" not in call["args"], "only safe fixes apply"
         assert sb.paths_in(call) == ["app/main.py"]
         find_line(result.stdout.splitlines(), r"PASS \S+ \(.*\)")
 
@@ -75,19 +76,20 @@ class TestFileTakingJobsGetOnlyTheirInScopeFiles:
         lint(sb, "docs/guide.md", "conf/a.yaml")
 
         markdown = sb.calls("markdownlint-cli2")[0]
-        assert "--fix" not in markdown["args"], "lint never writes"
+        assert "--fix" in markdown["args"], markdown["args"]
         assert sb.paths_in(markdown) == ["docs/guide.md"]
         yaml = sb.call_for("uv", "yamllint")
         assert yaml["args"][:4] == ["run", "--frozen", "yamllint", "--strict"], yaml["args"]
         assert sb.paths_in(yaml) == ["conf/a.yaml"]
 
-    def test_typescript_and_json_reach_biome_check_without_write(self, sb) -> None:
+    def test_typescript_and_json_reach_biome_check_with_safe_writes(self, sb) -> None:
         lint(sb, "web/app.ts", "data/x.json")
 
         args = sb.calls("biome")[0]["args"]
         assert args[0] == "check", args
         assert "--no-errors-on-unmatched" in args and "--files-ignore-unknown=true" in args, args
-        assert "--write" not in args, "lint never writes"
+        assert "--write" in args, args
+        assert "--unsafe" not in args, "only safe fixes apply"
         assert set(sb.paths_in(sb.calls("biome")[0])) == {"web/app.ts", "data/x.json"}
         assert sb.calls("tsc") == [], "web/app.ts is outside the context-gauge project"
 
@@ -164,6 +166,123 @@ def test_lang_sh_selects_only_shellcheck(sb) -> None:
 
     assert progs(sb) == {"shellcheck"}, [(c["prog"], c["args"]) for c in sb.calls()]
     assert set(sb.paths_in(sb.calls("shellcheck")[0])) == sb.tracked(".sh")
+
+
+FIXED_LINE = r"PASS ruff \(lint, fixed 2 files, [\d.]+s\)"
+
+
+def ruff_rewrites(sb, *paths: str, stdout: str = "", exit_code: int = 0) -> None:
+    sb.respond("uv", "ruff", stdout, exit_code, rewrite=list(paths))
+
+
+class TestFixingJobs:
+    def test_only_ruff_biome_and_markdownlint_carry_a_fixer(self, sb) -> None:
+        lint(
+            sb,
+            "app/main.py",
+            "docs/guide.md",
+            "web/app.ts",
+            "conf/a.yaml",
+            "conf/b.toml",
+            "bin/run.sh",
+        )
+
+        fixing = {"--fix", "--write", "--unsafe", "--unsafe-fixes"}
+        for call in sb.calls():
+            carried = fixing & set(call["args"])
+            name = call["prog"] if call["prog"] != "uv" else call["args"][2]
+            assert bool(carried) == (name in {"ruff", "biome", "markdownlint-cli2"}), call["args"]
+            assert not carried & {"--unsafe", "--unsafe-fixes"}, call["args"]
+
+    def test_a_fixed_file_is_listed_and_the_job_passes(self, sb) -> None:
+        ruff_rewrites(sb, "app/main.py", "top.py")
+
+        result = lint(sb, "app/main.py", "top.py")
+
+        lines = result.stdout.splitlines()
+        index, _ = find_line(lines, FIXED_LINE)
+        assert indented_block(lines, index) == ["app/main.py", "top.py"], lines
+        assert lines[-1].startswith("verify: 1 passed, 0 failed"), lines[-1]
+
+    def test_a_fixer_that_changes_nothing_reports_nothing_fixed(self, sb) -> None:
+        result = lint(sb, "app/main.py")
+
+        assert "fixed" not in result.stdout, result.stdout
+
+    def test_a_file_outside_the_handed_files_is_not_reported(self, sb) -> None:
+        ruff_rewrites(sb, "app/main.py", "top.py")
+
+        report = json.loads(lint(sb, "app/main.py", "--json").stdout)
+
+        assert report["suites"][0]["fixed"] == ["app/main.py"], report["suites"][0]
+
+    def test_json_carries_the_fixed_list_of_every_job(self, sb) -> None:
+        ruff_rewrites(sb, "app/main.py", "top.py")
+
+        report = json.loads(lint(sb, "app/main.py", "top.py", "conf/b.toml", "--json").stdout)
+
+        fixed = {suite["name"]: suite["fixed"] for suite in report["suites"]}
+        assert fixed == {"ruff": ["app/main.py", "top.py"], "taplo": []}, fixed
+
+    def test_no_more_than_twenty_fixed_paths_print(self, sb) -> None:
+        for number in range(25):
+            sb.write(f"many/m{number:02}.py", "X = 1\n")
+        paths = [f"many/m{number:02}.py" for number in range(25)]
+        ruff_rewrites(sb, *paths)
+
+        result = lint(sb, *paths)
+
+        lines = result.stdout.splitlines()
+        index, _ = find_line(lines, r"PASS ruff \(lint, fixed 25 files, [\d.]+s\)")
+        assert indented_block(lines, index) == paths[:20], lines
+
+    def test_findings_left_after_fixing_fail_the_job_and_still_list_the_fixed_files(
+        self, sb
+    ) -> None:
+        ruff_rewrites(sb, "app/main.py", stdout="app/main.py:1:1: F821\n", exit_code=1)
+
+        result = lint(sb, "app/main.py", "top.py", expect=1)
+
+        lines = result.stdout.splitlines()
+        index, _ = find_line(lines, r"FAIL ruff \(lint, fixed 1 file, [\d.]+s\) log=\S+")
+        assert indented_block(lines, index) == ["app/main.py", "app/main.py:1:1: F821"], lines
+
+    def test_under_prepush_a_fixed_file_fails_the_job_and_says_to_commit_it(self, sb) -> None:
+        sb.git("checkout", "-q", "-b", "feature")
+        sb.add_origin()
+        sb.git("push", "-q", "origin", "main")
+        sb.write("app/main.py", "MAIN = 2\n")
+        sb.write("top.py", "TOP = 2\n")
+        sb.commit("change python")
+        ruff_rewrites(sb, "app/main.py", "top.py")
+
+        result = lint(sb, "--prepush", expect=1)
+
+        lines = result.stdout.splitlines()
+        index, _ = find_line(lines, r"FAIL ruff \(lint, fixed 2 files, [\d.]+s\) log=\S+")
+        block = indented_block(lines, index)
+        assert block[:2] == ["app/main.py", "top.py"], block
+        message = " ".join(block[2:])
+        assert "pushed commits lack these fixes" in message and "commit" in message, block
+
+    def test_under_prepush_a_job_that_fixed_nothing_still_passes(self, sb) -> None:
+        sb.git("checkout", "-q", "-b", "feature")
+        sb.add_origin()
+        sb.git("push", "-q", "origin", "main")
+        sb.write("app/main.py", "MAIN = 2\n")
+        sb.commit("change python")
+
+        result = lint(sb, "--prepush")
+
+        find_line(result.stdout.splitlines(), r"PASS ruff \(lint, [\d.]+s\)")
+
+    def test_list_shows_the_fixing_commands(self, sb) -> None:
+        result = lint(sb, "app/main.py", "docs/guide.md", "web/app.ts", "--list")
+
+        assert sb.calls() == [], "--list starts no runner"
+        assert "ruff check --fix" in result.stdout, result.stdout
+        assert "markdownlint-cli2 --fix" in result.stdout, result.stdout
+        assert "biome check --write" in result.stdout, result.stdout
 
 
 class TestLintVerdicts:

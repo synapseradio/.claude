@@ -1,5 +1,6 @@
 """Starting tasks: finding their programs, holding slots while each runs, and writing each one's log."""
 
+import hashlib
 import shutil
 import subprocess
 import time
@@ -41,6 +42,17 @@ def missing(root: Path, programs: Iterable[str], env: dict[str, str]) -> list[Mi
     return absent
 
 
+def digests(root: Path, paths: Iterable[str]) -> dict[str, str | None]:
+    """Content hash of each repository-relative path; None for a path that does not exist."""
+    found: dict[str, str | None] = {}
+    for path in paths:
+        try:
+            found[path] = hashlib.sha256((root / path).read_bytes()).hexdigest()
+        except OSError:
+            found[path] = None
+    return found
+
+
 def run_dir(log_root: Path, log_name: str, pid: int) -> Path:
     directory = log_root / log_name / f"{datetime.now():%Y%m%d-%H%M%S}-{pid}"
     directory.mkdir(parents=True, exist_ok=True)
@@ -54,6 +66,7 @@ class Finished:
     exit: int
     seconds: float
     log: Path
+    fixed: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -69,6 +82,7 @@ class Runner:
         log = self.logs / f"{task.name.replace('/', '-')}.log"
         with self.pool.take(task.name, wanted) as workers:
             command = task.build(workers)
+            before = digests(self.root, task.fixable)
             started = time.monotonic()
             with log.open("wb") as out:
                 process = subprocess.Popen(
@@ -81,7 +95,9 @@ class Runner:
                 )
                 code = process.wait()
             seconds = time.monotonic() - started
-        return Finished(task, command, code, seconds, log)
+        after = digests(self.root, task.fixable)
+        fixed = tuple(path for path in task.fixable if before[path] != after[path])
+        return Finished(task, command, code, seconds, log, fixed)
 
     def run_all(self, tasks: list[Task], serial: bool, done: Callable[[Finished], None]) -> None:
         """Run every task, calling `done` on the calling thread as each one ends."""
