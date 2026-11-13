@@ -210,8 +210,8 @@ decide_bash() {
   decision::clear
   RM_LINES=()
 
-  # Git would otherwise judge every path in the repository that holds the
-  # hook and not in its own.
+  # Git would otherwise judge every path against the repository that holds the
+  # hook, not the one the command names.
   git_guard::unset_repository_env
 
   if [[ -z "${command}" ]]; then

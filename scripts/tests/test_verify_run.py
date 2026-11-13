@@ -261,7 +261,7 @@ BATS_TIMING_SAMPLE = (SAMPLES / "progress_samples" / "bats-tap-timing.txt").read
 
 
 def test_a_plain_run_prints_what_the_runner_printed_before_progress_was_added(tmp_path) -> None:
-    """The sample is the output of the runner at commit 1d827c2, captured through the sandbox before the wiring changed."""
+    """`verify_samples/plain-run.txt` holds the plain display's output for `run_scenario`, `normalize` applied."""
     result = run_scenario(Sandbox(tmp_path))
 
     assert normalize(result.stdout) == PLAIN_RUN_SAMPLE.read_text(encoding="utf-8")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """What the person running `just test` sees on screen and what pipes and hooks read.
 
-The plain display prints the runner's long-standing lines; the live display
+The plain display prints one line per fact; the live display
 draws one row per suite on a `rich` console. Live tests read the text a
 recording console captured, never `rich` objects.
 """

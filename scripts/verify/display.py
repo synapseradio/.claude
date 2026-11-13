@@ -85,7 +85,7 @@ class QuietDisplay:
 
 
 class PlainDisplay:
-    """One line per fact, with no escape codes, byte for byte what the runner has always printed."""
+    """One line per fact, with no escape codes."""
 
     shows_waits = False
 

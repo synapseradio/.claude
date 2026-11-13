@@ -17,11 +17,11 @@ simulate a fixer changing what it was handed.
 
 The scratch repository is built once per pytest process and copied into each
 sandbox, so no test starts git to set one up and none can write into the
-shared copy. `Sandbox.run` calls `cli.dispatch` in this process, with the
+shared copy. `Sandbox.run` calls `cli.main` in this process, with the
 sandbox's environment, working directory, and captured streams, and puts all
-three back afterwards. It starts a real process for `fmt` and `verify`, whose
-formatter inherits the caller's output descriptors, and while a `Holder` of
-that sandbox is alive, because a run waiting on a held slot needs a timeout.
+three back afterwards. It starts a real process instead for `fmt` and `verify`,
+whose formatter inherits the caller's output descriptors, and while a `Holder`
+of that sandbox is alive, because a run waiting on a held slot needs a timeout.
 """
 
 import atexit
