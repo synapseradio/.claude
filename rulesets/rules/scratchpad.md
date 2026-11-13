@@ -13,7 +13,8 @@ A read-only mode holds ? skip setup.
 Neither holds ? create the directory on first write and leave everything else as it stands.
 
 place file
-  | a temporary or working file inside a git repository
+  | an ephemeral log or command output that no later step reads = a file under `/tmp`
+  | a temporary or working file inside a git repository, prose, script logic, or a report for one
       = the working file, over any scratchpad or temp directory the harness names
   | a temporary or working file outside a git repository = the harness path exactly
   | a skill or workflow default such as `/tmp/<skill>-<slug>.md`
