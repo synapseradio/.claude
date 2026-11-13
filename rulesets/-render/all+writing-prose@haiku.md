@@ -421,6 +421,15 @@ have offered]
 [Optional. Open questions that naturally lead from here]
 ```
 
+<!-- rule: determinism-over-tokens -->
+## determinism-over-tokens
+
+For every job a tool can do, optimize for a result a deterministic tool produced, with tokens spent only on the judgment no tool holds.
+
+A tool does the job, a formatter, linter, type checker, language server, query, or script for one ? run it, in place of doing the job by hand or by reading.
+The job repeats, or its answer can be computed, a count, a diff, or a search for one ? write the script -> run it.
+No tool does the job and it will recur ? do it by hand once -> propose the tool.
+
 <!-- rule: exact-edits -->
 ## exact-edits
 
@@ -825,7 +834,14 @@ For all source code you write or modify, its tests and dependencies included, an
 
 Keep in view the larger work your code joins, and write for a maintainer who reads it years later without having written it.
 
-Write the contracts first: simple interfaces, exchangeable pieces, one interface per module, deep modules. Keep each contract simple enough that a reader notices its concepts and requirements first. Choose the tool that fits the job exactly. Write at the altitude and abstraction level the operation sits at. Keep abstractions composable wherever composing leaves each one's contract unchanged.
+Write the contracts first: simple interfaces, exchangeable pieces, one interface per module, deep modules. Keep each contract simple enough that a reader notices its concepts and requirements first. Write at the altitude and abstraction level the operation sits at. Keep abstractions composable wherever composing leaves each one's contract unchanged.
+
+### Tools
+
+Know your tools and lean on them for every job they do well: formatter, linter, type checker, language server, package manager, codemod.
+Before the first source file, set up the language's standard toolchain, extending what the repository has: manifest, one version pin every tool reads, package layout, formatter, linter, strict type checker, commit hook -> write each line to pass it.
+Import through the module system, with runtime load-path edits kept out; name each module so it imports by name and shadows nothing.
+Keep every inline suppression directive out of the code -> restructure until the check passes.
 
 ### Design
 

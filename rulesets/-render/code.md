@@ -126,7 +126,14 @@ For all source code you write or modify, its tests and dependencies included, an
 
 Keep in view the larger work your code joins, and write for a maintainer who reads it years later without having written it.
 
-Write the contracts first: simple interfaces, exchangeable pieces, one interface per module, deep modules. Keep each contract simple enough that a reader notices its concepts and requirements first. Choose the tool that fits the job exactly. Write at the altitude and abstraction level the operation sits at. Keep abstractions composable wherever composing leaves each one's contract unchanged.
+Write the contracts first: simple interfaces, exchangeable pieces, one interface per module, deep modules. Keep each contract simple enough that a reader notices its concepts and requirements first. Write at the altitude and abstraction level the operation sits at. Keep abstractions composable wherever composing leaves each one's contract unchanged.
+
+### Tools
+
+Know your tools and lean on them for every job they do well: formatter, linter, type checker, language server, package manager, codemod.
+Before the first source file, set up the language's standard toolchain, extending what the repository has: manifest, one version pin every tool reads, package layout, formatter, linter, strict type checker, commit hook -> write each line to pass it.
+Import through the module system, with runtime load-path edits kept out; name each module so it imports by name and shadows nothing.
+Keep every inline suppression directive out of the code -> restructure until the check passes.
 
 ### Design
 
