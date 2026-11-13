@@ -14,9 +14,26 @@ a stub that records the marker as present ran after the release.
 """
 
 import fcntl
+import subprocess
+import sys
+import zlib
 
 import pytest
-from verify_fixtures import RUN_TIMEOUT, Sandbox, pair, read_until
+from verify_fixtures import RUN_TIMEOUT, WORKTREE, Sandbox, pair, read_until
+
+TAKER = """\
+import sys
+from pathlib import Path
+
+sys.path.insert(0, sys.argv[1])
+from slots import SlotPool
+
+directory, size, name, announce = Path(sys.argv[2]), int(sys.argv[3]), sys.argv[4], sys.argv[5]
+pool = SlotPool(directory, size)
+options = {"on_wait": lambda: print("waited", flush=True)} if announce == "on_wait" else {}
+with pool.take(name, 1, **options) as held:
+    print(f"got {held}", flush=True)
+"""
 
 
 @pytest.fixture
@@ -146,3 +163,94 @@ def test_every_slot_is_free_once_the_run_ends(sb) -> None:
                 fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError:
                 pytest.fail(f"{slot.name} is still held after the run exited")
+
+
+def take_in_child(sb: Sandbox, size: int, name: str, announce: str) -> subprocess.Popen:
+    """Start a process taking one slot of a `size`-slot pool, printing `got <n>` once it holds them.
+
+    With `announce` set to `on_wait` it passes an `on_wait` that prints `waited`; otherwise it takes `on_wait` as omitted.
+    """
+    script = sb.root / "taker.py"
+    script.write_text(TAKER)
+    argv = [
+        sys.executable,
+        str(script),
+        str(WORKTREE / "scripts" / "verify"),
+        str(sb.slot_dir),
+        str(size),
+        name,
+        announce,
+    ]
+    return subprocess.Popen(
+        argv, env=sb.env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+
+
+def test_a_waiting_suite_starts_on_whichever_slot_frees_first_while_its_own_stays_held(sb) -> None:
+    name, size = "rulesets", 2
+    hashed = zlib.crc32(name.encode()) % size
+    other = 1 - hashed
+    keeps_hashed_slot = sb.hold(hashed)
+    frees_other_slot = sb.hold(other)
+    process = take_in_child(sb, size, name, "default")
+    try:
+        waiting, seen = read_until(process.stderr, b"waiting for a slot")
+        assert waiting, (
+            f"with both slots held the suite announces that it waits; stderr so far: {seen.decode(errors='replace')}"
+        )
+
+        frees_other_slot.release()
+        started, out = read_until(process.stdout, b"got 1", timeout=5)
+    finally:
+        keeps_hashed_slot.kill()
+        frees_other_slot.kill()
+        process.kill()
+        process.wait(timeout=RUN_TIMEOUT)
+
+    assert started, (
+        f"slot-{other} freed while slot-{hashed} stayed held, yet the suite never started: "
+        f"stdout {out.decode(errors='replace')!r}"
+    )
+
+
+def test_on_wait_is_called_once_when_every_slot_is_held(sb) -> None:
+    holder = sb.hold(0, 1)
+    process = take_in_child(sb, 2, "scripts", "on_wait")
+    try:
+        called, seen = read_until(process.stdout, b"waited")
+        assert called, (
+            f"on_wait was never called with both slots held; stdout so far: {seen.decode(errors='replace')!r}"
+        )
+        assert b"got" not in seen, "the suite started before any slot freed"
+
+        holder.release()
+        out, err = process.communicate(timeout=RUN_TIMEOUT)
+    finally:
+        holder.kill()
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=RUN_TIMEOUT)
+
+    printed = (seen + out).decode()
+    assert printed.count("waited") == 1, (
+        f"on_wait runs once however long the wait lasts: {printed!r}"
+    )
+    assert "got 1" in printed, (
+        f"the suite never started after the holder released: {printed!r} {err.decode(errors='replace')}"
+    )
+    assert b"waiting for a slot" not in err, (
+        "with an on_wait given, the default announcement is left out"
+    )
+
+
+def test_on_wait_is_never_called_while_a_slot_is_free(sb) -> None:
+    holder = sb.hold(0)
+    try:
+        process = take_in_child(sb, 2, "scripts", "on_wait")
+        out, err = process.communicate(timeout=RUN_TIMEOUT)
+    finally:
+        holder.kill()
+
+    assert out.decode() == "got 1\n", (
+        f"one of two slots is free: stdout {out.decode()!r}, stderr {err.decode(errors='replace')}"
+    )
