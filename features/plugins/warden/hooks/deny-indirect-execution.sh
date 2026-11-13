@@ -187,8 +187,6 @@ open_heredoc() {
 main() {
   local char next prev in_double=0 command_start=1 word_start=1 arith=0
   CMD="$(jq -r '.tool_input.command // ""')"
-  # Every form this hook denies, a substitution, a backtick, a process
-  # substitution, a =( ), or a subshell, holds a ( or a backtick.
   [[ "${CMD}" == *'('* || "${CMD}" == *'`'* ]] || return 0
   LEN="${#CMD}"
   POS=0

@@ -451,6 +451,35 @@ make_plain_dir() {
   assert_denies 'rm tracked.txt'
 }
 
+@test "an absolute operand is judged when the envelope names no cwd" {
+  make_repo
+  assert_silent "rm ${REPO}/tracked.txt"
+  printf 'new\n' >"${REPO}/untracked.txt"
+  assert_denies "rm ${REPO}/untracked.txt"
+}
+
+@test "an empty cwd in the envelope counts as no working directory" {
+  make_repo
+  assert_denies_in '' 'rm tracked.txt'
+  assert_reason_contains 'no working directory'
+  assert_silent_in '' "rm ${REPO}/tracked.txt"
+}
+
+@test "every line of a multi-line command is judged" {
+  make_repo
+  printf 'new\n' >"${REPO}/untracked.txt"
+  assert_silent_in "${REPO}" $'rm tracked.txt\nrm other.txt'
+  assert_denies_in "${REPO}" $'rm tracked.txt\nrm other.txt\nrm untracked.txt'
+  assert_reason_contains 'untracked.txt'
+}
+
+@test "a multi-line command is judged when the envelope names no cwd" {
+  make_repo
+  assert_silent $'rm '"${REPO}"$'/tracked.txt\nrm '"${REPO}"'/other.txt'
+  assert_denies $'rm '"${REPO}"$'/tracked.txt\nrm relative.txt'
+  assert_reason_contains 'no working directory'
+}
+
 @test "an operand holding a glob is denied" {
   make_repo
   assert_denies_in "${REPO}" 'rm *.txt'

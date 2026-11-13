@@ -230,6 +230,12 @@ setup() {
   assert_silent 'ls "${HOME}/x"'
 }
 
+@test "a plain command with no parenthesis and no backtick stays silent" {
+  assert_silent 'git status --short'
+  assert_silent 'cat README.md | grep -n todo > out.txt'
+  assert_silent 'FOO=1 make build && echo "done: $FOO"'
+}
+
 @test "an empty command stays silent" {
   assert_silent ''
 }

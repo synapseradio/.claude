@@ -295,6 +295,33 @@ assert_denied_because() {
   assert_denies 'git -C work reset --soft HEAD~1'
 }
 
+@test "an absolute -C path is judged when the envelope names no cwd" {
+  assert_silent "git -C ${WORK} reset --soft HEAD~2"
+}
+
+@test "an empty cwd in the envelope counts as no working directory" {
+  assert_denies_in '' 'git reset --soft HEAD~1'
+  assert_reason_contains 'working directory'
+  assert_silent_in '' "git -C ${WORK} reset --soft HEAD~2"
+}
+
+@test "a soft reset on the first line of a multi-line command is allowed" {
+  assert_silent_in "${WORK}" $'git reset --soft HEAD~2\ngit commit -m squashed\ngit log --oneline'
+}
+
+@test "a soft reset on the last line of a multi-line command is denied" {
+  assert_denies_in "${WORK}" $'git status\ngit log --oneline\ngit reset --soft HEAD~1'
+  assert_reason_contains 'follows another step'
+}
+
+@test "a soft reset by -C is judged against that path, not the envelope's cwd" {
+  git -C "${WORK}" worktree add -q "${BATS_TEST_TMPDIR}/trunk" main
+  git -C "${BATS_TEST_TMPDIR}/trunk" commit -q --allow-empty -m trunk-local
+  assert_denies_in "${WORK}" "git -C ${BATS_TEST_TMPDIR}/trunk reset --soft HEAD~1"
+  assert_reason_contains 'default branch'
+  assert_silent_in "${BATS_TEST_TMPDIR}/trunk" "git -C ${WORK} reset --soft HEAD~2"
+}
+
 @test "git failing to run is denied" {
   local stubs="${BATS_TEST_TMPDIR}/stubs"
   mkdir -p "${stubs}"

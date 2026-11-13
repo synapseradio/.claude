@@ -22,6 +22,24 @@ setup() {
   isolate_home
 }
 
+#######################################
+# Wrap a command in a single-quoted bash -c string, once per level, with each
+# inner quote escaped so a real shell runs the result.
+# Arguments:
+#   $1 - how many bash -c strings to nest.
+#   $2 - the innermost command.
+# Outputs:
+#   The nested command text on stdout.
+#######################################
+nest_in_shell_c() {
+  local levels="$1" command="$2" level
+  local quote="'" escaped="'\\''"
+  for ((level = 0; level < levels; level++)); do
+    command="bash -c '${command//${quote}/${escaped}}'"
+  done
+  printf '%s' "${command}"
+}
+
 @test "echo of an API key is denied" {
   assert_denies 'echo $OPENAI_API_KEY'
 }
@@ -179,6 +197,10 @@ setup() {
 @test "an echo of a secret handed to another launcher is denied" {
   assert_denies 'docker run --rm alpine echo "$API_TOKEN"'
   assert_denies "bash -c 'echo \$API_TOKEN'"
+}
+
+@test "a secret printed inside a bash -c string nested three levels deep is denied" {
+  assert_denies "$(nest_in_shell_c 3 'echo $API_TOKEN')"
 }
 
 @test "a here-document run by a shell that dumps the environment is denied" {
