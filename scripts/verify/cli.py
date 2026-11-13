@@ -139,7 +139,7 @@ def log_root() -> Path:
 
 def planned_rows(selection: Selection) -> list[dict]:
     rows = [
-        {"name": task.name, "runner": task.kind, "command": task.build(task.wants)}
+        {"name": task.name, "runner": task.kind, "command": task.argv(task.wants)}
         for task in selection.tasks
     ]
     return rows + [

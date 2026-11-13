@@ -40,10 +40,9 @@ class Job:
     sources: tuple[str, ...]
     langs: frozenset[str]
 
-    def owns(self, path: str) -> bool:
+    def owns(self, path: PurePosixPath) -> bool:
         """Whether a repository-relative path matches one of the job's source globs."""
-        pure = PurePosixPath(path)
-        return any(pure.full_match(glob) for glob in self.sources)
+        return any(path.full_match(glob) for glob in self.sources)
 
 
 @dataclass(frozen=True)

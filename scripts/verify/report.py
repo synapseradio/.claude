@@ -3,6 +3,7 @@
 import json
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -34,11 +35,14 @@ BUN_COUNT = re.compile(r"^\s*(\d+) (pass|fail|skip)(?:ed)?\b", re.MULTILINE)
 
 def pytest_counts(output: str) -> Counts:
     """Counts from pytest's last summary line, `1 failed, 2 passed in 0.12s`; errors count as failures."""
-    summaries = [line for line in output.splitlines() if PYTEST_SUMMARY.search(line)]
-    if not summaries:
+    summary = next(
+        (line for line in reversed(output.splitlines()) if PYTEST_SUMMARY.search(line)),
+        None,
+    )
+    if summary is None:
         return Counts()
     found = {"passed": 0, "failed": 0, "skipped": 0}
-    for number, label in PYTEST_COUNT.findall(summaries[-1]):
+    for number, label in PYTEST_COUNT.findall(summary):
         if label in ("passed", "xpassed"):
             found["passed"] += int(number)
         elif label in ("skipped", "xfailed"):
@@ -75,30 +79,26 @@ def bun_counts(output: str) -> Counts:
     return Counts(found["pass"], found["fail"], found["skip"])
 
 
+PARSERS: dict[str, tuple[Callable[[str], Counts], str | None]] = {
+    "pytest": (pytest_counts, "FAILED "),
+    "bats": (tap_counts, "not ok"),
+    "mod": (bun_counts, "(fail)"),
+}
+
+
 def failure_lines(kind: str, output: str) -> list[str]:
+    _, prefix = PARSERS.get(kind, (lambda _: Counts(), None))
     lines = output.splitlines()
-    match kind:
-        case "pytest":
-            chosen = [line for line in lines if line.startswith("FAILED ")]
-        case "bats":
-            chosen = [line for line in lines if line.startswith("not ok")]
-        case "mod":
-            chosen = [line for line in lines if line.startswith("(fail)")]
-        case _:
-            chosen = [line for line in lines if line.strip()]
+    if prefix is None:
+        chosen = [line for line in lines if line.strip()]
+    else:
+        chosen = [line for line in lines if line.startswith(prefix)]
     return chosen[:FAILURE_LINES]
 
 
 def counts_for(kind: str, output: str) -> Counts:
-    match kind:
-        case "pytest":
-            return pytest_counts(output)
-        case "bats":
-            return tap_counts(output)
-        case "mod":
-            return bun_counts(output)
-        case _:
-            return Counts()
+    parse, _ = PARSERS.get(kind, (lambda _: Counts(), None))
+    return parse(output)
 
 
 @dataclass(frozen=True)
@@ -117,7 +117,6 @@ class Outcome:
     @classmethod
     def of(cls, finished: Finished, prepush: bool = False) -> Outcome:
         """The verdict on a finished task; under `prepush`, files a fixer changed fail the job, because a push sends commits and not the working tree."""
-        output = finished.log.read_text(encoding="utf-8", errors="replace")
         kind = finished.task.kind
         unpushable = prepush and bool(finished.fixed)
         if finished.exit == 0 and not unpushable:
@@ -126,6 +125,15 @@ class Outcome:
             status = "skip"
         else:
             status = "fail"
+        output = ""
+        if kind != "lint" or status == "fail":
+            output = finished.log.read_text(encoding="utf-8", errors="replace")
+        if unpushable and finished.exit == 0:
+            failures = [UNCOMMITTED_FIXES]
+        elif status == "fail":
+            failures = failure_lines(kind, output)
+        else:
+            failures = []
         return cls(
             name=finished.task.name,
             kind=kind,
@@ -133,13 +141,7 @@ class Outcome:
             counts=counts_for(kind, output),
             seconds=round(finished.seconds, 2),
             log=str(finished.log),
-            failures=(
-                [UNCOMMITTED_FIXES]
-                if unpushable and finished.exit == 0
-                else failure_lines(kind, output)
-                if status == "fail"
-                else []
-            ),
+            failures=failures,
             command=finished.command,
             fixed=list(finished.fixed),
         )

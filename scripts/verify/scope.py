@@ -6,8 +6,9 @@ from functools import partial
 from pathlib import PurePosixPath
 
 from manifest import Dirs, Files, Lint, Manifest, Once, Suite
-from repo import Changes, Repo
-from tasks import Task, bats_command, fixed_command, mod_command, pytest_command
+from repo import Changes, Repo, under
+
+from tasks import Task, bats_command, mod_command, pytest_command
 
 
 @dataclass(frozen=True)
@@ -78,10 +79,6 @@ class Nothing:
     exit: int
     message: str
     notes: tuple[str, ...]
-
-
-def under(path: str, prefixes: tuple[str, ...]) -> bool:
-    return any(p == "." or path == p or path.startswith(f"{p}/") for p in prefixes)
 
 
 def resolve(repo: Repo, scope: Scope) -> InScope:
@@ -173,7 +170,7 @@ def suite_task(repo: Repo, suite: Suite, pick: Whole | Alone, k: str | None) -> 
 def pick_for(repo: Repo, suite: Suite, scope: Scope, inscope: InScope) -> Pick:
     """A suite's test files run alone where its share of the scope is only existing test files."""
     if scope.file is not None:
-        candidates = set(repo.tracked) | set(repo.untracked)
+        candidates = set(repo.files)
         if inscope.files is not None:
             candidates &= inscope.files
         chosen = sorted(
@@ -184,12 +181,29 @@ def pick_for(repo: Repo, suite: Suite, scope: Scope, inscope: InScope) -> Pick:
         return Alone(tuple(chosen)) if chosen else Unselected()
     if inscope.files is None:
         return Whole()
-    share = sorted(path for path in inscope.files if suite.owns(path))
+    share = sorted(path for path in inscope.files if suite.owns(PurePosixPath(path)))
     if not share:
         return Unselected()
     if all(suite.holds_test_file(path) and repo.exists(path) for path in share):
         return Alone(tuple(share))
     return Whole()
+
+
+def mod_adjust(
+    repo: Repo, suite: Suite, scope: Scope, pick: Whole | Alone | Unselected
+) -> tuple[Skipped | None, str | None]:
+    """The skip or note a mod suite's scope earns: its runner cannot narrow to -k or to files."""
+    if suite.runner != "mod":
+        return None, None
+    if scope.k is not None:
+        if not mod_names_hold(repo, suite, scope.k):
+            return Skipped(suite.name, "mod", f'no test("...") name holds {scope.k}'), None
+        return None, (
+            f"{suite.name}: the mod runner cannot narrow to -k {scope.k}; it runs the whole suite"
+        )
+    if isinstance(pick, Alone):
+        return None, f"{suite.name}: the mod runner cannot narrow to files; it runs the whole suite"
+    return None, None
 
 
 def select_tests(
@@ -204,20 +218,12 @@ def select_tests(
         pick = pick_for(repo, suite, scope, inscope)
         if isinstance(pick, Unselected):
             continue
-        if suite.runner == "mod":
-            if scope.k is not None:
-                if not mod_names_hold(repo, suite, scope.k):
-                    skipped.append(
-                        Skipped(suite.name, "mod", f'no test("...") name holds {scope.k}')
-                    )
-                    continue
-                notes.append(
-                    f"{suite.name}: the mod runner cannot narrow to -k {scope.k}; it runs the whole suite"
-                )
-            elif isinstance(pick, Alone):
-                notes.append(
-                    f"{suite.name}: the mod runner cannot narrow to files; it runs the whole suite"
-                )
+        skip, note = mod_adjust(repo, suite, scope, pick)
+        if skip is not None:
+            skipped.append(skip)
+            continue
+        if note is not None:
+            notes.append(note)
         tasks.append(suite_task(repo, suite, pick, scope.k))
     if tasks or skipped:
         return Selection(tuple(tasks), tuple(skipped), tuple(notes))
@@ -226,11 +232,14 @@ def select_tests(
     return Nothing(5, f"no test matches {scope.describe()}", tuple(notes))
 
 
-def marked_dir(repo: Repo, path: str, marker: str) -> str | None:
+def marked_dir(repo: Repo, path: str, marker: str, holds: dict[str, bool]) -> str | None:
     """The nearest directory at or above a file's own that holds `marker`, repository-relative."""
     for directory in PurePosixPath(path).parents:
-        if (repo.root / directory / marker).is_file():
-            return directory.as_posix()
+        key = directory.as_posix()
+        if key not in holds:
+            holds[key] = (repo.root / directory / marker).is_file()
+        if holds[key]:
+            return key
     return None
 
 
@@ -242,29 +251,33 @@ def lint_tasks(repo: Repo, job: Lint, hits: list[str]) -> list[Task]:
             if not present:
                 return []
             fixable = tuple(present) if job.fixes else ()
-            build = partial(fixed_command, [*command, *present])
-            return [Task(job.name, "lint", 1, build, fixable=fixable)]
+            return [Task(job.name, "lint", 1, command=[*command, *present], fixable=fixable)]
         case Once():
-            return [Task(job.name, "lint", 1, partial(fixed_command, command))] if hits else []
+            return [Task(job.name, "lint", 1, command=command)] if hits else []
         case Dirs(marker):
-            dirs = sorted({d for path in hits if (d := marked_dir(repo, path, marker)) is not None})
-            return [
-                Task(f"{job.name}:{d}", "lint", 1, partial(fixed_command, [*command, d]))
-                for d in dirs
-            ]
+            holds: dict[str, bool] = {}
+            dirs = sorted(
+                {d for path in hits if (d := marked_dir(repo, path, marker, holds)) is not None}
+            )
+            return [Task(f"{job.name}:{d}", "lint", 1, command=[*command, d]) for d in dirs]
+
+
+def scoped_files(repo: Repo, scope: Scope, inscope: InScope) -> list[str]:
+    files = sorted(inscope.files if inscope.files is not None else repo.tracked)
+    if scope.file is not None:
+        files = [path for path in files if scope.file in path]
+    return files
 
 
 def select_lints(
     repo: Repo, manifest: Manifest, scope: Scope, inscope: InScope
 ) -> Selection | Nothing:
-    files = sorted(inscope.files if inscope.files is not None else repo.tracked)
-    if scope.file is not None:
-        files = [path for path in files if scope.file in path]
+    files = [(path, PurePosixPath(path)) for path in scoped_files(repo, scope, inscope)]
     tasks: list[Task] = []
     for job in manifest.lints:
         if scope.langs and not scope.langs & job.langs:
             continue
-        tasks += lint_tasks(repo, job, [path for path in files if job.owns(path)])
+        tasks += lint_tasks(repo, job, [path for path, pure in files if job.owns(pure)])
     notes = inscope.notes
     if tasks:
         return Selection(tuple(tasks), (), notes)
@@ -279,10 +292,7 @@ def select_format(repo: Repo, scope: Scope, inscope: InScope) -> list[str] | Not
     """The existing files `fmt` hands treefmt, an empty list meaning the whole tree."""
     if not scope.paths and scope.change is None and scope.file is None:
         return []
-    files = inscope.files if inscope.files is not None else frozenset(repo.tracked)
-    if scope.file is not None:
-        files = frozenset(path for path in files if scope.file in path)
-    present = sorted(path for path in files if repo.exists(path))
+    present = sorted(path for path in scoped_files(repo, scope, inscope) if repo.exists(path))
     if present:
         return present
     if scope.change is not None:

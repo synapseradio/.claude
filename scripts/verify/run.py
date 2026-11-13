@@ -11,7 +11,15 @@ from datetime import datetime
 from pathlib import Path
 
 from slots import SlotPool
+
 from tasks import Task
+
+INSTALL_HINTS = {
+    "claude": (
+        "verify: claude is not on PATH; install Claude Code, which provides it "
+        "(the Brewfile does not)"
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -19,11 +27,8 @@ class Missing:
     program: str
 
     def message(self) -> str:
-        if self.program == "claude":
-            return (
-                "verify: claude is not on PATH; install Claude Code, which provides it "
-                "(the Brewfile does not)"
-            )
+        if self.program in INSTALL_HINTS:
+            return INSTALL_HINTS[self.program]
         if "/" in self.program:
             return f"verify: {self.program} is missing; run just setup to install it"
         return f"verify: {self.program} is not on PATH; run just tools to install it"
@@ -81,7 +86,7 @@ class Runner:
         wanted = task.wants if self.cap is None else min(task.wants, self.cap)
         log = self.logs / f"{task.name.replace('/', '-')}.log"
         with self.pool.take(task.name, wanted) as workers:
-            command = task.build(workers)
+            command = task.argv(workers)
             before = digests(self.root, task.fixable)
             started = time.monotonic()
             with log.open("wb") as out:

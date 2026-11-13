@@ -23,9 +23,9 @@ class SlotPool:
     def __init__(self, directory: Path, size: int) -> None:
         self.directory = directory
         self.size = size
+        self.directory.mkdir(parents=True, exist_ok=True)
 
     def open(self, index: int) -> int:
-        self.directory.mkdir(parents=True, exist_ok=True)
         # os.open returns a descriptor no child inherits (PEP 446), so a
         # runner's own children never keep a slot past the suite.
         # https://docs.python.org/3/library/os.html#fd-inheritance

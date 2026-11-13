@@ -40,6 +40,10 @@ def null_split(output: str) -> list[str]:
     return [item for item in output.split("\0") if item]
 
 
+def under(path: str, prefixes: tuple[str, ...]) -> bool:
+    return any(p == "." or path == p or path.startswith(f"{p}/") for p in prefixes)
+
+
 @dataclass(frozen=True)
 class Changes:
     """Repository-relative paths a change touched, deleted ones included, and how the base was found."""
@@ -67,20 +71,25 @@ class Repo:
     def untracked(self) -> tuple[str, ...]:
         return tuple(null_split(self.git("ls-files", "-z", "--others", "--exclude-standard")))
 
+    @cached_property
+    def files(self) -> frozenset[str]:
+        return frozenset(self.tracked) | frozenset(self.untracked)
+
     def exists(self, path: str) -> bool:
         return (self.root / path).is_file()
 
     def listed_under(self, path: str) -> list[str]:
         """Tracked and untracked, unignored files at or under a repository-relative path."""
-        return null_split(
-            self.git("ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", path)
-        )
+        return [item for item in (*self.tracked, *self.untracked) if under(item, (path,))]
+
+    def diff_names(self, fork: str, *tail: str) -> frozenset[str]:
+        names = self.git("diff", "--name-only", "--no-renames", "-z", fork, *tail)
+        return frozenset(null_split(names))
 
     def changed_since(self, base: str) -> Changes:
         """Files changed between the merge-base with `base` and the working tree, untracked ones included."""
         fork = self.git("merge-base", base, "HEAD").strip()
-        changed = null_split(self.git("diff", "--name-only", "--no-renames", "-z", fork))
-        return Changes(frozenset(changed) | frozenset(self.untracked))
+        return Changes(self.diff_names(fork) | frozenset(self.untracked))
 
     def unpushed(self) -> Changes:
         """Files the commits not yet on `@{push}` touch, falling back to the fork from origin/main."""
@@ -93,8 +102,7 @@ class Repo:
                 "--prepush: @{push} does not resolve; diffed from the merge-base with origin/main"
             )
         fork = self.git("merge-base", target, "HEAD").strip()
-        changed = null_split(self.git("diff", "--name-only", "--no-renames", "-z", fork, "HEAD"))
-        return Changes(frozenset(changed), note)
+        return Changes(self.diff_names(fork, "HEAD"), note)
 
     def log_name(self) -> str:
         """`<repo>-<branch>`, the repository named by the directory holding its common git dir."""

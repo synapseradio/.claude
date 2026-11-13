@@ -18,12 +18,20 @@ class Task:
     name: str
     kind: Kind
     wants: int
-    build: Callable[[int], list[str]]
+    build: Callable[[int], list[str]] | None = None
     skip_exits: frozenset[int] = field(default_factory=frozenset)
     fixable: tuple[str, ...] = ()
+    command: list[str] | None = None
+
+    def argv(self, workers: int) -> list[str]:
+        if self.command is not None:
+            return list(self.command)
+        return self.build(workers)
 
     @property
     def program(self) -> str:
+        if self.command is not None:
+            return self.command[0]
         return self.build(1)[0]
 
 
@@ -47,7 +55,3 @@ def bats_command(paths: list[str], k: str | None, workers: int) -> list[str]:
 
 def mod_command(folder: str, _workers: int) -> list[str]:
     return ["claude", "plugin", "test", folder]
-
-
-def fixed_command(command: list[str], _workers: int) -> list[str]:
-    return list(command)
