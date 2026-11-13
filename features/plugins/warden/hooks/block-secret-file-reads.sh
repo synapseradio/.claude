@@ -150,8 +150,7 @@ deny() {
 #   SUBJECT, READ_SUBJECT, READ_READY, READ_HEREDOC
 #######################################
 prepare_read_subject() {
-  local line program
-  local -a words
+  local line
   ((READ_READY == 0)) || return 0
   READ_READY=1
   READ_SUBJECT=''
@@ -159,16 +158,8 @@ prepare_read_subject() {
     READ_HEREDOC=1
   fi
   while IFS= read -r line; do
-    IFS=' ' read -r -a words <<<"${line}"
-    ((${#words[@]} > 0)) || continue
-    program="${words[0]}"
-    case "${program}" in
-    grep | rg | ripgrep)
-      [[ "${program}" == ripgrep ]] && program=rg
-      line="$(search_without_pattern "${program}" "${words[@]:1}")"
-      ;;
-    esac
-    READ_SUBJECT+="${line}"$'\n'
+    [[ -n "${line// /}" ]] || continue
+    READ_SUBJECT+="$(search_line_without_pattern "${line}")"$'\n'
   done < <(command_words::resolve "${SUBJECT}")
 }
 

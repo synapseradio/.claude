@@ -1,8 +1,8 @@
 #!/bin/bash
 #
 # Library for the warden hooks that must tell the pattern operand of grep and
-# rg from the files they open. Source it; it defines one function and its
-# constants only. Uses only what /bin/bash 3.2 on macOS offers.
+# rg from the files they open. Source it; it defines functions and constants
+# only. Uses only what /bin/bash 3.2 on macOS offers.
 
 # Options whose next word is a value, for grep and for rg. Single letters are
 # the option characters; a letter inside a cluster takes the rest of the word
@@ -117,4 +117,27 @@ search_without_pattern() {
     kept+=" ${word}"
   done
   printf '%s\n' "${kept}"
+}
+
+#######################################
+# Print one program line with the pattern operands of a search program taken
+# out. A line whose program is no search program prints unchanged; ripgrep
+# counts as rg.
+# Arguments:
+#   $1 - the program line from command_words::resolve.
+# Outputs:
+#   The line on stdout.
+#######################################
+search_line_without_pattern() {
+  local -a words
+  IFS=' ' read -r -a words <<<"$1"
+  case "${words[0]-}" in
+  grep | rg | ripgrep)
+    [[ "${words[0]}" == ripgrep ]] && words[0]=rg
+    search_without_pattern "${words[0]}" "${words[@]:1}"
+    ;;
+  *)
+    printf '%s\n' "$1"
+    ;;
+  esac
 }

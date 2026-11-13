@@ -103,14 +103,8 @@ prints_secret() {
 check_program() {
   local -a words
   local word last=''
-  IFS=' ' read -r -a words <<<"$1"
+  IFS=' ' read -r -a words <<<"$(search_line_without_pattern "$1")"
   ((${#words[@]} > 0)) || return 0
-  case "${words[0]}" in
-  grep | rg | ripgrep)
-    [[ "${words[0]}" == ripgrep ]] && words[0]=rg
-    IFS=' ' read -r -a words <<<"$(search_without_pattern "${words[0]}" "${words[@]:1}")"
-    ;;
-  esac
 
   if prints_secret "${words[@]}"; then
     deny "Refused: command would print an env var matching a secret pattern (API_KEY/TOKEN/SECRET/...). If this is intentional, run it yourself."
