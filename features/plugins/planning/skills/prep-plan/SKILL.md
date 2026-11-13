@@ -5,7 +5,7 @@ description: Use on every request to plan, in plan mode or outside it, such as '
 
 # Prep plan
 
-For every plan file you write and every exit from plan mode, optimize for a future agent that carries to its target outcomes holding only the plan file.
+For every plan file you write and every exit from plan mode, optimize for a future agent that carries to its target outcomes holding only the plan file, each work unit starting as soon as the work it waits on is done.
 
 Planning runs as a loop. Each pass below states when it is entered, what it does, and what ends it, and names the pass that runs next. The readiness file decides the next pass: its open lines send the loop back until none remains.
 
@@ -13,6 +13,8 @@ Planning runs as a loop. Each pass below states when it is entered, what it does
 
 - executor: the agent running the plan, delegating at will, holding the plan and each file it names by absolute path, never the conversation
 - work unit: work that makes one commit
+- waits on: a work unit waits on another where it reads, calls, or rewrites what that unit creates or changes; a lane waits on each other lane holding a unit one of its own units waits on
+- foundation: work another work unit waits on, or work that settles what two or more units build against, a shared interface, fixture, or convention, or a sweep drafting each unit's red tests for one
 - document of record: a file the plan names as binding
 - plan arm: a fork in the plan, with the act under each result
 - readiness file: the plan's items, one line each, in a working file at the branch's scratchpad path, apart from the plan
@@ -20,6 +22,7 @@ Planning runs as a loop. Each pass below states when it is entered, what it does
 - trunk: the branch every lane is created from and lands on
 - primary checkout: the repository's original working tree, from which every lane's worktree is created
 - lane: one or more work units on a branch of their own, in a git worktree of their own, changing files no other running lane changes, and landing on the trunk as one commit
+- worker: the one agent that answers for a work unit; with lanes, the one agent that answers for a lane and its worktree, from the lane's first change to its landing, spawning agents of its own only for work inside that worktree
 - orchestrator: the executor while it runs lanes, working one lane itself while each other lane's agent runs in the background, and tracking every lane as a task
 
 ## Standing through every pass
@@ -48,6 +51,7 @@ Open the readiness file, and keep it in this form.
 - assumed (needs verification before display to user): [what lacks a source, with the evidence to seek]
 - must verify: [a claim the plan rests on, with the check that settles it]
 - must determine: [a question only the user settles, open inferred decisions included]
+- unit: [one per work unit: what it changes, each unit it waits on or none, and foundation where it is]
 - lane: [one per lane: each line of the lane block below that gather has settled]
 ```
 
@@ -63,16 +67,23 @@ Entered: after entry, and each time a must verify line stands or a later pass se
 
 Act: Run the reads, delegates, searches, and checks that settle each must verify line and each assumed line. Turn each result into a line: a must verify line settled becomes a known line with its source and the date read; an assumed line becomes a must verify line naming its check. Hand each unknown you meet, and each plan-changing fork, to the settle pass.
 
+Order the work in this pass, for every plan, with lanes or without, tested or not, working from the plan's top level down:
+
+- Cut the whole work into foundation and the work that waits on it, then cut each part the same way, until every part is a work unit with a unit line.
+- Name in each unit line each unit it waits on, with a must verify line for each wait a read has yet to show. Hold a unit as waiting only on those units, whatever order the request lists the work in.
+- Look for foundation no unit yet holds: an interface, fixture, or convention that two or more units would each settle alone, and, where units add behavior, a sweep drafting their red tests. Add each as foundation, so units built apart build against one answer. With lanes, that sweep runs as each lane's first step, in every lane at once, in place of a unit of its own.
+- Place foundation first, then each unit after the units it waits on. Two units, neither waiting on the other, run in parallel where more than one agent works. With one agent, among the units free to start, the one the most units wait on runs first.
+
 The work changes files in a git repository ? find its lanes in this pass, running the reads below as one batch of parallel calls, so the questions they raise reach the ask pass:
 
 - List the files each work unit changes, with a must verify line for each unit whose files a read has yet to show.
-- Join into one lane every work unit that changes a file another unit changes. Give each other unit a lane of its own. A lane that needs another lane's result waits on that lane, and is created only once that lane lands.
+- Join into one lane every work unit that changes a file another unit changes. Give each other unit a lane of its own. Plan every lane's worktree as created up front, before any lane's work starts. A lane that waits on another writes the red tests for its new behavior at once, and holds the rest of its work until that lane lands.
 - Name the trunk, the primary checkout by absolute path, the exact commands of the checks covering each lane's files, and, by exact name, each skill you loaded while planning that bears on a lane's task.
-- Read `.config/wt.toml` on the trunk for a pre-start hook that provisions dependencies in a new worktree. No hook provisions them ? find the commands that do, as each lane's provisioning, and write a must determine line proposing a repo-local pre-start hook that runs them. Answered yes, adding that hook becomes a lane of its own, and lanes created before it lands still provision themselves.
+- Read `.config/wt.toml` on the trunk for a pre-start hook that provisions dependencies in a new worktree. No hook provisions them ? find the commands that do, as each lane's provisioning, and write a must determine line proposing a repo-local pre-start hook that runs them. Answered yes, adding that hook becomes a lane of its own, and this plan's lanes, each created before it lands, provision themselves.
 - Read every hook the lanes run, in `.config/wt.toml` and the repository's commit hooks, for a step that shares a cache, lock, or output path with another step, and hand each one to settle as a plan-changing fork: run those steps in sequence, as a pipeline of `[[<hook>]]` entries in `.config/wt.toml` or its commit-hook equivalent, or give the step state of its own.
 - Write a lane line for each lane.
 
-Ends: each must verify line has had its check run, each result stands in the readiness file, and, where the work changes files in a git repository, each work unit stands in exactly one lane line. Next: settle.
+Ends: each must verify line has had its check run, each result stands in the readiness file, each work unit stands in a unit line naming what it waits on, and, where the work changes files in a git repository, each work unit stands in exactly one lane line. Next: settle.
 
 ### 2. Settle forks
 
@@ -107,7 +118,7 @@ Entered: the user has picked a framing, no must verify or must determine line re
 
 Act: Write the plan file in the form below, by the writing lines after it.
 
-Ends: each work unit carries its entries or its document section and its check, each lane carries every line of the lane block, the finish block follows the lanes, and each part of the chosen form holds its content or is left out as empty. Next: writing meets an unknown or a plan-changing fork ? settle. Otherwise ? verify readiness.
+Ends: each work unit carries its entries or its document section, its check, and what it waits on, in the order gather placed them, each lane carries every line of the lane block, the finish block follows the lanes, and each part of the chosen form holds its content or is left out as empty. Next: writing meets an unknown or a plan-changing fork ? settle. Otherwise ? verify readiness.
 
 #### Form
 
@@ -128,22 +139,23 @@ Lane block, one per lane:
 
 ```markdown
 ### Lane [branch]
-- worktree: create it from the primary checkout with `wt --yes switch --create [branch] --base [trunk] --no-cd`, and address it by the absolute path wt prints, written `<worktree>` below
+- worktree: the orchestrator creates it up front, with every other lane's worktree and before any lane's work starts, from the primary checkout with `wt --yes switch --create [branch] --base [trunk] --no-cd`; address it by the absolute path wt prints, written `<worktree>` below
 - provisioning: [the pre-start hook in `.config/wt.toml` provisions it, or the commands to run in `<worktree>` before its first commit]
 - files: [each path the lane may change, relative to the root; no other lane changes any of them]
 - checks: [each command to run before each commit, with its passing result]
 - skills: [each skill you loaded while planning that bears on this lane's task, by exact name, which this lane's agent loads through the Skill tool before its first change; or none]
-- worker: [the agent that works and lands this lane, or the orchestrator]
-- waits on: [each lane that lands before this lane's worktree is created, or none]
+- worker: [the agent that works and lands this lane, or the orchestrator]; the worker alone answers for `<worktree>`, and every change, commit, check, and landing step in it is the worker's
+- delegates: [none, or each agent the worker may spawn, in the order they run, a test writer ahead of the worker's own implementation for one]; the worker writes each one's prompt, each works only inside `<worktree>` on this lane's files, reports to the worker, and holds up this lane alone
+- waits on: [none, or each lane that lands before this lane's work past its red tests starts]; the orchestrator messages the worker as each one lands, and the worker runs `wt -C <worktree> step rebase [trunk]` before that work starts
 - commit: through the hooks with `git -C <worktree> commit -m '<message>' -- <paths>`; `git -C <worktree> status --short` prints nothing after each commit
 - land, once the checks pass:
-  1. Run `skill:simplify` over the lane's changes, and commit what it yields.
+  1. The lane changes source code ? run `skill:simplify` over those changes, make each change it calls for within the lane's files, and commit them. A lane that changes only prose, docs or instruction text for one, goes to step 2.
   2. Squash the lane to one commit with `wt -C <worktree> step squash [trunk]`, then confirm `git -C <worktree> log --oneline [trunk]..HEAD` lists one commit.
   3. Run `git -C <worktree> fetch`, then `git -C <worktree> rev-list --left-right --count [trunk]...[trunk]@{upstream}`. Both counts above zero ? stop and report both counts.
   4. Run `wt -C <worktree> merge [trunk]`. The trunk moved or the fast-forward was refused ? repeat steps 3 and 4, at most twice more.
   5. Confirm `git -C [primary checkout] log --oneline -1 [trunk]` shows the lane's one commit.
   6. Run `wt -C [primary checkout] prune`.
-  The worker runs every step. A worker that cannot run git or wt runs `skill:simplify`, and the orchestrator runs every git and wt command in these steps.
+  The worker runs every step itself, step 1 included whoever wrote the changes. A worker that cannot run git or wt runs step 1's `skill:simplify`, and the orchestrator runs every git and wt command in these steps.
 - work:
   [the lane's work units in order, each as entries or a document section]
 ```
@@ -176,7 +188,7 @@ Brief form, in order, empty parts left out:
 ## Amendments
 [each departure from a document of record, by section, with its source]
 ## Work
-[work units in order, each as entries or a document section, with what it waits on; where the work changes files in a git repository, how the lanes run, then the lane blocks, then the finish block]
+[work units in order, foundation first, each as entries or a document section, with what it waits on; which units run in parallel; where the work changes files in a git repository, how the lanes run, then the lane blocks, then the finish block]
 ## Tooling
 [the exact command for each check and build]
 ## Constraints
@@ -194,6 +206,8 @@ State each fact beside the work unit it binds, with its source.
 Give each removal its own entry.
 Name each way a check could pass with its defect present, and what closes it.
 Give each work unit at most one worker and a test written red-first for each new behavior.
+List the work units in the order gather placed them, the order one agent runs them in.
+State beside each unit what it waits on, and name each set of units that run in parallel.
 Plan one suite run for the whole plan, as its last step before the work is declared done, with each work unit's own cheap checks before its commit; with lanes, that run is the finish block's suites line.
 Keep a check only where it catches a break that would otherwise ship.
 Keep critic rounds, fix slices, and per-case logs out of a plan, unless the user asks for them.
@@ -202,16 +216,17 @@ With lanes, also write these:
 
 - Write each lane block so the orchestrator can hand it whole as the core of that lane's delegate prompt, leaving each angle-bracketed placeholder, `<worktree>` for one, for the executor to fill.
 - List in each lane's files line every path its work units change.
-- Open Work with the orchestrator's order: create the worktree of every lane that waits on none, hand each lane but one to its own agent with the lane block in its prompt, create each waiting lane's worktree once the lanes it waits on land, and run the finish block once every lane lands.
+- Give each lane one worker and one prompt, the lane block. Where a lane's work runs as a sequence of agents, a test writer ahead of the implementation for one, name the sequence in the lane's delegates line and leave each of those prompts to the worker, in place of an orchestrator prompt per agent.
+- Open Work with the orchestrator's order: create every lane's worktree up front, before any lane's work starts; hand each lane but one to its own agent with the lane block in its prompt, every lane's worker starting at once; where lanes add behavior, each lane's red tests come first, written on its own branch by its worker or the test writer its delegates line names; message each waiting lane's worker as the lanes it waits on land; the rest of each lane's work starts as soon as each lane it waits on has landed and its tests fail for the right reason; and run the finish block once every lane lands.
 - State in Constraints that a request arriving mid-work joins the lane whose files it changes, or waits until that lane lands, and otherwise becomes a new lane through its own lane block; and that nothing is pushed without approval.
 
 ### 5. Verify readiness
 
 Entered: the plan file is written.
 
-Act: Reread each cited source at the head of the branch the work builds on, dating each read -> check open branches and pull requests for changes to the same paths -> read the readiness file for any must verify or must determine line and any plan-changing fork still open -> read the lane blocks for a path listed in two lanes.
+Act: Reread each cited source at the head of the branch the work builds on, dating each read -> check open branches and pull requests for changes to the same paths -> read the readiness file for any must verify or must determine line and any plan-changing fork still open -> read the lane blocks for a path listed in two lanes -> read the plan against the unit lines for a unit placed ahead of one it waits on and a wait the plan leaves unstated.
 
-Ends: each reread matches what the plan states, no open branch or pull request changes the same paths, no path stands in two lanes, and the readiness file holds no must verify or must determine line with every plan-changing fork settled. Next: a source changed, or an open branch or pull request changes the same paths ? gather, with the stale known lines turned back into must verify lines. A path stands in two lanes ? gather, joining those lanes. A must verify line stands ? gather. A must determine line stands ? ask. Otherwise ? exit.
+Ends: each reread matches what the plan states, no open branch or pull request changes the same paths, no path stands in two lanes, each unit follows the units it waits on with every wait stated, and the readiness file holds no must verify or must determine line with every plan-changing fork settled. Next: a source changed, or an open branch or pull request changes the same paths ? gather, with the stale known lines turned back into must verify lines. A path stands in two lanes ? gather, joining those lanes. A unit stands ahead of one it waits on ? gather, ordering the work again. A wait is unstated ? write the plan. A must verify line stands ? gather. A must determine line stands ? ask. Otherwise ? exit.
 
 ### 6. Exit
 
