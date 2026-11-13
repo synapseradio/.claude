@@ -53,7 +53,7 @@
 		{
 			"name": "planning",
 			"source": "./features/plugins/planning",
-			"version": "0.1.4",
+			"version": "0.1.5",
 			"description": "Holds the planning loop as a skill."
 		},
 		{

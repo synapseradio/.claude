@@ -149,13 +149,12 @@ Lane block, one per lane:
 - waits on: [none, or each lane that lands before this lane's work past its red tests starts]; the orchestrator messages the worker as each one lands, and the worker runs `wt -C <worktree> step rebase [trunk]` before that work starts
 - commit: through the hooks with `git -C <worktree> commit -m '<message>' -- <paths>`; `git -C <worktree> status --short` prints nothing after each commit
 - land, once the checks pass:
-  1. The lane changes source code ? run `skill:simplify` over those changes, make each change it calls for within the lane's files, and commit them. A lane that changes only prose, docs or instruction text for one, goes to step 2.
-  2. Squash the lane to one commit with `wt -C <worktree> step squash [trunk]`, then confirm `git -C <worktree> log --oneline [trunk]..HEAD` lists one commit.
-  3. Run `git -C <worktree> fetch`, then `git -C <worktree> rev-list --left-right --count [trunk]...[trunk]@{upstream}`. Both counts above zero ? stop and report both counts.
-  4. Run `wt -C <worktree> merge [trunk]`. The trunk moved or the fast-forward was refused ? repeat steps 3 and 4, at most twice more.
-  5. Confirm `git -C [primary checkout] log --oneline -1 [trunk]` shows the lane's one commit.
-  6. Run `wt -C [primary checkout] prune`.
-  The worker runs every step itself, step 1 included whoever wrote the changes. A worker that cannot run git or wt runs step 1's `skill:simplify`, and the orchestrator runs every git and wt command in these steps.
+  1. Squash the lane to one commit with `wt -C <worktree> step squash [trunk]`, then confirm `git -C <worktree> log --oneline [trunk]..HEAD` lists one commit.
+  2. Run `git -C <worktree> fetch`, then `git -C <worktree> rev-list --left-right --count [trunk]...[trunk]@{upstream}`. Both counts above zero ? stop and report both counts.
+  3. Run `wt -C <worktree> merge [trunk]`. The trunk moved or the fast-forward was refused ? repeat steps 2 and 3, at most twice more.
+  4. Confirm `git -C [primary checkout] log --oneline -1 [trunk]` shows the lane's one commit.
+  5. Run `wt -C [primary checkout] prune`.
+  The worker runs every step itself. A worker that cannot run git or wt hands every git and wt command in these steps to the orchestrator. The lane lands without a `skill:simplify` run: the orchestrator runs it once, in the finish block, over every lane's landed changes.
 - work:
   [the lane's work units in order, each as entries or a document section]
 ```
@@ -166,6 +165,7 @@ Finish block, after the lanes:
 ### Finish
 - after: every lane lands
 - on the primary checkout: [the work that needs every lane, cleanup and deletions for one, or none]
+- simplify: the orchestrator, as the session's main agent, runs `skill:simplify` itself, once, over the source code the lanes landed, `git -C [primary checkout] diff [the trunk commit the lanes were created from]..[trunk]`, makes each change it calls for, and commits them on the trunk, before the suites and before any push; landed changes holding only prose, docs or instruction text for one, get no run
 - suites: [each suite's command, run once on the trunk, with its passing result]
 - report: each lane's landed SHA and subject, from `git -C [primary checkout] log --oneline [trunk]`
 ```
@@ -217,8 +217,8 @@ With lanes, also write these:
 - Write each lane block so the orchestrator can hand it whole as the core of that lane's delegate prompt, leaving each angle-bracketed placeholder, `<worktree>` for one, for the executor to fill.
 - List in each lane's files line every path its work units change.
 - Give each lane one worker and one prompt, the lane block. Where a lane's work runs as a sequence of agents, a test writer ahead of the implementation for one, name the sequence in the lane's delegates line and leave each of those prompts to the worker, in place of an orchestrator prompt per agent.
-- Open Work with the orchestrator's order: create every lane's worktree up front, before any lane's work starts; hand each lane but one to its own agent with the lane block in its prompt, every lane's worker starting at once; where lanes add behavior, each lane's red tests come first, written on its own branch by its worker or the test writer its delegates line names; message each waiting lane's worker as the lanes it waits on land; the rest of each lane's work starts as soon as each lane it waits on has landed and its tests fail for the right reason; and run the finish block once every lane lands.
-- State in Constraints that a request arriving mid-work joins the lane whose files it changes, or waits until that lane lands, and otherwise becomes a new lane through its own lane block; and that nothing is pushed without approval.
+- Open Work with the orchestrator's order: create every lane's worktree up front, before any lane's work starts; hand each lane but one to its own agent with the lane block in its prompt, every lane's worker starting at once; where lanes add behavior, each lane's red tests come first, written on its own branch by its worker or the test writer its delegates line names; message each waiting lane's worker as the lanes it waits on land; the rest of each lane's work starts as soon as each lane it waits on has landed and its tests fail for the right reason; and, once every lane lands, run the finish block in the order of its lines, its simplify line run by the orchestrator itself in place of a delegate.
+- State in Constraints that a request arriving mid-work joins the lane whose files it changes, or waits until that lane lands, and otherwise becomes a new lane through its own lane block; that `skill:simplify` runs once, by the orchestrator in the finish block, with every lane's worker and delegates leaving it out; and that nothing is pushed before that run or without approval.
 
 ### 5. Verify readiness
 
