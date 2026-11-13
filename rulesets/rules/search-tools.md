@@ -4,9 +4,8 @@ For every lookup, one the user asked for in words like "look it up", one before 
 
 ### The lookup
 
-The question is a library, framework, SDK, or CLI's documentation ? go to context7 first.
 Read documentation at the version the lockfile resolves.
-The tvly CLI, Tavily's command line, is available ? use it for search, extraction, crawling, and research : use the linkup MCP tools.
+The tvly CLI, Tavily's command line, is available ? use it first for every online lookup, library, framework, SDK, and CLI documentation included, across search, extraction, crawling, and research : use the linkup MCP tools.
 Put a year in a query only where the user supplies one.
 A tool call fails ? read the error before choosing the next step, and treat the recollection that produced the call as no ground for a retry.
 

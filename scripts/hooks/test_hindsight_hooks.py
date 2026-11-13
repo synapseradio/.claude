@@ -2,12 +2,14 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
+from types import ModuleType
+from typing import Any
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
 
-def load(name, filename):
+def load(name, filename) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, HERE / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -19,44 +21,44 @@ thinkies = load("thinkies", "hindsight-thinkies-retain.py")
 subagent = load("subagent", "hindsight-retain-thinkies-subagent.py")
 
 
-def prompt(text):
+def prompt(text) -> dict[str, Any]:
     return {"type": "user", "uuid": "u1", "message": {"role": "user", "content": text}}
 
 
-def assistant(*blocks):
+def assistant(*blocks) -> dict[str, Any]:
     return {"type": "assistant", "message": {"role": "assistant", "content": list(blocks)}}
 
 
-def skill_call(name, call_id="toolu_1"):
+def skill_call(name, call_id="toolu_1") -> dict[str, Any]:
     return {"type": "tool_use", "name": "Skill", "id": call_id, "input": {"skill": name}}
 
 
-def text(body):
+def text(body) -> dict[str, Any]:
     return {"type": "text", "text": body}
 
 
-def tool_result():
+def tool_result() -> dict[str, Any]:
     return {"type": "user", "message": {"role": "user", "content": [{"type": "tool_result"}]}}
 
 
-def test_web_tools_and_research_mcp_count_as_research():
+def test_web_tools_and_research_mcp_count_as_research() -> None:
     for tool in (
         "WebFetch",
         "WebSearch",
         "mcp__linkup__linkup-search",
-        "mcp__plugin_context7_context7__query-docs",
+        "mcp__tavily__tavily_search",
     ):
         assert research.is_research(tool, {})
 
 
-def test_bash_counts_only_for_tvly_or_curl_over_http():
+def test_bash_counts_only_for_tvly_or_curl_over_http() -> None:
     assert research.is_research("Bash", {"command": "tvly search 'bats'"})
     assert research.is_research("Bash", {"command": "curl -sfL https://example.com/llms.txt"})
     assert not research.is_research("Bash", {"command": "curl -s localhost:8888/v1/x"})
     assert not research.is_research("Bash", {"command": "git status"})
 
 
-def test_bash_curl_to_a_local_server_is_not_online_research():
+def test_bash_curl_to_a_local_server_is_not_online_research() -> None:
     for url in (
         "http://127.0.0.1:9077/health",
         "http://localhost:8000/v1/systemone",
@@ -65,12 +67,12 @@ def test_bash_curl_to_a_local_server_is_not_online_research():
         assert not research.is_research("Bash", {"command": f"curl -s {url}"}), url
 
 
-def test_other_tools_are_not_research():
+def test_other_tools_are_not_research() -> None:
     assert not research.is_research("Read", {"file_path": "/x"})
     assert not research.is_research("mcp__hindsight__recall", {})
 
 
-def test_skill_tool_turn_yields_text_after_the_call():
+def test_skill_tool_turn_yields_text_after_the_call() -> None:
     turn = [
         prompt("think about this"),
         assistant(text("before the skill"), skill_call("thinkies:ponder")),
@@ -85,7 +87,7 @@ def test_skill_tool_turn_yields_text_after_the_call():
     )
 
 
-def test_slash_command_turn_yields_all_assistant_text():
+def test_slash_command_turn_yields_all_assistant_text() -> None:
     turn = [
         prompt("<command-name>/thinkies:wonder</command-name>\n<command-args>x</command-args>"),
         assistant(text("an answer")),
@@ -93,7 +95,7 @@ def test_slash_command_turn_yields_all_assistant_text():
     assert thinkies.thinkies_output(turn) == ("thinkies:wonder", "u1", "an answer")
 
 
-def test_other_skills_yield_nothing():
+def test_other_skills_yield_nothing() -> None:
     turn = [
         prompt("go"),
         assistant(skill_call("harness-config:update-claude-settings")),
@@ -102,7 +104,7 @@ def test_other_skills_yield_nothing():
     assert thinkies.thinkies_output(turn) is None
 
 
-def test_last_turn_starts_at_the_latest_typed_prompt(tmp_path):
+def test_last_turn_starts_at_the_latest_typed_prompt(tmp_path) -> None:
     transcript = tmp_path / "t.jsonl"
     lines = [
         prompt("old"),
@@ -115,7 +117,9 @@ def test_last_turn_starts_at_the_latest_typed_prompt(tmp_path):
     assert thinkies.thinkies_output(thinkies.last_turn(transcript)) is None
 
 
-def run_subagent_hook(monkeypatch, payload, repo="ui-amboss"):
+def run_subagent_hook(
+    monkeypatch, payload, repo="ui-amboss"
+) -> list[tuple[tuple[Any, ...], dict[str, Any]]]:
     """Runs the SubagentStop hook with retain stubbed; returns the recorded calls."""
     calls = []
     monkeypatch.setattr(subagent, "retain", lambda *args, **kwargs: calls.append((args, kwargs)))
@@ -125,7 +129,7 @@ def run_subagent_hook(monkeypatch, payload, repo="ui-amboss"):
     return calls
 
 
-def thinkies_payload(report, **extra):
+def thinkies_payload(report, **extra) -> dict[str, Any]:
     return {
         "agent_type": "thinkies",
         "agent_id": "a1",
@@ -135,7 +139,7 @@ def thinkies_payload(report, **extra):
     }
 
 
-def test_thinkies_subagent_report_goes_to_global_and_repo_banks(monkeypatch):
+def test_thinkies_subagent_report_goes_to_global_and_repo_banks(monkeypatch) -> None:
     calls = run_subagent_hook(monkeypatch, thinkies_payload("Output of thinkies:ponder\n\nbody"))
     assert [args[0] for args, _ in calls] == ["global", "coding-agent::ui-amboss"]
     args, _ = calls[0]
@@ -143,23 +147,23 @@ def test_thinkies_subagent_report_goes_to_global_and_repo_banks(monkeypatch):
     assert args[3] == ["source:thinkies", "repo:ui-amboss"]
 
 
-def test_thinkies_subagent_report_without_skill_name_uses_the_agent_id(monkeypatch):
+def test_thinkies_subagent_report_without_skill_name_uses_the_agent_id(monkeypatch) -> None:
     calls = run_subagent_hook(monkeypatch, thinkies_payload("plain findings"))
     assert calls[0][0][2] == "thinkies:a1"
 
 
-def test_thinkies_subagent_outside_a_repo_retains_to_global_only(monkeypatch):
+def test_thinkies_subagent_outside_a_repo_retains_to_global_only(monkeypatch) -> None:
     calls = run_subagent_hook(monkeypatch, thinkies_payload("findings"), repo=None)
     assert [args[0] for args, _ in calls] == ["global"]
     assert calls[0][0][3] == ["source:thinkies", "repo:none"]
 
 
-def test_thinkies_subagent_report_is_capped(monkeypatch):
+def test_thinkies_subagent_report_is_capped(monkeypatch) -> None:
     calls = run_subagent_hook(monkeypatch, thinkies_payload("x" * (subagent.MAX_CHARS + 500)))
     assert len(calls[0][0][1]) <= subagent.MAX_CHARS + 200
 
 
-def test_other_agents_and_empty_reports_retain_nothing(monkeypatch):
+def test_other_agents_and_empty_reports_retain_nothing(monkeypatch) -> None:
     other = thinkies_payload("findings", agent_type="spider")
     assert run_subagent_hook(monkeypatch, other) == []
     assert run_subagent_hook(monkeypatch, thinkies_payload("  ")) == []

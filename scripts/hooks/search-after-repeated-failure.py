@@ -23,6 +23,7 @@ import re
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 THRESHOLD = 1
 RECENT = 3
@@ -30,19 +31,19 @@ STALE_SECONDS = 24 * 60 * 60
 TARGET_KEYS = ("command", "file_path", "pattern", "url", "path", "query")
 
 
-def state_dir():
+def state_dir() -> Path:
     override = os.environ.get("CLAUDE_REPEAT_FAILURE_DIR")
     if override:
         return Path(override)
     return Path.home() / ".claude" / ".tmp" / "repeat-failure"
 
 
-def state_path(directory, key):
+def state_path(directory, key) -> Path:
     safe = "".join(c for c in key if c.isalnum() or c in "-_")
     return directory / f"{safe or 'session'}.json"
 
 
-def state_key(payload):
+def state_key(payload) -> str:
     """The identifier whose streak this payload belongs to.
 
     Both events fire for a subagent's tool calls, and every hook call in one
@@ -55,7 +56,7 @@ def state_key(payload):
     return payload.get("agent_id") or payload.get("session_id") or "session"
 
 
-def prune(directory, now):
+def prune(directory, now) -> None:
     for path in directory.glob("*.json"):
         try:
             if now - path.stat().st_mtime > STALE_SECONDS:
@@ -64,10 +65,10 @@ def prune(directory, now):
             continue
 
 
-def read_state(path):
+def read_state(path) -> dict[str, Any]:
     try:
         state = json.loads(path.read_text())
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return {"count": 0, "failures": []}
     if not isinstance(state, dict):
         return {"count": 0, "failures": []}
@@ -77,7 +78,7 @@ def read_state(path):
 EXIT_CODE = re.compile(r"^exit code \d+\.?$", re.IGNORECASE)
 
 
-def summarize(text):
+def summarize(text) -> str:
     """The first line, plus the next one where the first is only a status.
 
     A bare `Exit code N` names no interface, so the line under it carries
@@ -92,7 +93,7 @@ def summarize(text):
     return head
 
 
-def target_of(tool_input):
+def target_of(tool_input) -> str:
     if not isinstance(tool_input, dict):
         return ""
     for key in TARGET_KEYS:
@@ -102,7 +103,7 @@ def target_of(tool_input):
     return ""
 
 
-def describe(failure):
+def describe(failure) -> str:
     target = failure.get("target")
     head = f"{failure.get('tool', 'a tool')}"
     if target:
@@ -110,7 +111,7 @@ def describe(failure):
     return f"- {head}\n  {failure.get('error', '')}"
 
 
-def build_context(failures, count):
+def build_context(failures, count) -> str:
     listing = "\n".join(describe(f) for f in failures)
     errors = [f.get("error") for f in failures]
     repeated = len(errors) > 1 and len(set(errors)) == 1
@@ -135,7 +136,8 @@ def build_context(failures, count):
         "Name the interface in question and the version the lockfile resolves for it.",
         "In one response, read the installed artifact and search the live "
         "web: the package's own types, `--help` output, or bundled docs on "
-        "one side, and a Tavily, linkup, or context7 lookup on the other. "
+        "one side, and a lookup through the tvly CLI, or through linkup "
+        "where tvly is unavailable, on the other. "
         "Neither waits on the other, and neither substitutes for the other.",
         "State what the sources settled and what they left open, then "
         "resume from that rather than from your recollection.",
@@ -157,7 +159,7 @@ def build_context(failures, count):
     return lead + numbered + closing
 
 
-def main():
+def main() -> None:
     try:
         payload = json.load(sys.stdin)
     except ValueError:

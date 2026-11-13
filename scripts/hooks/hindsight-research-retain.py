@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """PostToolUse hook: retain each online research call into research::<repo>.
 
-Covers WebFetch, WebSearch, the linkup, context7 and tavily MCP tools, and Bash
+Covers WebFetch, WebSearch, the linkup and tavily MCP tools, and Bash
 calls running the tvly CLI or fetching over http with curl. Outside a git
 repository the bank is research::general. The hook never blocks the session: any
 failure reaching the server exits 0 without output.
@@ -19,21 +19,19 @@ from hindsight_retain import repo_name, retain
 TURN_MARKERS = Path(tempfile.gettempdir()) / "hindsight-research-turn"
 
 MAX_CHARS = 40_000
-RESEARCH_TOOL = re.compile(
-    r"^(WebFetch|WebSearch|mcp__linkup__.*|mcp__plugin_context7_.*|mcp__.*tavily.*)$"
-)
+RESEARCH_TOOL = re.compile(r"^(WebFetch|WebSearch|mcp__linkup__.*|mcp__.*tavily.*)$")
 RESEARCH_COMMAND = re.compile(
     r"(^|[\s;&|(])(tvly\s|curl\s[^|;&]*https?://(?!localhost[:/]|127\.|\[::1\]))"
 )
 
 
-def is_research(tool, tool_input):
+def is_research(tool, tool_input) -> bool:
     if RESEARCH_TOOL.match(tool):
         return True
     return tool == "Bash" and bool(RESEARCH_COMMAND.search(tool_input.get("command", "")))
 
 
-def mark_turn(payload):
+def mark_turn(payload) -> None:
     """Flag the main session's turn as research, for the Stop hook that retains its report.
 
     A call inside a delegate carries agent_id; the delegate's own stop hook covers it.
@@ -45,13 +43,13 @@ def mark_turn(payload):
     (TURN_MARKERS / session).touch()
 
 
-def response_text(response):
+def response_text(response) -> str:
     if isinstance(response, str):
         return response
     return json.dumps(response, ensure_ascii=False)
 
 
-def main():
+def main() -> None:
     payload = json.load(sys.stdin)
     tool = payload.get("tool_name", "")
     tool_input = payload.get("tool_input") or {}
