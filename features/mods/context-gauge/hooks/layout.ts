@@ -1,4 +1,4 @@
-/** The gauge's layout in terminal cells: legend figures, legend lines, the bar's width and its runs. */
+/** The gauge's layout in terminal cells: legend figures, the legend grid, the bar's width and its runs. */
 
 import type { UsageModel } from "../types";
 import type { BarRun } from "./palette";
@@ -83,8 +83,8 @@ export function barRuns(
 /** One legend entry: its row, its figure, and the cells it takes. */
 export type LegendItem = { row: GaugeRow; figure: string; cells: number };
 
-/** One line of the legend: its items, and the cells they take with the gaps between them. */
-export type LegendLine = { items: LegendItem[]; cells: number };
+/** The legend as a grid: every item `unit` cells wide, so items line up in columns, as many to a line as fit the room. */
+export type LegendGrid = { unit: number; lines: LegendItem[][] };
 
 function legendItem(row: GaugeRow): LegendItem {
 	const figure = `${row.estimated ? "~" : ""}${abbrev(row.tokens)}`;
@@ -97,22 +97,22 @@ function legendItem(row: GaugeRow): LegendItem {
 	return { row, figure, cells };
 }
 
-/** Legend items in lines LEGEND_GAP apart, a line breaking where its next item would pass `room`. */
-export function legendLines(
+/** Legend items in a grid of units as wide as the widest item, LEGEND_GAP apart, a line holding as many units as fit `room` and at least one. */
+export function legendGrid(
 	rows: readonly GaugeRow[],
 	room: number,
-): LegendLine[] {
-	const lines: LegendLine[] = [];
-	for (const item of rows.map(legendItem)) {
-		const line = lines.at(-1);
-		if (line !== undefined && line.cells + LEGEND_GAP + item.cells <= room) {
-			line.items.push(item);
-			line.cells += LEGEND_GAP + item.cells;
-		} else {
-			lines.push({ items: [item], cells: item.cells });
-		}
+): LegendGrid {
+	const items = rows.map(legendItem);
+	const unit = items.reduce((widest, i) => Math.max(widest, i.cells), 0);
+	const columns = Math.max(
+		1,
+		Math.floor((room + LEGEND_GAP) / (unit + LEGEND_GAP)),
+	);
+	const lines: LegendItem[][] = [];
+	for (let i = 0; i < items.length; i += columns) {
+		lines.push(items.slice(i, i + columns));
 	}
-	return lines;
+	return { unit, lines };
 }
 
 /** The bar's cells, and whether it draws on its own line under the prefix. */

@@ -5,7 +5,7 @@ import {
 	barRuns,
 	gaugeLine,
 	largestRemainder,
-	legendLines,
+	legendGrid,
 	MAX_BAR_CELLS,
 	PREFIX,
 } from "../hooks/layout";
@@ -35,17 +35,17 @@ const SEVEN: readonly GaugeRow[] = [
 	row("system", 100),
 	row("skills", 100),
 	row("hooks", 100, true),
-	row("user", 100, true),
+	row("messages", 100, true),
 	row("calls", 100, true),
 	row("read", 100, true),
 	row("uncounted", 100),
 ];
 
-/** Legend items of 12, 12 and 14 cells: the first two with their gap take 26. */
+/** Legend items of 12, 12 and 14 cells: two 14-cell units and their gap take 30. */
 const THREE: readonly GaugeRow[] = [
 	row("system", 6000),
 	row("skills", 4000),
-	row("replies", 20_000),
+	row("prompts", 20_000),
 ];
 
 describe("abbrev", () => {
@@ -113,7 +113,7 @@ describe("barRuns", () => {
 		const rows = [
 			row("system", 6000),
 			row("skills", 40),
-			row("replies", 20_000),
+			row("prompts", 20_000),
 		];
 		const ids = rows.map((r) => r.id).join();
 		const misfits = Array.from({ length: 58 }, (_, i) => i + 3)
@@ -148,37 +148,44 @@ describe("barRuns", () => {
 	});
 });
 
-describe("legendLines", () => {
+describe("legendGrid", () => {
 	test("an item counts its key, a space, its label, a space and its figure", () => {
-		const [line] = legendLines(
-			[row("system", 6000), row("user", 1000, true)],
+		const [line] = legendGrid(
+			[row("system", 6000), row("messages", 1000, true)],
 			80,
-		);
+		).lines;
 
-		expect(line?.items.map((i) => [i.figure, i.cells])).toEqual([
+		expect(line?.map((i) => [i.figure, i.cells])).toEqual([
 			["6k", 2 + 1 + 6 + 1 + 2],
-			["~1k", 2 + 1 + 4 + 1 + 3],
+			["~1k", 2 + 1 + 8 + 1 + 3],
 		]);
 	});
 
-	test("a line takes the next item while it fits room exactly", () => {
-		const lines = legendLines(THREE, 26);
+	test("every item takes the widest item's cells, so the items line up in columns", () => {
+		expect(legendGrid(THREE, 80).unit).toBe(14);
+	});
 
-		expect(lines.map((l) => l.items.map((i) => i.row.id))).toEqual([
+	test("a line takes as many units as fit room exactly", () => {
+		const { lines } = legendGrid(THREE, 30);
+
+		expect(lines.map((l) => l.map((i) => i.row.id))).toEqual([
 			["system", "skills"],
-			["replies"],
+			["prompts"],
 		]);
-		expect(lines.map((l) => l.cells)).toEqual([26, 14]);
 	});
 
-	test("a line breaks where the next item would pass room", () => {
-		const lines = legendLines(THREE, 25);
+	test("a line breaks where one more unit would pass room", () => {
+		const { lines } = legendGrid(THREE, 29);
 
-		expect(lines.map((l) => l.items.map((i) => i.row.id))).toEqual([
+		expect(lines.map((l) => l.map((i) => i.row.id))).toEqual([
 			["system"],
 			["skills"],
-			["replies"],
+			["prompts"],
 		]);
+	});
+
+	test("a room narrower than one unit still holds one item a line", () => {
+		expect(legendGrid(THREE, 5).lines).toHaveLength(3);
 	});
 });
 

@@ -82,7 +82,7 @@ const BAND_ROWS = [7, 8, 9, 10, 11, 12];
 const RUNS: readonly BarRun[] = [
 	{ id: "system", cells: 3 },
 	{ id: "mcp", cells: 2 },
-	{ id: "agents", cells: 1 },
+	{ id: "agentList", cells: 1 },
 	{ id: "memory", cells: 1 },
 	{ id: "free", cells: 4 },
 ];
@@ -96,7 +96,7 @@ const FREE_SPANS = spans(RUNS).filter((s) => s.id === "free");
 const DRAWN_WITH: Readonly<Record<Texture, CategoryId>> = {
 	solid: "system",
 	diagonal: "mcp",
-	vertical: "agents",
+	vertical: "agentList",
 	dots: "memory",
 };
 

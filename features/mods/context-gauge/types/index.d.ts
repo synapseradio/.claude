@@ -27,15 +27,16 @@ export type MessageEstimates = {
 	plugins: number;
 	reminders: number;
 	files: number;
-	user: number;
-	senders: number;
+	messages: number;
+	scripts: number;
 	commands: number;
 	calls: number;
 	writes: number;
 	results: number;
 	read: number;
+	prompts: number;
+	agents: number;
 	thinking: number;
-	replies: number;
 };
 
 declare module "claude-code" {
@@ -46,6 +47,8 @@ declare module "claude-code" {
 			/** What the settings files and environment decided about auto-compaction at the last read. */
 			compaction: CompactionSetting;
 			estimates: MessageEstimates;
+			/** The ids of the Agent calls the main conversation has kept, so a background agent's notification can be told apart from a script's; kept through /clear and compaction, since a notification may arrive after either. */
+			agentCalls: readonly string[];
 			/** The window as the last main-thread response left it, or null before one. */
 			anchor: number | null;
 			/** Characters appended to the main conversation since the anchor. */

@@ -13,7 +13,7 @@ type NamedId = Exclude<CategoryId, "other">;
 const LABELS: Readonly<Record<NamedId, string>> = {
 	system: "system prompt & tools",
 	mcp: "MCP servers",
-	agents: "agent descriptions",
+	agentList: "agent descriptions",
 	memory: "memory files",
 	skills: "skill list",
 	summary: "compaction summary",
@@ -21,15 +21,16 @@ const LABELS: Readonly<Record<NamedId, string>> = {
 	plugins: "plugin context",
 	reminders: "Claude Code reminders",
 	files: "attached files",
-	user: "your messages",
-	senders: "messages from other senders",
+	messages: "messages",
+	scripts: "script results",
 	commands: "slash commands",
 	calls: "tool calls",
 	writes: "file writes",
 	results: "tool results",
 	read: "file reads",
+	prompts: "agent prompts",
+	agents: "agent reports",
 	thinking: "thinking",
-	replies: "Claude's replies",
 	uncounted: "not yet counted",
 };
 
@@ -39,7 +40,7 @@ const ROW_IDS: ReadonlyMap<string, NamedId> = new Map([
 	["System tools", "system"],
 	["MCP tools", "mcp"],
 	["MCP server instructions", "mcp"],
-	["Custom agents", "agents"],
+	["Custom agents", "agentList"],
 	["Memory files", "memory"],
 	["Skills", "skills"],
 ]);
@@ -51,15 +52,16 @@ export const NO_ESTIMATES: MessageEstimates = {
 	plugins: 0,
 	reminders: 0,
 	files: 0,
-	user: 0,
-	senders: 0,
+	messages: 0,
+	scripts: 0,
 	commands: 0,
 	calls: 0,
 	writes: 0,
 	results: 0,
 	read: 0,
+	prompts: 0,
+	agents: 0,
 	thinking: 0,
-	replies: 0,
 };
 
 function isCounted(id: CategoryId): id is CountedId {

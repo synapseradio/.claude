@@ -210,7 +210,55 @@ async function append(
 const TYPED: Origin = { kind: "composer" };
 const READ: Origin = { kind: "tool", tool: "Read" };
 const BASH: Origin = { kind: "tool", tool: "Bash" };
+const AGENT: Origin = { kind: "tool", tool: "Agent" };
 const ENGINE: Origin = { kind: "engine" };
+
+const AGENT_CALL = "toolu_01P5THiNbsHHVK5tH4sBmnmN";
+const BASH_CALL = "toolu_01Bash000000000000000000";
+
+/** Appends a main-thread response holding one Agent call, `id`, whose prompt is `chars` characters. */
+async function appendAgentCall(
+	$: Engine,
+	id: string,
+	chars: number,
+): Promise<void> {
+	await $.session.append({
+		door: "response",
+		origin: { kind: "model", model: "test" },
+		uuid: `row-${rowNumber++}`,
+		message: {
+			type: "assistant",
+			role: "assistant",
+			content: [
+				{
+					type: "tool_use",
+					id,
+					name: "Agent",
+					input: { prompt: "x".repeat(chars) },
+				},
+			],
+		},
+	});
+}
+
+/** Appends a background task's notification naming the call `toolUseId`, `chars` characters long. */
+async function appendNotification(
+	$: Engine,
+	toolUseId: string,
+	chars: number,
+): Promise<void> {
+	const head = `<task-notification>\n<task-id>a1b2</task-id>\n<tool-use-id>${toolUseId}</tool-use-id>\n`;
+	await $.session.append({
+		door: "prompt",
+		origin: { kind: "task-notification" },
+		uuid: `row-${rowNumber++}`,
+		message: {
+			type: "user",
+			role: "user",
+			content: [{ type: "text", text: head + "x".repeat(chars - head.length) }],
+		},
+	});
+}
 
 /** A model response's usage: what it read, cached and wrote. */
 function usage(input: number, cacheRead: number, output: number): TurnUsage {
@@ -299,9 +347,15 @@ type Drawn = {
 	barLine: FoundElement | undefined;
 	legend: string;
 	lines: FoundElement[];
+	items: FoundElement[];
 	images: FoundElement[];
 	texts: FoundElement[];
 };
+
+/** Whether a drawn element is one legend item's unit. */
+function isLegendItem(element: FoundElement): boolean {
+	return element.key?.startsWith("item-") === true;
+}
 
 /** Everything a test reads off one drawing at `viewport`, mounted and unmounted around the reads. */
 async function drawn($: Engine, viewport: Viewport = VIEWPORT): Promise<Drawn> {
@@ -316,10 +370,11 @@ async function drawn($: Engine, viewport: Viewport = VIEWPORT): Promise<Drawn> {
 		if (line === undefined) break;
 		lines.push(line);
 	}
+	const items = (await ui.findAll({ type: "Box" })).filter(isLegendItem);
 	const images = await ui.findAll({ type: "Image" });
 	const texts = await ui.findAll({ type: "Text" });
 	await ui.unmount();
-	return { gauge, bar, barLine, legend, lines, images, texts };
+	return { gauge, bar, barLine, legend, lines, items, images, texts };
 }
 
 /** The props the gauge's tests read off a drawn element. */
@@ -332,6 +387,7 @@ type DrawnProps = {
 	columns?: unknown;
 	rows?: unknown;
 	source?: unknown;
+	width?: unknown;
 };
 
 /** The props the tests read off a drawn element, none where the element is absent. */
@@ -360,10 +416,10 @@ function gaugeCells(d: Drawn): number {
 	);
 }
 
-/** Cells a legend line takes: each item's key and its text, and the gaps between items. */
-function lineCells(line: FoundElement): number {
+/** Cells a legend line takes: a `unit` per item, and the gaps between items. */
+function lineCells(line: FoundElement, unit: number): number {
 	const items = line.children.length;
-	return cells(line.text) + items * SAMPLE_CELLS + LEGEND_GAP * (items - 1);
+	return items * unit + LEGEND_GAP * (items - 1);
 }
 
 function legendText($: Engine): Promise<string> {
@@ -447,12 +503,47 @@ describe("the gauge under the prompt", () => {
 });
 
 describe("counting what the conversation keeps", () => {
-	test("a typed prompt shows as user text", async ($, on) => {
+	test("a typed prompt shows as messages", async ($, on) => {
 		engine(on);
 		await startSession($);
 		await append($, "prompt", TYPED, 4000);
 
-		expect(await legendText($)).toMatch(/your messages\s+~1k/u);
+		expect(await legendText($)).toMatch(/messages\s+~1k/u);
+	});
+
+	test("an Agent call shows as agent prompts, its result as agent reports", async ($, on) => {
+		engine(on);
+		await startSession($);
+		await appendAgentCall($, AGENT_CALL, 4000);
+		await append($, "tool-result", AGENT, 8000);
+
+		const legend = await legendText($);
+		expect(legend).toMatch(/agent prompts\s+~1k/u);
+		expect(legend).toMatch(/agent reports\s+~2k/u);
+	});
+
+	test("a background agent's notification shows under agent reports, and a Bash task's under script results", async ($, on) => {
+		engine(on);
+		await startSession($);
+		await appendAgentCall($, AGENT_CALL, 40);
+		await appendNotification($, AGENT_CALL, 4000);
+		await appendNotification($, BASH_CALL, 8000);
+
+		const legend = await legendText($);
+		expect(legend).toMatch(/agent reports\s+~1k/u);
+		expect(legend).toMatch(/script results\s+~2k/u);
+	});
+
+	test("an Agent call kept before /clear still marks its notification after it", async ($, on) => {
+		engine(on);
+		await startSession($);
+		await appendAgentCall($, AGENT_CALL, 40);
+		await $.classic.SessionStart({ source: "clear" });
+		await appendNotification($, AGENT_CALL, 4000);
+
+		const legend = await legendText($);
+		expect(legend).toMatch(/agent reports\s+~1k/u);
+		expect(legend).not.toMatch(/script results/u);
 	});
 
 	test("a tool result shows as results text, a Read result as read text", async ($, on) => {
@@ -583,7 +674,7 @@ describe("compaction and /clear", () => {
 
 		const d = await drawn($);
 		expect(d.gauge?.text).toMatch(/\(5k\/100k\)/u);
-		expect(d.legend).not.toMatch(/user/u);
+		expect(d.legend).not.toMatch(/messages/u);
 	});
 
 	test("a compaction's row and SessionStart drop the total a response anchored before it", async ($, on) => {
@@ -605,7 +696,7 @@ describe("compaction and /clear", () => {
 
 		const legend = await legendText($);
 		expect(legend).toMatch(/compaction summary\s+~2k/u);
-		expect(legend).not.toMatch(/user/u);
+		expect(legend).not.toMatch(/messages/u);
 	});
 
 	for (const order of ["row first", "row last"] as const) {
@@ -621,7 +712,7 @@ describe("compaction and /clear", () => {
 
 			const legend = await legendText($);
 			expect(legend).toMatch(/compaction summary\s+~2k/u);
-			expect(legend).not.toMatch(/user/u);
+			expect(legend).not.toMatch(/messages/u);
 		});
 	}
 
@@ -637,7 +728,7 @@ describe("compaction and /clear", () => {
 
 			const d = await drawn($);
 			expect(d.gauge?.text).toMatch(/\(30k\/100k\)/u);
-			expect(d.legend).toMatch(/your messages\s+~1k/u);
+			expect(d.legend).toMatch(/messages\s+~1k/u);
 		});
 	}
 
@@ -646,11 +737,11 @@ describe("compaction and /clear", () => {
 		await startSession($);
 		await append($, "compaction", ENGINE, 8000);
 		await append($, "prompt", TYPED, 4000);
-		expect(await legendText($)).toMatch(/compaction summary.+your messages/u);
+		expect(await legendText($)).toMatch(/compaction summary.+messages/u);
 		await $.classic.SessionStart({ source: "clear" });
 
 		const legend = await legendText($);
-		expect(legend).not.toMatch(/user/u);
+		expect(legend).not.toMatch(/messages/u);
 		expect(legend).not.toMatch(/compaction summary/u);
 	});
 });
@@ -805,7 +896,7 @@ describe("the ceiling from settings", () => {
 	});
 });
 
-/** Seven categories: the fixture's three, and user, read, results and calls text. */
+/** Seven categories: the fixture's three, and messages, read, results and calls text. */
 async function sevenCategories($: Engine): Promise<void> {
 	await append($, "prompt", TYPED, 40);
 	await append($, "tool-result", READ, 400);
@@ -833,16 +924,15 @@ describe("the layout", () => {
 		expect(d.barLine).toBeUndefined();
 	});
 
-	test("each legend item is its key, a space, its label, a space and its figure, LEGEND_GAP cells from the next", async ($, on) => {
+	test("each legend item is its key, a space, its label, a space and its figure, in a unit as wide as the widest item, LEGEND_GAP cells from the next", async ($, on) => {
 		engine(on);
 		await startSession($);
 
 		const ui = await mount($);
 		const line = await ui.find({ key: "legend-0" });
-		const items = await ui.findAll({
-			type: "Box",
-			text: /^ [a-z& ]+ ~?[\d.]+[kM]?$/u,
-		});
+		const items = (
+			await ui.findAll({ type: "Box", text: /^ [a-z& ]+ ~?[\d.]+[kM]?$/u })
+		).filter(isLegendItem);
 		await ui.unmount();
 
 		expect(items.map((item) => item.text)).toEqual([
@@ -850,29 +940,31 @@ describe("the layout", () => {
 			" skill list 4k",
 			" not yet counted 20k",
 		]);
+		expect(items.map((item) => propsOf(item).width)).toEqual([27, 27, 27]);
 		expect(propsOf(line).columnGap).toBe(LEGEND_GAP);
 	});
 
-	// The fixture's items take 27, 16 and 22 cells: the first two and their
-	// gap fit a 48-column row less ROW_INSET, and the third would need 24 more.
-	test("the legend breaks onto a new line where the next item would not fit", async ($, on) => {
-		engine(on);
-		await startSession($);
+	// The fixture's widest item takes 27 cells: two units and their gap take
+	// 56, all a 59-column row leaves less ROW_INSET.
+	for (const columns of [59, 58]) {
+		test(`at ${columns} columns, the legend takes as many units to a line as fit`, async ($, on) => {
+			engine(on);
+			await startSession($);
 
-		const { lines } = await drawn($, { columns: 48, rows: 24 });
+			const { lines } = await drawn($, { columns, rows: 24 });
 
-		expect(lines.map((l) => l.text)).toEqual([
-			" system prompt & tools 6k skill list 4k",
-			" not yet counted 20k",
-		]);
-	});
+			expect(lines.map((l) => l.children.length)).toEqual(
+				columns === 59 ? [2, 1] : [1, 1, 1],
+			);
+		});
+	}
 
-	// Two items of 36 and 39 cells and their gap take 77 cells, all an
-	// 80-column row leaves, and one cell more breaks the line.
+	// Two units of 37 cells and their gap take 76 of the 77 cells an 80-column
+	// row leaves; units of 38 take 78 and break the line.
 	for (const extra of [0, 1]) {
-		test(`at 80 columns, a legend line of ${77 + extra} cells ${extra === 0 ? "fits" : "breaks"}`, async ($, on) => {
+		test(`at 80 columns, a legend line of two ${37 + extra}-cell units ${extra === 0 ? "fits" : "breaks"}`, async ($, on) => {
 			engine(on, {
-				rows: [row("a".repeat(30), 1000), row("b".repeat(33 + extra), 1000)],
+				rows: [row("a".repeat(30), 1000), row("b".repeat(31 + extra), 1000)],
 			});
 			await startSession($);
 
@@ -889,10 +981,12 @@ describe("the layout", () => {
 		await sevenCategories($);
 
 		const d = await drawn($);
-		const widths = d.lines.map(lineCells);
-		const items = d.lines.reduce((sum, l) => sum + l.children.length, 0);
+		const units = new Set(d.items.map((item) => Number(propsOf(item).width)));
+		const [unit = 0] = units;
+		const widths = d.lines.map((line) => lineCells(line, unit));
 
-		expect(items).toBe(7);
+		expect(d.items).toHaveLength(7);
+		expect(units.size).toBe(1);
 		expect(widestOf(widths)).toBeLessThanOrEqual(VIEWPORT.columns - ROW_INSET);
 	});
 

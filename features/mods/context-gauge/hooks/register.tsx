@@ -23,13 +23,13 @@ import {
 	glyphSet,
 	legendSample,
 } from "./fallback";
-import type { LegendLine } from "./layout";
+import type { LegendGrid } from "./layout";
 import {
 	abbrev,
 	barRuns,
 	gaugeLine,
 	LEGEND_GAP,
-	legendLines,
+	legendGrid,
 	PREFIX,
 	SAMPLE_CELLS,
 	SPACE,
@@ -63,6 +63,11 @@ const anchor = atom(
 );
 
 const pending = atom({ plugin: "context-gauge", key: "pending" } as const, 0);
+
+const agentCalls = atom(
+	{ plugin: "context-gauge", key: "agentCalls" } as const,
+	[] as readonly string[],
+);
 
 const glyphs = atom(
 	{ plugin: "context-gauge", key: "glyphs" } as const,
@@ -145,7 +150,10 @@ async function countRow(
 	$: EngineInterface,
 	row: Pick<SessionAppendInput, "door" | "origin" | "message">,
 ): Promise<void> {
-	const effect = rowEffect(row);
+	const effect = rowEffect(row, new Set(await read($, agentCalls)));
+	if (effect.agentCalls.length > 0) {
+		await update($, agentCalls, (ids) => [...ids, ...effect.agentCalls]);
+	}
 	if (effect.reset) {
 		await resetWindow($, () => addCounts(NO_ESTIMATES, effect.counts), null);
 		return;
@@ -264,22 +272,22 @@ function glyphKey(ui: Terminal, run: Run): RenderElement {
 	return <Text color={run.color}>{run.text}</Text>;
 }
 
-/** The legend: each line's items, each a key, its label in its category's colour and its figure. */
+/** The legend: each line's items, each a unit holding a key, its label in its category's colour and its figure. */
 function legend(
 	ui: Terminal,
-	lines: readonly LegendLine[],
+	grid: LegendGrid,
 	fallback: GlyphSet | null,
 	theme: Theme,
 ): RenderElement {
 	const { Box, Image, Text } = ui;
 	return (
 		<Box key="legend" flexDirection="column">
-			{lines.map((line, n) => (
+			{grid.lines.map((line, n) => (
 				<Box key={`legend-${n}`} columnGap={LEGEND_GAP}>
-					{line.items.map(({ row, figure }) => {
+					{line.map(({ row, figure }) => {
 						const id = `${row.id}-${row.label}`;
 						return (
-							<Box key={`item-${id}`} flexShrink={0}>
+							<Box key={`item-${id}`} flexShrink={0} width={grid.unit}>
 								{fallback === null ? (
 									<Image
 										key={`key-${id}`}
@@ -346,7 +354,7 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 	const room = (e.viewport?.columns ?? DEFAULT_COLUMNS) - ROW_INSET;
 	const percent = `${model.percent}%`;
 	const totals = `(${abbrev(model.used)}/${abbrev(model.max)})`;
-	const lines = legendLines(rows, room);
+	const grid = legendGrid(rows, room);
 	const prefixCells =
 		PREFIX.length +
 		percent.length +
@@ -377,7 +385,7 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 				{shape.barOwnLine ? null : barElement}
 			</Box>
 			{shape.barOwnLine ? <Box key="bar-line">{barElement}</Box> : null}
-			{legend(ui, lines, fallback, palette)}
+			{legend(ui, grid, fallback, palette)}
 		</Box>
 	);
 };
