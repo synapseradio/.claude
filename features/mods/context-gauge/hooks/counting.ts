@@ -19,15 +19,9 @@ export type RowEffect = {
 
 type Row = Pick<SessionAppendInput, "door" | "origin" | "message">;
 
-type BlockKind =
-	| "text"
-	| "tool_use"
-	| "agent_call"
-	| "file_write"
-	| "tool_result"
-	| "unmeasured";
-
-type Measured = { kind: BlockKind; chars: number };
+type Measured =
+	| { kind: "text" | "tool_result" | "unmeasured"; chars: number }
+	| { kind: "tool_use"; tool: string; chars: number };
 
 /** Attachment names whose text a breakdown row already reports, so counting them again would double it. */
 export const BREAKDOWN_OWNED: ReadonlySet<string> = new Set([
@@ -52,11 +46,16 @@ const AGENT_TOOL = "Agent";
 /** Where a task notification's text names the tool use that started its task. */
 const NOTIFIED_CALL = /<tool-use-id>([^<]+)<\/tool-use-id>/u;
 
-/** Tools whose calls write a file. */
-export const FILE_WRITERS: ReadonlySet<string> = new Set([
-	"Write",
-	"Edit",
-	"NotebookEdit",
+/** Where a tool's calls and results count, for each tool counted apart from the rest; any other tool's count as tool calls and tool results. */
+const TOOL_CATEGORIES: ReadonlyMap<
+	string,
+	{ call: CountedId; result: CountedId }
+> = new Map([
+	["Write", { call: "writes", result: "results" }],
+	["Edit", { call: "writes", result: "results" }],
+	["NotebookEdit", { call: "writes", result: "results" }],
+	["Read", { call: "calls", result: "read" }],
+	[AGENT_TOOL, { call: "prompts", result: "agents" }],
 ]);
 
 function jsonChars(value: unknown): number {
@@ -85,15 +84,14 @@ function measure(block: ApiContentBlock): Measured {
 	if (type === "text" && typeof text === "string")
 		return { kind: "text", chars: text.length };
 	if (type === "tool_use" && typeof name === "string")
-		return { kind: callKind(name), chars: name.length + jsonChars(input) };
+		return {
+			kind: "tool_use",
+			tool: name,
+			chars: name.length + jsonChars(input),
+		};
 	if (type === "tool_result")
 		return { kind: "tool_result", chars: resultChars(content) };
 	return { kind: "unmeasured", chars: 0 };
-}
-
-function callKind(name: string): BlockKind {
-	if (name === AGENT_TOOL) return "agent_call";
-	return FILE_WRITERS.has(name) ? "file_write" : "tool_use";
 }
 
 /** The tool-use id a task notification's text names, or undefined where none does. */
@@ -116,24 +114,13 @@ function sender(row: Row, agentCalls: ReadonlySet<string>): CountedId {
 
 function toolResult({ origin }: Row): CountedId {
 	if (origin.kind !== "tool") return "results";
-	if (origin.tool === AGENT_TOOL) return "agents";
-	return origin.tool === "Read" ? "read" : "results";
+	return TOOL_CATEGORIES.get(origin.tool)?.result ?? "results";
 }
 
-function response(kind: BlockKind): CountedId | null {
-	switch (kind) {
-		case "text":
-			return "messages";
-		case "agent_call":
-			return "prompts";
-		case "file_write":
-			return "writes";
-		case "tool_use":
-			return "calls";
-		case "tool_result":
-		case "unmeasured":
-			return null;
-	}
+function response(block: Measured): CountedId | null {
+	if (block.kind === "text") return "messages";
+	if (block.kind !== "tool_use") return null;
+	return TOOL_CATEGORIES.get(block.tool)?.call ?? "calls";
 }
 
 /** The ids of a response's Agent calls; none for any other row. */
@@ -159,7 +146,7 @@ function injected({ origin, message }: Row): CountedId | null {
 
 function category(
 	row: Row,
-	kind: BlockKind,
+	block: Measured,
 	agentCalls: ReadonlySet<string>,
 ): CountedId | null {
 	switch (row.door) {
@@ -169,7 +156,7 @@ function category(
 		case "command":
 			return "commands";
 		case "response":
-			return response(kind);
+			return response(block);
 		case "tool-result":
 		case "tool-message":
 			return toolResult(row);
@@ -195,9 +182,11 @@ export function rowEffect(
 		return { reset, counts: [], agentCalls: [] };
 	const counts = row.message.content
 		.map(measure)
-		.flatMap(({ kind, chars }): Counted[] => {
-			const id = category(row, kind, agentCalls);
-			return id === null || chars === 0 ? [] : [{ id, chars }];
+		.flatMap((block): Counted[] => {
+			const id = category(row, block, agentCalls);
+			return id === null || block.chars === 0
+				? []
+				: [{ id, chars: block.chars }];
 		});
 	return { reset, counts, agentCalls: agentCallsOf(row) };
 }
