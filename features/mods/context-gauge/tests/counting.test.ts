@@ -3,6 +3,7 @@ import { describe, expect, test } from "claude-code/testing";
 
 import { addCounts, rowEffect } from "../hooks/counting";
 import { NO_ESTIMATES } from "../hooks/rows";
+import { AGENT_CALL, agentUse, BASH_CALL, notification } from "./calls";
 
 type Row = Pick<SessionAppendInput, "door" | "origin" | "message">;
 
@@ -44,20 +45,8 @@ const BASH: Row["origin"] = { kind: "tool", tool: "Bash" };
 const AGENT: Row["origin"] = { kind: "tool", tool: "Agent" };
 const NOTIFICATION: Row["origin"] = { kind: "task-notification" };
 
-const AGENT_CALL = "toolu_01P5THiNbsHHVK5tH4sBmnmN";
-const BASH_CALL = "toolu_01Bash000000000000000000";
-
 /** Nothing kept: no Agent call seen yet. */
 const NO_CALLS: ReadonlySet<string> = new Set();
-
-/** The text of a background task's notification naming the call `toolUseId`. */
-function notification(toolUseId: string): string {
-	return `<task-notification>\n<task-id>a1b2</task-id>\n<tool-use-id>${toolUseId}</tool-use-id>\n<status>completed</status>\n</task-notification>`;
-}
-
-function agentUse(id: string): ApiContentBlock {
-	return { type: "tool_use", id, name: "Agent", input: { prompt: "go" } };
-}
 
 describe("what one appended row counts", () => {
 	test("a prompt typed at the composer and response text both count as messages", async () => {

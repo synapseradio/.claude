@@ -26,6 +26,7 @@ import { LEGEND_GAP, PREFIX, SAMPLE_CELLS, SPACE } from "../hooks/layout";
 import { PALETTES } from "../hooks/palette";
 import { PX_HEIGHT, PX_PER_CELL, samplePixels } from "../hooks/pixels";
 import { ROW_INSET } from "../hooks/register";
+import { AGENT_CALL, agentUse, BASH_CALL, notification } from "./calls";
 
 /** The widest Image source the engine takes, in pixels (ImageSource's `width`). */
 const IMAGE_MAX_PX = 2048;
@@ -213,9 +214,6 @@ const BASH: Origin = { kind: "tool", tool: "Bash" };
 const AGENT: Origin = { kind: "tool", tool: "Agent" };
 const ENGINE: Origin = { kind: "engine" };
 
-const AGENT_CALL = "toolu_01P5THiNbsHHVK5tH4sBmnmN";
-const BASH_CALL = "toolu_01Bash000000000000000000";
-
 /** Appends a main-thread response holding one Agent call, `id`, whose prompt is `chars` characters. */
 async function appendAgentCall(
 	$: Engine,
@@ -229,14 +227,7 @@ async function appendAgentCall(
 		message: {
 			type: "assistant",
 			role: "assistant",
-			content: [
-				{
-					type: "tool_use",
-					id,
-					name: "Agent",
-					input: { prompt: "x".repeat(chars) },
-				},
-			],
+			content: [agentUse(id, "x".repeat(chars))],
 		},
 	});
 }
@@ -247,7 +238,6 @@ async function appendNotification(
 	toolUseId: string,
 	chars: number,
 ): Promise<void> {
-	const head = `<task-notification>\n<task-id>a1b2</task-id>\n<tool-use-id>${toolUseId}</tool-use-id>\n`;
 	await $.session.append({
 		door: "prompt",
 		origin: { kind: "task-notification" },
@@ -255,7 +245,7 @@ async function appendNotification(
 		message: {
 			type: "user",
 			role: "user",
-			content: [{ type: "text", text: head + "x".repeat(chars - head.length) }],
+			content: [{ type: "text", text: notification(toolUseId, chars) }],
 		},
 	});
 }
@@ -946,16 +936,17 @@ describe("the layout", () => {
 
 	// The fixture's widest item takes 27 cells: two units and their gap take
 	// 56, all a 59-column row leaves less ROW_INSET.
-	for (const columns of [59, 58]) {
+	for (const [columns, perLine] of [
+		[59, [2, 1]],
+		[58, [1, 1, 1]],
+	] as const) {
 		test(`at ${columns} columns, the legend takes as many units to a line as fit`, async ($, on) => {
 			engine(on);
 			await startSession($);
 
 			const { lines } = await drawn($, { columns, rows: 24 });
 
-			expect(lines.map((l) => l.children.length)).toEqual(
-				columns === 59 ? [2, 1] : [1, 1, 1],
-			);
+			expect(lines.map((l) => l.children.length)).toEqual(perLine);
 		});
 	}
 
