@@ -98,6 +98,7 @@ const DRAWN_WITH: Readonly<Record<Texture, CategoryId>> = {
 	diagonal: "mcp",
 	vertical: "agentList",
 	dots: "memory",
+	checker: "carried",
 };
 
 describe("bar pixels", () => {
@@ -195,6 +196,14 @@ describe("bar pixels", () => {
 				"..........",
 				"##..##..##",
 			],
+			checker: [
+				"##..##..##",
+				"##..##..##",
+				"..##..##..",
+				"..##..##..",
+				"##..##..##",
+				"##..##..##",
+			],
 		};
 		for (const texture of TEXTURES) {
 			const id = DRAWN_WITH[texture];
@@ -215,7 +224,7 @@ describe("bar pixels", () => {
 		}
 	});
 
-	test("the four textures differ from each other inside one cell after a seam", () => {
+	test("the five textures differ from each other inside one cell after a seam", () => {
 		const masks = TEXTURES.map((texture) => {
 			const img = decode(
 				barPixels(
@@ -229,6 +238,15 @@ describe("bar pixels", () => {
 			return columnAlphas(img, PX_PER_CELL + 1, 2 * PX_PER_CELL).join(",");
 		});
 		expect(new Set(masks).size).toBe(TEXTURES.length);
+	});
+
+	test("only carried draws the checker texture, in both themes", () => {
+		for (const theme of ["light", "dark"] as const) {
+			const checkered = BAR_ORDER.filter(
+				(id) => PALETTES[theme][id].texture === "checker",
+			);
+			expect({ theme, checkered }).toEqual({ theme, checkered: ["carried"] });
+		}
 	});
 
 	test("a transparent one-pixel seam sits where each run meets the next, and nowhere else", () => {

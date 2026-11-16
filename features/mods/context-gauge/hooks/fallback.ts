@@ -29,11 +29,12 @@ export const TEXTURE_GLYPHS: Readonly<
 		diagonal: "\u{1FB1C}",
 		vertical: "\u{1FB1B}",
 		dots: "\u{1FB03}",
+		checker: "\u{1FB2A}",
 	},
 	// Hazard: the font, not the terminal, draws ▬ and ▪, so their height and
 	// position are the font's own; Menlo, which also draws them for SF Mono,
 	// centres them with ▐ and ▞.
-	bmp: { solid: "▬", diagonal: "▞", vertical: "▐", dots: "▪" },
+	bmp: { solid: "▬", diagonal: "▞", vertical: "▐", dots: "▪", checker: "▚" },
 };
 
 /** Free space's glyph in both sets, a light dashed stroke. */

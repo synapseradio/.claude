@@ -10,6 +10,7 @@ export const BAR_ORDER = [
 	"agentList",
 	"memory",
 	"skills",
+	"carried",
 	"summary",
 	"hooks",
 	"plugins",
@@ -17,6 +18,8 @@ export const BAR_ORDER = [
 	"files",
 	"messages",
 	"scripts",
+	"tasks",
+	"relayed",
 	"commands",
 	"calls",
 	"writes",
@@ -26,6 +29,7 @@ export const BAR_ORDER = [
 	"agents",
 	"thinking",
 	"uncounted",
+	"gap",
 	"other",
 ] as const;
 
@@ -35,7 +39,13 @@ export type CategoryId = (typeof BAR_ORDER)[number];
 export type BarRun = { id: CategoryId | "free"; cells: number };
 
 /** The pixel patterns a bar segment fills its band with. */
-export const TEXTURES = ["solid", "diagonal", "vertical", "dots"] as const;
+export const TEXTURES = [
+	"solid",
+	"diagonal",
+	"vertical",
+	"dots",
+	"checker",
+] as const;
 
 export type Texture = (typeof TEXTURES)[number];
 
@@ -45,7 +55,7 @@ export type CategoryStyle = { swatch: Swatch; texture: Texture };
 /** The palettes the gauge draws in: for a light terminal and for a dark one. */
 export type Theme = "light" | "dark";
 
-/** Each theme's category colours and textures; textures cycle every four categories, so bar neighbours differ in texture. */
+/** Each theme's category colours and textures; the four repeating textures cycle across the categories but carried, which alone draws checker, so bar neighbours differ in texture. */
 export const PALETTES: Readonly<
 	Record<Theme, Readonly<Record<CategoryId, CategoryStyle>>>
 > = {
@@ -55,6 +65,7 @@ export const PALETTES: Readonly<
 		agentList: { swatch: { hex: "#0000dd" }, texture: "vertical" },
 		memory: { swatch: { hex: "#9977dd" }, texture: "dots" },
 		skills: { swatch: { hex: "#991100" }, texture: "solid" },
+		carried: { swatch: { hex: "#220099" }, texture: "checker" },
 		summary: { swatch: { hex: "#6655cc" }, texture: "diagonal" },
 		hooks: { swatch: { hex: "#559911" }, texture: "vertical" },
 		plugins: { swatch: { hex: "#dd0088" }, texture: "dots" },
@@ -62,16 +73,19 @@ export const PALETTES: Readonly<
 		files: { swatch: { hex: "#1199bb" }, texture: "diagonal" },
 		messages: { swatch: { hex: "#771166" }, texture: "vertical" },
 		scripts: { swatch: { hex: "#cc44ff" }, texture: "dots" },
-		commands: { swatch: { hex: "#886644" }, texture: "solid" },
-		calls: { swatch: { hex: "#ff33cc" }, texture: "diagonal" },
-		writes: { swatch: { hex: "#007777" }, texture: "vertical" },
-		results: { swatch: { hex: "#ff5500" }, texture: "dots" },
-		read: { swatch: { hex: "#aa11aa" }, texture: "solid" },
-		prompts: { swatch: { hex: "#cc7788" }, texture: "diagonal" },
-		agents: { swatch: { hex: "#000066" }, texture: "vertical" },
-		thinking: { swatch: { hex: "#005500" }, texture: "dots" },
-		uncounted: { swatch: { hex: "#8800ff" }, texture: "solid" },
-		other: { swatch: { hex: "#554444" }, texture: "diagonal" },
+		tasks: { swatch: { hex: "#660000" }, texture: "solid" },
+		relayed: { swatch: { hex: "#0066aa" }, texture: "diagonal" },
+		commands: { swatch: { hex: "#886644" }, texture: "vertical" },
+		calls: { swatch: { hex: "#ff33cc" }, texture: "dots" },
+		writes: { swatch: { hex: "#007777" }, texture: "solid" },
+		results: { swatch: { hex: "#ff5500" }, texture: "diagonal" },
+		read: { swatch: { hex: "#aa11aa" }, texture: "vertical" },
+		prompts: { swatch: { hex: "#cc7788" }, texture: "dots" },
+		agents: { swatch: { hex: "#000066" }, texture: "solid" },
+		thinking: { swatch: { hex: "#005500" }, texture: "diagonal" },
+		uncounted: { swatch: { hex: "#8800ff" }, texture: "vertical" },
+		gap: { swatch: { hex: "#007700" }, texture: "dots" },
+		other: { swatch: { hex: "#554444" }, texture: "solid" },
 	},
 	dark: {
 		system: { swatch: { hex: "#bb9966" }, texture: "solid" },
@@ -79,6 +93,7 @@ export const PALETTES: Readonly<
 		agentList: { swatch: { hex: "#cccc66" }, texture: "vertical" },
 		memory: { swatch: { hex: "#cc2288" }, texture: "dots" },
 		skills: { swatch: { hex: "#33aaff" }, texture: "solid" },
+		carried: { swatch: { hex: "#77ff77" }, texture: "checker" },
 		summary: { swatch: { hex: "#ff0066" }, texture: "diagonal" },
 		hooks: { swatch: { hex: "#ddbbff" }, texture: "vertical" },
 		plugins: { swatch: { hex: "#889900" }, texture: "dots" },
@@ -86,16 +101,19 @@ export const PALETTES: Readonly<
 		files: { swatch: { hex: "#ffbb99" }, texture: "diagonal" },
 		messages: { swatch: { hex: "#aa66ff" }, texture: "vertical" },
 		scripts: { swatch: { hex: "#dd3300" }, texture: "dots" },
-		commands: { swatch: { hex: "#33aa99" }, texture: "solid" },
-		calls: { swatch: { hex: "#aa00ff" }, texture: "diagonal" },
-		writes: { swatch: { hex: "#007799" }, texture: "vertical" },
-		results: { swatch: { hex: "#66cc33" }, texture: "dots" },
-		read: { swatch: { hex: "#dd88aa" }, texture: "solid" },
-		prompts: { swatch: { hex: "#ffff00" }, texture: "diagonal" },
-		agents: { swatch: { hex: "#ff66ff" }, texture: "vertical" },
-		thinking: { swatch: { hex: "#008833" }, texture: "dots" },
-		uncounted: { swatch: { hex: "#77ddcc" }, texture: "solid" },
-		other: { swatch: { hex: "#aa6666" }, texture: "diagonal" },
+		tasks: { swatch: { hex: "#99ffff" }, texture: "solid" },
+		relayed: { swatch: { hex: "#ff9900" }, texture: "diagonal" },
+		commands: { swatch: { hex: "#33aa99" }, texture: "vertical" },
+		calls: { swatch: { hex: "#aa00ff" }, texture: "dots" },
+		writes: { swatch: { hex: "#007799" }, texture: "solid" },
+		results: { swatch: { hex: "#66cc33" }, texture: "diagonal" },
+		read: { swatch: { hex: "#dd88aa" }, texture: "vertical" },
+		prompts: { swatch: { hex: "#ffff00" }, texture: "dots" },
+		agents: { swatch: { hex: "#ff66ff" }, texture: "solid" },
+		thinking: { swatch: { hex: "#008833" }, texture: "diagonal" },
+		uncounted: { swatch: { hex: "#77ddcc" }, texture: "vertical" },
+		gap: { swatch: { hex: "#ee55bb" }, texture: "dots" },
+		other: { swatch: { hex: "#aa6666" }, texture: "solid" },
 	},
 };
 

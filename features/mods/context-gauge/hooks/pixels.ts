@@ -42,6 +42,8 @@ function textureOn(texture: Texture, runX: number, row: number): boolean {
 			return runX % 4 < 2;
 		case "dots":
 			return runX % 4 < 2 && row % 4 < 2;
+		case "checker":
+			return (Math.floor(runX / 2) + Math.floor((row + 1) / 2)) % 2 === 0;
 	}
 }
 

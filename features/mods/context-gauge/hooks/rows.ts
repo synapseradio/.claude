@@ -10,12 +10,13 @@ const CHARS_PER_TOKEN = 4;
 type NamedId = Exclude<CategoryId, "other">;
 
 /** What the legend calls each named category. */
-const LABELS: Readonly<Record<NamedId, string>> = {
+export const LABELS: Readonly<Record<NamedId, string>> = {
 	system: "system prompt & tools",
 	mcp: "MCP servers",
 	agentList: "agent descriptions",
 	memory: "memory files",
 	skills: "skill list",
+	carried: "carried over",
 	summary: "compaction summary",
 	hooks: "hook output",
 	plugins: "plugin context",
@@ -23,6 +24,8 @@ const LABELS: Readonly<Record<NamedId, string>> = {
 	files: "attached files",
 	messages: "messages",
 	scripts: "script results",
+	tasks: "background tasks",
+	relayed: "relayed messages",
 	commands: "slash commands",
 	calls: "tool calls",
 	writes: "file writes",
@@ -32,6 +35,7 @@ const LABELS: Readonly<Record<NamedId, string>> = {
 	agents: "agent reports",
 	thinking: "thinking",
 	uncounted: "not yet counted",
+	gap: "attribution gap",
 };
 
 /** The gauge's category for each breakdown row name the engine reports. */

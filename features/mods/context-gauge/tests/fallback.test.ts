@@ -22,7 +22,7 @@ const RUN_IDS: readonly BarRun["id"][] = Array.from<BarRun["id"]>(
 	BAR_ORDER,
 ).concat(["free"]);
 
-/** A set's glyphs: its four texture glyphs, then free space. */
+/** A set's glyphs: its five texture glyphs, then free space. */
 function glyphsOf(set: GlyphSet): string[] {
 	return Object.values(TEXTURE_GLYPHS[set]).concat([FREE_GLYPH]);
 }
@@ -51,6 +51,7 @@ const SEXTANT_NAMES: ReadonlyMap<number, string> = new Map([
 	[0x1_fb_0b, "BLOCK SEXTANT-34"],
 	[0x1_fb_1b, "BLOCK SEXTANT-1345"],
 	[0x1_fb_1c, "BLOCK SEXTANT-2345"],
+	[0x1_fb_2a, "BLOCK SEXTANT-1346"],
 ]);
 
 // The sextant block at U+1FB00 skips the patterns other blocks already hold:
@@ -117,9 +118,9 @@ describe("fallback bar", () => {
 		}
 	});
 
-	test("each set's four textures and free space draw five different glyphs", async () => {
+	test("each set's five textures and free space draw six different glyphs", async () => {
 		for (const set of SETS) {
-			expect(`${set} ${new Set(glyphsOf(set)).size}`).toBe(`${set} 5`);
+			expect(`${set} ${new Set(glyphsOf(set)).size}`).toBe(`${set} 6`);
 		}
 	});
 

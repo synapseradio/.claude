@@ -1,6 +1,7 @@
 import { describe, expect, test } from "claude-code/testing";
 import type { Theme } from "../hooks/palette";
 import { BAR_ORDER, FREE_SWATCH, PALETTES } from "../hooks/palette";
+import { LABELS } from "../hooks/rows";
 import { deficientDistance, normalDistance } from "./colour-vision";
 
 // Terminal backgrounds each palette must read on.
@@ -39,6 +40,26 @@ function pairsOf(theme: Theme) {
 }
 
 describe("palette", () => {
+	test("the bar draws the categories in the legend's order, scripts and uncounted still among them", async () => {
+		expect([...BAR_ORDER].join(" ")).toBe(
+			"system mcp agentList memory skills carried summary hooks plugins reminders files messages scripts tasks relayed commands calls writes results read prompts agents thinking uncounted gap other",
+		);
+	});
+
+	test("the legend names the new categories", async () => {
+		expect({
+			carried: LABELS.carried,
+			tasks: LABELS.tasks,
+			relayed: LABELS.relayed,
+			gap: LABELS.gap,
+		}).toEqual({
+			carried: "carried over",
+			tasks: "background tasks",
+			relayed: "relayed messages",
+			gap: "attribution gap",
+		});
+	});
+
 	for (const theme of THEMES) {
 		test(`${theme}: no two categories share a hex`, async () => {
 			const hexes = stylesOf(theme).map((s) => s.swatch.hex);
