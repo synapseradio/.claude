@@ -2,7 +2,10 @@
 import type { ApiContentBlock } from "claude-code";
 import { describe, expect, test } from "claude-code/testing";
 
-import { PDF_TOKENS_PER_PAGE } from "../hooks/calibration";
+import {
+	PDF_TOKENS_PER_PAGE,
+	PRIOR_TOKENS_PER_CHAR,
+} from "../hooks/calibration";
 import { measureBlock } from "../hooks/measure";
 
 const OLD_MODEL = "claude-sonnet-4-5";
@@ -316,7 +319,9 @@ describe("measureBlock", () => {
 					{ type: "text", text: "x".repeat(100) },
 				],
 			};
-			expect(measureBlock(block, NEW_MODEL)).toEqual({ media: 1296 + 30 });
+			expect(measureBlock(block, NEW_MODEL)).toEqual({
+				media: 1296 + 100 * PRIOR_TOKENS_PER_CHAR,
+			});
 		});
 	});
 

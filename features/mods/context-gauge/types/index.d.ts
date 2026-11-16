@@ -1,14 +1,19 @@
-/** One breakdown row as the engine names it, its tokens scaled to the window's measured use. */
+/** One breakdown row as the engine names it, with the engine's own estimate of its tokens. */
 export type UsageCategory = {
 	name: string;
 	tokens: number;
 };
 
+/** What the gauge draws: the window's use against its ceiling, whether a response has measured it, the engine's fixed rows, every message category's tokens and the attribution gap. */
 export type UsageModel = {
 	used: number;
 	max: number;
 	percent: number;
-	categories: UsageCategory[];
+	measured: boolean;
+	/** The breakdown's `used` rows other than Messages, as the engine reports them. */
+	fixed: UsageCategory[];
+	messages: Tally;
+	gap: number;
 };
 
 /** What settings files and environment variables decide about auto-compaction: whether it runs, the window it compacts at, and the share of that window that triggers it. */
@@ -18,25 +23,6 @@ export type CompactionSetting = {
 	window: number | null;
 	/** A percentage from 1 to 100, or null where none applies. */
 	percent: number | null;
-};
-
-/** Characters the gauge has counted into each message category since the window last cleared or compacted. */
-export type MessageEstimates = {
-	summary: number;
-	hooks: number;
-	plugins: number;
-	reminders: number;
-	files: number;
-	messages: number;
-	scripts: number;
-	commands: number;
-	calls: number;
-	writes: number;
-	results: number;
-	read: number;
-	prompts: number;
-	agents: number;
-	thinking: number;
 };
 
 export type CountedId =
@@ -161,13 +147,12 @@ declare module "claude-code" {
 			context: SessionContextUsage | null;
 			/** What the settings files and environment decided about auto-compaction at the last read. */
 			compaction: CompactionSetting;
-			estimates: MessageEstimates;
-			/** The ids of the Agent calls the main conversation has kept, so a background agent's notification can be told apart from a script's; kept through /clear and compaction, since a notification may arrive after either. */
+			/** The main conversation's window since its last start, resume, clear, compaction or plan-mode exit. */
+			window: Shaped<Window>;
+			/** Tokens per character pooled from the current model's clean intervals. */
+			ratio: Shaped<Ratio>;
+			/** The ids of the Agent calls the main conversation has kept or a history read found, so a background agent's notification can be told apart from another task's; kept through /clear and compaction, since a notification may arrive after either. */
 			agentCalls: readonly string[];
-			/** The window as the last main-thread response left it, or null before one. */
-			anchor: number | null;
-			/** Characters appended to the main conversation since the anchor. */
-			pending: number;
 			/** The glyphs the bar draws in where its Image draws its alt, or null while the Image draws. */
 			glyphs: "sextant" | "bmp" | null;
 			/** The palette the gauge draws in. */

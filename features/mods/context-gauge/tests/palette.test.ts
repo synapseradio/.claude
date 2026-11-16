@@ -40,9 +40,9 @@ function pairsOf(theme: Theme) {
 }
 
 describe("palette", () => {
-	test("the bar draws the categories in the legend's order, scripts and uncounted still among them", async () => {
+	test("the bar draws the categories in the legend's order", async () => {
 		expect([...BAR_ORDER].join(" ")).toBe(
-			"system mcp agentList memory skills carried summary hooks plugins reminders files messages scripts tasks relayed commands calls writes results read prompts agents thinking uncounted gap other",
+			"system mcp agentList memory skills carried summary hooks plugins reminders files messages tasks relayed commands calls writes results read prompts agents thinking gap other",
 		);
 	});
 

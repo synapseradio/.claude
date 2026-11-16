@@ -10,12 +10,13 @@ import type {
 	RenderElement,
 	SessionAppendInput,
 	SessionContextUsage,
+	TurnStepInput,
 	TurnStepResult,
 } from "claude-code";
 import { atom, read, update } from "claude-code";
 
-import type { MessageEstimates } from "../types";
-import { addCounts, rowEffect } from "./counting";
+import type { HistoryRead, Ratio, Tally, Window, WindowCause } from "../types";
+import { rowPieces } from "./counting";
 import type { GlyphSet, Run } from "./fallback";
 import {
 	deniedBeforeMount,
@@ -23,6 +24,7 @@ import {
 	glyphSet,
 	legendSample,
 } from "./fallback";
+import { historyOf } from "./history";
 import type { LegendGrid } from "./layout";
 import {
 	abbrev,
@@ -34,13 +36,21 @@ import {
 	SAMPLE_CELLS,
 	SPACE,
 } from "./layout";
-import { thinkingTokens, usageModel, windowAfter } from "./live";
+import { fixedTokens, usageModel } from "./live";
 import type { BarRun, Theme } from "./palette";
 import { PALETTES } from "./palette";
 import type { Pixels } from "./pixels";
 import { barPixels, PX_PER_CELL, samplePixels } from "./pixels";
 import { readCompaction } from "./read-settings";
-import { gaugeRows, NO_ESTIMATES } from "./rows";
+import { gaugeRows } from "./rows";
+import {
+	applyHistory,
+	beginRequest,
+	keepRow,
+	settleRequest,
+	startWindow,
+	taint,
+} from "./window";
 
 const context = atom(
 	{ plugin: "context-gauge", key: "context" } as const,
@@ -52,17 +62,59 @@ const compaction = atom(
 	{ enabled: true, window: null, percent: null },
 );
 
-const estimates = atom(
-	{ plugin: "context-gauge", key: "estimates" } as const,
-	NO_ESTIMATES,
+const NO_TALLY: Tally = {
+	carried: 0,
+	summary: 0,
+	hooks: 0,
+	plugins: 0,
+	reminders: 0,
+	files: 0,
+	messages: 0,
+	tasks: 0,
+	relayed: 0,
+	commands: 0,
+	calls: 0,
+	writes: 0,
+	results: 0,
+	read: 0,
+	prompts: 0,
+	agents: 0,
+	thinking: 0,
+};
+
+const START: WindowCause = { family: "start", signal: "session.start" };
+const UNSEEN: WindowCause = {
+	family: "unseen",
+	signal: "turn.step:messageCount",
+};
+
+/** The window before any signal: a session start whose history is not yet read. */
+const FIRST_WINDOW: Window = {
+	cause: START,
+	measure: { kind: "unmeasured", history: { kind: "unread", why: "not-yet" } },
+	open: { chars: NO_TALLY, media: NO_TALLY },
+	tainted: false,
+	inFlight: null,
+	fingerprint: null,
+	replaced: null,
+};
+
+const window = atom(
+	{ plugin: "context-gauge", key: "window" } as const,
+	FIRST_WINDOW,
+	{ shape: "window-1" },
 );
 
-const anchor = atom(
-	{ plugin: "context-gauge", key: "anchor" } as const,
-	null as number | null,
-);
+/** No sample yet, so the prior ratio stands. */
+const NO_RATIO: Ratio = { model: "", tokens: 0, chars: 0 };
 
-const pending = atom({ plugin: "context-gauge", key: "pending" } as const, 0);
+const ratio = atom(
+	{ plugin: "context-gauge", key: "ratio" } as const,
+	NO_RATIO,
+	{
+		shape: "ratio-1",
+	},
+);
 
 const agentCalls = atom(
 	{ plugin: "context-gauge", key: "agentCalls" } as const,
@@ -104,8 +156,6 @@ async function followClaudeCode($: EngineInterface): Promise<void> {
 	await update($, theme, () => paletteOf(row.value));
 }
 
-const CHARS_PER_TOKEN = 4;
-
 /** Terminal width when the surface has not measured itself. */
 const DEFAULT_COLUMNS = 80;
 
@@ -138,75 +188,162 @@ async function refresh($: EngineInterface): Promise<void> {
 	]);
 }
 
+type Row = Pick<SessionAppendInput, "door" | "origin" | "message">;
+
+/** The model rows and history are measured for, or an empty id where the session names none. */
+function modelOf($: EngineInterface): Promise<string> {
+	return $.session.model().catch(() => "");
+}
+
+/** Joins `found` to the Agent call ids already known, each once. */
+async function knowCalls(
+	$: EngineInterface,
+	found: readonly string[],
+): Promise<void> {
+	if (found.length === 0) return;
+	await update($, agentCalls, (ids) => [...new Set([...ids, ...found])]);
+}
+
+/** Reads the main conversation and measures it, its Agent calls known afterwards; a read or a measure that fails reads "failed". */
+async function readHistory(
+	$: EngineInterface,
+): Promise<HistoryRead | "failed"> {
+	const model = await modelOf($);
+	const history = await $.session
+		.messages({ as: "api" })
+		.then((messages) => historyOf(messages, model))
+		.catch(() => "failed" as const);
+	if (history !== "failed") await knowCalls($, history.agentCalls);
+	return history;
+}
+
+/** Applies a fresh history read to the window. */
+async function readInto($: EngineInterface): Promise<void> {
+	const history = await readHistory($);
+	await update($, window, (w) => applyHistory(w, history));
+}
+
+/** Starts the window over on `cause`, under the family merge rule. */
+function startOn($: EngineInterface, cause: WindowCause): Promise<void> {
+	return update($, window, (w) => startWindow(cause, w)).then(() => undefined);
+}
+
+/** Starts the window over on `cause` and reads the breakdown again, and the conversation where the signal leaves it readable. */
+async function restart(
+	$: EngineInterface,
+	cause: WindowCause,
+	history: "read" | "unread",
+): Promise<void> {
+	await startOn($, cause);
+	await Promise.all([refresh($), history === "read" ? readInto($) : undefined]);
+}
+
+/** The fingerprint of a response row: its first block that is not thinking, as a history read takes it. */
+function responseFingerprint(row: Row, model: string): string | null {
+	if (row.door !== "response") return null;
+	return historyOf([{ role: "assistant", content: row.message.content }], model)
+		.fingerprint;
+}
+
 /**
- * Counts one kept row into its categories, and into what is pending unless it
- * is a response's own, which its anchor holds; a compaction's row starts the
- * window over from its summary.
+ * Keeps one main row in the window: its pieces as input for the next request,
+ * or as the output of the response in flight; a response row gives a window
+ * without one its fingerprint.
  *
  * Hazard: a response's rows are kept before its `turn.step` resolves, so they
  * reach no anchor but their own.
  */
-async function countRow(
-	$: EngineInterface,
-	row: Pick<SessionAppendInput, "door" | "origin" | "message">,
-): Promise<void> {
-	const effect = rowEffect(row, new Set(await read($, agentCalls)));
-	if (effect.agentCalls.length > 0) {
-		await update($, agentCalls, (ids) => [...ids, ...effect.agentCalls]);
-	}
-	if (effect.reset) {
-		await resetWindow($, () => addCounts(NO_ESTIMATES, effect.counts), null);
-		return;
-	}
-	if (effect.counts.length === 0) return;
-	const chars =
-		row.door === "response"
-			? 0
-			: effect.counts.reduce((sum, c) => sum + c.chars, 0);
+async function keep($: EngineInterface, row: Row): Promise<void> {
+	const [known, model] = await Promise.all([read($, agentCalls), modelOf($)]);
+	const pieces = rowPieces(row, new Set(known), model);
+	const fingerprint = responseFingerprint(row, model);
 	await Promise.all([
-		update($, estimates, (e) => addCounts(e, effect.counts)),
-		chars > 0 ? update($, pending, (p) => p + chars) : undefined,
+		knowCalls($, pieces.agentCalls),
+		update($, window, (w) => {
+			const kept = keepRow(w, pieces);
+			return kept.fingerprint === null && fingerprint !== null
+				? { ...kept, fingerprint }
+				: kept;
+		}),
 	]);
 }
 
-/** Anchors the total on a response: the window it left, less pending by the `sent` characters its request carried, its thinking counted, the breakdown read again. */
-async function anchorOn(
+/** Whether an unmeasured window's history read is unread for `why`. */
+function unreadFor(w: Window, why: "not-yet" | "stale"): boolean {
+	return (
+		w.measure.kind === "unmeasured" &&
+		w.measure.history.kind === "unread" &&
+		w.measure.history.why === why
+	);
+}
+
+/** Whether the window must read history at a request's start: its read is stale or not yet made, or a plan-mode exit started it, whose conversation may have swapped since. */
+function readsAtRequest(w: Window): boolean {
+	if (w.measure.kind === "measured") return false;
+	return (
+		unreadFor(w, "not-yet") ||
+		unreadFor(w, "stale") ||
+		w.cause.signal === "session.append:plan_mode_exit" ||
+		w.cause.signal === "prompt.attachment:plan_mode_exit"
+	);
+}
+
+/** The window with the request in flight, or the window as it was where the request carries fewer messages than the last response. */
+function begun(w: Window, step: Pick<TurnStepInput, "index" | "messageCount">) {
+	const next = beginRequest(w, step);
+	return next === "replaced" ? w : next;
+}
+
+/** Freezes what a main request carries: a request carrying fewer messages than the last response starts the window over first, and a window that must read history reads it. */
+async function beginStep(
+	$: EngineInterface,
+	step: Pick<TurnStepInput, "index" | "messageCount">,
+): Promise<void> {
+	const w = await read($, window);
+	if (beginRequest(w, step) === "replaced") {
+		await restart($, UNSEEN, "read");
+	} else if (readsAtRequest(w)) {
+		await readInto($);
+	}
+	await update($, window, (current) => begun(current, step));
+}
+
+/** Calibrates the window on a resolved main response against the fixed rows of a breakdown read at that response, and pools its ratio. */
+async function settleStep(
 	$: EngineInterface,
 	result: TurnStepResult,
-	sent: number,
 ): Promise<void> {
-	if (result.usage === null) return;
-	const left = windowAfter(result.usage);
-	const thinking = thinkingTokens(result) * CHARS_PER_TOKEN;
+	await refresh($);
+	const [breakdown, pooled] = await Promise.all([
+		read($, context),
+		read($, ratio),
+	]);
+	const settled = {
+		usage: result.usage,
+		fixed:
+			breakdown?.breakdown === undefined ? 0 : fixedTokens(breakdown.breakdown),
+		served: (result.serverToolUses?.length ?? 0) > 0,
+	};
+	let ratioAfter = pooled;
+	await update($, window, (w) => {
+		const next = settleRequest(w, pooled, settled);
+		ratioAfter = next.ratio;
+		return next.window;
+	});
+	await update($, ratio, () => ratioAfter);
+}
+
+/** Reads what the gauge lacks when it draws with no breakdown or no history read yet, as for a mod enabled mid-session. */
+async function catchUp($: EngineInterface, w: Window): Promise<void> {
 	await Promise.all([
-		update($, anchor, () => left),
-		update($, pending, (p) => p - sent),
-		thinking > 0
-			? update($, estimates, (e) =>
-					addCounts(e, [{ id: "thinking", chars: thinking }]),
-				)
-			: undefined,
 		refresh($),
+		unreadFor(w, "not-yet") ? readInto($) : undefined,
 	]);
 }
 
-/** The estimates a compaction leaves: its summary alone, which only its own row sets, so the summary stands whichever of the compaction's signals comes last. */
-function compacted(e: MessageEstimates): MessageEstimates {
-	return addCounts(NO_ESTIMATES, [{ id: "summary", chars: e.summary }]);
-}
-
-/** Starts the window over: the estimates as `estimatesAfter` leaves them, the anchor at `anchorAfter`, nothing pending, the breakdown read again. */
-async function resetWindow(
-	$: EngineInterface,
-	estimatesAfter: (e: MessageEstimates) => MessageEstimates,
-	anchorAfter: number | null,
-): Promise<void> {
-	await Promise.all([
-		update($, estimates, estimatesAfter),
-		update($, anchor, () => anchorAfter),
-		update($, pending, () => 0),
-		refresh($),
-	]);
+/** Whether a drawing must catch up: no breakdown read, or no history read yet in an unmeasured window. */
+function lacksReads(breakdown: SessionContextUsage | null, w: Window): boolean {
+	return breakdown === null || unreadFor(w, "not-yet");
 }
 
 /** Blits the drawn bar its own source: a denial means the terminal draws the Image's alt, so the bar switches to the glyphs this terminal draws. */
@@ -324,36 +461,30 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 	next,
 ) => {
 	if (e.surface !== "terminal") return next(e);
-	const [
-		hint,
-		breakdown,
-		decided,
-		counted,
-		anchorTokens,
-		pendingChars,
-		fallback,
-		palette,
-	] = await Promise.all([
-		next(e),
-		read($, context),
-		read($, compaction),
-		read($, estimates),
-		read($, anchor),
-		read($, pending),
-		read($, glyphs),
-		read($, theme),
-	]);
+	const [hint, breakdown, decided, current, pooled, fallback, palette] =
+		await Promise.all([
+			next(e),
+			read($, context),
+			read($, compaction),
+			read($, window),
+			read($, ratio),
+			read($, glyphs),
+			read($, theme),
+		]);
+	if (lacksReads(breakdown, current)) {
+		$.clock.after(0, () => catchUp($, current));
+	}
 	if (breakdown === null) return hint;
-	const live = { anchor: anchorTokens, pending: pendingChars };
-	const model = usageModel(breakdown, live, decided);
+	const model = usageModel(breakdown, current, pooled, decided);
 	if (model === null) return hint;
 
 	const ui = $.ui.resolve(e);
 	const { Box, Text } = ui;
-	const rows = gaugeRows(model.categories, counted);
+	const rows = gaugeRows(model);
 	const room = (e.viewport?.columns ?? DEFAULT_COLUMNS) - ROW_INSET;
 	const percent = `${model.percent}%`;
-	const totals = `(${abbrev(model.used)}/${abbrev(model.max)})`;
+	const estimate = model.measured ? "" : "~";
+	const totals = `(${estimate}${abbrev(model.used)}/${abbrev(model.max)})`;
 	const grid = legendGrid(rows, room);
 	const prefixCells =
 		PREFIX.length +
@@ -390,11 +521,24 @@ const drawGauge: MatchedHook<"ui.render", { component: "PromptHint" }> = async (
 	);
 };
 
-/** Reads the breakdown as the session starts. */
-const refreshOnStart: Hook<"session.start"> = async ($, e, next) => {
-	await refresh($);
-	return next(e);
-};
+/** Starts the window as the session starts, with the conversation read; a reload or respawn that finds the conversation the stored window measured keeps it, its interval tainted, since rows kept while hooks were down may be missing. */
+async function startSession($: EngineInterface): Promise<void> {
+	const [history, stored] = await Promise.all([
+		readHistory($),
+		read($, window),
+	]);
+	const reloaded =
+		stored.measure.kind === "measured" &&
+		history !== "failed" &&
+		history.fingerprint !== null &&
+		history.fingerprint === stored.fingerprint;
+	await Promise.all([
+		update($, window, (w) =>
+			reloaded ? taint(w) : applyHistory(startWindow(START, w), history),
+		),
+		refresh($),
+	]);
+}
 
 /** Takes Claude Code's new theme once its `theme` row is written. */
 const followThemeChange: MatchedHook<"config.set", { key: "theme" }> = async (
@@ -409,47 +553,195 @@ const followThemeChange: MatchedHook<"config.set", { key: "theme" }> = async (
 	return result;
 };
 
-/** Counts each row the main conversation keeps, as it is kept. */
+/** Whether a row has a handler of its own: a compaction's summary, or a plan-mode exit. */
+function ownHandler(e: Pick<SessionAppendInput, "door">, row: Row): boolean {
+	return e.door === "compaction" || row.message.name === PLAN_MODE_EXIT;
+}
+
+/** Keeps each row the main conversation keeps, as it is kept; a compaction's row and a plan-mode exit's are their own handlers'. */
 const countKept: Hook<"session.append"> = async ($, e, next) => {
 	const kept = await next(e);
+	if (!onMain(e) || kept.message === undefined) return kept;
+	const row = { door: e.door, origin: e.origin, message: kept.message };
+	if (!ownHandler(e, row)) await keep($, row);
+	return kept;
+};
+
+/** Starts the window over at a compaction's summary row, which then counts as the compaction summary, the conversation it restored read in as carried over. */
+const compactOnRow: MatchedHook<
+	"session.append",
+	{ door: "compaction" }
+> = async ($, e, next) => {
+	const kept = await next(e);
+	if (!onMain(e) || kept.message === undefined) return kept;
+	await startOn($, {
+		family: "compaction",
+		signal: "session.append:compaction",
+	});
+	await keep($, { door: e.door, origin: e.origin, message: kept.message });
+	await Promise.all([refresh($), readInto($)]);
+	return kept;
+};
+
+/** The attachment a plan-mode exit leaves, by its engine name. */
+const PLAN_MODE_EXIT = "plan_mode_exit";
+
+/** Starts the window over once a plan-mode exit's row is kept; the row is in the conversation read as carried over. */
+const clearOnExitRow: MatchedHook<
+	"session.append",
+	{ message: { name: "plan_mode_exit" } }
+> = async ($, e, next) => {
+	const kept = await next(e);
 	if (onMain(e) && kept.message !== undefined) {
-		await countRow($, {
-			door: e.door,
-			origin: e.origin,
-			message: kept.message,
-		});
+		await restart(
+			$,
+			{ family: "clear", signal: "session.append:plan_mode_exit" },
+			"read",
+		);
 	}
 	return kept;
 };
 
-/** Anchors the total on each main-thread response once it has arrived whole, keeping pending what was appended while its request was in flight. */
-const anchorStep: Hook<"turn.step"> = async function* ($, e, next) {
-	const sent = onMain(e) ? await read($, pending) : 0;
-	const result = yield* next(e);
-	if (onMain(e)) await anchorOn($, result, sent);
+/** Starts the window over once a request carries a plan-mode exit's attachment. */
+const clearOnExitAttachment: MatchedHook<
+	"prompt.attachment",
+	{ type: "plan_mode_exit" }
+> = async ($, e, next) => {
+	const result = await next(e);
+	if (onMain(e)) {
+		await restart(
+			$,
+			{ family: "clear", signal: "prompt.attachment:plan_mode_exit" },
+			"read",
+		);
+	}
 	return result;
 };
 
-/** Starts the window over at its compacted size once a main-thread compaction stands; a precompute changes nothing yet. */
-const resetOnCompact: Hook<"session.compact"> = async ($, e, next) => {
+/** Records that a main row failed to count, so the next excess shows as attribution gap, and lets the dispatch continue as if the hook were absent. */
+async function taintAndPass<E extends { readonly agentId?: string }, R>(
+	$: EngineInterface,
+	e: E,
+	next: (e: E) => R,
+): Promise<Awaited<R>> {
+	if (onMain(e)) await update($, window, taint);
+	return await next(e);
+}
+
+/** Calibrates the window on each main-thread response once it has arrived whole; a request carrying fewer messages than the last response starts the window over first. */
+const anchorStep: Hook<"turn.step"> = async function* ($, e, next) {
+	if (!onMain(e)) return yield* next(e);
+	await beginStep($, e);
+	const result = yield* next(e);
+	await settleStep($, result);
+	return result;
+};
+
+/** Starts the window over once a main-thread compaction stands; a precompute changes nothing yet. */
+const compactOnEvent: Hook<"session.compact"> = async ($, e, next) => {
 	const result = await next(e);
 	if (!onMain(e) || e.trigger === "precompute" || result.skip !== undefined) {
 		return result;
 	}
-	await resetWindow($, compacted, result.tokensAfter ?? null);
+	await restart($, { family: "compaction", signal: "session.compact" }, "read");
 	return result;
 };
 
 /**
- * Starts the window over on `/clear` and after a compaction.
+ * The classic SessionStart sources, each starting the window over for its
+ * own signal, the conversation read.
  *
  * Why: `/clear` raises no `session.start`, and the classic SessionStart event
- * carries both as its source, https://code.claude.com/docs/en/hooks#sessionstart
+ * carries it, https://code.claude.com/docs/en/hooks#sessionstart
  */
-const resetOnStart: Hook<"classic.SessionStart"> = async ($, e, next) => {
+const restartOnStartup: MatchedHook<
+	"classic.SessionStart",
+	{ source: "startup" }
+> = async ($, e, next) => {
 	const result = await next(e);
-	if (e.source === "clear") await resetWindow($, () => NO_ESTIMATES, null);
-	if (e.source === "compact") await resetWindow($, compacted, null);
+	await restart(
+		$,
+		{ family: "start", signal: "classic.SessionStart:startup" },
+		"read",
+	);
+	return result;
+};
+
+const restartOnResume: MatchedHook<
+	"classic.SessionStart",
+	{ source: "resume" }
+> = async ($, e, next) => {
+	const result = await next(e);
+	await restart(
+		$,
+		{ family: "resume", signal: "classic.SessionStart:resume" },
+		"read",
+	);
+	return result;
+};
+
+const restartOnFork: MatchedHook<
+	"classic.SessionStart",
+	{ source: "fork" }
+> = async ($, e, next) => {
+	const result = await next(e);
+	await restart(
+		$,
+		{ family: "resume", signal: "classic.SessionStart:fork" },
+		"read",
+	);
+	return result;
+};
+
+const restartOnClear: MatchedHook<
+	"classic.SessionStart",
+	{ source: "clear" }
+> = async ($, e, next) => {
+	const result = await next(e);
+	await restart(
+		$,
+		{ family: "clear", signal: "classic.SessionStart:clear" },
+		"read",
+	);
+	return result;
+};
+
+const restartOnCompact: MatchedHook<
+	"classic.SessionStart",
+	{ source: "compact" }
+> = async ($, e, next) => {
+	const result = await next(e);
+	await restart(
+		$,
+		{ family: "compaction", signal: "classic.SessionStart:compact" },
+		"read",
+	);
+	return result;
+};
+
+/** Starts the window over as `/clear` ends the conversation; the new one is read at the next request or drawing. */
+const clearOnEnd: MatchedHook<"session.end", { reason: "clear" }> = async (
+	$,
+	e,
+	next,
+) => {
+	const result = await next(e);
+	await restart($, { family: "clear", signal: "session.end:clear" }, "unread");
+	return result;
+};
+
+/** Starts the window over as a resume ends the conversation; the resumed one is read at the next request or drawing. */
+const resumeOnEnd: MatchedHook<"session.end", { reason: "resume" }> = async (
+	$,
+	e,
+	next,
+) => {
+	const result = await next(e);
+	await restart(
+		$,
+		{ family: "resume", signal: "session.end:resume" },
+		"unread",
+	);
 	return result;
 };
 
@@ -460,14 +752,44 @@ export const register: Register = (on, options) => {
 		await (setting === "follow"
 			? followClaudeCode($)
 			: update($, theme, () => setting));
-		return refreshOnStart($, e, next);
+		await startSession($);
+		return next(e);
 	});
 	if (setting === "follow") {
 		on("config.set", { key: "theme" }, followThemeChange);
 	}
-	on("session.append", countKept).catch(passThrough);
+	on("session.append", countKept).catch(taintAndPass);
+	on("session.append", { door: "compaction" }, compactOnRow).catch(
+		taintAndPass,
+	);
+	on(
+		"session.append",
+		{ message: { name: PLAN_MODE_EXIT } },
+		clearOnExitRow,
+	).catch(passThrough);
+	on(
+		"prompt.attachment",
+		{ type: PLAN_MODE_EXIT },
+		clearOnExitAttachment,
+	).catch(passThrough);
 	on("turn.step", anchorStep);
-	on("session.compact", resetOnCompact).catch(passThrough);
-	on("classic.SessionStart", resetOnStart).catch(passThrough);
+	on("session.compact", compactOnEvent).catch(passThrough);
+	on("classic.SessionStart", { source: "startup" }, restartOnStartup).catch(
+		passThrough,
+	);
+	on("classic.SessionStart", { source: "resume" }, restartOnResume).catch(
+		passThrough,
+	);
+	on("classic.SessionStart", { source: "fork" }, restartOnFork).catch(
+		passThrough,
+	);
+	on("classic.SessionStart", { source: "clear" }, restartOnClear).catch(
+		passThrough,
+	);
+	on("classic.SessionStart", { source: "compact" }, restartOnCompact).catch(
+		passThrough,
+	);
+	on("session.end", { reason: "clear" }, clearOnEnd).catch(passThrough);
+	on("session.end", { reason: "resume" }, resumeOnEnd).catch(passThrough);
 	on("ui.render", { component: "PromptHint" }, drawGauge);
 };

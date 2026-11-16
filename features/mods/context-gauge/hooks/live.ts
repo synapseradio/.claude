@@ -1,66 +1,58 @@
-/** The gauge's live figures: the window a response left, the thinking it spent, and the usage model drawn from them. */
+/** The gauge's usage model: the engine's fixed rows beside the window's message categories, against the ceiling auto-compaction runs at. */
+
+import type { SessionContextBreakdown, SessionContextUsage } from "claude-code";
 
 import type {
-	ModelUsage,
-	SessionContextUsage,
-	TurnStepResult,
-} from "claude-code";
-
-import type { CompactionSetting, UsageModel } from "../types";
+	CompactionSetting,
+	Ratio,
+	UsageCategory,
+	UsageModel,
+	Window,
+} from "../types";
 import { ceiling } from "./settings";
+import { drawn } from "./window";
 
-const CHARS_PER_TOKEN = 4;
+/** The breakdown row the gauge's own message categories stand in for. */
+const MESSAGES_ROW = "Messages";
 
-/** The window as one response left it, its own output included. */
-export function windowAfter(usage: ModelUsage): number {
-	return (
-		usage.input_tokens +
-		usage.cache_read_input_tokens +
-		usage.cache_creation_input_tokens +
-		usage.output_tokens
-	);
+/** The breakdown's `used` rows other than Messages: the system prompt, tools, MCP, memory, skills and any the gauge does not name. */
+export function fixedRows(breakdown: SessionContextBreakdown): UsageCategory[] {
+	return breakdown.categories
+		.filter((c) => c.kind === "used" && c.name !== MESSAGES_ROW)
+		.map((c) => ({ name: c.name, tokens: c.tokens }));
 }
 
-/**
- * Thinking tokens one response spent: the output tokens its visible answer
- * and tool calls leave unexplained.
- *
- * Why: the API bills the full thinking while the transcript keeps at most a
- * summary of it, so only `output_tokens` measures it
- * (https://platform.claude.com/docs/en/build-with-claude/thinking#summarized-thinking).
- */
-export function thinkingTokens(
-	step: Pick<TurnStepResult, "answer" | "toolUses" | "usage">,
-): number {
-	if (step.usage === null) return 0;
-	const visible = step.toolUses.reduce(
-		(chars, toolUse) => chars + JSON.stringify(toolUse).length,
-		step.answer.length,
-	);
-	return Math.max(
-		0,
-		Math.round(step.usage.output_tokens - visible / CHARS_PER_TOKEN),
-	);
+function tokensOf(rows: readonly UsageCategory[]): number {
+	return rows.reduce((sum, c) => sum + c.tokens, 0);
 }
 
-/** The gauge's usage model, live from the last anchoring response, or null without a breakdown or a ceiling; the ceiling is where `compaction` says auto-compaction runs (see `ceiling`). */
+/** The tokens of the breakdown's fixed rows together. */
+export function fixedTokens(breakdown: SessionContextBreakdown): number {
+	return tokensOf(fixedRows(breakdown));
+}
+
+/** The gauge's usage model, or null without a breakdown or a ceiling; the ceiling is where `compaction` says auto-compaction runs (see `ceiling`). */
 export function usageModel(
 	context: SessionContextUsage,
-	live: { anchor: number | null; pending: number },
+	window: Window,
+	ratio: Ratio,
 	compaction: CompactionSetting,
 ): UsageModel | null {
 	const breakdown = context.breakdown;
 	if (breakdown === undefined) return null;
 	const max = ceiling(compaction, breakdown);
 	if (max <= 0) return null;
-	const used =
-		live.anchor === null
-			? breakdown.totalTokens
-			: Math.round(live.anchor + live.pending / CHARS_PER_TOKEN);
+	const fixed = fixedRows(breakdown);
+	const figures = drawn(window, ratio, tokensOf(fixed));
+	const used = Math.round(figures.used);
 	const percent = Math.max(0, Math.min(100, Math.round((used / max) * 100)));
-	const scale = breakdown.totalTokens > 0 ? used / breakdown.totalTokens : 1;
-	const categories = breakdown.categories
-		.filter((c) => c.kind === "used" && c.tokens > 0)
-		.map((c) => ({ name: c.name, tokens: Math.round(c.tokens * scale) }));
-	return { used, max, percent, categories };
+	return {
+		used,
+		max,
+		percent,
+		measured: figures.measured,
+		fixed,
+		messages: figures.messages,
+		gap: figures.gap,
+	};
 }

@@ -58,7 +58,7 @@ type BarPart = { id: BarRun["id"]; tokens: number; floor: number };
 
 /** The bar's runs, `width` cells: each used row at least one cell where the width holds one per row, the rest split by tokens against the window, free space last. */
 export function barRuns(
-	model: UsageModel,
+	model: Pick<UsageModel, "used" | "max">,
 	rows: readonly GaugeRow[],
 	width: number,
 ): BarRun[] {

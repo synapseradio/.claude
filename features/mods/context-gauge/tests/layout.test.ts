@@ -17,9 +17,9 @@ function row(id: CategoryId, tokens: number, estimated = false): GaugeRow {
 	return { id, label: id, tokens, estimated };
 }
 
-/** A window holding `used` of `max` tokens; the layout reads only those two. */
-function windowOf(used: number, max: number): UsageModel {
-	return { used, max, percent: 0, categories: [] };
+/** A window holding `used` of `max` tokens. */
+function windowOf(used: number, max: number): Pick<UsageModel, "used" | "max"> {
+	return { used, max };
 }
 
 function total(cells: readonly number[]): number {
@@ -38,7 +38,7 @@ const SEVEN: readonly GaugeRow[] = [
 	row("messages", 100, true),
 	row("calls", 100, true),
 	row("read", 100, true),
-	row("uncounted", 100),
+	row("agentList", 100),
 ];
 
 /** Legend items of 12, 12 and 14 cells: two 14-cell units and their gap take 30. */

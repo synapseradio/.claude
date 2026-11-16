@@ -1,6 +1,6 @@
 /** The gauge's calibration as pure transitions over one window: rows kept, requests begun and settled, history read, and what the window draws. */
 
-import type { TurnUsage } from "claude-code";
+import type { ModelUsage, TurnUsage } from "claude-code";
 
 import type {
 	CountedId,
@@ -79,7 +79,8 @@ function rateOf(ratio: Ratio): number {
 	return ratio.chars > 0 ? ratio.tokens / ratio.chars : PRIOR_TOKENS_PER_CHAR;
 }
 
-function windowSize(usage: TurnUsage): number {
+/** The window as one response left it, its own output included. */
+export function windowAfter(usage: ModelUsage): number {
 	return (
 		usage.input_tokens +
 		usage.cache_read_input_tokens +
@@ -300,7 +301,7 @@ function intervalOf(
 	fixed: number,
 ): Interval {
 	const measure = w.measure;
-	const left = windowSize(usage) - usage.output_tokens;
+	const left = windowAfter(usage) - usage.output_tokens;
 	if (measure.kind === "unmeasured") {
 		const history = measure.history;
 		const carried: Pieces =
@@ -400,7 +401,7 @@ export function settleRequest(
 			measure: {
 				kind: "measured",
 				anchor: {
-					window: windowSize(usage),
+					window: windowAfter(usage),
 					fixed,
 					messageCount: flight.messageCount,
 				},

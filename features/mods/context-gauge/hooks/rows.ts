@@ -1,11 +1,9 @@
-/** The gauge's rows: the engine's breakdown rows named, merged and ordered, its Messages row split by the gauge's estimates. */
+/** The gauge's rows: the engine's fixed breakdown rows named, merged and ordered, beside the calibrated message categories and the attribution gap. */
 
-import type { MessageEstimates, UsageCategory } from "../types";
-import type { CountedId } from "./counting";
+import type { CountedId, UsageModel } from "../types";
+import { GAP_FLOOR_SHARE, GAP_FLOOR_TOKENS } from "./calibration";
 import type { CategoryId } from "./palette";
 import { BAR_ORDER } from "./palette";
-
-const CHARS_PER_TOKEN = 4;
 
 type NamedId = Exclude<CategoryId, "other">;
 
@@ -23,7 +21,6 @@ export const LABELS: Readonly<Record<NamedId, string>> = {
 	reminders: "Claude Code reminders",
 	files: "attached files",
 	messages: "messages",
-	scripts: "script results",
 	tasks: "background tasks",
 	relayed: "relayed messages",
 	commands: "slash commands",
@@ -34,7 +31,6 @@ export const LABELS: Readonly<Record<NamedId, string>> = {
 	prompts: "agent prompts",
 	agents: "agent reports",
 	thinking: "thinking",
-	uncounted: "not yet counted",
 	gap: "attribution gap",
 };
 
@@ -48,32 +44,6 @@ const ROW_IDS: ReadonlyMap<string, NamedId> = new Map([
 	["Memory files", "memory"],
 	["Skills", "skills"],
 ]);
-
-/** Estimates before anything is counted, and after `/clear` or compaction. */
-export const NO_ESTIMATES: MessageEstimates = {
-	summary: 0,
-	hooks: 0,
-	plugins: 0,
-	reminders: 0,
-	files: 0,
-	messages: 0,
-	scripts: 0,
-	commands: 0,
-	calls: 0,
-	writes: 0,
-	results: 0,
-	read: 0,
-	prompts: 0,
-	agents: 0,
-	thinking: 0,
-};
-
-function isCounted(id: CategoryId): id is CountedId {
-	return id in NO_ESTIMATES;
-}
-
-/** The Messages row's counted parts, in bar order. */
-const COUNTED: readonly CountedId[] = BAR_ORDER.filter(isCounted);
 
 /** Each category's place in the bar. */
 const BAR_RANK: ReadonlyMap<string, number> = new Map(
@@ -91,17 +61,6 @@ function named(id: NamedId, tokens: number, estimated: boolean): GaugeRow {
 	return { id, label: LABELS[id], tokens, estimated };
 }
 
-function splitMessages(tokens: number, chars: MessageEstimates): GaugeRow[] {
-	const seen =
-		COUNTED.reduce((sum, id) => sum + chars[id], 0) / CHARS_PER_TOKEN;
-	const scale = seen > tokens ? tokens / seen : 1;
-	const counted = COUNTED.map((id) =>
-		named(id, Math.round((chars[id] / CHARS_PER_TOKEN) * scale), true),
-	);
-	const rest = Math.max(0, Math.round(tokens - seen));
-	return counted.concat(named("uncounted", rest, false));
-}
-
 /** Sums the tokens of rows sharing an id and label, keeping the first one's place. */
 function merged(rows: readonly GaugeRow[]): GaugeRow[] {
 	const byKey = new Map<string, GaugeRow>();
@@ -113,19 +72,41 @@ function merged(rows: readonly GaugeRow[]): GaugeRow[] {
 	return Array.from(byKey.values());
 }
 
-/** The rows the gauge draws, in bar order, each with tokens. */
+function fixedRow(c: UsageModel["fixed"][number]): GaugeRow {
+	const id = ROW_IDS.get(c.name);
+	if (id) return named(id, c.tokens, false);
+	return {
+		id: "other",
+		label: c.name.toLowerCase(),
+		tokens: c.tokens,
+		estimated: false,
+	};
+}
+
+/** Whether the attribution gap is large enough to draw: at least GAP_FLOOR_TOKENS, and at least GAP_FLOOR_SHARE of the window's message tokens, the gap among them. */
+function gapShows(gap: number, messageTokens: number): boolean {
+	return gap >= Math.max(GAP_FLOOR_TOKENS, GAP_FLOOR_SHARE * messageTokens);
+}
+
+/** The rows the gauge draws, in bar order, each with whole tokens: the engine's fixed rows as reported, each message category estimated, and the attribution gap where it shows. */
 export function gaugeRows(
-	categories: readonly UsageCategory[],
-	chars: MessageEstimates,
+	model: Pick<UsageModel, "fixed" | "messages" | "gap">,
 ): GaugeRow[] {
-	const rows = categories.flatMap((c): GaugeRow[] => {
-		if (c.name === "Messages") return splitMessages(c.tokens, chars);
-		const id = ROW_IDS.get(c.name);
-		if (id) return [named(id, c.tokens, false)];
-		const label = c.name.toLowerCase();
-		return [{ id: "other", label, tokens: c.tokens, estimated: false }];
-	});
+	const ids = Object.keys(model.messages) as CountedId[];
+	const messageTokens = ids.reduce(
+		(sum, id) => sum + model.messages[id],
+		model.gap,
+	);
+	const rows = model.fixed
+		.map(fixedRow)
+		.concat(ids.map((id) => named(id, model.messages[id], true)))
+		.concat(
+			gapShows(model.gap, messageTokens)
+				? [named("gap", model.gap, false)]
+				: [],
+		);
 	return merged(rows)
+		.map((r) => ({ ...r, tokens: Math.round(r.tokens) }))
 		.filter((r) => r.tokens > 0)
 		.sort((a, b) => (BAR_RANK.get(a.id) ?? 0) - (BAR_RANK.get(b.id) ?? 0));
 }

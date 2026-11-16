@@ -2,11 +2,12 @@ import type {
 	ContextCategory,
 	ModelUsage,
 	SessionContextBreakdown,
-	TurnUsage,
 } from "claude-code";
 import { describe, expect, test } from "claude-code/testing";
-import { thinkingTokens, usageModel, windowAfter } from "../hooks/live";
-import type { CompactionSetting } from "../types";
+import { PRIOR_TOKENS_PER_CHAR } from "../hooks/calibration";
+import { usageModel } from "../hooks/live";
+import { windowAfter } from "../hooks/window";
+import type { CompactionSetting, Ratio, Tally, Window } from "../types";
 
 function row(
 	name: string,
@@ -28,11 +29,6 @@ function responseUsage(
 		cache_creation_input_tokens: cacheCreation,
 		output_tokens: output,
 	};
-}
-
-/** A response's usage that generated `output` tokens and read nothing. */
-function turnUsage(output: number): TurnUsage {
-	return Object.assign(responseUsage(0, 0, 0, output), { model: "test" });
 }
 
 /** The breakdown's estimate of the window: 6,000 system prompt, 4,000 skills, 20,000 messages. */
@@ -67,7 +63,68 @@ function breakdown(
 	return b;
 }
 
-const NO_ANCHOR = { anchor: null, pending: 0 };
+const ZERO: Tally = {
+	carried: 0,
+	summary: 0,
+	hooks: 0,
+	plugins: 0,
+	reminders: 0,
+	files: 0,
+	messages: 0,
+	tasks: 0,
+	relayed: 0,
+	commands: 0,
+	calls: 0,
+	writes: 0,
+	results: 0,
+	read: 0,
+	prompts: 0,
+	agents: 0,
+	thinking: 0,
+};
+
+/** The breakdown's fixed rows: 6,000 system prompt and 4,000 skills. */
+const FIXED = 10_000;
+
+/** No sample yet: the prior decides. */
+const NO_RATIO: Ratio = { model: "", tokens: 0, chars: 0 };
+
+/** A window a response measured at `messages` message tokens beside the fixed rows, with `keptChars` characters of messages kept since. */
+function measured(messages: number, keptChars = 0): Window {
+	return {
+		cause: { family: "start", signal: "session.start" },
+		measure: {
+			kind: "measured",
+			anchor: { window: FIXED + messages, fixed: FIXED, messageCount: 1 },
+			tokens: { ...ZERO, messages },
+			gap: 0,
+		},
+		open: { chars: { ...ZERO, messages: keptChars }, media: ZERO },
+		tainted: false,
+		inFlight: null,
+		fingerprint: null,
+		replaced: null,
+	};
+}
+
+/** A window no response has measured yet: `carriedChars` of history read, and `keptChars` of messages kept since. */
+function unmeasured(carriedChars: number, keptChars = 0): Window {
+	return {
+		cause: { family: "start", signal: "session.start" },
+		measure: {
+			kind: "unmeasured",
+			history: { kind: "read", carriedChars, carriedMedia: 0 },
+		},
+		open: { chars: { ...ZERO, messages: keptChars }, media: ZERO },
+		tainted: false,
+		inFlight: null,
+		fingerprint: null,
+		replaced: null,
+	};
+}
+
+/** A window a response measured at 20,000 message tokens, so used is the breakdown's 30,000. */
+const MESSAGES_20K = measured(20_000);
 
 /** Settings and environment that set nothing, leaving the engine's threshold to stand. */
 const NO_SETTINGS: CompactionSetting = {
@@ -79,10 +136,15 @@ const NO_SETTINGS: CompactionSetting = {
 /** The usage model of a session whose context carries breakdown `b`. */
 function modelFor(
 	b: SessionContextBreakdown,
-	live: Parameters<typeof usageModel>[1] = NO_ANCHOR,
+	window: Window = MESSAGES_20K,
 	compaction: CompactionSetting = NO_SETTINGS,
 ) {
-	return usageModel({ window: b.rawMaxTokens, breakdown: b }, live, compaction);
+	return usageModel(
+		{ window: b.rawMaxTokens, breakdown: b },
+		window,
+		NO_RATIO,
+		compaction,
+	);
 }
 
 describe("the window after a response", () => {
@@ -91,80 +153,42 @@ describe("the window after a response", () => {
 	});
 });
 
-describe("thinking tokens", () => {
-	test("output tokens less a 400-character answer leave 2,900 thinking tokens", async () => {
-		const step = {
-			answer: "a".repeat(400),
-			toolUses: [],
-			usage: turnUsage(3000),
-		};
-
-		expect(thinkingTokens(step)).toBe(2900);
-	});
-
-	test("tool calls count as visible output, at their JSON length", async () => {
-		// {"name":"Read","input":{"file_path":"/a"}} is 42 characters.
-		const toolUse = { name: "Read", input: { file_path: "/a" } };
-		const step = {
-			answer: "",
-			toolUses: [toolUse, toolUse],
-			usage: turnUsage(1000),
-		};
-
-		expect(thinkingTokens(step)).toBe(979);
-	});
-
-	test("an answer longer than the output tokens cover leaves 0 thinking tokens", async () => {
-		const step = {
-			answer: "a".repeat(4000),
-			toolUses: [],
-			usage: turnUsage(100),
-		};
-
-		expect(thinkingTokens(step)).toBe(0);
-	});
-
-	test("a step without usage spent no thinking tokens", async () => {
-		expect(thinkingTokens({ answer: "", toolUses: [], usage: null })).toBe(0);
-	});
-});
-
 describe("the usage model", () => {
-	test("before any anchor, used is the breakdown's total", async () => {
-		expect(modelFor(breakdown(100_000))?.used).toBe(30_000);
+	test("before any response in a window, used is the fixed rows plus every estimate, and the totals read as estimated", async () => {
+		const model = modelFor(breakdown(100_000), unmeasured(10_000, 2000));
+
+		expect(model?.used).toBe(
+			Math.round(FIXED + PRIOR_TOKENS_PER_CHAR * (10_000 + 2000)),
+		);
+		expect(model?.measured).toBe(false);
 	});
 
-	test("an anchored response plus 4,000 pending characters reads 33,000 used", async () => {
-		const anchor = windowAfter(responseUsage(10_000, 20_000, 0, 2000));
-		const model = modelFor(breakdown(100_000), { anchor, pending: 4000 });
+	test("after a response, used is the window it measured plus what was kept since", async () => {
+		const model = modelFor(breakdown(100_000), measured(22_000, 1000));
 
-		expect(model?.used).toBe(33_000);
+		expect(model?.used).toBe(
+			Math.round(FIXED + 22_000 + PRIOR_TOKENS_PER_CHAR * 1000),
+		);
+		expect(model?.measured).toBe(true);
 	});
 
-	test("an anchor of 5,000 from a compaction with nothing pending reads 5,000 used", async () => {
-		const model = modelFor(breakdown(100_000), { anchor: 5000, pending: 0 });
+	test("the fixed rows draw as the engine reports them, unscaled, without the Messages row", async () => {
+		const model = modelFor(breakdown(100_000), measured(5000));
 
-		expect(model?.used).toBe(5000);
-	});
-
-	test("categories scale to used and keep only used rows", async () => {
-		const model = modelFor(breakdown(100_000), { anchor: 15_000, pending: 0 });
-
-		expect(model?.categories).toEqual([
-			{ name: "System prompt", tokens: 3000 },
-			{ name: "Skills", tokens: 2000 },
-			{ name: "Messages", tokens: 10_000 },
+		expect(model?.fixed).toEqual([
+			{ name: "System prompt", tokens: 6000 },
+			{ name: "Skills", tokens: 4000 },
 		]);
 	});
 
-	test("a breakdown totalling 0 leaves categories unscaled", async () => {
-		const b = breakdown(100_000);
-		b.totalTokens = 0;
-		const model = modelFor(b, { anchor: 5000, pending: 0 });
+	test("the breakdown's total and its Messages row never reach the used figure", async () => {
+		const stale = breakdown(100_000);
+		stale.totalTokens = 90_000;
+		stale.categories = stale.categories.map((c) =>
+			c.name === "Messages" ? { ...c, tokens: 80_000 } : c,
+		);
 
-		expect(model?.categories.map((c) => c.tokens)).toEqual([
-			6000, 4000, 20_000,
-		]);
+		expect(modelFor(stale, unmeasured(0))?.used).toBe(FIXED);
 	});
 
 	test("the ceiling is the auto-compaction threshold", async () => {
@@ -178,21 +202,23 @@ describe("the usage model", () => {
 	test("a settings window leaves the engine's threshold as the ceiling", async () => {
 		const settings = { ...NO_SETTINGS, window: 60_000 };
 
-		expect(modelFor(breakdown(100_000, 80_000), NO_ANCHOR, settings)?.max).toBe(
-			80_000,
-		);
+		expect(
+			modelFor(breakdown(100_000, 80_000), MESSAGES_20K, settings)?.max,
+		).toBe(80_000);
 	});
 
 	test("with no engine threshold, a settings window is the ceiling", async () => {
 		const settings = { ...NO_SETTINGS, window: 60_000 };
 
-		expect(modelFor(breakdown(100_000), NO_ANCHOR, settings)?.max).toBe(60_000);
+		expect(modelFor(breakdown(100_000), MESSAGES_20K, settings)?.max).toBe(
+			60_000,
+		);
 	});
 
 	test("with no engine threshold, settings that turn auto-compaction off make the ceiling the raw window", async () => {
 		const settings = { ...NO_SETTINGS, enabled: false, window: 60_000 };
 
-		expect(modelFor(breakdown(100_000), NO_ANCHOR, settings)?.max).toBe(
+		expect(modelFor(breakdown(100_000), MESSAGES_20K, settings)?.max).toBe(
 			100_000,
 		);
 	});
@@ -200,15 +226,17 @@ describe("the usage model", () => {
 	test("a percentage override leaves the engine's threshold as the ceiling", async () => {
 		const settings = { ...NO_SETTINGS, percent: 50 };
 
-		expect(modelFor(breakdown(100_000, 80_000), NO_ANCHOR, settings)?.max).toBe(
-			80_000,
-		);
+		expect(
+			modelFor(breakdown(100_000, 80_000), MESSAGES_20K, settings)?.max,
+		).toBe(80_000);
 	});
 
 	test("with no engine threshold, a percentage override takes its share of the raw window", async () => {
 		const settings = { ...NO_SETTINGS, percent: 50 };
 
-		expect(modelFor(breakdown(100_000), NO_ANCHOR, settings)?.max).toBe(50_000);
+		expect(modelFor(breakdown(100_000), MESSAGES_20K, settings)?.max).toBe(
+			50_000,
+		);
 	});
 
 	test("the percentage divides used by the auto-compaction threshold, not the raw window", async () => {
@@ -222,16 +250,15 @@ describe("the usage model", () => {
 	});
 
 	test("the percentage stops at 100 past the ceiling", async () => {
-		const model = modelFor(breakdown(100_000), {
-			anchor: 140_000,
-			pending: 0,
-		});
+		const model = modelFor(breakdown(100_000), measured(130_000));
 
 		expect(model?.percent).toBe(100);
 	});
 
 	test("no breakdown gives no model", async () => {
-		expect(usageModel({ window: 100_000 }, NO_ANCHOR, NO_SETTINGS)).toBeNull();
+		expect(
+			usageModel({ window: 100_000 }, MESSAGES_20K, NO_RATIO, NO_SETTINGS),
+		).toBeNull();
 	});
 
 	test("an empty window gives no model", async () => {

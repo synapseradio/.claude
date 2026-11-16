@@ -2,10 +2,10 @@
 export const CEILING_FACTOR = 2;
 
 /** Tokens per character assumed for text-like rows before a model has a measured ratio. */
-export const PRIOR_TOKENS_PER_CHAR = 0.3;
+export const PRIOR_TOKENS_PER_CHAR = 0.43;
 
 /** Tokens below which the attribution gap is not drawn. */
-export const GAP_FLOOR_TOKENS = 1000;
+export const GAP_FLOOR_TOKENS = 1500;
 
 /** Share of message tokens below which the attribution gap is not drawn. */
 export const GAP_FLOOR_SHARE = 0.02;

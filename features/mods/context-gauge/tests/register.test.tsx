@@ -1,5 +1,6 @@
 import type {
 	ApiContentBlock,
+	ApiMessage,
 	ConfigRow,
 	ContextCategory,
 	HookStream,
@@ -21,6 +22,7 @@ import type {
 } from "claude-code/testing";
 import { describe, expect, mock, test } from "claude-code/testing";
 
+import { PRIOR_TOKENS_PER_CHAR } from "../hooks/calibration";
 import { FREE_GLYPH, legendSample, TEXTURE_GLYPHS } from "../hooks/fallback";
 import { LEGEND_GAP, PREFIX, SAMPLE_CELLS, SPACE } from "../hooks/layout";
 import { PALETTES } from "../hooks/palette";
@@ -84,6 +86,9 @@ const ROWS: readonly ContextCategory[] = [
 	row("Messages", 20_000),
 ];
 
+/** The conversation the fixture's session holds: the breakdown's 20,000 message tokens, at the prior ratio. */
+const CONVERSATION: Conversation = conversationOf(20_000);
+
 /** A session's usage whose breakdown holds `rows` in a window of `window` tokens, 100,000 unless given. */
 function usageOf(
 	rows: readonly ContextCategory[],
@@ -135,9 +140,19 @@ type Fixture = {
 	blit?: UiBlitResult;
 	/** What the first blit on the bar Image answers, before `blit` takes over; by default, `blit`. */
 	firstBlit?: UiBlitResult;
+	/** The conversation a history read returns until `converse` changes it, or "fail" for a read that rejects; by default CONVERSATION. */
+	conversation?: Conversation;
 };
 
-type World = { session: MockSession; clock: MockClock };
+/** What the engine holds as the main conversation, or "fail" where reading it rejects. */
+type Conversation = readonly ApiMessage[] | "fail";
+
+type World = {
+	session: MockSession;
+	clock: MockClock;
+	/** Makes every later history read return `conversation`. */
+	converse: (conversation: Conversation) => void;
+};
 
 // Stands for the engine beneath the plugin: by default a session whose window
 // holds 30,000 of 100,000 tokens, 20,000 of them messages, on a terminal that
@@ -164,6 +179,13 @@ function engine(on: On, fixture: Fixture = {}): World {
 	const session = mock.session(on);
 	on("session.start", (_, e) => ({ cwd: e.cwd }));
 	on("classic.SessionStart", () => ({}));
+	on("session.end", (_, e) => ({ sessionId: e.sessionId }));
+	on("prompt.attachment", (_, e) => ({ text: e.text }));
+	let held = fixture.conversation ?? CONVERSATION;
+	on("session.messages", () => {
+		if (held === "fail") throw new Error("transcript unreadable");
+		return { value: [...held] };
+	});
 	on("session.usage", () => ({ value: usage(calls++) }));
 	let blits = 0;
 	on("ui.blit", () => ({
@@ -173,7 +195,13 @@ function engine(on: On, fixture: Fixture = {}): World {
 		const { Text } = $.ui.resolve(e);
 		return <Text>engine hint line</Text>;
 	});
-	return { session, clock };
+	return {
+		session,
+		clock,
+		converse: (conversation) => {
+			held = conversation;
+		},
+	};
 }
 
 /** Starts an interactive terminal session, the one every test draws in. */
@@ -183,6 +211,16 @@ async function startSession($: Engine): Promise<void> {
 
 function text(chars: number): ApiContentBlock {
 	return { type: "text", text: "x".repeat(chars) };
+}
+
+/** Characters that weigh `tokens` at the prior ratio. */
+function charsFor(tokens: number): number {
+	return Math.round(tokens / PRIOR_TOKENS_PER_CHAR);
+}
+
+/** A conversation of one user message weighing `tokens` at the prior ratio. */
+function conversationOf(tokens: number): ApiMessage[] {
+	return [{ role: "user", content: [text(charsFor(tokens))] }];
 }
 
 type Door = SessionAppendInput["door"];
@@ -213,6 +251,19 @@ const READ: Origin = { kind: "tool", tool: "Read" };
 const BASH: Origin = { kind: "tool", tool: "Bash" };
 const AGENT: Origin = { kind: "tool", tool: "Agent" };
 const ENGINE: Origin = { kind: "engine" };
+
+/** Appends a main-thread response row holding `blocks`. */
+async function appendResponse(
+	$: Engine,
+	...blocks: ApiContentBlock[]
+): Promise<void> {
+	await $.session.append({
+		door: "response",
+		origin: { kind: "model", model: "test" },
+		uuid: `row-${rowNumber++}`,
+		message: { type: "assistant", role: "assistant", content: blocks },
+	});
+}
 
 /** Appends a main-thread response holding one Agent call, `id`, whose prompt is `chars` characters. */
 async function appendAgentCall(
@@ -261,14 +312,20 @@ function usage(input: number, cacheRead: number, output: number): TurnUsage {
 	};
 }
 
-type Reply = { answer?: string; arrived?: Promise<void> };
+type Reply = {
+	answer?: string;
+	arrived?: Promise<void>;
+	/** Keeps the response's own rows before the step resolves, as the engine does; none by default. */
+	rows?: () => Promise<void>;
+};
 
-/** Answers every model request with its answer as one text chunk, at `spent`, once `arrived` settles. */
+/** Answers every model request with its answer as one text chunk, at `spent`, once `arrived` settles, its blocks kept first as the engine keeps a response's rows. */
 function respond(on: On, spent: TurnUsage, reply: Reply = {}): void {
 	const answer = reply.answer ?? "";
 	on("turn.step", async function* (_, e) {
 		yield { kind: "text", index: 0, text: answer };
 		await reply.arrived;
+		await reply.rows?.();
 		return {
 			turnId: e.turnId,
 			index: e.index,
@@ -287,13 +344,17 @@ async function drain<C, R>(stream: HookStream<C, R>): Promise<R> {
 	return step.value;
 }
 
-/** Runs one model request of the main conversation, or of subagent `agentId`. */
-async function step($: Engine, agentId?: string): Promise<void> {
+/** Runs one model request of the main conversation, or of subagent `agentId`, carrying `messageCount` messages. */
+async function step(
+	$: Engine,
+	agentId?: string,
+	messageCount = 1,
+): Promise<void> {
 	const input: Parameters<Engine["turn"]["step"]>[0] = {
 		turnId: "turn",
 		index: 0,
 		model: "test",
-		messageCount: 1,
+		messageCount,
 	};
 	if (agentId !== undefined) input.agentId = agentId;
 	await drain($.turn.step(input));
@@ -395,7 +456,7 @@ function barWidth(bar: FoundElement | undefined): number {
 function gaugeCells(d: Drawn): number {
 	const percent = d.texts.find((t) => /^\d+%$/u.test(t.text))?.text ?? "";
 	const totals =
-		d.texts.find((t) => /^\(\d+k\/\d+k\)$/u.test(t.text))?.text ?? "";
+		d.texts.find((t) => /^\(~?\d+k\/\d+k\)$/u.test(t.text))?.text ?? "";
 	return (
 		PREFIX.length +
 		percent.length +
@@ -428,7 +489,9 @@ describe("the gauge under the prompt", () => {
 		const d = await drawn($);
 
 		expect(d.texts[0]?.text).toBe("engine hint line");
-		expect(d.gauge?.text.startsWith("context used: 30% (30k/100k)")).toBe(true);
+		expect(d.gauge?.text.startsWith("context used: 30% (~30k/100k)")).toBe(
+			true,
+		);
 		expect(ICONS.test(d.texts.map((t) => t.text).join(""))).toBe(false);
 	});
 
@@ -451,8 +514,8 @@ describe("the gauge under the prompt", () => {
 
 		const { texts } = await drawn($);
 		const percent = texts.find((t) => t.text === "30%");
-		const totals = texts.find((t) => t.text === "(30k/100k)");
-		const figures = texts.filter((t) => /^\d+k$/u.test(t.text));
+		const totals = texts.find((t) => t.text === "(~30k/100k)");
+		const figures = texts.filter((t) => /^~?\d+k$/u.test(t.text));
 
 		expect(propsOf(percent).color).toBeUndefined();
 		expect(propsOf(percent).backgroundColor).toBeUndefined();
@@ -460,7 +523,7 @@ describe("the gauge under the prompt", () => {
 		expect(propsOf(totals).dimColor).toBe(true);
 		expect(propsOf(totals).weight).toBeUndefined();
 		expect(propsOf(totals).color).toBeUndefined();
-		expect(figures.map((f) => f.text)).toEqual(["6k", "4k", "20k"]);
+		expect(figures.map((f) => f.text)).toEqual(["6k", "4k", "~20k"]);
 		expect(figures.every((f) => propsOf(f).weight === "bold")).toBe(true);
 	});
 
@@ -484,7 +547,7 @@ describe("the gauge under the prompt", () => {
 		const keys = (await drawn($)).images.filter((i) => i.key !== "bar");
 
 		expect(keys.map((k) => propsOf(k).source)).toEqual(
-			(["system", "skills", "uncounted"] as const).map((id) =>
+			(["system", "skills", "carried"] as const).map((id) =>
 				samplePixels(id, SAMPLE_CELLS, "dark"),
 			),
 		);
@@ -496,7 +559,7 @@ describe("counting what the conversation keeps", () => {
 	test("a typed prompt shows as messages", async ($, on) => {
 		engine(on);
 		await startSession($);
-		await append($, "prompt", TYPED, 4000);
+		await append($, "prompt", TYPED, charsFor(1000));
 
 		expect(await legendText($)).toMatch(/messages\s+~1k/u);
 	});
@@ -504,43 +567,57 @@ describe("counting what the conversation keeps", () => {
 	test("an Agent call shows as agent prompts, its result as agent reports", async ($, on) => {
 		engine(on);
 		await startSession($);
-		await appendAgentCall($, AGENT_CALL, 4000);
-		await append($, "tool-result", AGENT, 8000);
+		await appendAgentCall($, AGENT_CALL, charsFor(1000));
+		await append($, "tool-result", AGENT, charsFor(2000));
 
 		const legend = await legendText($);
 		expect(legend).toMatch(/agent prompts\s+~1k/u);
 		expect(legend).toMatch(/agent reports\s+~2k/u);
 	});
 
-	test("a background agent's notification shows under agent reports, and a Bash task's under script results", async ($, on) => {
+	test("a background agent's notification shows under agent reports, a Bash task's under background tasks", async ($, on) => {
 		engine(on);
 		await startSession($);
 		await appendAgentCall($, AGENT_CALL, 40);
-		await appendNotification($, AGENT_CALL, 4000);
-		await appendNotification($, BASH_CALL, 8000);
+		await appendNotification($, AGENT_CALL, charsFor(1000));
+		await appendNotification($, BASH_CALL, charsFor(2000));
 
 		const legend = await legendText($);
 		expect(legend).toMatch(/agent reports\s+~1k/u);
-		expect(legend).toMatch(/script results\s+~2k/u);
+		expect(legend).toMatch(/background tasks\s+~2k/u);
 	});
 
 	test("an Agent call kept before /clear still marks its notification after it", async ($, on) => {
-		engine(on);
+		const world = engine(on);
 		await startSession($);
 		await appendAgentCall($, AGENT_CALL, 40);
+		world.converse([]);
 		await $.classic.SessionStart({ source: "clear" });
-		await appendNotification($, AGENT_CALL, 4000);
+		await appendNotification($, AGENT_CALL, charsFor(1000));
 
 		const legend = await legendText($);
 		expect(legend).toMatch(/agent reports\s+~1k/u);
-		expect(legend).not.toMatch(/script results/u);
+		expect(legend).not.toMatch(/background tasks/u);
+	});
+
+	test("an Agent call a resumed conversation holds marks its notification", async ($, on) => {
+		const world = engine(on, { conversation: [] });
+		await startSession($);
+		world.converse([
+			{ role: "user", content: [text(40)] },
+			{ role: "assistant", content: [agentUse(AGENT_CALL)] },
+		]);
+		await $.classic.SessionStart({ source: "resume" });
+		await appendNotification($, AGENT_CALL, charsFor(1000));
+
+		expect(await legendText($)).toMatch(/agent reports\s+~1k/u);
 	});
 
 	test("a tool result shows as results text, a Read result as read text", async ($, on) => {
 		engine(on);
 		await startSession($);
-		await append($, "tool-result", BASH, 8000);
-		await append($, "tool-result", READ, 4000);
+		await append($, "tool-result", BASH, charsFor(2000));
+		await append($, "tool-result", READ, charsFor(1000));
 
 		const legend = await legendText($);
 		expect(legend).toMatch(/tool results\s+~2k/u);
@@ -567,6 +644,17 @@ describe("counting what the conversation keeps", () => {
 			[text(40)],
 		]);
 	});
+
+	test("tokens beyond twice what a response's rows can carry show as Claude Code reminders when every row counted", async ($, on) => {
+		engine(on);
+		respond(on, usage(50_000, 20_000, 0));
+		await startSession($);
+		await step($);
+
+		const legend = await legendText($);
+		expect(legend).toMatch(/Claude Code reminders\s+~20k/u);
+		expect(legend).not.toMatch(/attribution gap/u);
+	});
 });
 
 describe("the live total", () => {
@@ -575,19 +663,22 @@ describe("the live total", () => {
 		respond(on, usage(10_000, 20_000, 2000));
 		await startSession($);
 		await step($);
-		await append($, "tool-result", BASH, 4000);
+		await append($, "tool-result", BASH, charsFor(1000));
 
 		expect(await gaugeText($)).toMatch(/\(33k\/100k\)/u);
 	});
 
-	test("a response's own rows, appended before it resolves, count once", async ($, on) => {
+	test("a response's own rows, kept before it resolves, count once", async ($, on) => {
 		engine(on);
-		respond(on, usage(10_000, 20_000, 2000));
+		respond(on, usage(10_000, 20_000, 2000), {
+			rows: () => appendResponse($, text(charsFor(1000))),
+		});
 		await startSession($);
-		await append($, "response", { kind: "model", model: "test" }, 4000);
 		await step($);
 
-		expect(await gaugeText($)).toMatch(/\(32k\/100k\)/u);
+		const d = await drawn($);
+		expect(d.gauge?.text).toMatch(/\(32k\/100k\)/u);
+		expect(d.legend).toMatch(/messages\s+~2k/u);
 	});
 
 	test("a row appended while a request is in flight stays in the total once the response anchors it", async ($, on) => {
@@ -600,20 +691,41 @@ describe("the live total", () => {
 		await startSession($);
 		const inFlight = step($);
 		await clock.settle();
-		await append($, "delivery", ENGINE, 4000);
+		await append($, "delivery", ENGINE, charsFor(1000));
 		arrive();
 		await inFlight;
 
 		expect(await gaugeText($)).toMatch(/\(33k\/100k\)/u);
 	});
 
-	test("the output a response's answer leaves unexplained shows as thinking", async ($, on) => {
+	test("a response with a thinking block shows its output less its visible text at the prior ratio as thinking", async ($, on) => {
 		engine(on);
-		respond(on, usage(27_000, 0, 3000), { answer: "a".repeat(400) });
+		respond(on, usage(27_000, 0, 3000), {
+			rows: () =>
+				appendResponse(
+					$,
+					{ type: "thinking", thinking: "", signature: "s" },
+					text(400),
+				),
+		});
 		await startSession($);
 		await step($);
 
-		expect(await legendText($)).toMatch(/thinking\s+~2\.9k/u);
+		// 3,000 output tokens less 400 visible characters at 0.43 a character.
+		expect(await legendText($)).toMatch(/thinking\s+~2\.8k/u);
+	});
+
+	test("a response with no thinking block shows no thinking", async ($, on) => {
+		engine(on);
+		respond(on, usage(27_000, 0, 3000), {
+			rows: () => appendResponse($, text(400)),
+		});
+		await startSession($);
+		await step($);
+
+		const legend = await legendText($);
+		expect(legend).not.toMatch(/thinking/u);
+		expect(legend).toMatch(/messages\s+~3k/u);
 	});
 
 	test("a subagent's response leaves the totals as they were", async ($, on) => {
@@ -622,7 +734,7 @@ describe("the live total", () => {
 		await startSession($);
 		await step($, "sub");
 
-		expect(await gaugeText($)).toMatch(/\(30k\/100k\)/u);
+		expect(await gaugeText($)).toMatch(/\(~30k\/100k\)/u);
 	});
 
 	test("each response refreshes the breakdown", async ($, on) => {
@@ -654,55 +766,300 @@ describe("the live total", () => {
 	});
 });
 
-describe("compaction and /clear", () => {
-	test("a compaction shows its compacted total and empties every estimate", async ($, on) => {
+/** A breakdown whose total, 30,000, and Messages row, 20,000, are stale: what the conversation held before a reset. */
+const STALE = { rows: ROWS } as const;
+
+/** Keeps a main-thread compaction's summary row, `chars` characters long. */
+function appendSummary($: Engine, chars: number): Promise<void> {
+	return append($, "compaction", ENGINE, chars);
+}
+
+/** Keeps a plan-mode exit's attachment row on the main thread. */
+async function appendExit($: Engine): Promise<void> {
+	await $.session.append({
+		door: "attachment",
+		origin: ENGINE,
+		uuid: `row-${rowNumber++}`,
+		message: {
+			type: "attachment",
+			name: "plan_mode_exit",
+			role: "user",
+			content: [text(200)],
+		},
+	});
+}
+
+/** Raises a plan-mode exit's attachment as a main request carries it. */
+async function raiseExit($: Engine): Promise<void> {
+	await $.prompt.attachment({
+		type: "plan_mode_exit",
+		text: "Exited plan mode.",
+		origin: { kind: "engine" },
+	});
+}
+
+/** Ends the conversation for `reason`, as `/clear` or a resume does. */
+async function endFor($: Engine, reason: "clear" | "resume"): Promise<void> {
+	await $.session.end({ reason, sessionId: "s1", resume: { id: "s1" } });
+}
+
+/**
+ * A session that started on CONVERSATION, kept a prompt of 1,000 tokens and
+ * was measured by a response at 33,000, whose 21,000 input tokens beyond the
+ * fixed rows pool the prior ratio exactly; compactions answer with a summary.
+ */
+async function measuredSession($: Engine, on: On): Promise<World> {
+	const world = engine(on, STALE);
+	respond(on, usage(10_000, 21_000, 2000));
+	compactTo(on, 5000);
+	await startSession($);
+	await append($, "prompt", TYPED, charsFor(1000));
+	await step($);
+	return world;
+}
+
+describe("starting the window over", () => {
+	test("a session that starts shows the conversation it opens with as carried over", async ($, on) => {
 		engine(on);
-		compactTo(on, 5000);
 		await startSession($);
-		await append($, "prompt", TYPED, 4000);
-		await compact($, "manual");
 
 		const d = await drawn($);
-		expect(d.gauge?.text).toMatch(/\(5k\/100k\)/u);
-		expect(d.legend).not.toMatch(/messages/u);
+		expect(d.legend).toMatch(/carried over\s+~20k/u);
+		expect(d.gauge?.text).toMatch(/\(~30k\/100k\)/u);
 	});
 
-	test("a compaction's row and SessionStart drop the total a response anchored before it", async ($, on) => {
-		engine(on);
+	test("SessionStart startup reads the conversation again", async ($, on) => {
+		const world = engine(on, { conversation: [] });
+		await startSession($);
+		world.converse(conversationOf(3000));
+		await $.classic.SessionStart({ source: "startup" });
+
+		expect(await legendText($)).toMatch(/carried over\s+~3k/u);
+	});
+
+	test("A resumed session shows its history as carried over before the first prompt", async ($, on) => {
+		const world = engine(on, { conversation: [] });
+		await startSession($);
+		world.converse(conversationOf(8000));
+		await $.classic.SessionStart({ source: "resume" });
+
+		const d = await drawn($);
+		expect(d.legend).toMatch(/carried over\s+~8k/u);
+		expect(d.gauge?.text).toMatch(/\(~18k\/100k\)/u);
+	});
+
+	test("a forked session shows the conversation it forked from as carried over", async ($, on) => {
+		const world = engine(on, { conversation: [] });
+		await startSession($);
+		world.converse(conversationOf(8000));
+		await $.classic.SessionStart({ source: "fork" });
+
+		expect(await legendText($)).toMatch(/carried over\s+~8k/u);
+	});
+
+	test("a session ended for a resume draws the fixed rows, then the resumed conversation once it is read", async ($, on) => {
+		const world = await measuredSession($, on);
+		world.converse(conversationOf(8000));
+		await endFor($, "resume");
+
+		expect(await gaugeText($)).toMatch(/\(~10k\/100k\)/u);
+		await world.clock.settle();
+		expect(await legendText($)).toMatch(/carried over\s+~8k/u);
+	});
+
+	test("The mod enabled mid-session shows the conversation so far as carried over", async ($, on) => {
+		const { clock } = engine(on);
+		await drawn($);
+		await clock.settle();
+
+		const d = await drawn($);
+		expect(d.legend).toMatch(/carried over\s+~20k/u);
+		expect(d.gauge?.text).toMatch(/\(~30k\/100k\)/u);
+	});
+
+	test("A reload over the same conversation keeps the live categories", async ($, on) => {
+		const world = engine(on, { conversation: [] });
+		const call = {
+			type: "tool_use",
+			id: "toolu_reload",
+			name: "Bash",
+			input: {},
+		};
+		respond(on, usage(10_000, 20_000, 2000), {
+			rows: () => appendResponse($, call),
+		});
+		await startSession($);
+		await step($);
+		await append($, "prompt", TYPED, charsFor(1000));
+		world.converse([
+			{ role: "user", content: [text(40)] },
+			{ role: "assistant", content: [call] },
+		]);
+		await startSession($);
+
+		const d = await drawn($);
+		expect(d.gauge?.text).toMatch(/\(33k\/100k\)/u);
+		expect(d.legend).toMatch(/messages\s+~1k/u);
+		expect(d.legend).not.toMatch(/carried over/u);
+	});
+
+	test("SessionStart clear empties the window to the fixed rows", async ($, on) => {
+		const world = await measuredSession($, on);
+		await appendSummary($, charsFor(2000));
+		world.converse([]);
+		await $.classic.SessionStart({ source: "clear" });
+
+		const d = await drawn($);
+		expect(d.gauge?.text).toMatch(/\(~10k\/100k\)/u);
+		expect(d.legend).not.toMatch(/messages|compaction summary|carried over/u);
+	});
+
+	test("a session ended for /clear empties the window to the fixed rows", async ($, on) => {
+		const world = await measuredSession($, on);
+		world.converse([]);
+		await endFor($, "clear");
+
+		const d = await drawn($);
+		expect(d.gauge?.text).toMatch(/\(~10k\/100k\)/u);
+		expect(d.legend).not.toMatch(/messages|carried over/u);
+	});
+
+	test("a request carrying fewer messages than the last response starts the window over", async ($, on) => {
+		const world = engine(on, { conversation: [] });
+		respond(on, usage(10_000, 20_000, 2000));
+		await startSession($);
+		await append($, "prompt", TYPED, charsFor(1000));
+		await step($, undefined, 5);
+		world.converse(conversationOf(4000));
+		await step($, undefined, 2);
+
+		const legend = await legendText($);
+		expect(legend).toMatch(/carried over/u);
+		expect(legend).not.toMatch(/(^|\s)messages\s/u);
+	});
+});
+
+describe("plan-mode exits", () => {
+	test("A plan-mode exit kept through session.append starts the window over: the fixed rows and the plan as carried over, totals with ~, no attribution gap", async ($, on) => {
+		const world = await measuredSession($, on);
+		world.converse(conversationOf(3000));
+		await appendExit($);
+
+		const d = await drawn($);
+		expect(d.gauge?.text).toMatch(/\(~13k\/100k\)/u);
+		expect(d.legend).toMatch(/carried over\s+~3k/u);
+		expect(d.legend).not.toMatch(/(^|\s)messages\s|attribution gap/u);
+	});
+
+	test("A plan-mode exit raised by prompt.attachment does the same", async ($, on) => {
+		const world = await measuredSession($, on);
+		world.converse(conversationOf(3000));
+		await raiseExit($);
+
+		const d = await drawn($);
+		expect(d.gauge?.text).toMatch(/\(~13k\/100k\)/u);
+		expect(d.legend).toMatch(/carried over\s+~3k/u);
+		expect(d.legend).not.toMatch(/(^|\s)messages\s|attribution gap/u);
+	});
+
+	test("A plan-mode exit that keeps the conversation shows the fixed rows plus that conversation as carried over, totals with ~, no attribution gap, until the next response", async ($, on) => {
+		const world = engine(on, { conversation: "fail" });
 		respond(on, usage(10_000, 20_000, 2000));
 		await startSession($);
 		await step($);
-		await append($, "compaction", ENGINE, 8000);
+		expect(await legendText($)).toMatch(/attribution gap\s+22k/u);
+		world.converse(conversationOf(20_000));
+		await appendExit($);
+
+		const d = await drawn($);
+		expect(d.gauge?.text).toMatch(/\(~30k\/100k\)/u);
+		expect(d.legend).toMatch(/carried over\s+~20k/u);
+		expect(d.legend).not.toMatch(/attribution gap/u);
+	});
+
+	test("After a plan-mode exit, the first request reads history again, and the conversation it finds stands as carried over", async ($, on) => {
+		const world = engine(on);
+		let arrive: () => void = () => undefined;
+		const arrived = new Promise<void>((resolve) => {
+			arrive = resolve;
+		});
+		respond(on, usage(10_000, 20_000, 2000), { arrived });
+		await startSession($);
+		world.converse(conversationOf(3000));
+		await appendExit($);
+		world.converse(conversationOf(6000));
+		const inFlight = step($);
+		await world.clock.settle();
+
+		const d = await drawn($);
+		arrive();
+		await inFlight;
+		expect(d.gauge?.text).toMatch(/\(~16k\/100k\)/u);
+		expect(d.legend).toMatch(/carried over\s+~6k/u);
+	});
+});
+
+/** Raises one of a compaction's three signals on the main thread. */
+const SIGNALS = {
+	row: ($: Engine) => appendSummary($, charsFor(2000)),
+	event: ($: Engine) => compact($, "auto"),
+	"SessionStart compact": ($: Engine) =>
+		$.classic.SessionStart({ source: "compact" }),
+} as const;
+
+type Signal = keyof typeof SIGNALS;
+
+const ORDERS: readonly (readonly Signal[])[] = [
+	["row", "event", "SessionStart compact"],
+	["row", "SessionStart compact", "event"],
+	["event", "row", "SessionStart compact"],
+	["event", "SessionStart compact", "row"],
+	["SessionStart compact", "row", "event"],
+	["SessionStart compact", "event", "row"],
+];
+
+/** The conversation a compaction leaves: its 2,000-token summary and 5,000 tokens it restored. */
+const COMPACTED: ApiMessage[] = [
+	{ role: "user", content: [text(charsFor(2000))] },
+	...conversationOf(5000),
+];
+
+describe("compaction", () => {
+	test("Between a compaction and the next response the totals are the fixed rows, summary and carried over, never the breakdown's total", async ($, on) => {
+		const world = await measuredSession($, on);
+		world.converse(COMPACTED);
+		await appendSummary($, charsFor(2000));
 		await $.classic.SessionStart({ source: "compact" });
 
-		expect(await gaugeText($)).toMatch(/\(30k\/100k\)/u);
+		const d = await drawn($);
+		expect(d.gauge?.text).toMatch(/\(~17k\/100k\)/u);
+		expect(d.legend).toMatch(/compaction summary\s+~2k/u);
+		expect(d.legend).toMatch(/carried over\s+~5k/u);
+		expect(d.legend).not.toMatch(/(^|\s)messages\s/u);
 	});
 
-	test("the compaction's summary row starts the estimates over", async ($, on) => {
-		engine(on);
-		await startSession($);
-		await append($, "prompt", TYPED, 4000);
-		await append($, "compaction", ENGINE, 8000);
+	for (const signal of Object.keys(SIGNALS) as Signal[]) {
+		test(`the compaction's ${signal} alone starts the window over`, async ($, on) => {
+			const world = await measuredSession($, on);
+			world.converse(COMPACTED);
+			await SIGNALS[signal]($);
 
-		const legend = await legendText($);
-		expect(legend).toMatch(/compaction summary\s+~2k/u);
-		expect(legend).not.toMatch(/messages/u);
-	});
+			const d = await drawn($);
+			expect(d.gauge?.text).toMatch(/\(~17k\/100k\)/u);
+			expect(d.legend).not.toMatch(/(^|\s)messages\s/u);
+		});
+	}
 
-	for (const order of ["row first", "row last"] as const) {
-		test(`the summary outlasts a compaction's other signals, ${order}`, async ($, on) => {
-			engine(on);
-			compactTo(on, 5000);
-			await startSession($);
-			await append($, "prompt", TYPED, 4000);
-			if (order === "row first") await append($, "compaction", ENGINE, 8000);
-			await compact($, "auto");
-			await $.classic.SessionStart({ source: "compact" });
-			if (order === "row last") await append($, "compaction", ENGINE, 8000);
+	for (const order of ORDERS) {
+		test(`the summary counts once and the restored conversation as carried over, ${order.join(", ")}`, async ($, on) => {
+			const world = await measuredSession($, on);
+			world.converse(COMPACTED);
+			for (const signal of order) await SIGNALS[signal]($);
 
-			const legend = await legendText($);
-			expect(legend).toMatch(/compaction summary\s+~2k/u);
-			expect(legend).not.toMatch(/messages/u);
+			const d = await drawn($);
+			expect(d.legend).toMatch(/compaction summary\s+~2k/u);
+			expect(d.legend).toMatch(/carried over\s+~5k/u);
+			expect(d.gauge?.text).toMatch(/\(~17k\/100k\)/u);
 		});
 	}
 
@@ -711,27 +1068,28 @@ describe("compaction and /clear", () => {
 			engine(on);
 			compactTo(on, kind === "skipped" ? "skip" : 5000);
 			await startSession($);
-			await append($, "prompt", TYPED, 4000);
+			await append($, "prompt", TYPED, charsFor(1000));
 			if (kind === "precomputed") await compact($, "precompute");
 			if (kind === "skipped") await compact($, "manual");
 			if (kind === "subagent's") await compact($, "auto", "sub");
 
 			const d = await drawn($);
-			expect(d.gauge?.text).toMatch(/\(30k\/100k\)/u);
+			expect(d.gauge?.text).toMatch(/\(~31k\/100k\)/u);
 			expect(d.legend).toMatch(/messages\s+~1k/u);
 		});
 	}
 
-	test("/clear empties every estimate, the summary too", async ($, on) => {
-		engine(on);
+	test("/clear after a compaction empties the summary too", async ($, on) => {
+		const world = engine(on);
 		await startSession($);
-		await append($, "compaction", ENGINE, 8000);
-		await append($, "prompt", TYPED, 4000);
+		await appendSummary($, charsFor(2000));
+		await append($, "prompt", TYPED, charsFor(1000));
 		expect(await legendText($)).toMatch(/compaction summary.+messages/u);
+		world.converse([]);
 		await $.classic.SessionStart({ source: "clear" });
 
 		const legend = await legendText($);
-		expect(legend).not.toMatch(/messages/u);
+		expect(legend).not.toMatch(/(^|\s)messages\s/u);
 		expect(legend).not.toMatch(/compaction summary/u);
 	});
 });
@@ -744,7 +1102,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/\(30k\/500k\)/u);
+		expect(await gaugeText($)).toMatch(/\(~30k\/500k\)/u);
 	});
 
 	test("policy, flag, local, project and user sources take precedence in that order", async ($, on) => {
@@ -755,7 +1113,7 @@ describe("the ceiling from settings", () => {
 		engine(on, { window: 1_000_000, sources });
 		respond(on, usage(10_000, 19_000, 1000));
 		await startSession($);
-		expect(await gaugeText($)).toMatch(/\(30k\/700k\)/u);
+		expect(await gaugeText($)).toMatch(/\(~30k\/700k\)/u);
 
 		const higher: readonly [SettingsSource, string][] = [
 			["local", "600k"],
@@ -777,14 +1135,14 @@ describe("the ceiling from settings", () => {
 		engine(on, { settingsFail: true });
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/\(30k\/100k\)/u);
+		expect(await gaugeText($)).toMatch(/\(~30k\/100k\)/u);
 	});
 
 	test("a window past the model's window stops at the model's window", async ($, on) => {
 		engine(on, { sources: { user: { autoCompactWindow: 500_000 } } });
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/\(30k\/100k\)/u);
+		expect(await gaugeText($)).toMatch(/\(~30k\/100k\)/u);
 	});
 
 	test("the model's modelSettings entry beats the top-level window", async ($, on) => {
@@ -803,7 +1161,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/\(30k\/300k\)/u);
+		expect(await gaugeText($)).toMatch(/\(~30k\/300k\)/u);
 	});
 
 	test("CLAUDE_CODE_AUTO_COMPACT_WINDOW beats the settings window", async ($, on) => {
@@ -814,7 +1172,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/\(30k\/200k\)/u);
+		expect(await gaugeText($)).toMatch(/\(~30k\/200k\)/u);
 	});
 
 	test("a settings env block beats the shell's variable", async ($, on) => {
@@ -831,7 +1189,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/\(30k\/300k\)/u);
+		expect(await gaugeText($)).toMatch(/\(~30k\/300k\)/u);
 	});
 
 	test("DISABLE_AUTO_COMPACT=1 makes the ceiling the model's window", async ($, on) => {
@@ -842,7 +1200,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/\(30k\/400k\)/u);
+		expect(await gaugeText($)).toMatch(/\(~30k\/400k\)/u);
 	});
 
 	test("autoCompactEnabled false makes the ceiling the model's window", async ($, on) => {
@@ -854,7 +1212,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/\(30k\/400k\)/u);
+		expect(await gaugeText($)).toMatch(/\(~30k\/400k\)/u);
 	});
 
 	test("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE takes its share of the model's window where no window is set", async ($, on) => {
@@ -864,7 +1222,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/\(30k\/200k\)/u);
+		expect(await gaugeText($)).toMatch(/\(~30k\/200k\)/u);
 	});
 
 	test("a window and CLAUDE_AUTOCOMPACT_PCT_OVERRIDE leave the window alone deciding", async ($, on) => {
@@ -875,7 +1233,7 @@ describe("the ceiling from settings", () => {
 		});
 		await startSession($);
 
-		expect(await gaugeText($)).toMatch(/\(30k\/350k\)/u);
+		expect(await gaugeText($)).toMatch(/\(~30k\/350k\)/u);
 	});
 
 	test("a changed source takes effect at the next response", async ($, on) => {
@@ -885,7 +1243,7 @@ describe("the ceiling from settings", () => {
 		engine(on, { window: 1_000_000, sources });
 		respond(on, usage(10_000, 19_000, 1000));
 		await startSession($);
-		expect(await gaugeText($)).toMatch(/\(30k\/500k\)/u);
+		expect(await gaugeText($)).toMatch(/\(~30k\/500k\)/u);
 
 		sources.user = { autoCompactWindow: 300_000 };
 		await step($);
@@ -936,7 +1294,7 @@ describe("the layout", () => {
 		expect(items.map((item) => item.text)).toEqual([
 			" system prompt & tools 6k",
 			" skill list 4k",
-			" not yet counted 20k",
+			" carried over ~20k",
 		]);
 		expect(items.map((item) => propsOf(item).width)).toEqual([27, 27, 27]);
 		expect(propsOf(line).columnGap).toBe(LEGEND_GAP);
@@ -964,6 +1322,7 @@ describe("the layout", () => {
 		test(`at 80 columns, a legend line of two ${37 + extra}-cell units ${extra === 0 ? "fits" : "breaks"}`, async ($, on) => {
 			engine(on, {
 				rows: [row("a".repeat(30), 1000), row("b".repeat(31 + extra), 1000)],
+				conversation: [],
 			});
 			await startSession($);
 
@@ -996,7 +1355,7 @@ describe("the layout", () => {
 
 		const d = await drawn($, { columns: 20, rows: 24 });
 
-		expect(d.gauge?.text).toBe("context used: 30% (30k/100k)");
+		expect(d.gauge?.text).toBe("context used: 30% (~30k/100k)");
 		expect(d.barLine?.type).toBe("Box");
 		expect(barWidth(d.bar)).toBe(20 - ROW_INSET);
 	});
@@ -1015,13 +1374,13 @@ describe("the layout", () => {
 	});
 
 	test("a window with nothing used draws its bar all free space", async ($, on) => {
-		engine(on, { rows: [] });
+		engine(on, { rows: [], conversation: [] });
 		await startSession($);
 
 		const d = await drawn($);
 
 		expect(d.images).toHaveLength(1);
-		expect(d.gauge?.text).toMatch(/^context used: 0% \(0\/100k\)/u);
+		expect(d.gauge?.text).toMatch(/^context used: 0% \(~0\/100k\)/u);
 	});
 });
 
