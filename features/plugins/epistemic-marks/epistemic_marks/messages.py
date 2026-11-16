@@ -1,4 +1,4 @@
-"""The messages the hooks hand back when they find a mark.
+"""The messages the hooks hand back when they find a mark or a guess in words.
 
 The rule owns what a mark means; these builders own what to do about one. A
 sentence stating a mark's meaning here would be the rule restated, so the
@@ -9,7 +9,55 @@ cannot know, so no generated line names a tool. Each line phrases the act to
 perform rather than the call to make.
 """
 
-from .marks import MARK_CARRY, MARK_RESOLVE
+from .hedges import CAUSE, GUESS, REST
+from .marks import MARK_CARRY, MARK_RESOLVE, NEEDS_CITATION, VOCABULARY
+
+# The mark a guess takes once it is written as a claim, read from the
+# vocabulary so no token is spelled out here.
+UNSOURCED = next(mark.token for mark in VOCABULARY if mark.label == NEEDS_CITATION)
+
+# A guess in words has no glyph to head its group, so each kind gets a
+# heading, and the two acts a mark record would have carried.
+WORDING_HEADING = {
+    GUESS: "Guessed in words, unmarked:",
+    CAUSE: "A cause stated with no source and no mark:",
+    REST: "Built on a guess, unmarked:",
+}
+
+# The fourth sentence closes the cheapest way out. A writer told only that a
+# hedge was found deletes the word and keeps the guess, which then reads as a
+# finding.
+WORDING_RESOLVE = {
+    GUESS: (
+        "Each line below guesses in words, with no mark and no source. Check the "
+        "claim now and put its source beside it, a path with its line or a URL. "
+        f"Where no check reaches it, state it plainly and end its clause with {UNSOURCED}. "
+        "Without the hedge word it is still a guess. Quote words that are someone else's."
+    ),
+    CAUSE: (
+        "Each line below says why something fails. Put the source that shows it "
+        "beside it, a path with its line or a URL. Where you reasoned your way to "
+        f"it, end its clause with {UNSOURCED}."
+    ),
+    REST: (
+        "Each line below builds on the guess or marked claim before it. End its "
+        "clause with the same mark, or put its own source beside it."
+    ),
+}
+
+WORDING_CARRY = {
+    GUESS: (
+        "Each line below still guesses in words. End its clause with "
+        f"{UNSOURCED} and open your report on it."
+    ),
+    CAUSE: (
+        f"Each line below still states a cause nobody sourced. End its clause with {UNSOURCED} "
+        "and open your report on it."
+    ),
+    REST: (
+        "Each line below still builds on an unchecked claim. End its clause with that claim's mark."
+    ),
+}
 
 # A group heading the marks cannot carry, since only the hook knows this pass
 # is a delegate's and that these lines reach no further from here.
@@ -29,7 +77,7 @@ MENTION_ACT = (
 )
 
 
-def _listing(lines_by_mark):
+def _listing(lines_by_mark) -> str:
     """The found lines, grouped under the glyph each one carries."""
     return "\n\n".join(
         f"{mark}\n" + "\n".join(f"- {line}" for line in lines)
@@ -37,7 +85,7 @@ def _listing(lines_by_mark):
     )
 
 
-def _sections(lines_by_mark, instruction):
+def _sections(lines_by_mark, instruction) -> str:
     """One subsection per detected mark: the glyph, its act, then its lines.
 
     Iterating the marks found rather than the vocabulary is what keeps a
@@ -49,24 +97,41 @@ def _sections(lines_by_mark, instruction):
     )
 
 
-def build_reason(lines_by_mark, carried=None, delegate=False):
+def _wording_sections(wording, instruction) -> str:
+    """One subsection per kind of guess found: its heading, its act, then its lines."""
+    return "\n\n".join(
+        f"{WORDING_HEADING[kind]}\n{instruction[kind]}\n" + "\n".join(f"- {line}" for line in lines)
+        for kind, lines in wording.items()
+    )
+
+
+def _resolving(lines_by_mark, wording) -> list[str]:
+    """The groups a pass asks to settle now, guesses in words first."""
+    parts = [_wording_sections(wording, WORDING_RESOLVE)] if wording else []
+    if lines_by_mark:
+        parts.append(_sections(lines_by_mark, MARK_RESOLVE))
+    return parts
+
+
+def build_reason(lines_by_mark, carried=None, delegate=False, wording=None) -> str:
     """The block message the Stop pass returns on its first pass.
 
     `carried` holds the lines a delegate hands upward, keyed by mark, and is
     empty at top level, where the caller is the user and every mark resolves
     here. `delegate` picks the noun for what gets re-emitted and nothing else.
+    `wording` holds the sentences that guess in words, keyed by kind.
     """
-    parts = [_sections(lines_by_mark, MARK_RESOLVE)] if lines_by_mark else []
+    parts = _resolving(lines_by_mark, wording)
     if carried:
         parts.append(f"{RELAY_HEADING}\n\n" + _sections(carried, MARK_CARRY))
     verb = "report" if delegate else "reply"
     return (
-        f"Your {verb} still carries unresolved marks. Before you stop, act on "
-        f"each group below, then re-emit the whole {verb}.\n\n" + "\n\n".join(parts)
+        f"Your {verb} carries unchecked claims. Act on each group below, then "
+        f"re-emit the whole {verb}.\n\n" + "\n\n".join(parts)
     )
 
 
-def build_context(lines_by_mark):
+def build_context(lines_by_mark, wording=None) -> str:
     """The additionalContext the batch pass hands back mid-turn.
 
     Stated as a finding followed by its act, since additionalContext framed as
@@ -74,12 +139,26 @@ def build_context(lines_by_mark):
     https://code.claude.com/docs/en/hooks
     """
     return (
-        "Text written earlier in this turn carries the marks below. Resolve "
-        "each one before your next step.\n\n" + _sections(lines_by_mark, MARK_RESOLVE)
+        "Text written earlier in this turn carries unchecked claims. Act on each "
+        "group below before your next step, and build nothing on them until then.\n\n"
+        + "\n\n".join(_resolving(lines_by_mark, wording))
     )
 
 
-def build_notice(lines_by_mark, mentions=None, carried=None):
+def build_denial(wording) -> str:
+    """The reason a spawn call is denied when its prompt guesses in words.
+
+    A delegate reads a prompt as its ground truth, so a guess there is acted
+    on as a finding. A marked claim travels: the mark tells the delegate what
+    is unverified.
+    """
+    return (
+        "This prompt hands a delegate a guess as a finding. Act on each group "
+        "below, then send the prompt again.\n\n" + _wording_sections(wording, WORDING_RESOLVE)
+    )
+
+
+def build_notice(lines_by_mark, mentions=None, carried=None, wording=None) -> str:
     """The report a Stop pass makes on a surviving mark or a mention.
 
     Each group carries its act. A surviving mark takes the carry act, since
@@ -93,7 +172,7 @@ def build_notice(lines_by_mark, mentions=None, carried=None):
     pass finds nothing else. Without it a report whose only mark rides up
     produces no output at all, and the question dies where it was written.
     """
-    parts = []
+    parts = [_wording_sections(wording, WORDING_CARRY)] if wording else []
     if lines_by_mark:
         parts.append(f"{SURVIVING_HEADING}\n\n" + _sections(lines_by_mark, MARK_CARRY))
     if carried:

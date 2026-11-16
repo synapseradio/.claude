@@ -24,6 +24,19 @@
 				]
 			}
 		],
+		"PreToolUse": [
+			{
+				"matcher": "Agent|Task",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/verify-marks.py\" --prompt",
+						"timeout": 5,
+						"statusMessage": "Reading the delegate's prompt for unmarked guesses"
+					}
+				]
+			}
+		],
 		"PostToolBatch": [
 			{
 				"hooks": [

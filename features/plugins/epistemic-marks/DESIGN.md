@@ -156,6 +156,162 @@ make. `tests/test_messages.py` asserts that over the builders' output rather
 than the module source, which is what catches a name reintroduced through an
 f-string.
 
+## A guess in words
+
+The plugin's mission is that no assumption and no guess reaches a reader as a
+finding. Every such statement carries a mark, a token hook code can match, and
+a marked claim holds the work that rests on it until a check settles it.
+
+### The miss this closes
+
+A session sent a message that opened "My unconfirmed guess is that" and
+followed it with a sentence starting "That would", then acted on the claim. A
+later diagnosis ruled the claim out. The rule already said to replace a hedge
+with the mark and to carry a mark into every line resting on a claim. The
+writer read the self-description as satisfying the rule. The mark scan
+matches four tokens and read straight past the wording.
+
+The class is wider than the sentence. Any wording of doubt can stand where a
+mark belongs, and so can a status written as a sentence, a label, or a mark of
+the writer's own making. A writer told only to stop hedging takes the cheapest
+way out: the hedge word goes and the guess stays, now reading as a finding.
+That outcome is worse than the hedge, so no instruction and no message here
+asks for a word to be removed. Each one asks for the claim to be checked or
+marked.
+
+### Where each case is held
+
+Three layers hold the class, and each holds what the others cannot.
+
+**The rule text sorts by evidence, never by wording.** A claim is sorted by
+where its support sits: seen this session, arrived with a citation, stated by
+the user, arrived without a source, a decision for someone else, and
+otherwise the unsourced mark. The last arm is the default, so a claim takes
+the mark because the writer saw no evidence for it, whether or not a word of
+doubt is on it. Only the writer knows what they saw, which is why this layer
+alone holds a guess stated flat. The rule text also says that wording is no
+mark, that a sentence resting on a marked claim takes the mark, and that a
+step resting on a marked claim waits for the check.
+
+**The scan in `epistemic_marks/hedges.py` holds what is visible on the
+text.** It reads sentence by sentence for wording of doubt, for a status in
+words, for a lookalike mark, and for a sentence that opens by building on the
+marked or hedged sentence before it. A sentence passes with a mark at a
+clause end or a source in it, a path with its line or a URL. Fenced code,
+code spans, quoted text, block quotes and questions hold no guess.
+
+**The hooks put the scan on every surface a claim travels through.** The
+Stop and SubagentStop passes block once on a guess in words, in the same
+block as a mark. The PostToolBatch pass hands it back mid-turn with the
+instruction to build nothing on it. A PreToolUse pass on the spawn tools
+denies a prompt that hands a delegate a guess in words, since a delegate
+reads its prompt as ground truth. A marked claim in a prompt passes: the mark
+is how the rule asks an unchecked observation to travel.
+
+### Why the scan is a word list and not a parser or a model
+
+Three alternatives were measured or weighed before the word list stayed.
+
+**A model judging each message.** A prompt-type hook on Stop would read every
+reply with a second model call. That doubles what a session spends, so no
+hook here calls a model, and
+`test_every_hook_is_a_command_and_no_model_judges_a_message` pins it.
+
+**A dependency parser.** spaCy 3.8.18 with `en_core_web_sm` 3.8.0 was run on
+the sentence pairs the word list cannot split. The parse is deterministic,
+and it gives both senses of a modal the same features: "The lockfile may be
+stale" and "A variant file may be empty" both parse as `MD`, `aux`, head
+`be`; "The tests should pass now" and "The suite should pass before the
+merge" are identical. It finds nothing in a guess stated flat. It separated
+one pair, "looks like" as a main verb against "what a valid change looks
+like". The cost was 0.9 to 1.0 seconds per hook process once its environment
+was warm, against about 48 milliseconds for the whole pass today, 17 seconds
+on the first import, and 45 packages the plugin does not ship. A parser pays
+that on every batch of tool calls and still cannot make the call that
+matters.
+
+**A small local model.** A classifier at or under 500 million parameters is
+the one alternative that could read sense. It stays optional and unshipped.
+`guessed_lines(blocks)` is the seam: a model stage would take the sentences
+the word list passes and return the same two mappings. The published ceiling
+is a caution. A 2024 paper on hedge detection gives the best scores before
+its own as F1 67.52 on the CoNLL-2010 Wikipedia data and 86.22 on the
+BioScope data (<https://arxiv.org/html/2405.13319v1>), and `onnxruntime`
+1.32.0 declares Python 3.11 or later (<https://pypi.org/pypi/onnxruntime/json>),
+above this plugin's floor.
+
+The same paper states the limit in its own words: hedge phrases "are
+context-dependent and the presence of these in a sentence doesn't indicate
+uncertainty". Its best model scores 70.24 F1 on that data, and a model
+reading part-of-speech tags alone scores 55.67, so a learned detector is a
+second opinion at most and never the gate. Its cue taxonomy lent the word
+list one family, the weasel wording that files the name off a source: "some
+say", "it is said", "it is widely known".
+
+So the sense-dependent cases moved to the rule text, and the word list keeps
+only wording that signals doubt wherever it appears.
+`WhatTheFloorLeavesToTheRuleText` in `tests/test_hedges.py` pins the
+boundary: "It may be the lockfile", "The tests should pass now", "It must be
+the cache", and the flat guess all pass the scan on purpose.
+
+Run over this repository's 129 markdown files, about 224,000 words of prose
+written with no intent to hedge, the scan flags 17 sentences: one sentence
+repeated across nine rendered rule files, six sentences that open on a
+literal "Assumption:" label, and the two sentences of the rule text's own
+before-example.
+
+### What sessions told to beat it found
+
+Sessions on three model tiers were given the rule and the hooks and told to
+get an unmarked guess past both. Two got through, and one listed the routes
+it expected to work. Each route is held where its form is visible, and by the
+rule text where it is not.
+
+- A cause stated flat, "The flaky test fails because two tests share a temp
+  directory", passed the prompt pass on the first try. The scan now flags a
+  sentence that says why something fails with neither a source nor a mark,
+  under its own heading. `ACauseStatedFlatIsFound` holds it.
+- A guess carried inside a rhetorical question or an instruction, "Did a
+  lockfile change land this week and alter the cache key?", passed the Stop
+  pass. Nothing on a question's surface marks it, so the rule text sorts a
+  claim carried inside a question, an instruction or a condition as the claim
+  it carries, and `WhatTheFloorLeavesToTheRuleText` pins the scan's silence.
+- A guess attributed to the user who never said it. The rule text's arm for
+  the user's statements now asks for words that can be quoted from the
+  conversation.
+- A guess placed in quotes, code or a block quote, which the scan does not
+  read. The rule text keeps those forms for words someone else wrote.
+- A citation naming a file nobody opened. The rule text limits a citation to
+  a file the writer opened; no hook checks it, for the reason the section
+  after this one gives.
+
+### Decisions
+
+**A source in the sentence passes it.** "The docs say the value may be null",
+followed by a URL, reports what a page says. The check is on form alone, a
+path with its line or a URL. Whether the citation leads anywhere stays
+unchecked, for the reason the next section gives.
+
+**A sentence naming a mark in words is a mention.** It is not flagged, and it
+is listed in the notice so the exemption stays visible. The mark scan's
+mention forms widened with it: a glyph in quotes of its own, or straight
+after its own name, on a line that names the mark, reads as pointing at the
+mark. A sentence about a miss had been blocked for writing "the unsourced
+mark" with the glyph beside it.
+
+**The rule text lost its exemption for a hedge the user allowed.** No hook
+can see that permission, so the rule and the check would disagree on the same
+sentence. A guess the user asked for is still given, with the mark.
+
+**A status summary is flagged even over marked claims.** "I haven't read any
+code, so all three are guesses" carries a status in words. Where the claims
+it covers are marked, the sentence is redundant; where they are not, it is
+the whole miss.
+
+**One block, then a notice.** A guess in words blocks a stop once, as a mark
+does, and what survives the rewrite reaches the user in the notice. A second
+block is a loop the harness would cut at eight.
+
 ## Why citations are not checked here
 
 An earlier version matched `path:line` citations in a reply against the
@@ -276,6 +432,9 @@ python3 -m unittest discover -s tests -q
 ```
 
 The tests need only the standard library and read nothing outside the plugin.
+`tests/test_hedges.py` holds the scan for a guess in words on both sides, the
+sentences it must flag and the sentences it must pass, and
+`tests/test_guess_hooks.py` drives each hook surface with them.
 `tests/test_python_floor.py` parses every shipped module at Python 3.9, and
 `tests/test_with_python.py` holds the launcher to the same floor. Run the
 suite on the oldest and the newest interpreter at hand after a change to

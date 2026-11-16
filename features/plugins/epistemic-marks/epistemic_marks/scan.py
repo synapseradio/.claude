@@ -13,10 +13,13 @@ from .marks import MARK_NAMES, MARKS
 SCAN_STATE_SUFFIX = ".scan-offset.json"
 
 INLINE_CODE = re.compile(r"`[^`\n]*`")
+
+# What blanked text is filled with, so an offset into the raw line survives.
+BLANK = "\x00"
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 
 
-def text_blocks(message):
+def text_blocks(message) -> list[str]:
     content = message.get("content")
     if isinstance(content, str):
         return [content]
@@ -29,7 +32,7 @@ def text_blocks(message):
     return []
 
 
-def is_real_user_entry(entry):
+def is_real_user_entry(entry) -> bool:
     # Tool results reach the transcript as user entries too, carrying
     # tool_result blocks where a typed turn carries text.
     if entry.get("type") != "user":
@@ -42,14 +45,14 @@ def is_real_user_entry(entry):
     return False
 
 
-def _turn_state_path(directory, transcript_path):
+def _turn_state_path(directory, transcript_path) -> Path:
     """Where this transcript's turn-boundary offset lives, one file per file scanned."""
     resolved = str(Path(transcript_path).resolve())
     digest = hashlib.sha256(resolved.encode("utf-8")).hexdigest()
     return directory / f"{digest}{SCAN_STATE_SUFFIX}"
 
 
-def _load_turn_start(path):
+def _load_turn_start(path) -> int:
     try:
         data = json.loads(path.read_text())
     except (OSError, ValueError):
@@ -58,14 +61,14 @@ def _load_turn_start(path):
     return offset if isinstance(offset, int) and offset >= 0 else 0
 
 
-def _save_turn_start(path, offset):
+def _save_turn_start(path, offset) -> None:
     # A state directory that cannot be written costs a rescan, never a
     # verification pass, so the failure is swallowed on purpose.
     with contextlib.suppress(OSError):
         path.write_text(json.dumps({"turn_start_offset": offset}))
 
 
-def last_turn_text(transcript_path):
+def last_turn_text(transcript_path) -> list[str]:
     """Assistant text blocks since the most recent real user message.
 
     Rescans only the bytes written since the transcript's last confirmed
@@ -121,7 +124,7 @@ def last_turn_text(transcript_path):
     return turn
 
 
-def fenced_line_numbers(lines):
+def fenced_line_numbers(lines) -> set[int]:
     """Indices of the lines inside a fence that closes."""
     fenced = set()
     opened_at = None
@@ -141,13 +144,13 @@ def fenced_line_numbers(lines):
     return fenced
 
 
-def _span_token(span):
-    """The mark a code span holds alone, or None where it holds anything else."""
+def _span_token(span) -> str:
+    """The mark a code span holds alone, or nothing where it holds anything else."""
     token = span.strip("`").strip()
-    return token if token in MARKS else None
+    return token if token in MARKS else ""
 
 
-def names_in_words(line, mark):
+def names_in_words(line, mark) -> bool:
     """Whether the line calls the mark by the name the vocabulary gives it.
 
     The discriminator comes from MARK_NAMES rather than from a list kept
@@ -156,37 +159,73 @@ def names_in_words(line, mark):
     return MARK_NAMES[mark].lower() in line.lower()
 
 
-def mentioned_marks(line):
-    """The marks the line writes in a span of their own and names in words beside."""
-    return {
-        token
-        for span in INLINE_CODE.findall(line)
-        if (token := _span_token(span)) and names_in_words(line, token)
-    }
+def _mention_forms(mark) -> tuple[re.Pattern[str], re.Pattern[str]]:
+    """How a glyph is written, outside a code span, on a line that only names it.
 
-
-def strip_code_spans(line):
-    """The line without its inline code, keeping a mark the line never names.
-
-    A span holding a mark alone stays in the prose, so backticks around a
-    mark leave it a claim. It drops out only where the same line calls that
-    mark by name, which reads as documenting the mark rather than claiming
-    under it.
+    In quotes of its own, or straight after its own name. Both read as
+    pointing at the mark, the way the rule text itself introduces each one.
     """
+    glyph = re.escape(mark)
+    name = re.escape(MARK_NAMES[mark])
+    return (
+        re.compile(rf"""["“'\u2018](?P<glyph>{glyph})["”'\u2019]"""),
+        re.compile(rf"{name}[\s,:;(—\u2013-]{{0,3}}(?P<glyph>{glyph})", re.IGNORECASE),
+    )
 
-    def keep(span):
+
+MENTION_FORMS = {mark: _mention_forms(mark) for mark in MARKS}
+
+
+def _read_line(line) -> tuple[str, set[str]]:
+    """The line's claiming prose, and the marks the line only mentions.
+
+    The prose is the line with its inline code and its mentioned glyphs
+    blanked at equal length, so an offset into one is an offset into the
+    other. A span holding a mark alone stays in the prose, so backticks
+    around a mark leave it a claim. A glyph drops out only where the same
+    line calls that mark by name and writes the glyph in a span of its own,
+    in quotes of its own, or straight after the name, which reads as
+    documenting the mark rather than claiming under it.
+    """
+    named = {mark for mark in MARKS if names_in_words(line, mark)}
+    mentioned = set()
+    chars = list(line)
+
+    def blank(start, end) -> None:
+        chars[start:end] = BLANK * (end - start)
+
+    for span in INLINE_CODE.finditer(line):
         token = _span_token(span.group(0))
-        return span.group(0) if token and not names_in_words(line, token) else ""
+        if token and token not in named:
+            continue
+        if token:
+            mentioned.add(token)
+        blank(*span.span())
+    outside_code = "".join(chars)
+    for mark in named:
+        for form in MENTION_FORMS[mark]:
+            for match in form.finditer(outside_code):
+                mentioned.add(mark)
+                blank(*match.span("glyph"))
+    return "".join(chars), mentioned
 
-    return INLINE_CODE.sub(keep, line)
+
+def claim_prose(line) -> str:
+    """The line with its inline code and its mentioned glyphs blanked."""
+    return _read_line(line)[0]
 
 
-def marked_lines(blocks):
+def mentioned_marks(line) -> set[str]:
+    """The marks the line names in words and writes only as a mention."""
+    return _read_line(line)[1]
+
+
+def marked_lines(blocks) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
     """Lines claiming under a mark and lines merely naming one, each keyed by mark.
 
-    Both mappings skip fenced code. A line reaches the second by writing a
-    mark inside a code span and naming that mark in words on the same line;
-    it blocks nothing, and the Stop pass reports it so the exemption stays
+    Both mappings skip fenced code. A line reaches the second by naming a
+    mark in words and writing its glyph as a mention on the same line; it
+    blocks nothing, and the Stop pass reports it so the exemption stays
     visible. One line can reach both mappings, by documenting one mark and
     claiming under another.
     """
@@ -197,12 +236,12 @@ def marked_lines(blocks):
     for number, line in enumerate(lines):
         if number in fenced:
             continue
-        prose = strip_code_spans(line)
+        prose, mentioned = _read_line(line)
         stripped = line.strip()
         for mark in MARKS:
             if mark in prose and stripped not in found[mark]:
                 found[mark].append(stripped)
-        for mark in mentioned_marks(line):
+        for mark in mentioned:
             if stripped not in named[mark]:
                 named[mark].append(stripped)
     return (
@@ -211,7 +250,7 @@ def marked_lines(blocks):
     )
 
 
-def batch_transcript(payload):
+def batch_transcript(payload) -> str:
     """The transcript holding text the agent this batch belongs to wrote.
 
     A subagent's turns go to `<session transcript stem>/subagents/agent-<id>.jsonl`,

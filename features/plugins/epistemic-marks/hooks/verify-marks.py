@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""The verification pass for epistemic marks, run from three hook events.
+"""The verification pass for epistemic marks, run from four hook events.
 
 Bare from Stop, blocking the stop once and asking for each mark's
 resolution. With --delegate from SubagentStop, where a relaying mark is left
 standing for the delegate's own report to carry, since nothing this hook
 returns reaches the caller. With --batch from PostToolBatch, which never
-blocks and reports a line once per session.
+blocks and reports a line once per session. With --prompt from PreToolUse on
+a spawn call, denying a prompt that hands its delegate a guess in words.
+
+Every pass reads for two things: a mark, and a guess written in words where
+a mark belongs. epistemic_marks/hedges.py holds the second scan.
 
 A mark surviving a top-level pass reaches the user through systemMessage,
 since stderr from a hook exiting 0 goes to the debug log alone. The same
@@ -24,6 +28,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from epistemic_marks.hedges import guessed_lines, unchecked_claims
 from epistemic_marks.ledger import (
     fingerprint,
     prepare,
@@ -35,11 +40,11 @@ from epistemic_marks.ledger import (
     write_reported,
 )
 from epistemic_marks.marks import RELAY_MARKS
-from epistemic_marks.messages import build_context, build_notice, build_reason
-from epistemic_marks.scan import batch_transcript, last_turn_text, marked_lines
+from epistemic_marks.messages import build_context, build_denial, build_notice, build_reason
+from epistemic_marks.scan import batch_transcript, last_turn_text
 
 
-def already_sent(payload, notice):
+def already_sent(payload, notice) -> bool:
     """Whether this agent was already handed this notice, recording it where not.
 
     additionalContext continues the subagent, which stops again with
@@ -60,7 +65,7 @@ def already_sent(payload, notice):
     return False
 
 
-def run_stop(payload, delegate):
+def run_stop(payload, delegate) -> None:
     # The harness flushes the turn's assistant entries after Stop hooks run,
     # so last_assistant_message carries the final reply and the transcript
     # supplies the earlier messages of the same turn.
@@ -74,15 +79,18 @@ def run_stop(payload, delegate):
     # already answered, so only the rewrite is read.
     if transcript and Path(transcript).exists() and not payload.get("stop_hook_active"):
         blocks = last_turn_text(transcript) + blocks
-    lines_by_mark, mentions = marked_lines(blocks)
+    lines_by_mark, wording, mentions = unchecked_claims(blocks)
     carried = (
         {token: lines_by_mark.pop(token) for token in RELAY_MARKS if token in lines_by_mark}
         if delegate
         else {}
     )
-    if lines_by_mark and not payload.get("stop_hook_active"):
+    if (lines_by_mark or wording) and not payload.get("stop_hook_active"):
         json.dump(
-            {"decision": "block", "reason": build_reason(lines_by_mark, carried, delegate)},
+            {
+                "decision": "block",
+                "reason": build_reason(lines_by_mark, carried, delegate, wording),
+            },
             sys.stdout,
         )
         sys.exit(0)
@@ -95,6 +103,7 @@ def run_stop(payload, delegate):
         lines_by_mark,
         mentions,
         carried if not payload.get("stop_hook_active") else None,
+        wording,
     )
     if notice and delegate and payload.get("stop_hook_active") and already_sent(payload, notice):
         sys.exit(0)
@@ -113,11 +122,11 @@ def run_stop(payload, delegate):
     sys.exit(0)
 
 
-def run_batch(payload):
+def run_batch(payload) -> None:
     transcript = batch_transcript(payload)
     if not transcript or not Path(transcript).exists():
         sys.exit(0)
-    lines_by_mark, _mentions = marked_lines(last_turn_text(transcript))
+    lines_by_mark, wording, _mentions = unchecked_claims(last_turn_text(transcript))
     directory = state_dir()
     if not prepare(directory):
         sys.exit(0)
@@ -126,18 +135,24 @@ def run_batch(payload):
     reported = read_reported(path)
     seen = set(reported)
     fingerprints = {}
-    fresh = {}
-    for mark, lines in lines_by_mark.items():
-        unseen = []
-        for line in lines:
-            fp = fingerprints.setdefault(line, fingerprint(line))
-            if fp not in seen:
-                unseen.append(line)
-        if unseen:
-            fresh[mark] = unseen
-    if not fresh:
+
+    def unseen(groups) -> dict[str, list[str]]:
+        """The lines of each group no earlier batch reported, empty groups dropped."""
+        fresh = {}
+        for key, lines in groups.items():
+            kept = [
+                line
+                for line in lines
+                if fingerprints.setdefault(line, fingerprint(line)) not in seen
+            ]
+            if kept:
+                fresh[key] = kept
+        return fresh
+
+    fresh_marks, fresh_wording = unseen(lines_by_mark), unseen(wording)
+    if not fresh_marks and not fresh_wording:
         sys.exit(0)
-    for lines in fresh.values():
+    for lines in [*fresh_marks.values(), *fresh_wording.values()]:
         for line in lines:
             fp = fingerprints[line]
             if fp not in seen:
@@ -148,7 +163,7 @@ def run_batch(payload):
         {
             "hookSpecificOutput": {
                 "hookEventName": "PostToolBatch",
-                "additionalContext": build_context(fresh),
+                "additionalContext": build_context(fresh_marks, fresh_wording),
             }
         },
         sys.stdout,
@@ -156,7 +171,36 @@ def run_batch(payload):
     sys.exit(0)
 
 
-def main():
+def run_prompt(payload) -> None:
+    """Deny a spawn call whose prompt guesses in words.
+
+    A mark in the prompt passes, since a marked observation is what the rule
+    asks a prompt to carry. Only the prompt is read: the description is a
+    label for a transcript row. The denial travels as permissionDecision,
+    whose reason reaches the agent that composed the prompt, per
+    https://code.claude.com/docs/en/hooks
+    """
+    tool_input = payload.get("tool_input")
+    prompt = tool_input.get("prompt") if isinstance(tool_input, dict) else None
+    if not isinstance(prompt, str):
+        sys.exit(0)
+    wording, _mentions = guessed_lines([prompt])
+    if not wording:
+        sys.exit(0)
+    json.dump(
+        {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": build_denial(wording),
+            }
+        },
+        sys.stdout,
+    )
+    sys.exit(0)
+
+
+def main() -> None:
     try:
         payload = json.load(sys.stdin)
     except ValueError:
@@ -164,6 +208,8 @@ def main():
     args = sys.argv[1:]
     if "--batch" in args:
         run_batch(payload)
+    if "--prompt" in args:
+        run_prompt(payload)
     run_stop(payload, delegate="--delegate" in args)
 
 

@@ -21,8 +21,8 @@
 		{
 			"name": "epistemic-marks",
 			"source": "./features/plugins/epistemic-marks",
-			"version": "1.3.0",
-			"description": "Blocks a reply, a delegate report, or an open turn that still carries an unverified epistemic mark, and hands back the resolution each mark takes. Teaches the marks and enforces them as one unit: install it and it works, with nothing to configure and nothing to write."
+			"version": "1.4.0",
+			"description": "Blocks a reply, a delegate report, an open turn, or a delegate's prompt that carries an unverified epistemic mark or a guess written in words in place of one, and hands back the step that resolves each. Teaches the marks and enforces them as one unit: install it and it works, with nothing to configure and nothing to write."
 		},
 		{
 			"name": "warden",
