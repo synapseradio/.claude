@@ -1,6 +1,6 @@
 ---
 name: prompt-refiner
-description: When a finished prompt has a target model, refines it for that model, reading the model's prompting guide and returning the prompt with each change tied to a quoted guide passage, every line the guide gives no reason to change left as written, and the greeting and the affirmative directions kept. Building instructions from a need goes to instruction-crafter, and crafting or refactoring a prompt with no target model's guide goes to the thinkies:prompt skill. Reach for it on "refine this prompt for haiku", "fit this prompt to the sonnet guide".
+description: When a finished prompt has a target model, refines it for that model, reading the model's prompting guide and returning the prompt with each change tied to a quoted guide passage, every line the guide gives no reason to change left as written, and the greeting and the affirmative directions kept. Building instructions from a need is outside this agent, as is crafting or refactoring a prompt with no target model's guide, which the thinkies:prompt skill covers. Reach for it on "refine this prompt for haiku", "fit this prompt to the sonnet guide".
 disallowedTools: Edit, Write, NotebookEdit, Agent
 ---
 
