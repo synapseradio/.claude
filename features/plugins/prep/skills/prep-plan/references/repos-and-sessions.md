@@ -32,9 +32,9 @@ A session ends where its context fills, or where the work must wait: on a review
 
 ### Gather
 
-- Place each boundary at a wave's end, with everything landed and every check passing. A handoff in the middle of a unit hands over half-held state nobody wrote down.
+- Place each boundary at a wave's end, with everything landed. A handoff in the middle of a unit hands over half-held state nobody wrote down.
 - For each boundary, name what the next session waits on and the command or page that shows it arrived.
-- Hold an outside gate, a deploy or a release for one, as ordering the step it guards and nothing else. Units on both sides of a fixed contract build in the same wave; only shipping, or whatever needs the deployed thing, sits after the handoff. A gate is never written as a unit's wait.
+- Hold an outside gate, a deploy or a release for one, as ordering the step it guards and nothing else. Units on both sides of a fixed contract build in the same wave; only shipping, or whatever needs the deployed thing, sits after the handoff. A gate is never written as a unit's wait, and no unit's landing waits on one; only the step that ships or uses the deployed thing does.
 - Find where a handoff note lives here. Where the session's rules or a skill define a place and a form for one, use theirs. Otherwise the note sits beside the plan file.
 
 ### Write

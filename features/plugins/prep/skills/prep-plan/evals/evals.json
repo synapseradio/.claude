@@ -33,7 +33,8 @@
 				"The plan file holds no lane's checks, commit rule, landing steps, or behaviors; those appear only in the lane files.",
 				"Each printed run-book file opens with a header that names one reader and says who does not need the file, and closes with a Notes heading.",
 				"Each lane file for a worker on sonnet or opus states its units as behaviors with the check that shows each, says tests are owed red-first, and lists no individual test case.",
-				"The plan has a \"Questions settled\" heading that records the category names and the default palette as questions with the chosen answer and a reason."
+				"The plan has a \"Questions settled\" heading that records the category names and the default palette as questions with the chosen answer and a reason.",
+				"Each lane file's checks run only the tests that lane adds or changes, through a file or name filter, and name the full suite and the commit hook's formatter, linter, and type check as left unrun."
 			],
 			"files": []
 		},
@@ -50,7 +51,8 @@
 				"The deploy appears as a session boundary that gates shipping the web app, with the command that shows it arrived, and is not written as any unit's wait.",
 				"The plan holds a handoff note for the session that follows the deploy.",
 				"Each unit states behaviors with the check that shows each, and no unit lists individual test cases.",
-				"The plan has a \"Questions settled\" heading that records the endpoint's route and payload as a question with the chosen answer and a reason."
+				"The plan has a \"Questions settled\" heading that records the endpoint's route and payload as a question with the chosen answer and a reason.",
+				"No unit's checks or landing wait on the deploy, CI, or another unit's checks; each unit's check runs only the tests it adds or changes."
 			],
 			"files": []
 		},
@@ -66,7 +68,8 @@
 				"The plan states that the coordinator hands each run-book file to its worker by path and does not read it.",
 				"The Handoff part shows exactly one agent call, to prep:work-coordinator, in the background, whose prompt holds /work/notes/notification-settings.md and no contract, roster, or lane content copied from the plan.",
 				"The plan has a module map and a Contracts section, and the contract for reading and writing preferences states the data that crosses.",
-				"The plan has a \"Questions settled\" heading that records the channels and the digest schedule's options as questions with the chosen answers and reasons."
+				"The plan has a \"Questions settled\" heading that records the channels and the digest schedule's options as questions with the chosen answers and reasons.",
+				"No wave step waits on a check passing between waves; a wave ends when its workers report landed."
 			],
 			"files": []
 		}

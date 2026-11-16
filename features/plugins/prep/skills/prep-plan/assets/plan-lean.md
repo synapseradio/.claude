@@ -39,7 +39,7 @@ You make this change yourself, as one commit.
 | [relative to the root] | [exact, or none] | [the change] |
 
 - test first: [the behavior the first failing test pins, and the reason it fails before the change; the remaining cases are yours to settle]
-- check: [the command to run before the commit, its passing result, and the defect it catches]
+- check: [the command that runs only the tests this change adds or changes, its passing result, and the defect it catches; the full suite and the commit hook's work left unrun]
 - commit: [the commit rule: through the repository's hooks, the message form, and what the hooks run]
 
 ## Constraints

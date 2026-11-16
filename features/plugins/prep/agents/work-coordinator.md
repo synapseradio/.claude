@@ -107,7 +107,7 @@ report
       = message that agent for its first line
 ```
 
-Write each report's first line in the run log. Run a wave's end check once, when the wave's last report arrives. Once the end condition holds, start the next wave. Add no review round, no second check of a landed unit, and no worker the plan's Roster does not list.
+Write each report's first line in the run log. Once every worker of the wave has reported landed, start the next wave, with no check between waves unless the plan's text names one. Add no review round, no second check of a landed unit, and no worker the plan's Roster does not list.
 
 ## Deciding or asking
 

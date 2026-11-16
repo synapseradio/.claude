@@ -208,7 +208,7 @@ The run-book file at `/work/term-app-notes/usage-meter.runbook/lane-meter-palett
 
 - provisioning: `make install`, run in `<worktree>` before its first commit
 - owns: `src/meter/palette.ts`, `tests/meter/palette.test.ts`; nothing outside them
-- checks: `make test-meter` passes; the pre-commit hook runs the formatter and `tsc`
+- checks: `make test-meter FILE=tests/meter/palette.test.ts` passes; leave unrun `make test`, other lanes' tests, and the formatter and `tsc`, which the pre-commit hook runs
 - skills: none
 - delegates: none
 - early start: none

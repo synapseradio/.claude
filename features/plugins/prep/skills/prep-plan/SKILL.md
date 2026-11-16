@@ -21,7 +21,8 @@ This skill's directory is `${CLAUDE_SKILL_DIR}`; where that name shows unexpande
 - contract: what both sides of a boundary rely on, a signature, a type, the data that crosses, a set of ids, a file or message format, a command's surface, or an error channel
 - fixed contract: a contract the plan states in full, so each side builds against the plan; an open contract is one only the work can show
 - behavior: something a unit makes true that a person or a consuming unit can observe, stated with the command or observation that shows it
-- waits on: a work unit waits on another where it needs that unit's code to exist and no fixed contract stands in for that code, or where both rewrite the same function or region
+- waits on: a work unit waits on another only where it needs code of that unit that does not exist yet and no fixed contract stands in for it, or where both rewrite the same function or region; another unit's checks, a suite, CI, a review, a deploy, or any other gate passing makes no wait
+- unit check: the exact tests a work unit adds or changes, run through the runner's file or name filter, passing; nothing broader runs before its commit unless the user or the plan's own text orders it
 - wave: the work units that run at the same time; the first wave waits on nothing, and each later wave waits only on earlier ones
 - foundation: work another work unit waits on, or work that settles what two or more units build against, a contract, a fixture, or a convention
 - heavy plan: a plan with three or more work units, or with units in more than one repository
@@ -209,7 +210,7 @@ Writing lines, for every plan:
 - With one unit, name the behavior its first failing test pins. With several, state each unit's behaviors with the check that shows each, say that tests are owed red-first, and list no test case.
 - With workers, write each line by its reader: the plan for what the executor acts on, two or more agents rely on, or the approval rests on, and a run-book file for what one worker acts on.
 - List the work units in wave order, state beside each what it waits on, and name each wave's units.
-- Plan one suite run for the whole plan, as its last step before the work is declared done, with each work unit's own cheap checks before its commit.
+- Give each work unit its unit check, and name beside it what its worker leaves unrun: the full suite, other units' tests, and every formatter, linter, or type check the commit hook already runs. Plan at most one suite run for the whole plan, in the finish, after every unit lands.
 - Keep a check only where it catches a break that would otherwise ship.
 - Keep review rounds, fix slices, and per-case logs out of a plan, unless the user asks for them.
 

@@ -131,7 +131,7 @@ Every final report opens `landed [SHA] [subject]` or `blocked: [question]`, then
   - [one behavior per line: what a person or a consuming unit observes once the unit lands, with the command or the observation that shows it]
 - owes: [each kind of output beyond the source: tests for each behavior, written and seen failing before the code that passes them; docs; a migration]
 - known in advance: [each fact planning found that reading the owned paths would miss; or leave the line out]
-- check: [the command before its commit, its passing result, and the defect it catches]
+- check: [the command that runs only the tests this unit adds or changes, its passing result, and the defect it catches; the full suite and the commit hook's work left unrun]
 
 [with lanes: the lane entries and the finish block, from assets/lane-block.md, in place of the bare unit entries]
 [with several repositories: a repository block each, from assets/repo-block.md]

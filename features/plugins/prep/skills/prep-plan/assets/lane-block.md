@@ -27,7 +27,7 @@ Under the header `references/run-book.md` gives:
 ```markdown
 - provisioning: [the hook that provisions the worktree as it is created, named with the file that holds it, or the commands to run in `<worktree>` before its first commit]
 - owns: [the lane entry's owns line, word for word]
-- checks: [each command to run before each commit, with its passing result, or the commit hook that runs it]
+- checks: [the command that runs only the tests this lane adds or changes, through the runner's file or name filter, with its passing result]; leave unrun the full suite, other lanes' tests, and what the commit hook runs: [the hook's formatter, linter, and type check, by name]
 - skills: [each skill that bears on this lane's task, by exact name, loaded before the first change; or none]
 - delegates: [none, or each agent you may spawn, in the order they run, a test writer ahead of the implementation for one]; you write each one's prompt, each works only inside `<worktree>` on this lane's files, and each reports to you
 - early start: [none, or: write your red tests as soon as `<worktree>` exists, against the fixed contracts alone; when the coordinator messages that an awaited lane landed, rebase onto [trunk] before the rest]

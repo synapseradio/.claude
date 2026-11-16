@@ -32,7 +32,7 @@ State each unit as what it makes true, never as how.
 - behaviors: one line per thing a person or a consuming unit observes once the unit lands, each with the command that shows it, the unit's test command for most. Take each from a user story's "Done when" line or from a contract the unit provides. A behavior says what holds, "a bucket never refills above its capacity"; the inputs and numbers that prove it are a test case, and belong to the worker.
 - contracts: the ones it provides and consumes, by name.
 - owned paths: where it may write.
-- checks: the commands that pass before its commit.
+- checks: its unit check, the exact tests it adds or changes, by file or name, and what it leaves unrun: the full suite, other units' tests, and every formatter, linter, or type check the commit hook already runs.
 - known in advance: the facts the fourth arm above places here.
 
 Name the kinds of output the unit owes outright: tests, docs, a migration. A worker builds what its lines name and treats the rest as unasked, so a unit that wants tests says "write the tests for each behavior, red first", and leaves the cases to the worker.

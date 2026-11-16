@@ -37,11 +37,11 @@ The coordinator composes no work. Each prompt it sends holds a greeting naming t
 
 One numbered block per wave, written as the coordinator's steps:
 
-1. what must be true before the wave starts, as a command and its passing result
+1. the code the wave's units wait on, landed on the trunk, as a command that shows it exists
 2. what to create, with exact commands: worktrees, branches, directories
 3. which agents to start, all in one message so they run at the same time, each in the background
 4. what to do while they run: wait for reports, and act only on the messages table
-5. what ends the wave: every worker reported landed, and the named check passes on the integration branch
+5. what ends the wave: every worker reported landed; no check runs between waves unless the user asked for one
 
 Researchers for the next wave start in step 3 of the current one.
 
