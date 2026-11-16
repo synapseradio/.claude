@@ -91,14 +91,17 @@ export type Anchor = { window: number; fixed: number; messageCount: number };
 /** The request in flight: the input rows it carries, and its response's rows as they arrive. */
 export type InFlight = {
 	sent: Pieces;
-	output: { visible: Pieces; thinking: boolean; served: Pieces };
+	output: OutputPieces;
 	index: number;
 	messageCount: number;
 };
 
+/** The tokens each message category holds, and the gap no category accounts for. */
+export type Books = { tokens: Tally; gap: number };
+
 export type Measure =
 	| { kind: "unmeasured"; history: History }
-	| { kind: "measured"; anchor: Anchor; tokens: Tally; gap: number };
+	| ({ kind: "measured"; anchor: Anchor } & Books);
 
 export type Window = {
 	cause: WindowCause;

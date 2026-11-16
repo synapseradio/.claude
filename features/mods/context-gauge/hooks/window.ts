@@ -3,6 +3,7 @@
 import type { ModelUsage, TurnUsage } from "claude-code";
 
 import type {
+	Books,
 	CountedId,
 	HistoryRead,
 	InFlight,
@@ -19,35 +20,15 @@ import {
 	MIN_RATIO_INTERVAL_CHARS,
 	PRIOR_TOKENS_PER_CHAR,
 } from "./calibration";
+import { parseModel, versionOf } from "./model-id";
+import { IDS, NO_PIECES, NO_TALLY } from "./tally";
 
-const NO_TALLY: Tally = {
-	carried: 0,
-	summary: 0,
-	hooks: 0,
-	plugins: 0,
-	reminders: 0,
-	files: 0,
-	messages: 0,
-	tasks: 0,
-	relayed: 0,
-	commands: 0,
-	calls: 0,
-	writes: 0,
-	results: 0,
-	read: 0,
-	prompts: 0,
-	agents: 0,
-	thinking: 0,
-};
-const IDS = Object.keys(NO_TALLY) as CountedId[];
-const NO_PIECES: Pieces = { chars: NO_TALLY, media: NO_TALLY };
 const NO_OUTPUT: OutputPieces = {
 	visible: NO_PIECES,
 	thinking: false,
 	served: NO_PIECES,
 };
 
-type Books = { tokens: Tally; gap: number };
 type Sample = { tokens: number; chars: number };
 
 function tallyOf(figure: (id: CountedId) => number): Tally {
@@ -89,33 +70,23 @@ export function windowAfter(usage: ModelUsage): number {
 	);
 }
 
+/** The first version, as `versionOf` reads it, of each family that keeps earlier turns' thinking. */
 const FIRST_VERSION_KEEPING_THINKING: Readonly<Record<string, number>> = {
 	opus: 405,
 	sonnet: 406,
 	haiku: 406,
 };
-const FAMILY_FIRST_ID =
-	/^claude-(opus|sonnet|haiku)-(\d+)(?:-(\d{1,2})(?!\d))?/u;
-const VERSION_FIRST_ID =
-	/^claude-(\d+)(?:-(\d{1,2})(?!\d))?-(opus|sonnet|haiku)/u;
 
-/** Whether a model drops earlier turns' thinking from the next request; a model the gauge does not know keeps it. */
-function stripsThinking(model: string): boolean {
-	const named = FAMILY_FIRST_ID.exec(model);
-	const dated = VERSION_FIRST_ID.exec(model);
-	const family = named?.[1] ?? dated?.[3];
-	const major = named?.[2] ?? dated?.[1];
-	const minor = named?.[3] ?? dated?.[2];
-	if (family === undefined || major === undefined) return false;
-	const keepsFrom = FIRST_VERSION_KEEPING_THINKING[family];
-	if (keepsFrom === undefined) return false;
-	return (
-		Number.parseInt(major, 10) * 100 + Number.parseInt(minor ?? "0", 10) <
-		keepsFrom
-	);
+/** Whether a model drops earlier turns' thinking from the next request; a model the gauge does not know keeps it, and so does one whose id a provider prefixes. */
+export function stripsThinking(model: string): boolean {
+	const parsed = parseModel(model);
+	if (parsed === null || !model.startsWith("claude-")) return false;
+	const keepsFrom = FIRST_VERSION_KEEPING_THINKING[parsed.family ?? ""];
+	return keepsFrom !== undefined && versionOf(parsed) < keepsFrom;
 }
 
-function startedByPlanModeExit(cause: WindowCause): boolean {
+/** Whether a plan-mode exit started the window. */
+export function startedByPlanModeExit(cause: WindowCause): boolean {
 	return (
 		cause.signal === "session.append:plan_mode_exit" ||
 		cause.signal === "prompt.attachment:plan_mode_exit"

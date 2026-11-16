@@ -3,9 +3,8 @@
 import type { ApiContentBlock, ApiMessage } from "claude-code";
 
 import type { HistoryRead } from "../types";
+import { agentCallId } from "./agent-call";
 import { measureBlock } from "./measure";
-
-const AGENT_TOOL = "Agent";
 
 /** The engine returns at most this many messages; a read this long may have lost its start. */
 const MESSAGE_LIMIT = 4096;
@@ -21,18 +20,21 @@ function fnv1a(text: string): string {
 	return hash.toString(16).padStart(8, "0");
 }
 
-function fingerprintOf(block: ApiContentBlock): string {
+function blockFingerprint(block: ApiContentBlock): string {
 	const { type, id } = block;
 	return type === "tool_use" && typeof id === "string"
 		? id
 		: fnv1a(JSON.stringify(block));
 }
 
-function agentCallId(block: ApiContentBlock): string | null {
-	const { type, id, name } = block;
-	return type === "tool_use" && name === AGENT_TOOL && typeof id === "string"
-		? id
-		: null;
+/** The fingerprint of a response's first block that is not thinking, or null where it has none. */
+export function fingerprintOf(
+	blocks: readonly ApiContentBlock[],
+): string | null {
+	const answer = blocks.find(
+		({ type }) => type !== "thinking" && type !== "redacted_thinking",
+	);
+	return answer === undefined ? null : blockFingerprint(answer);
 }
 
 /** The figures of a conversation: characters and media tokens of every block, the Agent call ids, and the first answer's fingerprint. */
@@ -51,14 +53,9 @@ export function historyOf(
 			else media += weight.media;
 			const agentCall = agentCallId(block);
 			if (agentCall !== null) agentCalls.push(agentCall);
-			if (
-				fingerprint === null &&
-				message.role === "assistant" &&
-				block.type !== "thinking" &&
-				block.type !== "redacted_thinking"
-			) {
-				fingerprint = fingerprintOf(block);
-			}
+		}
+		if (fingerprint === null && message.role === "assistant") {
+			fingerprint = fingerprintOf(message.content);
 		}
 	}
 	return {

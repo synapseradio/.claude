@@ -1,9 +1,10 @@
 /** The gauge's rows: the engine's fixed breakdown rows named, merged and ordered, beside the calibrated message categories and the attribution gap. */
 
-import type { CountedId, UsageModel } from "../types";
+import type { UsageCategory, UsageModel } from "../types";
 import { GAP_FLOOR_SHARE, GAP_FLOOR_TOKENS } from "./calibration";
 import type { CategoryId } from "./palette";
 import { BAR_ORDER } from "./palette";
+import { IDS } from "./tally";
 
 type NamedId = Exclude<CategoryId, "other">;
 
@@ -72,7 +73,7 @@ function merged(rows: readonly GaugeRow[]): GaugeRow[] {
 	return Array.from(byKey.values());
 }
 
-function fixedRow(c: UsageModel["fixed"][number]): GaugeRow {
+function fixedRow(c: UsageCategory): GaugeRow {
 	const id = ROW_IDS.get(c.name);
 	if (id) return named(id, c.tokens, false);
 	return {
@@ -92,14 +93,13 @@ function gapShows(gap: number, messageTokens: number): boolean {
 export function gaugeRows(
 	model: Pick<UsageModel, "fixed" | "messages" | "gap">,
 ): GaugeRow[] {
-	const ids = Object.keys(model.messages) as CountedId[];
-	const messageTokens = ids.reduce(
+	const messageTokens = IDS.reduce(
 		(sum, id) => sum + model.messages[id],
 		model.gap,
 	);
 	const rows = model.fixed
 		.map(fixedRow)
-		.concat(ids.map((id) => named(id, model.messages[id], true)))
+		.concat(IDS.map((id) => named(id, model.messages[id], true)))
 		.concat(
 			gapShows(model.gap, messageTokens)
 				? [named("gap", model.gap, false)]

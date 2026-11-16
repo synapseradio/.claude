@@ -2,16 +2,12 @@
 
 import type { ApiContentBlock, SessionAppendInput } from "claude-code";
 
-import type {
-	CountedId,
-	OutputPieces,
-	Pieces,
-	RowPieces,
-	Tally,
-} from "../types";
+import type { CountedId, OutputPieces, Pieces, RowPieces } from "../types";
+import { AGENT_TOOL, agentCallId } from "./agent-call";
 import { measureBlock } from "./measure";
+import { NO_PIECES } from "./tally";
 
-type Row = Pick<SessionAppendInput, "door" | "origin" | "message">;
+export type Row = Pick<SessionAppendInput, "door" | "origin" | "message">;
 
 /** Attachment names whose text a breakdown row already reports, so counting them again would double it. */
 export const BREAKDOWN_OWNED: ReadonlySet<string> = new Set([
@@ -29,9 +25,6 @@ export const FILE_ATTACHMENTS: ReadonlySet<string> = new Set([
 	"compact_file_reference",
 	"plan_file_reference",
 ]);
-
-/** The tool that starts a subagent. */
-const AGENT_TOOL = "Agent";
 
 /** Where a task notification's text names the tool use that started its task. */
 const NOTIFIED_CALL = /<tool-use-id>([^<]+)<\/tool-use-id>/u;
@@ -66,11 +59,10 @@ function toolResult({ origin }: Row): CountedId {
 /** The ids of a response's Agent calls; none for any other row. */
 function agentCallsOf({ door, message }: Row): string[] {
 	if (door !== "response") return [];
-	return message.content.flatMap(({ type, name, id }) =>
-		type === "tool_use" && name === AGENT_TOOL && typeof id === "string"
-			? [id]
-			: [],
-	);
+	return message.content.flatMap((block) => {
+		const id = agentCallId(block);
+		return id === null ? [] : [id];
+	});
 }
 
 function injected({ origin, message }: Row): CountedId | null {
@@ -83,28 +75,6 @@ function injected({ origin, message }: Row): CountedId | null {
 		? "files"
 		: "reminders";
 }
-
-const NO_TALLY: Tally = {
-	carried: 0,
-	summary: 0,
-	hooks: 0,
-	plugins: 0,
-	reminders: 0,
-	files: 0,
-	messages: 0,
-	tasks: 0,
-	relayed: 0,
-	commands: 0,
-	calls: 0,
-	writes: 0,
-	results: 0,
-	read: 0,
-	prompts: 0,
-	agents: 0,
-	thinking: 0,
-};
-
-const NO_PIECES: Pieces = { chars: NO_TALLY, media: NO_TALLY };
 
 /** The attachment that carries a prompt delivered into a running turn. */
 const QUEUED_COMMAND = "queued_command";

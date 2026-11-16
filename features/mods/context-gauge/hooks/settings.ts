@@ -3,6 +3,7 @@
 import type { SessionContextBreakdown } from "claude-code";
 
 import type { CompactionSetting } from "../types";
+import { isRecord } from "./record";
 
 /** A window as a settings file writes it: tokens, or `auto` for the window tuned to the model. */
 export type Window = number | "auto";
@@ -78,10 +79,6 @@ type RawSettings = {
 /** A `modelSettings` entry's key the gauge reads. */
 type RawModelEntry = { autoCompactWindow?: unknown };
 
-function isObject(value: unknown): value is object {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 /** A window a settings source may hold: 100,000 to 1,000,000 tokens, or `auto`. */
 function settingsWindow(value: unknown): Window | undefined {
 	if (value === "auto") return value;
@@ -94,7 +91,7 @@ function settingsWindow(value: unknown): Window | undefined {
 /** Reads one settings source into its layer; a value that is no object gives an empty layer. */
 export function parseLayer(parsed: unknown): SettingsLayer {
 	const layer: SettingsLayer = { modelWindows: {}, env: {} };
-	if (!isObject(parsed)) return layer;
+	if (!isRecord(parsed)) return layer;
 	const raw: RawSettings = parsed;
 	const window = settingsWindow(raw.autoCompactWindow);
 	return {
@@ -104,15 +101,15 @@ export function parseLayer(parsed: unknown): SettingsLayer {
 		...(window === undefined ? {} : { window }),
 		modelWindows: Object.fromEntries(
 			Object.entries(
-				isObject(raw.modelSettings) ? raw.modelSettings : {},
+				isRecord(raw.modelSettings) ? raw.modelSettings : {},
 			).flatMap(([model, entry]: [string, unknown]) => {
-				const modelEntry: RawModelEntry = isObject(entry) ? entry : {};
+				const modelEntry: RawModelEntry = isRecord(entry) ? entry : {};
 				const modelWindow = settingsWindow(modelEntry.autoCompactWindow);
 				return modelWindow === undefined ? [] : [[model, modelWindow]];
 			}),
 		),
 		env: Object.fromEntries(
-			Object.entries(isObject(raw.env) ? raw.env : {}).flatMap(
+			Object.entries(isRecord(raw.env) ? raw.env : {}).flatMap(
 				([name, value]: [string, unknown]) =>
 					typeof value === "string" ? [[name, value]] : [],
 			),

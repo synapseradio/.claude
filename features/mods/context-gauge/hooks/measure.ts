@@ -4,6 +4,8 @@
 import type { ApiContentBlock } from "claude-code";
 
 import { PDF_TOKENS_PER_PAGE, PRIOR_TOKENS_PER_CHAR } from "./calibration";
+import { parseModel, versionOf } from "./model-id";
+import { isRecord } from "./record";
 
 type Weight = { chars: number; media: number };
 
@@ -16,15 +18,11 @@ const IMAGE_PATCH = 28;
 const IMAGE_CAP_LARGE = 4784;
 const IMAGE_CAP_SMALL = 1568;
 
-/** The first model version whose images may reach the larger cap. */
-const LARGE_IMAGE_MAJOR = 4;
-const LARGE_IMAGE_MINOR = 7;
+/** The first model version, 4.7, whose images may reach the larger cap. */
+const LARGE_IMAGE_VERSION = 407;
 
 /** Base64 characters read from an image's start, enough to reach a JPEG frame header behind its metadata segments. */
 const IMAGE_HEAD_BASE64 = 262_144;
-
-/** Where a model id carries its version: `claude-opus-4-7`, `claude-sonnet-5-5`, `claude-3-5-sonnet`. */
-const MODEL_VERSION = /claude-(?:[a-z]+-)?(\d+)(?:-(\d{1,2})(?!\d))?/u;
 
 /** The bytes of `/Type` and of `/Page`, which a PDF page object carries and its page tree's `/Pages` also begins with. */
 const PDF_TYPE: readonly number[] = [...("/Type" as string)].map((char) =>
@@ -39,7 +37,14 @@ const JPEG_FRAMES: ReadonlySet<number> = new Set([
 ]);
 
 function jsonChars(value: unknown): number {
-	return value === undefined ? 0 : (JSON.stringify(value)?.length ?? 0);
+	return JSON.stringify(value)?.length ?? 0;
+}
+
+/** The characters of `value` where it is a string, else those of the whole `block` as JSON. */
+function stringOrBlockChars(value: unknown, block: ApiContentBlock): Weight {
+	return typeof value === "string"
+		? chars(value.length)
+		: chars(jsonChars(block));
 }
 
 function chars(count: number): Weight {
@@ -61,24 +66,16 @@ function sum(weights: readonly Weight[]): Weight {
 	return weights.reduce(add, NONE);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function imageCap(model: string): number {
-	const match = MODEL_VERSION.exec(model);
-	if (match === null) return IMAGE_CAP_SMALL;
-	const major = Number(match[1]);
-	const minor = Number(match[2] ?? 0);
-	const large =
-		major > LARGE_IMAGE_MAJOR ||
-		(major === LARGE_IMAGE_MAJOR && minor >= LARGE_IMAGE_MINOR);
-	return large ? IMAGE_CAP_LARGE : IMAGE_CAP_SMALL;
+	const parsed = parseModel(model);
+	return parsed !== null && versionOf(parsed) >= LARGE_IMAGE_VERSION
+		? IMAGE_CAP_LARGE
+		: IMAGE_CAP_SMALL;
 }
 
 type Size = { width: number; height: number };
 
-function text(bytes: Uint8Array, from: number, to: number): string {
+function ascii(bytes: Uint8Array, from: number, to: number): string {
 	return String.fromCharCode(...bytes.subarray(from, to));
 }
 
@@ -91,7 +88,7 @@ function uint24(data: DataView, at: number): number {
 }
 
 function pngSize(bytes: Uint8Array): Size | null {
-	if (bytes.length < 24 || text(bytes, 12, 16) !== "IHDR") return null;
+	if (bytes.length < 24 || ascii(bytes, 12, 16) !== "IHDR") return null;
 	const data = view(bytes);
 	return { width: data.getUint32(16), height: data.getUint32(20) };
 }
@@ -120,7 +117,7 @@ function jpegSize(bytes: Uint8Array): Size | null {
 function webpSize(bytes: Uint8Array): Size | null {
 	if (bytes.length < 30) return null;
 	const data = view(bytes);
-	const kind = text(bytes, 12, 16);
+	const kind = ascii(bytes, 12, 16);
 	if (kind === "VP8X")
 		return { width: uint24(data, 24) + 1, height: uint24(data, 27) + 1 };
 	if (kind === "VP8L") {
@@ -139,10 +136,10 @@ function webpSize(bytes: Uint8Array): Size | null {
 }
 
 function imageSize(bytes: Uint8Array): Size | null {
-	if (text(bytes, 1, 4) === "PNG") return pngSize(bytes);
-	if (text(bytes, 0, 3) === "GIF") return gifSize(bytes);
+	if (ascii(bytes, 1, 4) === "PNG") return pngSize(bytes);
+	if (ascii(bytes, 0, 3) === "GIF") return gifSize(bytes);
 	if (bytes[0] === 0xff && bytes[1] === 0xd8) return jpegSize(bytes);
-	if (text(bytes, 0, 4) === "RIFF" && text(bytes, 8, 12) === "WEBP")
+	if (ascii(bytes, 0, 4) === "RIFF" && ascii(bytes, 8, 12) === "WEBP")
 		return webpSize(bytes);
 	return null;
 }
@@ -247,9 +244,7 @@ function weigh(block: ApiContentBlock, model: string): Weight {
 	const { type, text, name, input, thinking, content } = block;
 	switch (type) {
 		case "text":
-			return typeof text === "string"
-				? chars(text.length)
-				: chars(jsonChars(block));
+			return stringOrBlockChars(text, block);
 		case "tool_use":
 		case "server_tool_use":
 		case "mcp_tool_use":
@@ -265,17 +260,11 @@ function weigh(block: ApiContentBlock, model: string): Weight {
 		case "search_result":
 			return searchResultWeight(block, model);
 		case "thinking":
-			return typeof thinking === "string"
-				? chars(thinking.length)
-				: chars(jsonChars(block));
+			return stringOrBlockChars(thinking, block);
 		case "redacted_thinking":
 			return NONE;
 		case "compaction":
-			return typeof content === "string"
-				? chars(content.length)
-				: chars(jsonChars(block));
-		case "mcp_tool_result":
-			return contentWeight(content, model);
+			return stringOrBlockChars(content, block);
 		default:
 			return type.endsWith("_tool_result")
 				? contentWeight(content, model)
