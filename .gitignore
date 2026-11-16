@@ -8,7 +8,6 @@
 !skills-lock.json
 !lefthook.yml
 !.ruff.toml
-!.markdownlint-cli2.jsonc
 !.shellcheckrc
 !biome.json
 !tsconfig*.json
@@ -17,7 +16,6 @@
 !pyproject.toml
 !uv.lock
 !.yamlfmt.yaml
-!.yamllint.yaml
 !.taplo.toml
 !Brewfile
 !justfile

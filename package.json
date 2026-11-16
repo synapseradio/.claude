@@ -4,7 +4,6 @@
 	"type": "module",
 	"devDependencies": {
 		"@biomejs/biome": "~2.6.7",
-		"markdownlint-cli2": "~0.24.1",
 		"typescript": "~7.0.2"
 	}
 }

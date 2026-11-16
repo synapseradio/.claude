@@ -1,9 +1,8 @@
 # Worktrunk project hooks for this repository.
 # https://worktrunk.dev/hook/
 
-# A new worktree lacks every ignored file the lefthook jobs read: biome,
-# markdownlint-cli2 and tsc run from node_modules/.bin, ruff, yamllint and
-# pytest from .venv, and tsc-context-gauge extends the gauge types the engine
+# A new worktree lacks every ignored file the lefthook jobs read: biome and
+# tsc run from node_modules/.bin, ruff, rumdl and pytest from .venv, and tsc-context-gauge extends the gauge types the engine
 # generates and ignores. pre-start blocks until `just setup` builds them, so
 # the worktree can commit as soon as wt hands it over.
 [[pre-start]]

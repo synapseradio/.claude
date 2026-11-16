@@ -11,5 +11,92 @@ dev = [
   "pytest-xdist~=3.8.0",
   "rich~=15.0.0",
   "ruff~=0.17.4",
-  "yamllint~=1.38.0",
+  "rumdl~=0.3.4",
 ]
+
+# Only rules that `rumdl rule -o json` rates fix_availability "Always", so
+# `rumdl check --fix` repairs every finding it reports. MD013 carries that
+# rating yet reports long lines it leaves in place, MD063 rewrites identifier
+# and proper-noun headings, and MD085 would flatten the indented guard blocks
+# in rulesets/rules, so those three stay off.
+[tool.rumdl.global]
+enable = [
+  "MD001", # heading-increment: https://rumdl.dev/md001/
+  "MD003", # heading-style: https://rumdl.dev/md003/
+  "MD004", # ul-style: https://rumdl.dev/md004/
+  "MD005", # list-indent: https://rumdl.dev/md005/
+  "MD007", # ul-indent: https://rumdl.dev/md007/
+  "MD009", # no-trailing-spaces: https://rumdl.dev/md009/
+  "MD010", # no-hard-tabs: https://rumdl.dev/md010/
+  "MD011", # no-reversed-links: https://rumdl.dev/md011/
+  "MD012", # no-multiple-blanks: https://rumdl.dev/md012/
+  "MD014", # commands-show-output: https://rumdl.dev/md014/
+  "MD018", # no-missing-space-atx: https://rumdl.dev/md018/
+  "MD019", # no-multiple-space-atx: https://rumdl.dev/md019/
+  "MD020", # no-missing-space-closed-atx: https://rumdl.dev/md020/
+  "MD021", # no-multiple-space-closed-atx: https://rumdl.dev/md021/
+  "MD022", # blanks-around-headings: https://rumdl.dev/md022/
+  "MD023", # heading-start-left: https://rumdl.dev/md023/
+  "MD025", # single-title: https://rumdl.dev/md025/
+  "MD026", # no-trailing-punctuation: https://rumdl.dev/md026/
+  "MD027", # no-multiple-space-blockquote: https://rumdl.dev/md027/
+  "MD028", # no-blanks-blockquote: https://rumdl.dev/md028/
+  "MD029", # ol-prefix: https://rumdl.dev/md029/
+  "MD031", # blanks-around-fences: https://rumdl.dev/md031/
+  "MD032", # blanks-around-lists: https://rumdl.dev/md032/
+  "MD034", # no-bare-urls: https://rumdl.dev/md034/
+  "MD035", # hr-style: https://rumdl.dev/md035/
+  "MD036", # no-emphasis-as-heading: https://rumdl.dev/md036/
+  "MD038", # no-space-in-code: https://rumdl.dev/md038/
+  "MD039", # no-space-in-links: https://rumdl.dev/md039/
+  "MD040", # fenced-code-language: https://rumdl.dev/md040/
+  "MD042", # no-empty-links: https://rumdl.dev/md042/
+  "MD044", # proper-names: https://rumdl.dev/md044/
+  "MD047", # single-trailing-newline: https://rumdl.dev/md047/
+  "MD048", # code-fence-style: https://rumdl.dev/md048/
+  "MD049", # emphasis-style: https://rumdl.dev/md049/
+  "MD050", # strong-style: https://rumdl.dev/md050/
+  "MD055", # table-pipe-style: https://rumdl.dev/md055/
+  "MD058", # blanks-around-tables: https://rumdl.dev/md058/
+  "MD060", # table-format: https://rumdl.dev/md060/
+  "MD062", # link-destination-whitespace: https://rumdl.dev/md062/
+  "MD064", # no-multiple-consecutive-spaces: https://rumdl.dev/md064/
+  "MD065", # blanks-around-horizontal-rules: https://rumdl.dev/md065/
+  "MD069", # no-duplicate-list-markers: https://rumdl.dev/md069/
+  "MD070", # nested-code-fence: https://rumdl.dev/md070/
+  "MD071", # blank-line-after-frontmatter: https://rumdl.dev/md071/
+  "MD072", # frontmatter-key-sort: https://rumdl.dev/md072/
+  "MD073", # toc-validation: https://rumdl.dev/md073/
+  "MD076", # list-item-spacing: https://rumdl.dev/md076/
+  "MD077", # list-continuation-indent: https://rumdl.dev/md077/
+  "MD088", # quotes-dashes: https://rumdl.dev/md088/
+  "MD089", # cjk-spacing: https://rumdl.dev/md089/
+  "MD090", # no-hr-before-heading: https://rumdl.dev/md090/
+]
+exclude = [
+  "node_modules/**",
+  "**/node_modules/**",
+  ".graphify/**",
+  "graphify-out/**",
+  "plugins/**",
+  "projects/**",
+  "plans/**",
+  "evals/**",
+  "agent-memory/**",
+  "agents/**",
+  "skills/**",
+  # A skill's markdown is text a model reads as instructions, templates and
+  # examples included, so a fixer that rewrites its lists, fences, or spacing
+  # changes what the skill says.
+  "**/skills/**",
+  "workflows/**",
+  "shell-snapshots/**",
+  "session-env/**",
+  "cache/**",
+  ".thinkies/**",
+  # Rewritten by the render job from rulesets/rules.
+  "rulesets/-render/**",
+]
+# The runner and treefmt hand rumdl explicit paths, which it lints despite
+# `exclude` unless this is set.
+force_exclude = true

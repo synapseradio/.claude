@@ -99,7 +99,7 @@ class TestFmtScope:
         ("lang", "names"),
         [
             ("py", {"ruff-check", "ruff-format"}),
-            ("md", {"markdownlint"}),
+            ("md", {"rumdl"}),
             ("sh", {"shfmt"}),
             ("bats", {"shfmt"}),
             ("ts", {"biome"}),

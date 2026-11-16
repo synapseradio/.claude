@@ -7,7 +7,7 @@ or writes the machine's own state.
 
 Every program the runner starts is a stub: `uv`, `bats`, `claude`, `treefmt`,
 `shellcheck`, `taplo`, `yamlfmt`, and `shfmt` on PATH, and
-`node_modules/.bin/{biome,markdownlint-cli2,tsc}` inside the scratch
+`node_modules/.bin/{biome,tsc}` inside the scratch
 repository. A stub appends a start record (program, argv, cwd, environment,
 whether the release marker existed) to `calls.jsonl`, prints the canned output
 of the first response whose program matches and whose substring occurs in its
@@ -68,7 +68,7 @@ PROCESS_COMMANDS = ("fmt", "verify")
 HANDLED_SIGNALS = (signal.SIGINT, signal.SIGTERM)
 
 PATH_PROGRAMS = ("uv", "bats", "claude", "treefmt", "shellcheck", "taplo", "yamlfmt", "shfmt")
-REPO_PROGRAMS = ("biome", "markdownlint-cli2", "tsc")
+REPO_PROGRAMS = ("biome", "tsc")
 
 MANIFEST = """\
 [[job]]
@@ -114,9 +114,9 @@ command = "node_modules/.bin/biome"
 options = ["check", "--write", "--no-errors-on-unmatched", "--files-ignore-unknown=true"]
 includes = ["*.ts", "*.json"]
 
-[formatter.markdownlint]
-command = "node_modules/.bin/markdownlint-cli2"
-options = ["--fix"]
+[formatter.rumdl]
+command = "uv"
+options = ["run", "--frozen", "rumdl", "fmt"]
 includes = ["*.md"]
 
 [formatter.ruff-check]

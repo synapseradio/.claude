@@ -35,9 +35,9 @@ includes = [
   "*.jsonc",
 ]
 
-[formatter.markdownlint]
-command = "node_modules/.bin/markdownlint-cli2"
-options = ["--fix"]
+[formatter.rumdl]
+command = "uv"
+options = ["run", "--frozen", "rumdl", "fmt"]
 includes = ["*.md"]
 
 # Lower priority runs first: ruff check applies its fixes before ruff format

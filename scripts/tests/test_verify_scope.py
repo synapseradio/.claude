@@ -473,9 +473,8 @@ def test_every_suite_glob_selects_the_tracked_files_lefthook_selects() -> None:
 # https://docs.python.org/3/library/pathlib.html#pathlib-pattern-language
 REPLACED_LINT_GLOBS = {
     "biome": "*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,json,jsonc}",
-    "markdownlint": "*.md",
+    "rumdl": "*.md",
     "ruff": "*.py",
-    "yamllint": "*.{yaml,yml}",
     "taplo": "*.toml",
     "shellcheck": "*.{sh,bash,bats}",
 }

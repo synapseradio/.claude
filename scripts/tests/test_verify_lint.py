@@ -67,15 +67,20 @@ class TestFileTakingJobsGetOnlyTheirInScopeFiles:
         assert sb.paths_in(call) == ["app/main.py"]
         find_line(result.stdout.splitlines(), r"PASS \S+ \(.*\)")
 
-    def test_markdown_and_yaml_reach_markdownlint_and_yamllint(self, sb) -> None:
-        lint(sb, "docs/guide.md", "conf/a.yaml")
+    def test_markdown_reaches_rumdl_check_with_its_fixer(self, sb) -> None:
+        lint(sb, "docs/guide.md")
 
-        markdown = sb.calls("markdownlint-cli2")[0]
-        assert "--fix" in markdown["args"], markdown["args"]
+        markdown = sb.call_for("uv", "rumdl")
+        assert markdown["args"][:5] == ["run", "--frozen", "rumdl", "check", "--fix"], markdown[
+            "args"
+        ]
         assert sb.paths_in(markdown) == ["docs/guide.md"]
-        yaml = sb.call_for("uv", "yamllint")
-        assert yaml["args"][:4] == ["run", "--frozen", "yamllint", "--strict"], yaml["args"]
-        assert sb.paths_in(yaml) == ["conf/a.yaml"]
+
+    def test_yaml_reaches_no_lint_job(self, sb) -> None:
+        result = lint(sb, "conf/a.yaml")
+
+        assert "no lint job covers the given files" in result.stdout + result.stderr
+        assert sb.calls() == [], "yamlfmt lays YAML out; no linter checks it"
 
     def test_typescript_and_json_reach_biome_check_with_safe_writes(self, sb) -> None:
         lint(sb, "web/app.ts", "data/x.json")
@@ -95,10 +100,17 @@ class TestFileTakingJobsGetOnlyTheirInScopeFiles:
         assert call["args"][0] == "check", call["args"]
         assert sb.paths_in(call) == ["conf/b.toml"]
 
-    def test_shell_reaches_shellcheck(self, sb) -> None:
+    def test_shell_reaches_the_shellcheck_fixer(self, sb) -> None:
         lint(sb, "bin/run.sh")
 
-        assert sb.paths_in(sb.calls("shellcheck")[0]) == ["bin/run.sh"]
+        call = sb.call_for("uv", "shellcheck_fix.py")
+        assert call["args"][:4] == [
+            "run",
+            "--frozen",
+            "python",
+            "scripts/verify/shellcheck_fix.py",
+        ], call["args"]
+        assert sb.paths_in(call) == ["bin/run.sh"]
 
     def test_no_scope_lints_every_tracked_file_and_no_untracked_one(self, sb) -> None:
         sb.write("scratch.py", "UNTRACKED = 1\n")
@@ -109,7 +121,7 @@ class TestFileTakingJobsGetOnlyTheirInScopeFiles:
         assert set(sb.paths_in(ruff)) == sb.tracked(".py"), (
             "every tracked python file, the root-level one included"
         )
-        markdown = sb.calls("markdownlint-cli2")[0]
+        markdown = sb.call_for("uv", "rumdl")
         assert set(sb.paths_in(markdown)) == sb.tracked(".md")
         validated = {normalized(sb, call)[-1] for call in sb.calls("claude")}
         assert validated == PLUGIN_DIRS | {"."}, "every plugin dir plus the marketplace"
@@ -135,7 +147,9 @@ class TestProjectJobsRunWhenTheirScopeIsTouched:
 
         validations = [normalized(sb, call) for call in sb.calls("claude")]
         assert validations == [["plugin", "validate", "features/plugins/warden"]], validations
-        assert sb.paths_in(sb.calls("shellcheck")[0]) == ["features/plugins/warden/hooks/h.sh"]
+        assert sb.paths_in(sb.call_for("uv", "shellcheck_fix.py")) == [
+            "features/plugins/warden/hooks/h.sh"
+        ]
 
     def test_the_marketplace_file_validates_the_repository_root(self, sb) -> None:
         lint(sb, ".claude-plugin/marketplace.json")
@@ -156,11 +170,11 @@ class TestProjectJobsRunWhenTheirScopeIsTouched:
         assert validations == [["plugin", "validate", "features/plugins/rulesets"]], validations
 
 
-def test_lang_sh_selects_only_shellcheck(sb) -> None:
+def test_lang_sh_selects_only_the_shellcheck_fixer(sb) -> None:
     lint(sb, "--lang", "sh")
 
-    assert progs(sb) == {"shellcheck"}, [(c["prog"], c["args"]) for c in sb.calls()]
-    assert set(sb.paths_in(sb.calls("shellcheck")[0])) == sb.tracked(".sh")
+    assert progs(sb) == {"uv"}, [(c["prog"], c["args"]) for c in sb.calls()]
+    assert set(sb.paths_in(sb.call_for("uv", "shellcheck_fix.py"))) == sb.tracked(".sh")
 
 
 FIXED_LINE = r"PASS ruff \(lint, fixed 2 files, [\d.]+s\)"
@@ -171,7 +185,7 @@ def ruff_rewrites(sb, *paths: str, stdout: str = "", exit_code: int = 0) -> None
 
 
 class TestFixingJobs:
-    def test_only_ruff_biome_and_markdownlint_carry_a_fixer(self, sb) -> None:
+    def test_only_ruff_biome_and_rumdl_carry_a_fix_flag(self, sb) -> None:
         lint(
             sb,
             "app/main.py",
@@ -186,7 +200,7 @@ class TestFixingJobs:
         for call in sb.calls():
             carried = fixing & set(call["args"])
             name = call["prog"] if call["prog"] != "uv" else call["args"][2]
-            assert bool(carried) == (name in {"ruff", "biome", "markdownlint-cli2"}), call["args"]
+            assert bool(carried) == (name in {"ruff", "biome", "rumdl"}), call["args"]
             assert not carried & {"--unsafe", "--unsafe-fixes"}, call["args"]
 
     def test_a_fixed_file_is_listed_and_the_job_passes(self, sb) -> None:
@@ -276,13 +290,13 @@ class TestFixingJobs:
 
         assert sb.calls() == [], "--list starts no runner"
         assert "ruff check --fix" in result.stdout, result.stdout
-        assert "markdownlint-cli2 --fix" in result.stdout, result.stdout
+        assert "rumdl check --fix" in result.stdout, result.stdout
         assert "biome check --write" in result.stdout, result.stdout
 
 
 class TestLintVerdicts:
     def test_a_failing_check_prints_fail_and_exits_one(self, sb) -> None:
-        sb.respond("shellcheck", "run.sh", "In bin/run.sh line 2:\nSC2086\n", exit_code=1)
+        sb.respond("uv", "shellcheck_fix.py", "In bin/run.sh line 2:\nSC2086\n", exit_code=1)
 
         result = lint(sb, "bin/run.sh", expect=1)
 
@@ -305,10 +319,8 @@ class TestLintVerdicts:
     @pytest.mark.parametrize(
         ("prog", "scope", "recipe"),
         [
-            ("shellcheck", "bin/run.sh", "just tools"),
             ("taplo", "conf/b.toml", "just tools"),
             ("biome", "web/app.ts", "just setup"),
-            ("markdownlint-cli2", "docs/guide.md", "just setup"),
             ("tsc", "features/mods/context-gauge/src/gauge.ts", "just setup"),
         ],
     )

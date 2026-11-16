@@ -94,11 +94,11 @@ sources = [
 langs = ["ts", "json"]
 
 [[job]]
-name = "markdownlint"
+name = "rumdl"
 kind = "lint"
 mode = "files"
 fixes = true
-command = ["node_modules/.bin/markdownlint-cli2", "--fix"]
+command = ["uv", "run", "--frozen", "rumdl", "check", "--fix"]
 sources = ["**/*.md"]
 langs = ["md"]
 
@@ -112,14 +112,6 @@ sources = ["**/*.py"]
 langs = ["py"]
 
 [[job]]
-name = "yamllint"
-kind = "lint"
-mode = "files"
-command = ["uv", "run", "--frozen", "yamllint", "--strict"]
-sources = ["**/*.yaml", "**/*.yml"]
-langs = ["yaml"]
-
-[[job]]
 name = "taplo"
 kind = "lint"
 mode = "files"
@@ -131,7 +123,14 @@ langs = ["toml"]
 name = "shellcheck"
 kind = "lint"
 mode = "files"
-command = ["shellcheck"]
+fixes = true
+command = [
+  "uv",
+  "run",
+  "--frozen",
+  "python",
+  "scripts/verify/shellcheck_fix.py",
+]
 sources = ["**/*.sh", "**/*.bash", "**/*.bats"]
 langs = ["sh", "bats"]
 
