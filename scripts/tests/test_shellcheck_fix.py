@@ -15,12 +15,14 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def run(repo: pathlib.Path, *paths: str) -> subprocess.CompletedProcess:
+def run(
+    repo: pathlib.Path, *paths: str, path: str = os.environ["PATH"]
+) -> subprocess.CompletedProcess:
     env = {
-        "PATH": os.environ["PATH"],
+        "PATH": path,
         "HOME": str(repo.parent / "home"),
         "XDG_CONFIG_HOME": str(repo.parent / "xdg-config"),
-        "GIT_CONFIG_GLOBAL": str(repo.parent / "gitconfig"),
+        "GIT_CONFIG_GLOBAL": os.devnull,
         "GIT_CONFIG_NOSYSTEM": "1",
         "LANG": "C.UTF-8",
     }
@@ -39,8 +41,20 @@ def repo(tmp_path) -> pathlib.Path:
     root = tmp_path / "repo"
     (root / "bin").mkdir(parents=True)
     (tmp_path / "home").mkdir()
-    (tmp_path / "gitconfig").write_text("")
     return root
+
+
+def test_a_missing_shellcheck_exits_three_naming_the_recipe_that_provides_it(
+    repo, tmp_path
+) -> None:
+    (repo / "bin" / "greet.sh").write_text('#!/bin/bash\necho "$1"\n')
+    empty = tmp_path / "empty-path"
+    empty.mkdir()
+
+    result = run(repo, "bin/greet.sh", path=str(empty))
+
+    assert result.returncode == 3, result.stdout + result.stderr
+    assert "shellcheck" in result.stderr and "just tools" in result.stderr, result.stderr
 
 
 def test_a_finding_shellcheck_can_fix_is_rewritten_and_the_run_passes(repo) -> None:

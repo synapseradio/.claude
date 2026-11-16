@@ -6,7 +6,7 @@ child environment starts empty rather than from the caller's, so no run reads
 or writes the machine's own state.
 
 Every program the runner starts is a stub: `uv`, `bats`, `claude`, `treefmt`,
-`shellcheck`, `taplo`, `yamlfmt`, and `shfmt` on PATH, and
+`taplo`, `yamlfmt`, and `shfmt` on PATH, and
 `node_modules/.bin/{biome,tsc}` inside the scratch
 repository. A stub appends a start record (program, argv, cwd, environment,
 whether the release marker existed) to `calls.jsonl`, prints the canned output
@@ -67,7 +67,7 @@ RUN_TIMEOUT = 20
 PROCESS_COMMANDS = ("fmt", "verify")
 HANDLED_SIGNALS = (signal.SIGINT, signal.SIGTERM)
 
-PATH_PROGRAMS = ("uv", "bats", "claude", "treefmt", "shellcheck", "taplo", "yamlfmt", "shfmt")
+PATH_PROGRAMS = ("uv", "bats", "claude", "treefmt", "taplo", "yamlfmt", "shfmt")
 REPO_PROGRAMS = ("biome", "tsc")
 
 MANIFEST = """\
