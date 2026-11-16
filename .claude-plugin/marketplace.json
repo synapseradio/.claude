@@ -53,8 +53,8 @@
 		{
 			"name": "prep",
 			"source": "./features/plugins/prep",
-			"version": "0.2.1",
-			"description": "Holds the planning loop as a skill."
+			"version": "0.3.0",
+			"description": "Holds the planning loop as a skill, and the work-coordinator agent that runs an approved plan as delegated work."
 		},
 		{
 			"name": "context-gauge",

@@ -1,6 +1,6 @@
 # Contracts between units
 
-Read this when the plan has several work units. What can run at the same time is decided by which contracts the plan fixes, more than by which files collide: two units that agree on a signature in advance can be built apart, in any order, by agents that never speak. A unit that must discover the signature from another unit's code can only follow it.
+Read this when the plan has several work units. What can run at the same time is decided by which contracts the plan fixes, more than by which files collide: two units that agree on a signature in advance can be built apart, in any order, by agents that never speak. A unit that must discover the signature from another unit's code can only follow it. The contracts are the detail a plan settles before approval; what each unit does behind its contracts is its worker's to settle.
 
 ## Gather
 
@@ -19,6 +19,7 @@ Walk every user story through the change, from what the person does to where the
 For each boundary, write the contract from the consuming side: what does the caller want to say, and what must it never have to know? Then state it in full, in the language of the code:
 
 - the exact signature, with parameter and return types
+- the data that crosses: what goes in, what comes out, and which side owns each value
 - every case of each sum type and every id in each set, spelled as the code will spell them
 - what happens on failure: the error type, the empty value, or the guarantee that none occurs
 - the file each declaration lives in, and the one unit that owns that file
@@ -62,11 +63,36 @@ Some unknowns sit behind work that has yet to run: whether a test kit supports a
 
 ## Write
 
-- Give the plan a Contracts section ahead of Work, one entry per contract: its name, its statement in full inside a code fence, the file and unit that own its declaration, each unit that consumes it, and whether it is fixed or open.
+- Give the plan a Contracts section ahead of Work, one entry per contract two or more units rely on: its name, its statement in full inside a code fence, the file and unit that own its declaration, each unit that consumes it, and whether it is fixed or open.
+- With workers, a contract only one unit meets, a boundary with code the plan leaves alone for one, gets one line in the Contracts section, its name and what stays, and its full statement in that unit's run-book file.
 - Under each open contract, state what stays open, which unit closes it, and how that unit tells its consumers.
 - State once, in Constraints, how a contract changes: no unit changes a fixed contract. A worker that finds one wrong or insufficient stops that part of its work and reports the conflict, with the change it proposes, to whoever coordinates. The coordinator amends the plan's Contracts section, then tells every unit that provides or consumes it before any of them continues.
 - Name beside each unit the contracts it provides and consumes, by the names the Contracts section uses.
 - Put the contracts unit, where there is one, alone in the first wave.
+
+### The module map
+
+A heavy plan, one with three or more work units or with units in more than one repository, carries a module map ahead of its Contracts section: each module, how the modules relate, and the contract each relation carries. A reader takes the shape of the work from it before reading any contract in full.
+
+Write it as arrow lines inside a fenced `text` block, in two parts:
+
+```text
+modules: [name] is a unit this plan changes, (name) is code it leaves alone
+  [categories]  src/meter/categories.ts    wave 2
+  [palette]     src/meter/palette.ts       wave 2
+  [render]      src/meter/render.tsx       wave 3
+  (config)      src/config.ts              unchanged
+
+relations: provider --> consumer : contract, and the data that crosses
+  [categories] --> [palette] : CategoryId, the six ids
+  [categories] --> [render]  : categorize, MeterRow in, CategoryId out
+  [palette]    --> [render]  : paletteFor, Theme in, Palette out
+  (config)     --> [render]  : AppConfig, read only
+```
+
+- One line per module, with its paths and its wave. One line per relation, with the contract's name as the Contracts section spells it and the data that crosses in a few words.
+- Draw every boundary the Contracts section holds, and nothing else.
+- Keep the form to these lines. A fenced text block shows the same in a terminal, in the approval prompt, and in every Markdown viewer, and each line stays true when its neighbours change. A Mermaid block draws only where a viewer renders it and shows as source everywhere else, and a box drawing needs its columns realigned at every edit.
 
 ## Verify
 
@@ -74,3 +100,4 @@ Some unknowns sit behind work that has yet to run: whether a test kit supports a
 - No unit consumes a contract the plan states only by name.
 - Every remaining wait names code no contract can stand in for.
 - Every hotspot `plan-waves.py` prints is either split or kept whole with its reason in the plan.
+- A heavy plan's module map holds one relation line per contract in the Contracts section, each naming a provider and a consumer the modules part lists.

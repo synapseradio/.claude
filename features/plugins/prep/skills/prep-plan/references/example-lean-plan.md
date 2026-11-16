@@ -1,6 +1,6 @@
 # Example: a lean plan
 
-A one-file bug fix. The size pass answered one unit, so the plan has no contracts section, no coordination, and no lanes. It still carries a user story, the boundary the fix must keep, a test written first, and the state of the checks before work. The machine had a justfile and a hook manager, so the plan names a recipe and the hook in place of raw commands.
+A one-file bug fix. The size pass answered one unit, so the plan has no contracts section, no coordination, no lanes, and no run book. It still carries a user story, the boundary the fix must keep, a test written first, and the state of the checks before work. The machine had a justfile and a hook manager, so the plan names a recipe and the hook in place of raw commands. The session's agent list held `prep:work-coordinator`, so the Run line hands the plan to it.
 
 **Example 1:**
 
@@ -12,6 +12,8 @@ Output:
 # Export invoice due dates in UTC, for accountants reconciling across offices
 
 Goal: `ledger export` writes every due date as a UTC calendar date, whatever timezone the machine is in.
+
+Run: the session's main agent starts `prep:work-coordinator` once, in the background, with this file's absolute path, then answers what it hands up and changes no file this plan covers. From the next line on, "you" is that agent, working this plan yourself.
 
 ## Glossary
 
@@ -41,10 +43,10 @@ You make this change yourself, as one commit.
 
 | path | symbol | change |
 | --- | --- | --- |
-| `src/export/dates.ts` | `formatDueDate` | build the string from `getUTCFullYear`, `getUTCMonth`, and `getUTCDate` in place of the local-time getters |
-| `tests/export/dates.test.ts` | `formatDueDate` cases | add a case for `2031-03-01T00:00:00Z` under `TZ=Pacific/Auckland` and under `TZ=America/Los_Angeles`, each expecting `2031-03-01` |
+| `src/export/dates.ts` | `formatDueDate` | build the string from the UTC getters in place of the local-time getters |
+| `tests/export/dates.test.ts` | `formatDueDate` cases | cover a midnight-UTC date read in a timezone behind UTC and in one ahead of it |
 
-- test first: the Los Angeles case fails before the change with `2031-02-28`, since local time there is still the day before.
+- test first: `2031-03-01T00:00:00Z` under `TZ=America/Los_Angeles` fails before the change with `2031-02-28`, since local time there is still the day before. The remaining cases are yours to settle.
 - check: `just test tests/export/dates.test.ts` passes. It catches a getter left in local time.
 - commit: `git commit -m 'fix(export): format due dates in UTC' -- src/export/dates.ts tests/export/dates.test.ts`, through the lefthook pre-commit hook, which runs the formatter and the type checker.
 

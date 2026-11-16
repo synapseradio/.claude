@@ -6,6 +6,8 @@ For every step a delegate could take, and every spawn through Agent, Fork, or an
 - gathering: a read, grep, log scan, or command run for its output, a test suite's run for one, never a command that changes, commits, edits, or installs
 - shared focus: a file, artifact, decision, term, or convention two or more agents in one orchestration read, write, or state, a spec two delegates edit for one
 - roster: the orchestration's running agents, each with its address and the slice it owns
+- plan work: a step that carries out an approved plan, a unit, a lane, a landing, or the plan's finish
+- coordinator: an agent whose description claims running an approved plan as delegated work, `prep:work-coordinator` for one
 
 ### Whether to spawn
 
@@ -14,6 +16,7 @@ Hold gathering as work beyond the context in hand. Take the first arm that fits.
 
 route step
   | no spawning tool is in hand = act directly
+  | plan work, with you at the session's top level and a coordinator in the agent list = spawn the coordinator once for the whole plan, in the background, at the model and effort its file pins, its prompt holding the plan file's absolute path -> advise: answer what it hands up, relay its reports, and leave every file the plan covers to it and its delegates
   | a thinkies skill run other than `thinkies:check-notes` = spawn the thinkies agent at opus, effort high -> relay only its final output
   | it writes, reviews, or repairs a shell script, a shell startup file, a git hook or other extensionless shell file, or a bats suite, a run of any of them left to the arms below = spawn shell-scripter with a prompt for the task
   | it finishes in one tool call with the context in hand = act directly
@@ -70,6 +73,7 @@ Effort field exists ? set it : state the depth in the prompt: search breadth, al
 
 Resume a delegate only where the step needs what it alone holds, the sources behind its own report for one.
 A critic reports ? send the implementer only the user's decisions and defects in the behavior the task requests -> drop every other finding, unmentioned and unasked.
+A coordinator hands up a question, in a message or in a report ? answer a question under the caller's mark from the plan and what you hold -> put a question under the standing question to the user through AskUserQuestion -> send the answer to the coordinator through SendMessage at its agent ID, which resumes it where it has stopped.
 
 ### Agents running at once
 

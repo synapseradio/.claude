@@ -1,15 +1,20 @@
 <!-- rule: agent-delegation variant: sonnet -->
 ## agent-delegation
 
-For every step a delegate could take, and every spawn you make, optimize for gathering done by a fresh haiku that returns a result you can check, its output kept out of your context, a thinkies skill run done by the thinkies agent, shell work done by shell-scripter, and every other step done yourself.
+For every step a delegate could take, and every spawn you make, optimize for gathering done by a fresh haiku that returns a result you can check, its output kept out of your context, a thinkies skill run done by the thinkies agent, shell work done by shell-scripter, an approved plan's work done by the agents the plan names, and every other step done yourself.
 
 - gathering: a read, grep, log scan, or command run for its output, a test suite's run for one, never a command whose job is a change, commit, edit, or install
+- plan work: a step that carries out an approved plan, a unit, a lane, a landing, or the plan's finish
+- coordinator: an agent whose description claims running an approved plan as delegated work, `prep:work-coordinator` for one
+- roster spawn: a spawn of an agent an approved plan names for a unit, a lane, or a question, made by the plan's coordinator
 
 ### Whether to spawn
 
 Take the first arm that fits.
 
 route step
+  | plan work, with you at the session's top level, a spawning tool in hand, and a coordinator in the agent list = spawn the coordinator once for the whole plan, in the background, at the model and effort its file pins, its prompt holding the plan file's absolute path -> advise: answer what it hands up, relay its reports, and leave every file the plan covers to it and its delegates
+  | plan work the plan gives to a named agent, with you as the plan's coordinator = make the roster spawn, at the agent type, model, and effort the plan names
   | a thinkies skill run other than `thinkies:check-notes`, with a spawning tool in hand = spawn the thinkies agent, effort high, at the model the run's complexity calls for -> relay only its final output
   | it writes, reviews, or repairs a shell script, a shell startup file, a git hook or other extensionless shell file, or a bats suite, with a spawning tool in hand and a run of any of them left to the arms below = spawn shell-scripter at sonnet with a prompt for the task
   | a simple task, one of a sequence of operations, a single-file edit, or part of a task that needs its context kept across steps = act directly
@@ -18,7 +23,7 @@ route step
   | any other gathering = spawn a fresh haiku, one holding the step's related reads > parallel haikus, each saving every command run's output to a scratchpad file
   | otherwise = act directly
 
-Set every other spawn's model to haiku, whatever its agent type, apart from critic and Plan, which run on sonnet or opus.
+Set every other spawn's model to haiku, whatever its agent type, apart from critic and Plan, which run on sonnet or opus, a coordinator, which runs at the model its file pins, and a roster spawn, which runs at the model the plan names.
 Spawn a re-check of your own result only on the user's ask.
 A change edits only comment text, JSDoc included ? commit it, with no test run and no runner spawned.
 
@@ -27,9 +32,11 @@ A change edits only comment text, JSDoc included ? commit it, with no test run a
 Choose the effort by the block below -> compose the prompt -> spawn -> hold each reported claim pending until you find its source.
 The reads exceed a haiku delegate's context, held as a 99k-token budget ? split them into sequential spawns, each finishing its slice end to end.
 Resume a delegate only where the step needs what it alone holds, the sources behind its own report for one.
+A coordinator you spawned hands up a question ? answer a question under the caller's mark from the plan and what you hold -> put a question under the standing question to the user through AskUserQuestion -> send the answer to the coordinator through SendMessage at its agent ID.
 
 effort prompt
   | the user asked for or permitted one = that effort
+  | a roster spawn whose plan names one = that effort
   | a sonnet delegate's prompt states every step in one part = low
   | the delegate runs on sonnet = medium
   | the step's route arm names one = that effort
@@ -298,6 +305,7 @@ Keep a read-only label or instruction out of a research or gathering delegate's 
 Keep mutation checks out of every prompt and brief, code broken on purpose and failing assertions added to watch a suite go red included. Direct a critic to judge tests by reading them.
 Keep out of every prompt any request that the delegate judge its own result or argument -> judge it yourself, or through a separate delegate.
 State every cost in tokens, calls, or wait, with time units kept out.
+Set how much the delegate thinks through the effort level alone, and keep every phrase about thinking harder, being thorough, or answering without deliberating out of the prompt. Name the point where the step is done, so the delegate stops there and reports.
 
 ```markdown
 Effort: [the effort level, whether or not the effort field is set]
@@ -341,12 +349,12 @@ If a step fails, report what broke, what it cost, and what it changes next.
 [each known way this step goes wrong: its mechanism and cost, the self kept out of the sentence]
 ```
 
-Size what the prompt states to the delegate's model.
+Size what the prompt states to the delegate's model. State for every model the step's scope outright, each kind of output wanted, tests and docs included, since a delegate builds what the prompt names and treats the rest as unasked.
 
 stateInPrompt model
   | haiku = every step, every path, the exact constraints, the check to run and return, and a read's return as cited facts, each a path:line beside its quoted line, in place of a verdict, classification, or recommendation
-  | sonnet = the problem, the decisions, constraints by reference
-  | opus = the problem, its constraints, the decisions made
+  | sonnet = the problem, the decisions, each interface its work meets with the data that crosses it, each behavior wanted with the check that shows it, and constraints by reference, with the test cases and everything inside its own files left to it
+  | opus = the problem, its constraints, the decisions made, the check that shows the work done, and which parts of the work warrant delegates of its own, with the approach left to it
 
 <!-- rule: delegate-report -->
 ## delegate-report
@@ -868,8 +876,11 @@ The Skill tool is in hand and the skill listing names `prep:prep-plan` ? run `pr
 Write for an executor holding only the plan file and each file it names by absolute path.
 Until approval, change only the plan file and the scratchpad.
 Loop reads, delegates, searches, and checks until every claim the plan rests on has a source, and every fork whose result could change the plan's next steps stands as a fork written into the plan, a check you ran, or a question the user answered, written in as a decision.
+Settle in the plan what no single worker can settle alone: each interface between two pieces of the work, with the data that crosses it, who owns which paths, and what runs at the same time. Leave to each piece's worker its test cases and everything inside its own paths, and stop gathering once those lines are settled.
+Keep in the plan only what its executor acts on, and put material one worker alone acts on in a file beside the plan that the plan links by absolute path.
 Land findings (evidence by path, open questions, approaches with tradeoffs) in a turn of their own -> stop -> write the plan on the framing the user picks.
 Ask for a plan's approval only through ExitPlanMode.
+Approval arrives, with you at the session's top level and an agent in the agent list whose description claims running an approved plan ? before any edit, start that agent once, in the background, with the plan file's absolute path -> answer what it hands up, and leave every file the plan covers to it.
 
 <!-- rule: writing-prose -->
 ## writing-prose

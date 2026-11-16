@@ -1,11 +1,13 @@
 # Lean plan
 
-For one work unit worked by one agent. Replace each bracket with what it describes. Leave out a part that would be empty, heading included, except Boundaries, which always says what was checked.
+For one work unit worked by one agent. Replace each bracket with what it describes. Leave out a part that would be empty, heading included, except Boundaries, which always says what was checked. A lean plan has one reader, so it has no run book.
 
 ````markdown
 # [what changes, and for whom]
 
 Goal: [the finished state in one sentence, complete enough to hand to a goal tracker as it stands]
+
+Run: [with a coordinator agent in the session's list: the session's main agent starts `[the coordinator's agent type]` once, in the background, with this file's absolute path, then answers what it hands up and changes no file this plan covers. From the next line on, "you" is that agent, working this plan yourself. | otherwise: you run this plan yourself.]
 
 ## Glossary
 
@@ -36,7 +38,7 @@ You make this change yourself, as one commit.
 | --- | --- | --- |
 | [relative to the root] | [exact, or none] | [the change] |
 
-- test first: [the test written and seen failing before the change, and the reason it fails]
+- test first: [the behavior the first failing test pins, and the reason it fails before the change; the remaining cases are yours to settle]
 - check: [the command to run before the commit, its passing result, and the defect it catches]
 - commit: [the commit rule: through the repository's hooks, the message form, and what the hooks run]
 

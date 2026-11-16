@@ -9,6 +9,7 @@ Keep a read-only label or instruction out of a research or gathering delegate's 
 Keep mutation checks out of every prompt and brief, code broken on purpose and failing assertions added to watch a suite go red included. Direct a critic to judge tests by reading them.
 Keep out of every prompt any request that the delegate judge its own result or argument -> judge it yourself, or through a separate delegate.
 State every cost in tokens, calls, or wait, with time units kept out.
+Set how much the delegate thinks through the effort level alone, and keep every phrase about thinking harder, being thorough, or answering without deliberating out of the prompt. Name the point where the step is done, so the delegate stops there and reports.
 
 ```markdown
 Effort: [the effort level, whether or not the effort field is set]
@@ -52,9 +53,9 @@ If a step fails, report what broke, what it cost, and what it changes next.
 [each known way this step goes wrong: its mechanism and cost, the self kept out of the sentence]
 ```
 
-Size what the prompt states to the delegate's model.
+Size what the prompt states to the delegate's model. State for every model the step's scope outright, each kind of output wanted, tests and docs included, since a delegate builds what the prompt names and treats the rest as unasked.
 
 stateInPrompt model
   | haiku = every step, every path, the exact constraints, the check to run and return, and a read's return as cited facts, each a path:line beside its quoted line, in place of a verdict, classification, or recommendation
-  | sonnet = the problem, the decisions, constraints by reference
-  | opus = the problem, its constraints, the decisions made
+  | sonnet = the problem, the decisions, each interface its work meets with the data that crosses it, each behavior wanted with the check that shows it, and constraints by reference, with the test cases and everything inside its own files left to it
+  | opus = the problem, its constraints, the decisions made, the check that shows the work done, and which parts of the work warrant delegates of its own, with the approach left to it

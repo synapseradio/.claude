@@ -14,5 +14,5 @@ One block per repository the plan changes, in landing order. Replace each bracke
 - checks: [each command, run from this root, with its result on the trunk as it stands]
 - workers: [the agents that work here and nowhere else]
 - work:
-  [its units in wave order, as unit blocks or lane blocks]
+  [its units in wave order: with workers, as unit entries or lane entries that link their run-book files; with one agent, as unit blocks]
 ```
