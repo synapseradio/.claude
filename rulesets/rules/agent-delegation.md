@@ -7,7 +7,6 @@ For every step a delegate could take, and every spawn through Agent, Fork, or an
 - shared focus: a file, artifact, decision, term, or convention two or more agents in one orchestration read, write, or state, a spec two delegates edit for one
 - roster: the orchestration's running agents, each with its address and the slice it owns
 - plan work: a step that carries out an approved plan, a unit, a lane, a landing, or the plan's finish
-- coordinator: an agent whose description claims running an approved plan as delegated work, `prep:work-coordinator` for one
 
 ### Whether to spawn
 
@@ -16,13 +15,13 @@ Hold gathering as work beyond the context in hand. Take the first arm that fits.
 
 route step
   | no spawning tool is in hand = act directly
-  | plan work, with you at the session's top level and a coordinator in the agent list = spawn the coordinator once for the whole plan, in the background, at the model and effort its file pins, its prompt holding the plan file's absolute path -> advise: answer what it hands up, relay its reports, and leave every file the plan covers to it and its delegates
-  | a thinkies skill run other than `thinkies:check-notes` = spawn the thinkies agent at opus, effort high -> relay only its final output
-  | it writes, reviews, or repairs a shell script, a shell startup file, a git hook or other extensionless shell file, or a bats suite, a run of any of them left to the arms below = spawn shell-scripter with a prompt for the task
+  | plan work, with you at the session's top level = spawn it once for the whole plan, in the background, at sonnet, effort medium, its prompt holding the plan file's absolute path -> advise: answer what it hands up, relay its reports, and leave every file the plan covers to it and its delegates
+  | a thinkies skill run other than `thinkies:check-notes` = spawn it at opus, effort high -> relay only its final output
+  | it writes, reviews, or repairs a shell script, a shell startup file, a git hook or other extensionless shell file, or a bats suite, a run of any of them left to the arms below = spawn it with a prompt for the task
   | it finishes in one tool call with the context in hand = act directly
-  | git work needing judgment as it goes, a rebase with conflicts for one = spawn git-operator
-  | a git operation whose command you can state whole, outside a slice you built = spawn it to a general-purpose haiku
-  | an observed failure of unknown cause = spawn diagnostician
+  | git work needing judgment as it goes, a rebase with conflicts for one = spawn it
+  | a git operation whose command you can state whole, outside a slice you built = spawn it at haiku
+  | an observed failure of unknown cause = spawn it
   | a break's fix would pull you off the current task = spawn it
   | the Read that Edit or an overwriting Write requires before your next change, the newest handoff note read at a session's first turn, a cited line opened to confirm it backs a claim, or a scan of saved command output by grep, jq, ast-grep, or a Read by line range = act directly
   | any other gathering = spawn a fresh haiku, one holding the step's related reads > parallel haikus, each saving every command run's output to a scratchpad file
@@ -37,18 +36,12 @@ A change edits only comment text, JSDoc included ? commit it, with no test run a
 
 ### The spawn
 
-Take the gauges -> choose agent type, model, and effort, in that order, each by its block below -> compose the prompt -> spawn -> hold each reported claim pending until you find its source.
+Take the gauges -> choose the agent type whose description claims the step, then model and effort, each by its block below -> compose the prompt -> spawn -> hold each reported claim pending until you find its source.
 Span exceeds one context, a haiku delegate's held as a 99k-token budget ? split the work into sequential spawns, each finishing its slice end to end, in place of one layer across every feature.
-
-agent step
-  | its route arm names one = that agent
-  | it drafts or redrafts prose a person reads, a docs page for one = prose-writer, with software-implementer kept out
-  | otherwise = the agent whose description claims the step
 
 model
   | the user named one = that model
   | the step's route arm names one = that model
-  | the agent type is Explore = haiku
   | a read, map, list, summary, verbatim copy of a prepared payload, or git operation the prompt states whole = haiku
   | implementing from a design, refining a diff, or critiquing = sonnet
   | a design, a plan, or an irreversible edit = opus
@@ -72,8 +65,8 @@ Effort field exists ? set it : state the depth in the prompt: search breadth, al
 ### What comes back
 
 Resume a delegate only where the step needs what it alone holds, the sources behind its own report for one.
-A critic reports ? send the implementer only the user's decisions and defects in the behavior the task requests -> drop every other finding, unmentioned and unasked.
-A coordinator hands up a question, in a message or in a report ? answer a question under the caller's mark from the plan and what you hold -> put a question under the standing question to the user through AskUserQuestion -> send the answer to the coordinator through SendMessage at its agent ID, which resumes it where it has stopped.
+Review findings come back ? send the delegate that did the work only the user's decisions and defects in the behavior the task requests -> drop every other finding, unmentioned and unasked.
+A delegate hands up a question, in a message or in a report ? answer a question under the caller's mark from the plan and what you hold -> put a question under the standing question to the user through AskUserQuestion -> send the answer to it through SendMessage at its agent ID, which resumes it where it has stopped.
 
 ### Agents running at once
 

@@ -44,7 +44,7 @@ As you work, note each gap in the tooling, a step it left undone, a misleading m
 
 ## Choosing an agent to spawn
 
-Choose each agent you spawn at run time by reading the descriptions of the agents the harness lists, and take the one whose description claims the step. Where the harness requires a `subagent_type` value, take it from the roster the harness lists, and write no agent name from memory.
+Choose each agent you spawn by the descriptions the harness lists, taking the one whose description claims the step, and spawn with no agent type named where none does.
 
 ## Landing a slice
 

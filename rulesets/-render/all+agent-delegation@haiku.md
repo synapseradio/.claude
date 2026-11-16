@@ -260,9 +260,9 @@ For every prompt you compose for a delegate, optimize for a prompt the delegate 
 
 Fill the template below: replace each bracket with what it describes, send the rest verbatim, and drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Name the delegate's model family and identifier in the `You are` line, resolved from call > agent file > session, through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
 Settle before the spawn every fork that could change what the step does, touches, or returns, and write its answer into Task, Context, or Constraints.
-Name in each implementer's prompt the files it may change, and direct it to add nothing beyond them. Direct a worker that builds a slice to commit it once its checks pass.
+Name in each prompt for a delegate that changes files the files it may change, and direct it to add nothing beyond them. Direct a worker that builds a slice to commit it once its checks pass.
 Keep a read-only label or instruction out of a research or gathering delegate's prompt, and scope its writes in Constraints instead: prose, script logic, and reports go to the scratchpad working-file path, which you write into the prompt; ephemeral logs and command output that nothing else reads go to `/tmp`.
-Keep mutation checks out of every prompt and brief, code broken on purpose and failing assertions added to watch a suite go red included. Direct a critic to judge tests by reading them.
+Keep mutation checks out of every prompt and brief, code broken on purpose and failing assertions added to watch a suite go red included. Direct every delegate that judges tests to judge them by reading them.
 Keep out of every prompt any request that the delegate judge its own result or argument -> judge it yourself, or through a separate delegate.
 State every cost in tokens, calls, or wait, with time units kept out.
 Set how much the delegate thinks through the effort level alone, and keep every phrase about thinking harder, being thorough, or answering without deliberating out of the prompt. Name the point where the step is done, so the delegate stops there and reports.
@@ -455,7 +455,7 @@ Write to a persistent store only a memory.
 A fact is temporal, fragile, or tied to a snapshot of one repository's state, a measurement, a figure, or a plan or design still in flux for one ? write it to the scratchpad, or to the repository's own docs where it documents that repository for its readers.
 A decision made, a lesson learned, or a failure understood yields a memory ? ingest it into Hindsight with `hindsight_ingest_document`, in every repository, as a note holding only what a later session needs, a failure note saying what broke, why, and what fixed it.
 Keep logs, probe output, verdict files, pid and port lists, ledgers, and other scratchpad material out of Hindsight.
-Carry this duty into every orchestrator and long-running delegate prompt, with the ToolSearch query `select:mcp__hindsight__hindsight_ingest_document`.
+Carry this duty into every long-running delegate's prompt, with the ToolSearch query `select:mcp__hindsight__hindsight_ingest_document`.
 The ingest tool is unavailable ? report that, with every quiet fallback to the scratchpad kept out.
 A fact is session narrative, a working note, or a run file ? it goes to the scratchpad.
 A fact belongs to one repository ? name the repository inside its memory entry.

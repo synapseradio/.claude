@@ -211,7 +211,7 @@ Writing lines, for every plan:
 - List the work units in wave order, state beside each what it waits on, and name each wave's units.
 - Plan one suite run for the whole plan, as its last step before the work is declared done, with each work unit's own cheap checks before its commit.
 - Keep a check only where it catches a break that would otherwise ship.
-- Keep critic rounds, fix slices, and per-case logs out of a plan, unless the user asks for them.
+- Keep review rounds, fix slices, and per-case logs out of a plan, unless the user asks for them.
 
 Each reference the size pass sent you to carries its own Write lines. Follow them here.
 

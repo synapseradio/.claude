@@ -30,7 +30,7 @@ Test each subject: can it be inconvenienced? Where the first draft names a syste
 | --- | --- |
 | As the gauge, I want unique colours per category. | As an engineer glancing under the prompt mid-task, I want each category in a colour of its own, so that I can tell what fills the context without reading the legend. |
 | As the API, I want to validate order payloads. | As a shop owner submitting an order from a poor connection, I want a rejected order to say which field to fix, so that I can resend it once. |
-| As the orchestrator, I want workers to report status. | As an engineer who started the run and stepped away, I want each lane to end in one message, landed or blocked on a named question, so that I return to a finished trunk or a single decision. |
+| As the main session, I want workers to report status. | As an engineer who started the run and stepped away, I want each lane to end in one message, landed or blocked on a named question, so that I return to a finished trunk or a single decision. |
 
 Work with no visible user still has people. Look for them here:
 

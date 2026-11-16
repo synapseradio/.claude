@@ -107,12 +107,12 @@ Run-book files sit in `/work/term-app-notes/usage-meter.runbook/`.
 | agent | role | type, model, effort | owns | starts in | reports to | run-book file |
 | --- | --- | --- | --- | --- | --- | --- |
 | you | coordinator | `prep:work-coordinator` | this plan | wave 1 | the session's main agent | none |
-| contracts-worker | worker | general-purpose, sonnet, low | lane `meter-contracts` | wave 1 | you | `lane-meter-contracts.md` |
-| palette-worker | worker | general-purpose, sonnet, medium | lane `meter-palette` | wave 2 | you | `lane-meter-palette.md` |
-| theme-worker | worker | general-purpose, sonnet, medium | lane `meter-theme` | wave 2 | you | `lane-meter-theme.md` |
-| categories-worker | worker | general-purpose, sonnet, medium | lane `meter-categories` | wave 2 | you | `lane-meter-categories.md` |
-| label-researcher | researcher | general-purpose, haiku, low | the assertion list | wave 2 | you | `agent-label-researcher.md` |
-| render-worker | integrator | general-purpose, opus, medium | lane `meter-render` | wave 3 | you | `lane-meter-render.md` |
+| contracts-worker | worker | harness default, sonnet, low | lane `meter-contracts` | wave 1 | you | `lane-meter-contracts.md` |
+| palette-worker | worker | harness default, sonnet, medium | lane `meter-palette` | wave 2 | you | `lane-meter-palette.md` |
+| theme-worker | worker | harness default, sonnet, medium | lane `meter-theme` | wave 2 | you | `lane-meter-theme.md` |
+| categories-worker | worker | harness default, sonnet, medium | lane `meter-categories` | wave 2 | you | `lane-meter-categories.md` |
+| label-researcher | researcher | harness default, haiku, low | the assertion list | wave 2 | you | `agent-label-researcher.md` |
+| render-worker | integrator | harness default, opus, medium | lane `meter-render` | wave 3 | you | `lane-meter-render.md` |
 
 ### Shared conventions
 
