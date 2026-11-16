@@ -328,21 +328,12 @@ async function settleStep(
 	await update($, ratio, () => ratioAfter);
 }
 
-/** Whether a catch-up's reads are under way, so each drawing until they land schedules no second set. */
-let catchingUp = false;
-
-/** Reads what the gauge lacks when it draws with no breakdown or no history read yet, as for a mod enabled mid-session; a catch-up begun while another is reading does nothing. */
+/** Reads what the gauge lacks when it draws with no breakdown or no history read yet, as for a mod enabled mid-session. */
 async function catchUp($: EngineInterface, w: Window): Promise<void> {
-	if (catchingUp) return;
-	catchingUp = true;
-	try {
-		await Promise.all([
-			refresh($),
-			unreadFor(w, "not-yet") ? readInto($) : undefined,
-		]);
-	} finally {
-		catchingUp = false;
-	}
+	await Promise.all([
+		refresh($),
+		unreadFor(w, "not-yet") ? readInto($) : undefined,
+	]);
 }
 
 /** Whether a drawing must catch up: no breakdown read, or no history read yet in an unmeasured window. */
