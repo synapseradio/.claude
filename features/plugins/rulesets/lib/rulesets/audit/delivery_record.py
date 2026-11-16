@@ -240,13 +240,11 @@ class ToolsLine:
 
 def agent_line(agent: str | Absent, reason: str) -> AgentLine | AbsentLine:
     """The agent fact, or `reason` for its absence."""
-
     return AbsentLine(reason) if isinstance(agent, Absent) else AgentLine(agent)
 
 
 def tools_line(facts: Facts, source: pathlib.Path | None, reason: str) -> ToolsLine | AbsentLine:
     """The tools fact with its definition file, or `reason` for its absence."""
-
     path = None if source is None else str(source)
     match facts.tools:
         case ListedTools(tools=tools):
@@ -383,7 +381,6 @@ class DeliveryRecord:
     @property
     def writer(self) -> str:
         """`session` for the session's own records, the delegate identifier for a delegate's."""
-
         return self.agent_id or "session"
 
     def to_json(self) -> dict[str, object]:
@@ -396,7 +393,6 @@ class DeliveryRecord:
     @classmethod
     def from_json(cls, source: Mapping[str, object]) -> DeliveryRecord:
         """The record a JSON object holds; `UnreadableRecord` where it is no delivery record."""
-
         state = source.get("session_state")
         switch = source.get("switch")
         return cls(

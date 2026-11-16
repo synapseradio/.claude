@@ -181,7 +181,7 @@ reader, and a block would stall a delegate on a question it cannot answer.
 `additionalContext` continues the subagent, and it travels the same loop
 protections a block does: the `stop_hook_active` input and the harness's cap
 of eight consecutive continuations, per
-https://code.claude.com/docs/en/hooks. So the relay group is sent on a first
+<https://code.claude.com/docs/en/hooks>. So the relay group is sent on a first
 pass and withheld once `stop_hook_active` is set. The first pass is the one
 the listing exists for — the delegate rewrites its report with the question
 surfaced — and re-sending it every pass is a loop, wasteful for all eight.
@@ -212,7 +212,7 @@ rule text, and `hooks/deliver-rule.py` hands it over at every start.
 On `SessionStart` the delivery entry in `hooks/hooks.json` has no matcher, so
 it runs on every source of a session start, compaction included. Injected
 context does not outlive a compaction, and each firing restores it, per
-https://code.claude.com/docs/en/hooks.
+<https://code.claude.com/docs/en/hooks>.
 
 It runs on `SubagentStart` too, and that half is not a courtesy. The
 verification pass matches literal tokens, so a spawned agent that was never

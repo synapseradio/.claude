@@ -33,7 +33,6 @@ def load_check(
     A rule's name is the stem of its pool file up to any `@`. The config is never read.
     A file named `CLAUDE.md` is expected whatever the pool holds.
     """
-
     names = read_pool(root).rules.keys()
     path = log.session_dir(locations, session_id) / log.LOADS_FILE
     return tuple(

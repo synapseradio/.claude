@@ -44,7 +44,6 @@ class RulesetsDirectory:
 
 def read_directory(root: pathlib.Path) -> RulesetsDirectory:
     """Read the pool and the config. A config that does not parse is a state, not a raise."""
-
     config: ConfigState
     if not (root / CONFIG_FILE).is_file():
         old_file = root / OLD_CONFIG_FILE

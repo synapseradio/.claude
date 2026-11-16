@@ -35,13 +35,11 @@ def stub(directory: pathlib.Path, name: str, minor: int, has_yaml: bool) -> None
 
 def path_of(directory: pathlib.Path) -> str:
     """A `PATH` that finds the stubs first. /usr/bin and /bin carry date and the shell's helpers."""
-
     return f"{directory}:/usr/bin:/bin"
 
 
 def launch(directory: pathlib.Path, *, announce: bool = False) -> subprocess.CompletedProcess[str]:
     """Run the launcher on a hook script with `PATH` holding the stubs; `announce` is a part-1 entry."""
-
     environment = {"PATH": path_of(directory), "HOME": str(directory)}
     flag = ["--announce"] if announce else []
     return subprocess.run(

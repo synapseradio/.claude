@@ -14,7 +14,6 @@ def counted(records: Iterable[DeliveryRecord]) -> tuple[DeliveryRecord, ...]:
     them counts, a failed one included. A record of a failed delivery never counts, for it
     delivered nothing. A switch record with no `prompt_id` counts, and so does every other record.
     """
-
     kept = list(records)
     last_of: dict[str, int] = {}
     for position, record in enumerate(kept):

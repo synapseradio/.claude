@@ -14,7 +14,6 @@ from rulesets.source.reference import RuleTarget
 
 def _held(entries: Iterable[tuple[str, str | None]], barred: Collection[str]) -> Held:
     """The entries as one variant per rule, a named variant winning, without the barred rules."""
-
     held: dict[str, str | None] = {}
     for rule, variant in entries:
         if rule not in barred and (variant is not None or rule not in held):
@@ -24,13 +23,11 @@ def _held(entries: Iterable[tuple[str, str | None]], barred: Collection[str]) ->
 
 def _safe_name(name: str) -> bool:
     """Whether a ruleset name makes a file directly inside the render folder."""
-
     return not (name.startswith(".") or "/" in name or "\\" in name)
 
 
 def _bases(directory: RulesetsDirectory) -> dict[str, Held]:
     """The rules each base render holds, by render name: defaults, all, and each declared ruleset."""
-
     barred = withheld(directory.pool)
     bases = {
         "defaults": _held(((r.rule, r.variant) for r in base_composition(directory).rules), barred),
@@ -47,7 +44,6 @@ def _bases(directory: RulesetsDirectory) -> dict[str, Held]:
 
 def _variants_added(directory: RulesetsDirectory) -> dict[str, set[str]]:
     """Each rule's variants that some add in the config names."""
-
     named: dict[str, set[str]] = {}
     if isinstance(directory.config, Present):
         for references in directory.config.config.written_lists():
@@ -60,7 +56,6 @@ def _variants_added(directory: RulesetsDirectory) -> dict[str, set[str]]:
 
 def render_tree(directory: RulesetsDirectory) -> Mapping[str, str]:
     """The renders of the tree by file name, with no block applied in any of them."""
-
     pool = directory.pool
     added = _variants_added(directory)
     tree: dict[str, str] = {}

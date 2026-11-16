@@ -18,7 +18,6 @@ def rerun_command(raw_payload: str, locations: Locations, hooks: pathlib.Path) -
     The payload goes to a file under the state directory; where that file cannot be written, the
     command carries the payload itself.
     """
-
     run = f"bash {shlex.quote(str(hooks / 'with-python.sh'))} {shlex.quote(str(hooks / 'deliver.py'))} --part 1 {RERUN_FLAG}"
     name = hashlib.sha256(raw_payload.encode("utf-8")).hexdigest()[:16]
     path = locations.state / "payloads" / f"{name}.json"

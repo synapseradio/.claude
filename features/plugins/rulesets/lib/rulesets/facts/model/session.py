@@ -23,7 +23,6 @@ def resolve_session_model(
     The first source that names an identifier stands, claimed or not. A reported value that is
     not a string leaves the model missing and passes to no later source.
     """
-
     fact = _session_fact(payload, models, env, state_dir)
     if isinstance(fact.source, FromVariable):
         return ModelResolution(fact, disregarded_variable_notices(env, fact.source.name))
@@ -60,5 +59,4 @@ def resolve_switch_model(
     models: Iterable[str],
 ) -> ModelResolution:
     """The model fact for the delivery that follows a model switch: the switch's target."""
-
     return ModelResolution(claim_model(payload.get("to_model"), "switch-target", models), ())

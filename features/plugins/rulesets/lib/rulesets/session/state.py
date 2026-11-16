@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+import pathlib
 from collections.abc import Mapping
 
 import yaml
@@ -31,15 +32,13 @@ class SessionState:
     flags: Mapping[str, FlagSetting] = dataclasses.field(default_factory=dict)
 
 
-def state_path(locations: Locations, session_id: str):
+def state_path(locations: Locations, session_id: str) -> pathlib.Path:
     """The file a session's state is kept in, whether or not it exists."""
-
     return locations.state / "session" / f"{session_id}.yaml"
 
 
 def read_state(locations: Locations, session_id: str) -> SessionState:
     """The state a session wrote; a missing file reads as the empty state."""
-
     path = state_path(locations, session_id)
     if not path.is_file():
         return SessionState()
@@ -51,7 +50,6 @@ def read_state(locations: Locations, session_id: str) -> SessionState:
 
 def write_state(locations: Locations, session_id: str, state: SessionState) -> None:
     """Write the state by replacing the file in one step."""
-
     path = state_path(locations, session_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     document: dict[str, object] = {}
@@ -66,5 +64,4 @@ def write_state(locations: Locations, session_id: str, state: SessionState) -> N
 
 def remove_state(locations: Locations, session_id: str) -> None:
     """Remove the session's state file; a session with none stays as it is."""
-
     state_path(locations, session_id).unlink(missing_ok=True)

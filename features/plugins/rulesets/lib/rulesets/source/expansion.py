@@ -123,14 +123,12 @@ class Expansion:
     @property
     def without_conflicts(self) -> tuple[Entry, ...]:
         """The entries without those that set a variant of a conflicted rule."""
-
         conflicted = {entry for conflict in self.conflicts for entry in conflict.entries}
         return tuple(entry for entry in self.entries if entry not in conflicted)
 
 
 def _named_ruleset(reference: Reference) -> str | None:
     """The set a reference reads from: the one it spreads, or the one a `set.rule` names."""
-
     match reference.target:
         case SpreadTarget(ruleset) | RuleTarget(ruleset=str() as ruleset):
             return ruleset
@@ -140,7 +138,6 @@ def _named_ruleset(reference: Reference) -> str | None:
 
 def _cycles(lists: Mapping[str, Sequence[Reference]]) -> dict[str, tuple[str, ...]]:
     """Each list that sits in a cycle of spreads, with the sorted names of its cycle."""
-
     edges = {
         name: [
             held
@@ -186,7 +183,7 @@ class Expander:
 
     def __init__(
         self, lists: Mapping[str, Sequence[Reference]], rules: Mapping[str, Collection[str]]
-    ):
+    ) -> None:
         self._lists = lists
         self._rules = rules
         self._cycles = _cycles(lists)
@@ -194,7 +191,6 @@ class Expander:
 
     def cycle_of(self, name: str) -> tuple[str, ...]:
         """The sorted names of the cycle of spreads that holds the list, or ()."""
-
         return self._cycles.get(name, ())
 
     def route_to(self, ruleset: str, rule: str) -> tuple[str, ...]:
@@ -203,7 +199,6 @@ class Expander:
         A ruleset that is reserved, undeclared, or in a cycle, or that holds no add of the rule,
         ends the route.
         """
-
         if ruleset not in self._lists or ruleset in self._cycles:
             return (ruleset,)
         held = next(
@@ -247,12 +242,10 @@ class Expander:
 
     def _held(self, ruleset: str, rule: str) -> tuple[str | None, ...]:
         """The variants at which a set yields a rule, empty where it yields none."""
-
         return tuple(variant for held, variant in self._spread(ruleset) if held == rule)
 
     def problems_reached(self, references: Sequence[Reference]) -> tuple[ReferenceProblem, ...]:
         """The problems of a list and of every ruleset it spreads, each ruleset counted once."""
-
         found: list[ReferenceProblem] = []
         pending = [references]
         seen: set[str] = set()
@@ -273,7 +266,6 @@ class Expander:
 
     def expand(self, references: Sequence[Reference]) -> Expansion:
         """Expand one list, applying every remove after every add."""
-
         adds: list[Entry] = []
         removals: list[Removal] = []
         problems: list[ReferenceProblem] = []

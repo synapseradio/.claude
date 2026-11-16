@@ -12,7 +12,6 @@ def statements(applied: tuple[AppliedList, ...], expander: Expander) -> tuple[St
 
     Each remove excludes the rules it reaches, or strikes the variant it names.
     """
-
     made: list[Statement] = []
     for applying in applied:
         expansion = expander.expand(applying.references)

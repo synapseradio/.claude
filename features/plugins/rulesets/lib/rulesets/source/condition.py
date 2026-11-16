@@ -30,7 +30,7 @@ _TOKEN = re.compile(r"[()]|[^\s()]+")
 class ConditionError(Exception):
     """Text that is no condition, or a condition that tests more than facts."""
 
-    def __init__(self, reason: str):
+    def __init__(self, reason: str) -> None:
         super().__init__(reason)
         self.reason = reason
 
@@ -68,7 +68,7 @@ def _is_value(token: str | None) -> bool:
 class _Reader:
     """Recursive descent over the tokens of one condition, loosest operator first."""
 
-    def __init__(self, tokens: list[str]):
+    def __init__(self, tokens: list[str]) -> None:
         self._tokens = tokens
         self._at = 0
 
@@ -82,14 +82,15 @@ class _Reader:
 
     def condition(self) -> Condition:
         if not self._tokens:
-            raise ConditionError("the condition is empty")
+            msg = "the condition is empty"
+            raise ConditionError(msg)
         parsed = self._or()
         if (token := self._peek()) is not None:
             if token == ")":
-                raise ConditionError(
-                    "a closing parenthesis has no opening one; parentheses must balance"
-                )
-            raise ConditionError(f"expected `and` or `or` before `{token}`")
+                msg = "a closing parenthesis has no opening one; parentheses must balance"
+                raise ConditionError(msg)
+            msg = f"expected `and` or `or` before `{token}`"
+            raise ConditionError(msg)
         return parsed
 
     def _or(self) -> Condition:
@@ -115,41 +116,43 @@ class _Reader:
     def _primary(self) -> Condition:
         token = self._peek()
         if token is None:
-            raise ConditionError("the condition ends where a test was expected")
+            msg = "the condition ends where a test was expected"
+            raise ConditionError(msg)
         if token == "(":
             self._take()
             inner = self._or()
             if self._peek() != ")":
-                raise ConditionError(
-                    "an opening parenthesis has no closing one; parentheses must balance"
-                )
+                msg = "an opening parenthesis has no closing one; parentheses must balance"
+                raise ConditionError(msg)
             self._take()
             return inner
         if token not in FACTS:
             if token in _KEYWORDS or token == ")":
-                raise ConditionError(f"expected a test, found `{token}`")
-            raise ConditionError(f"`{token}` tests no fact; a condition tests {', '.join(FACTS)}")
+                msg = f"expected a test, found `{token}`"
+                raise ConditionError(msg)
+            msg = f"`{token}` tests no fact; a condition tests {', '.join(FACTS)}"
+            raise ConditionError(msg)
         self._take()
         value = self._peek()
         if not _is_value(value):
             found = "the end of the condition" if value is None else f"`{value}`"
-            raise ConditionError(f"`{token}` needs a name, found {found}")
+            msg = f"`{token}` needs a name, found {found}"
+            raise ConditionError(msg)
         tests: list[Condition] = []
         while _is_value(value := self._peek()):
             if value in FACTS and tests and not (token == "kind" and value in _KIND_TESTS):
-                raise ConditionError(f"expected `and` or `or` before `{value}`")
+                msg = f"expected `and` or `or` before `{value}`"
+                raise ConditionError(msg)
             self._take()
             if token == "kind" and value not in _KIND_TESTS:
-                raise ConditionError(
-                    f"`kind {value}` is no kind; kind tests session, delegate, or any"
-                )
+                msg = f"`kind {value}` is no kind; kind tests session, delegate, or any"
+                raise ConditionError(msg)
             tests.append(FactTest(token, value))
         return functools.reduce(Or, tests)
 
 
 def parse_condition(text: str) -> Condition:
     """Parse the text of a condition. Raises ConditionError where it is no condition of facts."""
-
     return _Reader(_TOKEN.findall(text)).condition()
 
 
@@ -190,7 +193,6 @@ class Truth(Enum):
 
 def evaluate_with(condition: Condition, truth_of: Callable[[FactTest], Truth]) -> Truth:
     """Three-valued evaluation where `truth_of` says what one fact test evaluates to."""
-
     match condition:
         case FactTest():
             return truth_of(condition)
@@ -243,7 +245,6 @@ def _known_equal(fact: str | Absent, name: str) -> Truth:
 
 def fact_tests(condition: Condition) -> tuple[FactTest, ...]:
     """Every fact test in the condition, in reading order, a repeated test repeated."""
-
     match condition:
         case FactTest():
             return (condition,)

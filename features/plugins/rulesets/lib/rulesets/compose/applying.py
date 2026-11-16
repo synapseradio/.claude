@@ -35,7 +35,6 @@ class SkippedBlock:
 
 def skipped_blocks(directory: RulesetsDirectory) -> tuple[SkippedBlock, ...]:
     """The blocks delivery skips for naming an undeclared model or flag."""
-
     if not isinstance(directory.config, Present):
         return ()
     skipped: list[SkippedBlock] = []
@@ -61,7 +60,6 @@ def applying_lists(
 
     A config that is missing or does not parse applies one list, the spread of every rule.
     """
-
     match directory.config:
         case Present(config):
             applied = [

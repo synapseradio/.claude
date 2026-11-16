@@ -24,7 +24,6 @@ class LoadRecord:
     @classmethod
     def from_payload(cls, payload: object) -> LoadRecord:
         """The record an InstructionsLoaded payload holds; `UnreadableRecord` where it holds none."""
-
         source = fields.document(payload, "the payload")
         return cls(
             session_id=_nonempty(source, "session_id"),
@@ -35,14 +34,15 @@ class LoadRecord:
     @classmethod
     def from_json(cls, source: Mapping[str, object]) -> LoadRecord:
         """The record a JSON object holds; `UnreadableRecord` where it is no load record."""
-
         if fields.text(source, "kind") != KIND:
-            raise fields.UnreadableRecord("the record is not a load record")
+            msg = "the record is not a load record"
+            raise fields.UnreadableRecord(msg)
         return cls.from_payload(source)
 
 
 def _nonempty(source: fields.Document, key: str) -> str:
     value = fields.text(source, key)
     if not value:
-        raise fields.UnreadableRecord(f"`{key}` is empty")
+        msg = f"`{key}` is empty"
+        raise fields.UnreadableRecord(msg)
     return value

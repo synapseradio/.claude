@@ -34,7 +34,6 @@ def read_definitions(agents: pathlib.Path) -> tuple[AgentDefinition, ...]:
 
     A definition registers under its `name` field, or under its file name where it names none.
     """
-
     found: list[AgentDefinition] = []
     for path in sorted(agents.rglob("*.md")) if agents.is_dir() else ():
         split = split_frontmatter(path.read_bytes().decode("utf-8", errors="replace"))
@@ -55,7 +54,6 @@ def exclusion_blocks(
     definitions: Iterable[AgentDefinition], rules: Collection[str]
 ) -> tuple[Block, ...]:
     """One block per agent, keyed on the agent, excluding each excluded stem the pool holds."""
-
     blocks: list[Block] = []
     for definition in definitions:
         excluded = tuple(stem for stem in definition.excluded if stem in rules)

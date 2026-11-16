@@ -20,7 +20,6 @@ class Body:
     @property
     def delivered(self) -> str:
         """The text a context receives for the rule: its marker, a blank line, then the body."""
-
         return delivered(self.rule, self.text)
 
 
@@ -32,13 +31,11 @@ class Part:
     @property
     def text(self) -> str:
         """The text the part's hook entry delivers."""
-
         return "".join(body.delivered for body in self.bodies)
 
 
 def pack_parts(bodies: tuple[Body, ...]) -> tuple[Part, ...]:
     """Fill each part in order up to the budget, counting each marker; no body outgrows the budget."""
-
     groups: list[list[Body]] = []
     size = 0
     for body in bodies:

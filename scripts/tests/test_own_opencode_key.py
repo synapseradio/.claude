@@ -60,7 +60,7 @@ def _targets(tmp_path: pathlib.Path) -> projection.Targets:
 
 
 class TestRuleInstructions:
-    def test_names_each_unconditional_rule_under_home(self, tmp_path):
+    def test_names_each_unconditional_rule_under_home(self, tmp_path) -> None:
         targets = _targets(tmp_path)
 
         listed = key_owner.rule_instructions(targets.rulesets_dir)
@@ -77,7 +77,7 @@ class TestAHandWrittenFileWithOneOwnedKey:
     Scenario: A hand-written file with one owned key.
     """
 
-    def test_owned_key_rewrites_and_every_other_key_and_its_order_survive(self, tmp_path):
+    def test_owned_key_rewrites_and_every_other_key_and_its_order_survive(self, tmp_path) -> None:
         targets = _targets(tmp_path)
         hand_written = {
             "$schema": "https://opencode.ai/config.json",
@@ -110,7 +110,6 @@ class TestAHandWrittenFileWithOneOwnedKey:
 
 def _git(repo: pathlib.Path, *args: str) -> None:
     """Run one git command in `repo`, with the user's hooks and signing off."""
-
     subprocess.run(
         ["git", "-C", str(repo), "-c", "core.hooksPath=", "-c", "commit.gpgsign=false", *args],
         check=True,
@@ -124,7 +123,6 @@ def _committed(tmp_path: pathlib.Path) -> projection.Targets:
     The repository opens at `tmp_path`, so the opencode configuration sits
     inside it and an edit there is work git can report.
     """
-
     targets = _targets(tmp_path)
     assert key_owner.main([], targets=targets) == 0
     _git(tmp_path, "init", "-q")
@@ -144,7 +142,7 @@ class TestCheckModeReportsDrift:
     these read is a rule the list does not name.
     """
 
-    def test_check_exits_zero_when_the_key_matches(self, tmp_path):
+    def test_check_exits_zero_when_the_key_matches(self, tmp_path) -> None:
         targets = _targets(tmp_path)
         key_owner.main([], targets=targets)
 
@@ -152,7 +150,7 @@ class TestCheckModeReportsDrift:
             "a key this job just wrote from these rules is by definition in sync"
         )
 
-    def test_check_names_the_key_and_its_file_after_a_rule_is_added(self, tmp_path, capsys):
+    def test_check_names_the_key_and_its_file_after_a_rule_is_added(self, tmp_path, capsys) -> None:
         targets = _targets(tmp_path)
         key_owner.main([], targets=targets)
         written = targets.opencode_config.read_text(encoding="utf-8")
@@ -171,7 +169,7 @@ class TestCheckModeReportsDrift:
             "a check reports a difference without repairing it"
         )
 
-    def test_check_exits_nonzero_when_the_file_does_not_exist(self, tmp_path):
+    def test_check_exits_nonzero_when_the_file_does_not_exist(self, tmp_path) -> None:
         targets = _targets(tmp_path)
 
         assert key_owner.main(["--check"], targets=targets) != 0, (
@@ -179,7 +177,9 @@ class TestCheckModeReportsDrift:
         )
         assert not targets.opencode_config.exists(), "a check writes nothing, the file included"
 
-    def test_check_reports_drift_rather_than_refusing_on_a_dirty_file(self, tmp_path, capsys):
+    def test_check_reports_drift_rather_than_refusing_on_a_dirty_file(
+        self, tmp_path, capsys
+    ) -> None:
         targets = _committed(tmp_path)
         _write(targets.opencode_config, json.dumps({"instructions": ["hand-edited.md"]}) + "\n")
         capsys.readouterr()
@@ -195,7 +195,7 @@ class TestCheckModeReportsDrift:
 
 
 class TestBuildPlan:
-    def test_opencode_instructions_list_the_unconditional_rules(self, tmp_path):
+    def test_opencode_instructions_list_the_unconditional_rules(self, tmp_path) -> None:
         targets = _targets(tmp_path)
 
         plan = key_owner.build_plan(targets)
@@ -206,7 +206,7 @@ class TestBuildPlan:
             "every rule that loads each session must reach opencode"
         )
 
-    def test_opencode_instructions_exclude_a_path_scoped_rule(self, tmp_path):
+    def test_opencode_instructions_exclude_a_path_scoped_rule(self, tmp_path) -> None:
         targets = _targets(tmp_path)
 
         plan = key_owner.build_plan(targets)

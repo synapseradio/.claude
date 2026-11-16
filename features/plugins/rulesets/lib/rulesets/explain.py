@@ -64,7 +64,6 @@ def _opening_with(winner: Statement | None, rows: list[Statement]) -> tuple[Stat
 
 def explain(directory: RulesetsDirectory, rule: str, facts: Facts) -> Explanation | UnknownRule:
     """Trace `rule` through the context `facts` names, with no session state."""
-
     if rule not in directory.pool.rules:
         return UnknownRule(rule)
     about = tuple(s for s in context_statements(directory, facts, SessionState()) if s.rule == rule)
@@ -145,7 +144,6 @@ def _cells(label: str, statement: Statement, explanation: Explanation) -> tuple[
 
 def _variant_label(row: Statement, explanation: Explanation) -> str:
     """What a line of the variant attribute did: won, conflicted, struck, struck a variant, or lost."""
-
     outcome = explanation.variant
     if row is outcome.winner:
         return "wins"
@@ -174,7 +172,6 @@ def _table(rows: list[tuple[str, ...]]) -> list[str]:
 
 def format_explanation(explanation: Explanation) -> list[str]:
     """The printed lines: the rule and context, then inclusion, then variant, then any withholding."""
-
     outcome = explanation.variant
     on = isinstance(explanation.inclusion, Included)
     lines = [f"rule {explanation.rule}    context: {_context_words(explanation.facts)}"]

@@ -30,7 +30,6 @@ def spawn_model(
     that claims nothing reads every matching record: one model names the caller's, and
     different models raise `per-spawn-ambiguous` and name none.
     """
-
     missing = [
         field
         for field, value in (

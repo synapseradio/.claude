@@ -34,7 +34,6 @@ class _Block:
 
 def check_conflicts(directory: RulesetsDirectory) -> tuple[CheckError, ...]:
     """One error for each rule two blocks set to different variants at one position."""
-
     if not isinstance(directory.config, Present):
         return ()
     config = directory.config.config
@@ -65,7 +64,6 @@ def _stands_in_some_context(
 
     A strike at the conflict's position or above removes its variant from the position's sets.
     """
-
     variants = {s.says.variant for s in conflict.statements if isinstance(s.says, Adds)}
     wanted: Condition = And(first.condition, second.condition)
     for block in others:

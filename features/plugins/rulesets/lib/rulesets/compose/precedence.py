@@ -36,7 +36,6 @@ class Position:
 
 def position(band: PositionBand, rank: Rank, source: Reference) -> Position:
     """The position of a statement a reference makes in a list standing at `band` and `rank`."""
-
     reach = Reach.NAMED if isinstance(source.target, RuleTarget) else Reach.THROUGH_RULESET
     return Position(band, rank, reach)
 
@@ -99,7 +98,6 @@ def _by_strength(statement: Statement) -> tuple[Position, bool]:
 
 def inclusion_statements(statements: tuple[Statement, ...]) -> tuple[Statement, ...]:
     """The adds and removes about a rule, from the weakest to the strongest, ties in written order."""
-
     return tuple(
         sorted(
             (s for s in statements if isinstance(s.says, Adds | Removes)),
@@ -110,7 +108,6 @@ def inclusion_statements(statements: tuple[Statement, ...]) -> tuple[Statement, 
 
 def inclusion(statements: tuple[Statement, ...]) -> Inclusion:
     """The highest position decides, and an exclude beats an include at one position."""
-
     deciding = inclusion_statements(statements)
     if not deciding:
         return Unreached()
@@ -129,8 +126,10 @@ class VariantConflict:
 
 @dataclasses.dataclass(frozen=True)
 class VariantOutcome:
-    """The variant a rule takes (None: the default form), the add that set it, and the conflict
-    delivery fell back from."""
+    """The variant a rule takes, the add that set it, and the conflict delivery fell back from.
+
+    A variant of None is the default form.
+    """
 
     variant: str | None
     conflict: VariantConflict | None
@@ -155,7 +154,6 @@ class _Layer:
 
 def _layers(statements: tuple[Statement, ...]) -> list[_Layer]:
     """The positions of the statements, highest first, each with its standing sets."""
-
     layers: list[_Layer] = []
     struck: set[str] = set()
     for where in sorted({statement.position for statement in statements}, reverse=True):
@@ -178,7 +176,6 @@ def _conflict(rule: str, layer: _Layer) -> VariantConflict:
 
 def conflicts(statements: tuple[Statement, ...]) -> tuple[VariantConflict, ...]:
     """Every position of one rule's statements where the standing sets name different variants."""
-
     return tuple(
         _conflict(statements[0].rule, layer)
         for layer in _layers(statements)
@@ -192,7 +189,6 @@ def variant(statements: tuple[Statement, ...]) -> VariantOutcome:
     A position whose sets disagree is a conflict. The highest one is reported, and the rule
     takes the variant of the next position down whose sets agree.
     """
-
     found: VariantConflict | None = None
     for layer in _layers(statements):
         if len(layer.variants) > 1:

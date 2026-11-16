@@ -81,7 +81,6 @@ def default_rules(rulesets_dir: Path) -> list[Path]:
     harness loads a rule carrying `paths:` only once a matching file enters play, so listing
     it here would put its text in every prompt and a second copy in a matching one.
     """
-
     return [
         rule.default.path
         for rule in read_pool(rulesets_dir).rules.values()
@@ -96,11 +95,11 @@ def agent_source(agents_dir: Path, name: str) -> Path:
     and the source is what the name has to reach. The error carries the names
     that do resolve, so a misspelling is fixed from the message.
     """
-
     source = agents_dir / f"{name}.md"
     if not source.is_file():
         held = tuple(sorted(child.stem for child in agents_dir.glob("*.md")))
-        raise ValueError(f"{name!r} names no agent source under {agents_dir}: {held}")
+        msg = f"{name!r} names no agent source under {agents_dir}: {held}"
+        raise ValueError(msg)
     return source
 
 
@@ -240,7 +239,6 @@ class Plan:
 
 def _reorder(data: dict, key: str, value: object, after: str) -> dict:
     """`data` with `key` set to `value`, placed after `after` when new."""
-
     if key in data:
         return {name: (value if name == key else held) for name, held in data.items()}
     reordered: dict = {}

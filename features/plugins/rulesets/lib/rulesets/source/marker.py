@@ -18,7 +18,6 @@ class Marker:
 
 def marker(rule: str, variant: str | None) -> str:
     """The marker line for a rule's default form (`variant` None) or for one of its variants."""
-
     if variant is None:
         return f"<!-- rule: {rule} -->"
     return f"<!-- rule: {rule} variant: {variant} -->"
@@ -26,7 +25,6 @@ def marker(rule: str, variant: str | None) -> str:
 
 def read_marker(line: str) -> Marker | None:
     """The marker a line is, or None where it is any other line."""
-
     found = _MARKER.fullmatch(line.rstrip())
     if found is None:
         return None
@@ -35,5 +33,4 @@ def read_marker(line: str) -> Marker | None:
 
 def delivered(rule: str, text: str) -> str:
     """A rule's text as delivery puts it into a context: the rule's marker, a blank line, the text."""
-
     return f"{marker(rule, None)}\n\n{text}"

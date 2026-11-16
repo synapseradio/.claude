@@ -35,7 +35,6 @@ def deliver_switch(
     A switch under a `prompt_id` that an earlier switch record carries always delivers, for only
     its own record can replace the earlier one.
     """
-
     request = dataclasses.replace(request, agent=read_launch_agent(locations, request.session_id))
     if (
         request.from_model is not None
@@ -55,7 +54,6 @@ def _composes_alike(request: ModelSwitch, locations: Locations, environ: Mapping
 
     Where the log holds no such delivery, the origin model's composition stands for it.
     """
-
     directory = read_directory(locations.rulesets)
 
     def composed(side: ModelSwitch) -> tuple[RuleKey, ...]:

@@ -25,7 +25,6 @@ from rulesets.check.findings import (
 
 def _describe_subject(subject: Subject) -> str:
     """The subject in outward words."""
-
     match subject:
         case RuleSubject(name):
             return f"rule `{name}`"
@@ -68,7 +67,6 @@ def _describe_subject(subject: Subject) -> str:
 
 def finding_line(finding: CheckError | CheckWarning) -> str:
     """`file:line: severity [kind] subject: message`, with the line left out where none applies."""
-
     severity = "error" if isinstance(finding, CheckError) else "warning"
     location = f"{finding.file}:{finding.line}" if finding.line is not None else str(finding.file)
     subject = _describe_subject(finding.subject)
@@ -77,5 +75,4 @@ def finding_line(finding: CheckError | CheckWarning) -> str:
 
 def report_lines(report: Report) -> list[str]:
     """Every error, then every warning."""
-
     return [finding_line(finding) for finding in (*report.errors, *report.warnings)]

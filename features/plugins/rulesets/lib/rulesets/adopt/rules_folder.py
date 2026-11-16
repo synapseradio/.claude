@@ -20,7 +20,6 @@ class RulesFolder:
 
 def read_rules_folder(path: pathlib.Path) -> RulesFolder:
     """Read every `*.md` file directly inside `path`."""
-
     rules: dict[str, pathlib.Path] = {}
     skipped: list[Skipped] = []
     for file in sorted(path.glob("*.md")):

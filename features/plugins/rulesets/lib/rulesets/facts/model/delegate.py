@@ -43,7 +43,6 @@ def resolve_delegate_model(
     gives the parent's identifier, the subagent lever the default variable's or, where it is
     empty, the parent's.
     """
-
     session_id = _text(payload.get("session_id"))
     agent_type = _text(payload.get("agent_type"))
     cwd = _text(payload.get("cwd"))
@@ -81,7 +80,6 @@ def resolve_delegate_model(
 
 def _from_agent(agent: AgentModel, parent: str | None, env: Mapping[str, str]) -> Candidate:
     """What the agent's definition or built-in entry leaves of the three later sources."""
-
     match agent:
         case Inherit():
             return parent, "parent-record"

@@ -21,7 +21,6 @@ def skipped_references(
     applied: tuple[AppliedList, ...], expander: Expander
 ) -> tuple[SkippedReference, ...]:
     """The references of the applying lists that name something undeclared, once each."""
-
     found: dict[tuple[str, int], SkippedReference] = {}
     for applying in applied:
         for problem in expander.problems_reached(applying.references):

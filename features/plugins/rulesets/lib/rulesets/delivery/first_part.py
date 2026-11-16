@@ -62,7 +62,6 @@ def deliver_first(
     `prior_notices` are the notices a model switch already drew. The plan is written last, so a
     delivery that fails earlier leaves no plan for a later part to emit.
     """
-
     scope: Scope
     match request:
         case SessionStart():

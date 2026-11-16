@@ -30,7 +30,6 @@ def hook_output(event: str, part: PartOutput) -> str:
 
     An empty output stands for a part with nothing to say.
     """
-
     output: dict[str, object] = {}
     if part.context:
         output["hookSpecificOutput"] = {"hookEventName": event, "additionalContext": part.context}

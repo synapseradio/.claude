@@ -14,6 +14,5 @@ type Held = Mapping[str, str | None]
 
 def render_held(held: Held, pool: Pool) -> str:
     """The render of `held`, rules sorted by name."""
-
     rules = tuple(DeliveredRule(rule, variant) for rule, variant in sorted(held.items()))
     return render_context(Composition(rules=rules, conflicts=()), pool)

@@ -11,7 +11,6 @@ from rulesets.source.pool import Pool
 
 def withheld(pool: Pool) -> Mapping[str, str]:
     """Each rule with a pool error, with the first error's file and message."""
-
     found: dict[str, str] = {}
     for error in pool_errors(pool):
         if isinstance(error.subject, RuleSubject):

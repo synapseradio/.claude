@@ -18,19 +18,16 @@ EMITTED_PATTERN = "emitted-*.jsonl"
 
 def session_dir(locations: Locations, session_id: str) -> pathlib.Path:
     """The directory holding one session's records, the spawn log's among them."""
-
     return spawn_log.session_dir(session_id, locations.state)
 
 
 def emitted_file(locations: Locations, session_id: str, part: int) -> pathlib.Path:
     """The file part `part` of a session's deliveries appends its records to."""
-
     return session_dir(locations, session_id) / f"emitted-{part}.jsonl"
 
 
 def append(path: pathlib.Path, record: dict[str, object]) -> None:
     """Add one record as a line at the end of the file, creating the directory."""
-
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record) + "\n")
@@ -38,7 +35,6 @@ def append(path: pathlib.Path, record: dict[str, object]) -> None:
 
 def read(path: pathlib.Path) -> list[dict[str, object]]:
     """The JSON objects of a file's lines in file order; a line that is no JSON object is skipped."""
-
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError:
@@ -58,7 +54,6 @@ def read_as[Record](
     path: pathlib.Path, parse: Callable[[Mapping[str, object]], Record]
 ) -> list[Record]:
     """The records `parse` reads from a file's lines; a line it cannot read is not a record of this kind."""
-
     records: list[Record] = []
     for document in read(path):
         try:
@@ -74,7 +69,6 @@ def prune(locations: Locations, older_than: float) -> tuple[str, ...]:
     `older_than` is a time in seconds since the epoch. The sessions removed come back sorted.
     A session's model record sits outside the log, so no removal touches it.
     """
-
     root = spawn_log.audit_dir(locations.state)
     if not root.is_dir():
         return ()

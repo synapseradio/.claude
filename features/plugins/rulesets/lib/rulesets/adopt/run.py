@@ -39,7 +39,6 @@ class Adopted:
 
 def _refusal(source: pathlib.Path, out: pathlib.Path) -> str | None:
     """Why `out` cannot take the output: it is the source, lies inside it, or already holds files."""
-
     resolved_source, resolved_out = source.resolve(), out.resolve()
     if resolved_out == resolved_source or resolved_out.is_relative_to(resolved_source):
         return f"the output directory {out} is the source or lies inside it"
@@ -55,7 +54,6 @@ def adopt(
 
     The source and the agent definitions are read and never written.
     """
-
     if (reason := _refusal(source, out)) is not None:
         return Refused(reason)
     try:

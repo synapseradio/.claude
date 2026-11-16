@@ -14,7 +14,6 @@ def on_session_start(request: SessionStart, locations: Locations) -> None:
     A resume ends it because a session that crashed sent no SessionEnd. Every start records
     the agent the session launched under, for the switches that follow.
     """
-
     write_launch_agent(locations, request.session_id, request.agent)
     match request.source:
         case "clear" | "resume":
@@ -23,5 +22,4 @@ def on_session_start(request: SessionStart, locations: Locations) -> None:
 
 def on_session_end(request: SessionEnd, locations: Locations) -> None:
     """The session's state ends with the session."""
-
     remove_state(locations, request.session_id)

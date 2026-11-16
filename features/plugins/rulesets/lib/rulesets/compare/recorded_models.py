@@ -10,7 +10,6 @@ from rulesets.locations import Locations
 
 def recorded_identifiers(locations: Locations) -> tuple[str, ...]:
     """Each identifier a delivery record names, once, in session then file order."""
-
     root = spawn_log.audit_dir(locations.state)
     if not root.is_dir():
         return ()

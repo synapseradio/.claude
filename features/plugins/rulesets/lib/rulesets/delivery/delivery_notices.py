@@ -33,7 +33,6 @@ def directory_notices(
     root: pathlib.Path,
 ) -> tuple[Notice, ...]:
     """What the directory's state says: a scaffold's outcome, or why a config is not read."""
-
     match scaffolded:
         case Scaffolded():
             return (scaffolded_notice(str(root)),)
@@ -58,7 +57,6 @@ def directory_notices(
 
 def composition_notices(composition: Composition) -> tuple[Notice, ...]:
     """What the composition skipped, withheld, or settled by fallback."""
-
     return (
         *(block_skipped_notice(b.condition, b.undeclared) for b in composition.skipped_blocks),
         *(reference_notice(s.text, s.line, s.name) for s in composition.skipped),
@@ -76,7 +74,6 @@ def composition_notices(composition: Composition) -> tuple[Notice, ...]:
 
 def shown_message(event: str, notices: tuple[Notice, ...]) -> str | None:
     """The shown notices as one message, or None where none is shown or the event shows none."""
-
     shown = [notice.subject for notice in notices if notice.kind in SHOWN]
     if not shown or not MESSAGE_SHOWN[event]:
         return None

@@ -33,7 +33,6 @@ def cross_reference_warnings(pool: Pool) -> tuple[CheckWarning, ...]:
     A rule's files are searched default form first, then by variant, and a first-line marker is
     no mention.
     """
-
     patterns = {name: _reference_forms(name) for name in pool.rules}
     warnings: list[CheckWarning] = []
     for rule in pool.rules.values():

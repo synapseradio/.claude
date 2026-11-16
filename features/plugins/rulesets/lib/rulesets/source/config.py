@@ -147,7 +147,7 @@ type ShapeProblem = (
 class ConfigParseError(Exception):
     """The config cannot be read as text, is not YAML, or is not a mapping of keys."""
 
-    def __init__(self, path: pathlib.Path, line: int | None, reason: str):
+    def __init__(self, path: pathlib.Path, line: int | None, reason: str) -> None:
         where = f"{path}:{line}" if line is not None else str(path)
         super().__init__(f"{where}: {reason}")
         self.path = path
@@ -173,7 +173,6 @@ class Config:
 
     def spreadable(self) -> dict[str, tuple[Reference, ...]]:
         """Each list a spread can name, by name: the declared sets and `defaults`."""
-
         named = {name: ruleset.references for name, ruleset in self.rulesets.items()}
         if self.defaults is not None:
             named["defaults"] = self.defaults.references
@@ -181,7 +180,6 @@ class Config:
 
     def written_lists(self) -> Iterator[tuple[Reference, ...]]:
         """Every list the config writes, in file order: defaults, each set, each block."""
-
         if self.defaults is not None:
             yield self.defaults.references
         for ruleset in self.rulesets.values():
@@ -206,7 +204,6 @@ def _is_null(node: yaml.Node) -> bool:
 
 def _words(node: yaml.ScalarNode, text: str) -> Iterator[tuple[str, int]]:
     """Each word of a scalar with the file line it sits on, as written in the source."""
-
     if _is_null(node):
         return
     if node.style is not None:
@@ -223,7 +220,6 @@ def _unique_pairs(
     node: yaml.MappingNode, text: str
 ) -> tuple[list[tuple[str, yaml.Node, yaml.Node]], list[DuplicateKey]]:
     """The pairs of a mapping whose key text is written once, and a problem per repeated key."""
-
     lines: dict[str, list[int]] = {}
     for key, _ in node.value:
         lines.setdefault(_key_text(key, text), []).append(_line(key))
@@ -237,7 +233,7 @@ def _unique_pairs(
 
 
 class _Reader:
-    def __init__(self, text: str):
+    def __init__(self, text: str) -> None:
         self._text = text
         self.problems: list[ShapeProblem] = []
         self.blocks: list[Block] = []
@@ -248,7 +244,6 @@ class _Reader:
 
     def words(self, node: yaml.Node, key: str) -> tuple[str, ...] | None:
         """The words of a list value: none for a sequence, which draws a problem; None for a mapping."""
-
         if isinstance(node, yaml.ScalarNode):
             return tuple(word for word, _ in _words(node, self._text))
         if isinstance(node, yaml.SequenceNode):
@@ -266,7 +261,6 @@ class _Reader:
 
     def include_exclude(self, node: yaml.MappingNode, key: str) -> tuple[Reference, ...] | None:
         """The list a mapping of `include` and `exclude` forms, or None where it holds another key."""
-
         pairs, duplicates = _unique_pairs(node, self._text)
         self.problems.extend(duplicates)
         if any(name not in BLOCK_LIST_KEYS for name, _, _ in pairs):
@@ -278,7 +272,6 @@ class _Reader:
 
     def ruleset_list(self, node: yaml.Node, key: str) -> tuple[Reference, ...] | None:
         """The list `defaults` or a set holds: words it includes, or `include` and `exclude`."""
-
         if isinstance(node, yaml.ScalarNode):
             return self.references(node, key, remove=False)
         if isinstance(node, yaml.MappingNode):
@@ -331,7 +324,6 @@ def _top_or(condition: str) -> bool:
 
 def combine(outer: str, inner: str) -> str:
     """The condition of a block nested under `outer`: both joined with `and`."""
-
     parts = [f"({part})" if _top_or(part) else part for part in (outer, inner)]
     return " and ".join(parts)
 
@@ -392,7 +384,6 @@ def parse_config(text: str, path: pathlib.Path) -> Config:
     Raises ConfigParseError where the text is not a YAML mapping. A key of the wrong shape is
     not a parse failure: it holds nothing, and `problems` names it.
     """
-
     reader = _Reader(text)
     models: tuple[str, ...] = ()
     flags: tuple[str, ...] = ()
@@ -443,7 +434,6 @@ def read_config(root: pathlib.Path) -> Config:
     A missing file reads as `defaults: all.*`. A file that cannot be read or does not parse
     raises ConfigParseError.
     """
-
     path = root / CONFIG_FILE
     try:
         text = read_text_file(path) if path.is_file() else _MISSING_CONFIG

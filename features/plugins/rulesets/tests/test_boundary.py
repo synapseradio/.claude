@@ -20,13 +20,11 @@ OUTWARD_PREFIX = "scripts"
 
 def sources() -> list[pathlib.Path]:
     """Every Python file the plugin runs, tests excluded."""
-
     return sorted([*(PLUGIN_ROOT / "lib").rglob("*.py"), *(PLUGIN_ROOT / "hooks").rglob("*.py")])
 
 
 def imported_names(path: pathlib.Path) -> list[str]:
     """Every module name one file imports, dotted form kept."""
-
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     names: list[str] = []
     for node in ast.walk(tree):
@@ -39,7 +37,6 @@ def imported_names(path: pathlib.Path) -> list[str]:
 
 def suite_files() -> list[pathlib.Path]:
     """Every test file in this plugin."""
-
     return sorted((PLUGIN_ROOT / "tests").glob("test_*.py"))
 
 
@@ -49,7 +46,6 @@ def outward_parents(path: pathlib.Path) -> list[int]:
     A test file sits one directory below that root, so `parents[1]` is the
     plugin and anything higher is the checkout around it.
     """
-
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     found = []
     for node in ast.walk(tree):
@@ -75,10 +71,10 @@ class TestTheTestsReadNoCorpusButTheirOwn:
     too the moment they edited a rule.
     """
 
-    def test_the_plugin_holds_tests_to_check(self):
+    def test_the_plugin_holds_tests_to_check(self) -> None:
         assert suite_files(), "a hermeticity test that finds no test proves nothing"
 
-    def test_no_test_resolves_a_path_above_the_plugin_root(self):
+    def test_no_test_resolves_a_path_above_the_plugin_root(self) -> None:
         offenders = {path.name: outward_parents(path) for path in suite_files()}
         offenders = {name: found for name, found in offenders.items() if found}
 
@@ -89,10 +85,10 @@ class TestTheTestsReadNoCorpusButTheirOwn:
 
 
 class TestTheImportsRunInward:
-    def test_the_plugin_holds_python_to_check(self):
+    def test_the_plugin_holds_python_to_check(self) -> None:
         assert sources(), "a boundary test that finds no source proves nothing"
 
-    def test_no_module_imports_the_configuration_around_it(self):
+    def test_no_module_imports_the_configuration_around_it(self) -> None:
         offenders = {
             path: [
                 name
@@ -108,7 +104,7 @@ class TestTheImportsRunInward:
             "nowhere else, so a second person's install fails at the first hook run"
         )
 
-    def test_every_sys_path_insert_derives_from_the_file_it_sits_in(self):
+    def test_every_sys_path_insert_derives_from_the_file_it_sits_in(self) -> None:
         for path in sources():
             for line in path.read_text(encoding="utf-8").split("\n"):
                 if "sys.path.insert" not in line:

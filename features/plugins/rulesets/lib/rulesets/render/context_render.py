@@ -17,7 +17,6 @@ def render_context(composition: Composition, pool: Pool) -> str:
     every marker after the first, so the split reads each body back whether or not it ends in a
     line break. This text is not the text delivery sends.
     """
-
     bodies = bodies_of(composition, pool)
     return SECTION_SEPARATOR.join(
         f"{marker(delivered.rule, delivered.variant)}\n{body.text}"

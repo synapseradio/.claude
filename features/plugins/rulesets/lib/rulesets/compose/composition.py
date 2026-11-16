@@ -64,13 +64,11 @@ def context_statements(
     directory: RulesetsDirectory, facts: Facts, state: SessionState
 ) -> tuple[Statement, ...]:
     """Every statement the applying lists of a context make, about every rule."""
-
     return statements(applying_lists(directory, facts, state), expander_of(directory))
 
 
 def compose(directory: RulesetsDirectory, facts: Facts, state: SessionState) -> Composition:
     """Compose the rules `facts` receives from the directory, with the session band in `state`."""
-
     expander = expander_of(directory)
     applied = applying_lists(directory, facts, state)
     made = statements(applied, expander)

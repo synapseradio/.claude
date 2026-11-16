@@ -25,7 +25,6 @@ def first_difference(
     source: Mapping[str, DeliveredText], engine: Mapping[str, DeliveredText]
 ) -> Difference | None:
     """The first rule by name that one side lacks or delivers other text for; the sequence is ignored."""
-
     for rule in sorted(source.keys() | engine.keys()):
         delivered, received = source.get(rule), engine.get(rule)
         if received is None and delivered is not None:

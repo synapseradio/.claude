@@ -25,7 +25,6 @@ def check_part_count(directory: RulesetsDirectory) -> tuple[CheckWarning, ...]:
     A config that is missing or does not parse declares nothing, so its matrix is the
     contexts that receive every rule.
     """
-
     match directory.config:
         case Present(config):
             models, flags_declared, blocks = config.models, config.flags, config.blocks

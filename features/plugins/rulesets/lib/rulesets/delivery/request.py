@@ -20,13 +20,11 @@ class SessionStart:
     @property
     def agent(self) -> str | None:
         """The agent the session launched under with `--agent`, if any."""
-
         return _text(self.payload.get("agent_type"))
 
     @property
     def source(self) -> str | None:
         """What started the session: `startup`, `resume`, `clear`, or `compact`."""
-
         return _text(self.payload.get("source"))
 
 
@@ -48,7 +46,6 @@ class ModelSwitch:
 
     def origin(self) -> ModelSwitch:
         """The switch read as if the session had stayed on `from_model`; absent where none is named."""
-
         return dataclasses.replace(self, to_model=self.from_model) if self.from_model else self
 
 
@@ -94,7 +91,6 @@ type HookRequest = DeliveryRequest | SessionEnd | Forked
 
 def parse_request(payload: object) -> HookRequest:
     """The request a hook payload makes, or why the payload is no request."""
-
     if not isinstance(payload, dict):
         return Unreadable("the payload is not a JSON object")
     session_id = _text(payload.get("session_id"))

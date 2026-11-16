@@ -23,7 +23,6 @@ def definition_front(
     agent_type: str, cwd: str | None, config_dir: pathlib.Path
 ) -> Frontmatter | None:
     """The frontmatter of the definition `agent_type` names, or None where none is found."""
-
     definition = find_definition(agent_type, cwd, config_dir)
     return definition.front if definition else None
 
@@ -40,7 +39,6 @@ def find_definition(
     which files register follows
     https://code.claude.com/docs/en/sub-agents.md#subagent-files-claude-code-skips.
     """
-
     if ":" in agent_type:
         plugin, *subfolders, name = agent_type.split(":")
         for install in _plugin_install_paths(plugin, config_dir):
@@ -62,7 +60,6 @@ _MAX_NAME_LENGTH = 256
 
 def _frontmatter(path: pathlib.Path) -> Frontmatter | None:
     """The frontmatter of a file, `{}` where it has none, None where it cannot be read or parsed."""
-
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
@@ -87,7 +84,6 @@ def _registered_name(
     is valid and a `description` accompanies it. A plugin file registers under its `name`, or
     under its filename where it has none or its frontmatter does not parse.
     """
-
     if in_plugin:
         name = (front or {}).get("name")
         return name if isinstance(name, str) and name else path.stem
@@ -108,7 +104,6 @@ def _named_definition(
     paths: list[pathlib.Path], name: str, *, in_plugin: bool
 ) -> Definition | None:
     """The first definition the harness registers as `name`."""
-
     for path in sorted(paths):
         front = _frontmatter(path)
         if _registered_name(path, front, in_plugin=in_plugin) == name:
@@ -121,7 +116,6 @@ def _project_agent_dirs(cwd: str) -> list[pathlib.Path]:
 
     Outside a repository only `cwd` itself is a project directory.
     """
-
     start = pathlib.Path(cwd).resolve()
     dirs = []
     for directory in (start, *start.parents):
@@ -133,11 +127,10 @@ def _project_agent_dirs(cwd: str) -> list[pathlib.Path]:
 
 def _plugin_install_paths(plugin: str, config_dir: pathlib.Path) -> list[pathlib.Path]:
     """Every install path `installed_plugins.json` records for one plugin name."""
-
     index = config_dir / "plugins" / "installed_plugins.json"
     try:
         installed = json.loads(index.read_text(encoding="utf-8")).get("plugins", {})
-    except (OSError, json.JSONDecodeError, AttributeError):
+    except OSError, json.JSONDecodeError, AttributeError:
         return []
     paths = []
     for key, entries in installed.items():

@@ -34,7 +34,6 @@ class CompareReport:
     @property
     def failed(self) -> bool:
         """Whether any context differs outside the identifiers `--expect` named."""
-
         return any(r.difference and not r.expected for r in self.results)
 
     def lines(self) -> list[str]:
@@ -59,7 +58,6 @@ def compare(
     the context with no model, and each identifier in `expect`, with each agent definition and
     with no agent.
     """
-
     read = read_source(source)
     engine = read_directory(directory)
     definitions = read_definitions(locations.config / "agents")

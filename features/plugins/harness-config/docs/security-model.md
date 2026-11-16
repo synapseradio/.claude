@@ -156,7 +156,7 @@ diagnostic this plugin ships uses it or an explicit non-credential subtree.
 Three places need to compare values, and each avoids surfacing them:
 
 | Comparison | How it avoids the value |
-|------------|-------------------------|
+| ------------ | ------------------------- |
 | Is the active profile's endpoint the one in `settings.json`? | `harness-doctor.sh` hashes both sides with `shasum -a 256`, compares the hashes, and prints `match` or `differ`. A hash of an endpoint is not the endpoint. |
 | Does `settings.json` already hold every path the profile declares? | Compares the two key-path sets, which carry no values. |
 | Is a variant aligned with base? | `predicates.jq` returns violations. The `floor` predicate prints only base's own leaf pairs, and precondition 3 requires base to name nothing exempt, so those values are policy by construction. |
@@ -185,7 +185,7 @@ The check still fails, still names the path, and no longer carries the value.
 plugin ships and rejects a set of constructs:
 
 | Construct | Why it is rejected |
-|-----------|--------------------|
+| ----------- | -------------------- |
 | `cat` applied to a settings path | Prints every value |
 | `jq .` or `jq -r .` with no path filter, applied to a settings path | Prints every value |
 | A command substitution around a variable named for the helper | Captures the credential |
@@ -282,7 +282,7 @@ against the real config directory.
 One test reads every other test file and fails on any of these:
 
 | Pattern | Why it fails the suite |
-|---------|------------------------|
+| --------- | ------------------------ |
 | `$HOME` or `${HOME}` outside the fixture builder | A test naming the real home may reach real state |
 | `~/.claude` | The same, spelled with a tilde |
 | A `Read` of an agent definition path | Agent definitions may carry a key |
@@ -311,7 +311,7 @@ of what the test names.
 ## The rules, and the one command that checks each
 
 | Rule | The command a reviewer runs |
-|------|----------------------------|
+| ------ | ---------------------------- |
 | No credential, private path, or account identifier in the plugin | `features/plugins/harness-config/scripts/harness-guard.sh material features/plugins/harness-config` |
 | Every settings variant stays out of git, including names not yet used | `features/plugins/harness-config/scripts/harness-guard.sh ignore` |
 | No shipped script reads settings values or runs a helper | `features/plugins/harness-config/scripts/harness-guard.sh scripts` |

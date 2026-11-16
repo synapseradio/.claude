@@ -14,7 +14,6 @@ def inclusion_warnings(config: Config, pool: Pool, expander: Expander) -> tuple[
     A rule counts as included where any list adds it, a conflicted add included, whether or
     not that list applies in any context.
     """
-
     included = {
         entry.rule
         for references in config.written_lists()

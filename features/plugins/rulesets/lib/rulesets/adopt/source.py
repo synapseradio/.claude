@@ -12,9 +12,9 @@ type Source = TierCorpus | RulesFolder
 
 def read_source(path: pathlib.Path) -> Source:
     """Read `path` as a tier corpus or a rules folder. Raises SourceError for neither."""
-
     if not path.is_dir():
-        raise SourceError(f"{path} is not a directory")
+        msg = f"{path} is not a directory"
+        raise SourceError(msg)
     if (path / MANIFEST_FILE).is_file():
         return read_tier_corpus(path)
     return read_rules_folder(path)

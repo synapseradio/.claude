@@ -12,7 +12,6 @@ def absent_fact_notices(
     config: Config | None, agent: str | Absent, tools: ListedTools | AllToolsBut | Absent
 ) -> tuple[Notice, ...]:
     """A notice for each of the agent and tools facts that is absent and that a condition tests."""
-
     notices: list[Notice] = []
     if isinstance(agent, Absent) and _tests(config, "agent"):
         notices.append(absent_agent_notice())

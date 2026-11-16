@@ -24,7 +24,6 @@ def can_hold(condition: Condition) -> bool:
     A context holds at most one value of each single-valued fact, so tests of different
     values of one such fact never hold together; flags and tools are independent.
     """
-
     tests = fact_tests(condition)
     values = [sorted({t.value for t in tests if t.fact == fact}) for fact in _SINGLE_VALUED]
     flags = sorted({(t.fact, t.value) for t in tests if t.fact in _INDEPENDENT})

@@ -23,7 +23,6 @@ def check(root: pathlib.Path) -> Report:
     A config that does not parse is itself an error, and the checks that need it are
     skipped while the checks of the rule files still run.
     """
-
     pool = read_pool(root)
     directory = read_directory(root)
     errors: list[CheckError] = []

@@ -77,7 +77,6 @@ def _targets(tmp_path: pathlib.Path) -> projection.Targets:
 
 def _git(repo: pathlib.Path, *args: str) -> None:
     """Run one git command in `repo`, with the user's hooks and signing off."""
-
     subprocess.run(
         ["git", "-C", str(repo), "-c", "core.hooksPath=", "-c", "commit.gpgsign=false", *args],
         check=True,
@@ -91,7 +90,6 @@ def _committed(tmp_path: pathlib.Path) -> projection.Targets:
     The repository opens at `tmp_path`, so pi's target directory sits inside
     it and an edit there is work git can report.
     """
-
     targets = _targets(tmp_path)
     assert pi.main([], targets=targets) == 0
     _git(tmp_path, "init", "-q")
@@ -103,7 +101,7 @@ def _committed(tmp_path: pathlib.Path) -> projection.Targets:
 
 
 class TestTranslateForPi:
-    def test_grants_skills_inheritance(self, tmp_path):
+    def test_grants_skills_inheritance(self, tmp_path) -> None:
         agent = projection.read_agent(_write(tmp_path / "scout.md", AGENT_SOURCE))
 
         translated = pi.translate_for_pi(agent)
@@ -114,7 +112,7 @@ class TestTranslateForPi:
 
 
 class TestBuildAgentsMarkdown:
-    def test_carries_the_preamble_and_the_unconditional_rules(self, tmp_path):
+    def test_carries_the_preamble_and_the_unconditional_rules(self, tmp_path) -> None:
         targets = _targets(tmp_path)
 
         built = pi.build_agents_markdown(targets.claude_md, targets.rulesets_dir)
@@ -136,7 +134,7 @@ class TestScopingToOneAgent:
         )
         return targets
 
-    def test_the_plan_carries_that_agent_s_file_alone(self, tmp_path):
+    def test_the_plan_carries_that_agent_s_file_alone(self, tmp_path) -> None:
         targets = self._two_agents(tmp_path)
 
         plan = pi.build_one_agent("spider", targets)
@@ -148,7 +146,7 @@ class TestScopingToOneAgent:
             "paths belong to no single agent"
         )
 
-    def test_a_scoped_run_leaves_another_agent_s_output_alone(self, tmp_path):
+    def test_a_scoped_run_leaves_another_agent_s_output_alone(self, tmp_path) -> None:
         targets = self._two_agents(tmp_path)
         assert pi.main([], targets=targets) == 0
         scout = targets.pi_home / "agents" / "scout.md"
@@ -161,7 +159,7 @@ class TestScopingToOneAgent:
             "source is mid-edit"
         )
 
-    def test_a_name_no_source_carries_stops_the_run(self, tmp_path):
+    def test_a_name_no_source_carries_stops_the_run(self, tmp_path) -> None:
         targets = self._two_agents(tmp_path)
 
         with pytest.raises(SystemExit) as raised:
@@ -171,7 +169,7 @@ class TestScopingToOneAgent:
             "a misspelled name would otherwise write nothing and report success"
         )
 
-    def test_the_check_mode_reports_the_scoped_agent_drifting(self, tmp_path, capsys):
+    def test_the_check_mode_reports_the_scoped_agent_drifting(self, tmp_path, capsys) -> None:
         targets = self._two_agents(tmp_path)
         assert pi.main([], targets=targets) == 0
         _write(targets.agents_dir / "spider.md", AGENT_SOURCE.replace("scout", "spider"))
@@ -192,7 +190,7 @@ class TestCheckModeReportsDrift:
     Scenarios: Everything in sync, and One output has drifted.
     """
 
-    def test_check_exits_zero_when_every_output_matches(self, tmp_path):
+    def test_check_exits_zero_when_every_output_matches(self, tmp_path) -> None:
         targets = _targets(tmp_path)
         pi.main([], targets=targets)
 
@@ -200,7 +198,7 @@ class TestCheckModeReportsDrift:
             "outputs this job just wrote from these sources are by definition in sync"
         )
 
-    def test_check_names_the_context_file_after_a_rule_body_changes(self, tmp_path, capsys):
+    def test_check_names_the_context_file_after_a_rule_body_changes(self, tmp_path, capsys) -> None:
         targets = _targets(tmp_path)
         pi.main([], targets=targets)
         context_file = targets.pi_home / "AGENTS.md"
@@ -223,7 +221,7 @@ class TestCheckModeReportsDrift:
             "a check reports a difference without repairing it"
         )
 
-    def test_check_exits_nonzero_when_an_output_is_missing(self, tmp_path):
+    def test_check_exits_nonzero_when_an_output_is_missing(self, tmp_path) -> None:
         targets = _targets(tmp_path)
 
         assert pi.main(["--check"], targets=targets) != 0, (
@@ -231,7 +229,9 @@ class TestCheckModeReportsDrift:
         )
         assert not targets.pi_home.exists(), "a check writes nothing, a target directory included"
 
-    def test_check_reports_drift_rather_than_refusing_on_a_dirty_target(self, tmp_path, capsys):
+    def test_check_reports_drift_rather_than_refusing_on_a_dirty_target(
+        self, tmp_path, capsys
+    ) -> None:
         targets = _committed(tmp_path)
         dirty = targets.pi_home / "AGENTS.md"
         _write(dirty, "hand-edited, never committed\n")
@@ -250,7 +250,7 @@ class TestCheckModeReportsDrift:
 class TestAGeneratedFileIsOwnedWhole:
     """`config-projection` requirement: a generated file is owned whole."""
 
-    def test_a_hand_edit_to_a_generated_file_is_rewritten_away(self, tmp_path):
+    def test_a_hand_edit_to_a_generated_file_is_rewritten_away(self, tmp_path) -> None:
         targets = _targets(tmp_path)
         pi.main([], targets=targets)
         context_file = targets.pi_home / "AGENTS.md"
@@ -287,7 +287,7 @@ class TestBuildAgentsMarkdownFromASourceTree:
         _write(rules / "zeta.md", "Zeta {\n  always\n}\n")
         return claude_md, tmp_path
 
-    def test_rule_carrying_paths_frontmatter_stays_out(self, tmp_path):
+    def test_rule_carrying_paths_frontmatter_stays_out(self, tmp_path) -> None:
         claude_md, rulesets = self._tree(tmp_path)
 
         built = pi.build_agents_markdown(claude_md, rulesets)
@@ -298,7 +298,7 @@ class TestBuildAgentsMarkdownFromASourceTree:
         )
         assert "paths:" not in built, "no frontmatter reaches the context file"
 
-    def test_rule_without_frontmatter_goes_in(self, tmp_path):
+    def test_rule_without_frontmatter_goes_in(self, tmp_path) -> None:
         claude_md, rulesets = self._tree(tmp_path)
 
         built = pi.build_agents_markdown(claude_md, rulesets)
@@ -306,7 +306,7 @@ class TestBuildAgentsMarkdownFromASourceTree:
         assert "Alpha {\n  always\n}" in built, "a rule with no frontmatter loads every session"
         assert "Zeta {\n  always\n}" in built, "a rule with no frontmatter loads every session"
 
-    def test_preamble_leads_and_rules_follow_in_filename_order(self, tmp_path):
+    def test_preamble_leads_and_rules_follow_in_filename_order(self, tmp_path) -> None:
         claude_md, rulesets = self._tree(tmp_path)
 
         built = pi.build_agents_markdown(claude_md, rulesets)
@@ -315,14 +315,14 @@ class TestBuildAgentsMarkdownFromASourceTree:
             "CLAUDE.md leads and rules follow sorted by filename, so the output is deterministic"
         )
 
-    def test_frontmatter_delimiters_do_not_reach_the_output(self, tmp_path):
+    def test_frontmatter_delimiters_do_not_reach_the_output(self, tmp_path) -> None:
         claude_md, rulesets = self._tree(tmp_path)
 
         built = pi.build_agents_markdown(claude_md, rulesets)
 
         assert "paths:" not in built, "an excluded rule contributes none of its frontmatter either"
 
-    def test_paths_in_rule_bodies_are_rewritten(self, tmp_path):
+    def test_paths_in_rule_bodies_are_rewritten(self, tmp_path) -> None:
         claude_md = _write(tmp_path / "CLAUDE.md", "# Preamble\n")
         rulesets = tmp_path
         rules = rulesets / "rules"
@@ -334,7 +334,7 @@ class TestBuildAgentsMarkdownFromASourceTree:
             "a rule body reaches the generated file through the same path rewrite as the preamble"
         )
 
-    def test_sections_are_separated_by_one_blank_line(self, tmp_path):
+    def test_sections_are_separated_by_one_blank_line(self, tmp_path) -> None:
         claude_md = _write(tmp_path / "CLAUDE.md", "# Preamble\n\n\n")
         rulesets = tmp_path
         rules = rulesets / "rules"
@@ -358,7 +358,7 @@ class TestResolveSkillPaths:
         settings = _write(tmp_path / "settings.json", json.dumps({"enabledPlugins": enabled}))
         return installed, settings
 
-    def test_enabled_plugin_with_skills_contributes_its_path(self, tmp_path):
+    def test_enabled_plugin_with_skills_contributes_its_path(self, tmp_path) -> None:
         install = tmp_path / "cache" / "seed" / "software"
         (install / "skills").mkdir(parents=True)
         installed, settings = self._tree(
@@ -371,7 +371,7 @@ class TestResolveSkillPaths:
             "an enabled plugin's skills directory is what the other agents need on their path"
         )
 
-    def test_enabled_plugin_without_skills_contributes_nothing(self, tmp_path):
+    def test_enabled_plugin_without_skills_contributes_nothing(self, tmp_path) -> None:
         install = tmp_path / "cache" / "official" / "typescript-lsp"
         install.mkdir(parents=True)
         installed, settings = self._tree(
@@ -384,7 +384,7 @@ class TestResolveSkillPaths:
             "a plugin carrying hooks or MCP servers alone has no skills directory to add"
         )
 
-    def test_disabled_plugin_contributes_nothing(self, tmp_path):
+    def test_disabled_plugin_contributes_nothing(self, tmp_path) -> None:
         install = tmp_path / "cache" / "seed" / "switchboard"
         (install / "skills").mkdir(parents=True)
         installed, settings = self._tree(
@@ -397,14 +397,14 @@ class TestResolveSkillPaths:
             "a disabled plugin's skills stay out, or the other agents load what Claude does not"
         )
 
-    def test_enabled_plugin_missing_from_the_install_record_is_skipped(self, tmp_path):
+    def test_enabled_plugin_missing_from_the_install_record_is_skipped(self, tmp_path) -> None:
         installed, settings = self._tree(tmp_path, {"ghost@nowhere": True}, {})
 
         assert pi.resolve_skill_paths(installed, settings) == [], (
             "an enable naming no installed plugin resolves to no path rather than raising"
         )
 
-    def test_user_scope_wins_over_project_scope(self, tmp_path):
+    def test_user_scope_wins_over_project_scope(self, tmp_path) -> None:
         old = tmp_path / "cache" / "skill-creator" / "1.0.0"
         new = tmp_path / "cache" / "skill-creator" / "2.0.0"
         (old / "skills").mkdir(parents=True)
@@ -425,7 +425,7 @@ class TestResolveSkillPaths:
             "path, and the user-scoped record is the one a user-level enable turns on"
         )
 
-    def test_project_scope_serves_when_no_user_record_exists(self, tmp_path):
+    def test_project_scope_serves_when_no_user_record_exists(self, tmp_path) -> None:
         install = tmp_path / "cache" / "seed" / "visualizer"
         (install / "skills").mkdir(parents=True)
         installed, settings = self._tree(
@@ -438,7 +438,7 @@ class TestResolveSkillPaths:
             "a plugin installed only against a project still resolves to one install path"
         )
 
-    def test_paths_come_back_sorted(self, tmp_path):
+    def test_paths_come_back_sorted(self, tmp_path) -> None:
         for name in ("zeta", "alpha"):
             (tmp_path / "cache" / name / "skills").mkdir(parents=True)
         installed, settings = self._tree(
@@ -458,7 +458,7 @@ class TestResolveSkillPaths:
 
 
 class TestTranslateForPiFrontmatter:
-    def test_model_stays_a_bare_tier_name(self, tmp_path):
+    def test_model_stays_a_bare_tier_name(self, tmp_path) -> None:
         agent = projection.read_agent(_agent_definition(tmp_path, "scout", model="haiku"))
 
         translated = pi.translate_for_pi(agent)
@@ -467,7 +467,7 @@ class TestTranslateForPiFrontmatter:
             "pi resolves a tier name through its own model catalog"
         )
 
-    def test_absent_model_emits_no_model_key(self, tmp_path):
+    def test_absent_model_emits_no_model_key(self, tmp_path) -> None:
         agent = projection.read_agent(_agent_definition(tmp_path, "orchestrator"))
 
         translated = pi.translate_for_pi(agent)
@@ -477,7 +477,7 @@ class TestTranslateForPiFrontmatter:
             "that should inherit"
         )
 
-    def test_tools_render_comma_separated(self, tmp_path):
+    def test_tools_render_comma_separated(self, tmp_path) -> None:
         agent = projection.read_agent(
             _agent_definition(tmp_path, "scout", tools="Read, Grep, Bash")
         )
@@ -488,7 +488,7 @@ class TestTranslateForPiFrontmatter:
             projection.parse_document(translated.content).frontmatter["tools"] == "read, grep, bash"
         ), "pi reads tools as one comma-separated string, not as a map"
 
-    def test_glob_maps_to_find(self, tmp_path):
+    def test_glob_maps_to_find(self, tmp_path) -> None:
         agent = projection.read_agent(_agent_definition(tmp_path, "scout", tools="Glob"))
 
         translated = pi.translate_for_pi(agent)
@@ -497,7 +497,7 @@ class TestTranslateForPiFrontmatter:
             "pi's find takes a glob pattern, which is what Claude's Glob does"
         )
 
-    def test_tools_pi_lacks_drop_and_are_reported(self, tmp_path):
+    def test_tools_pi_lacks_drop_and_are_reported(self, tmp_path) -> None:
         agent = projection.read_agent(
             _agent_definition(tmp_path, "skill-designer", tools="Read, Agent, ToolSearch")
         )
@@ -511,7 +511,7 @@ class TestTranslateForPiFrontmatter:
             "a dropped tool narrows the agent's reach, so the run must name what it dropped"
         )
 
-    def test_absent_tools_emits_no_tools_key(self, tmp_path):
+    def test_absent_tools_emits_no_tools_key(self, tmp_path) -> None:
         agent = projection.read_agent(_agent_definition(tmp_path, "orchestrator"))
 
         translated = pi.translate_for_pi(agent)
@@ -520,7 +520,7 @@ class TestTranslateForPiFrontmatter:
             "an empty tools list would grant no tools, where the source granted every tool"
         )
 
-    def test_body_becomes_the_system_prompt_unchanged(self, tmp_path):
+    def test_body_becomes_the_system_prompt_unchanged(self, tmp_path) -> None:
         agent = projection.read_agent(_agent_definition(tmp_path, "scout", model="sonnet"))
 
         translated = pi.translate_for_pi(agent)
@@ -531,7 +531,9 @@ class TestTranslateForPiFrontmatter:
 
 
 class TestBuildPlan:
-    def test_pi_agents_markdown_carries_the_preamble_and_the_unconditional_rules(self, tmp_path):
+    def test_pi_agents_markdown_carries_the_preamble_and_the_unconditional_rules(
+        self, tmp_path
+    ) -> None:
         targets = _targets(tmp_path)
 
         plan = pi.build_plan(targets)
@@ -546,7 +548,7 @@ class TestBuildPlan:
             "so carrying it here would load it in every session and twice in a matching one"
         )
 
-    def test_build_plan_writes_no_copy_of_a_path_scoped_rule(self, tmp_path):
+    def test_build_plan_writes_no_copy_of_a_path_scoped_rule(self, tmp_path) -> None:
         plan = pi.build_plan(_targets(tmp_path))
 
         assert not any(f.path.name == "gated.md" for f in plan.files), (
@@ -554,7 +556,7 @@ class TestBuildPlan:
             "frontmatter itself, so no copy exists to fall out of date"
         )
 
-    def test_every_source_agent_yields_one_file_under_pi(self, tmp_path):
+    def test_every_source_agent_yields_one_file_under_pi(self, tmp_path) -> None:
         targets = _targets(tmp_path)
         _agent_definition(targets.agents_dir, "orchestrator")
 
@@ -566,7 +568,7 @@ class TestBuildPlan:
             targets.pi_home / "agents" / "orchestrator.md",
         } <= paths, "each source agent must reach this target"
 
-    def test_skill_paths_render_as_a_paths_object(self, tmp_path):
+    def test_skill_paths_render_as_a_paths_object(self, tmp_path) -> None:
         targets = _targets(tmp_path)
 
         plan = pi.build_plan(targets)
@@ -577,7 +579,7 @@ class TestBuildPlan:
             "the consumer merging these reads a single paths key and nothing else"
         )
 
-    def test_dropped_tools_are_reported_per_agent(self, tmp_path):
+    def test_dropped_tools_are_reported_per_agent(self, tmp_path) -> None:
         plan = pi.build_plan(_targets(tmp_path))
 
         assert plan.dropped == (("pi", "scout", "Agent"),), (
@@ -586,7 +588,7 @@ class TestBuildPlan:
 
 
 class TestApply:
-    def test_first_run_creates_missing_parent_directories(self, tmp_path):
+    def test_first_run_creates_missing_parent_directories(self, tmp_path) -> None:
         targets = _targets(tmp_path)
         assert not targets.pi_home.exists(), "the fixture starts with no pi root"
 
@@ -596,7 +598,7 @@ class TestApply:
             "a target directory that does not exist yet must be created rather than skipped"
         )
 
-    def test_second_run_reports_no_change(self, tmp_path, capsys):
+    def test_second_run_reports_no_change(self, tmp_path, capsys) -> None:
         targets = _targets(tmp_path)
         pi.main([], targets=targets)
         capsys.readouterr()
@@ -609,7 +611,7 @@ class TestApply:
             "a function of the sources alone"
         )
 
-    def test_check_leaves_a_stale_file_stale(self, tmp_path):
+    def test_check_leaves_a_stale_file_stale(self, tmp_path) -> None:
         targets = _targets(tmp_path)
         pi.main([], targets=targets)
         stale = targets.pi_home / "AGENTS.md"

@@ -27,7 +27,6 @@ class ScaffoldFailed:
 
 def scaffold(root: pathlib.Path) -> Scaffolded | AlreadyPresent | ScaffoldFailed:
     """Create the empty directory where `root` does not exist."""
-
     if root.exists():
         return AlreadyPresent()
     try:

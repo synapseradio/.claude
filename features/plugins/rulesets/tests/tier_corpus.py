@@ -21,7 +21,7 @@ class Corpus:
         left_out: dict[str, list[str]] | None = None,
         extra_tiers: tuple[str, ...] = (),
         order: list[str] | None = None,
-    ):
+    ) -> None:
         self.root = tmp_path / "corpus"
         tiers: dict[str, dict] = {
             tier: {"include": "*"} for tier in ("default", *FAMILIES, *extra_tiers)
@@ -42,20 +42,17 @@ class Corpus:
 
     def body(self, tier: str, stem: str, text: str | None = None) -> str:
         """Write `<tier>/<stem>.md` under its rule's marker and a blank line, and return its text."""
-
         written = f"{stem} as {tier} writes it\n" if text is None else text
         self.raw(tier, stem, f"<!-- rule: {stem} -->\n\n{written}")
         return written
 
     def raw(self, tier: str, stem: str, content: str) -> None:
         """Write `<tier>/<stem>.md` as given."""
-
         (self.root / tier / f"{stem}.md").write_text(content, encoding="utf-8")
 
 
 def define_agent(config: pathlib.Path, name: str, excluded: list[str]) -> pathlib.Path:
     """An agent definition under `config/agents` whose `metadata.rulesets` excludes the stems."""
-
     front = {
         "name": name,
         "description": "a test agent",

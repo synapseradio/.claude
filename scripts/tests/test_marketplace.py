@@ -27,7 +27,6 @@ def entries() -> list[dict]:
 
 def packaged() -> list[pathlib.Path]:
     """Every plugin or mod directory carrying a plugin manifest."""
-
     return sorted(
         child
         for kind in FEATURE_KINDS
@@ -38,10 +37,10 @@ def packaged() -> list[pathlib.Path]:
 
 
 class TestTheListingReachesEveryPackagedFeature:
-    def test_at_least_one_feature_is_packaged(self):
+    def test_at_least_one_feature_is_packaged(self) -> None:
         assert packaged(), "a test over the listing proves nothing with nothing packaged"
 
-    def test_every_packaged_feature_has_an_entry(self):
+    def test_every_packaged_feature_has_an_entry(self) -> None:
         named = {entry["name"] for entry in entries()}
         unlisted = [
             path.name
@@ -54,7 +53,7 @@ class TestTheListingReachesEveryPackagedFeature:
             f"a feature the marketplace does not list installs for nobody: {unlisted}"
         )
 
-    def test_every_entry_resolves_to_a_manifest_naming_the_same_plugin(self):
+    def test_every_entry_resolves_to_a_manifest_naming_the_same_plugin(self) -> None:
         for entry in entries():
             source = (REPO_ROOT / entry["source"]).resolve()
             manifest = source / ".claude-plugin" / "plugin.json"
@@ -68,9 +67,8 @@ class TestTheListingReachesEveryPackagedFeature:
                 "so a listing naming it differently enables something else"
             )
 
-    def test_every_entry_states_the_version_its_manifest_states(self):
+    def test_every_entry_states_the_version_its_manifest_states(self) -> None:
         """A listing and a manifest that disagree send a reader to the wrong changelog."""
-
         for entry in entries():
             manifest = json.loads(
                 (
@@ -84,7 +82,7 @@ class TestTheListingReachesEveryPackagedFeature:
                 "file they opened"
             )
 
-    def test_every_source_is_relative_to_this_repository(self):
+    def test_every_source_is_relative_to_this_repository(self) -> None:
         for entry in entries():
             source = entry["source"]
 

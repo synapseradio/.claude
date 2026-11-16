@@ -48,7 +48,6 @@ def _agent_source(tmp_path: pathlib.Path, name: str, **keys: str) -> pathlib.Pat
 
 def _git(repo: pathlib.Path, *args: str) -> None:
     """Run one git command in `repo`, with the user's hooks and signing off."""
-
     subprocess.run(
         ["git", "-C", str(repo), "-c", "core.hooksPath=", "-c", "commit.gpgsign=false", *args],
         check=True,
@@ -67,7 +66,7 @@ class TestRefusesToOverwriteUncommittedWork:
         _git(repo, "config", "user.name", "Test")
         return repo
 
-    def test_a_target_carries_uncommitted_changes(self, tmp_path):
+    def test_a_target_carries_uncommitted_changes(self, tmp_path) -> None:
         repo = self._repo(tmp_path)
         target = _write(repo / "working-rules.md", "committed body\n")
         _git(repo, "add", "-A")
@@ -81,7 +80,7 @@ class TestRefusesToOverwriteUncommittedWork:
             "a job that would write over an uncommitted edit must write nothing and name the file"
         )
 
-    def test_an_untracked_target(self, tmp_path):
+    def test_an_untracked_target(self, tmp_path) -> None:
         repo = self._repo(tmp_path)
         _git(repo, "commit", "-q", "-m", "empty root commit", "--allow-empty")
         target = _write(repo / "AGENTS.md", "never added to git\n")
@@ -96,7 +95,7 @@ class TestRefusesToOverwriteUncommittedWork:
 
 
 class TestParseDocument:
-    def test_frontmatter_block_separates_from_body(self):
+    def test_frontmatter_block_separates_from_body(self) -> None:
         text = "---\nname: scout\nmodel: haiku\n---\n\nScout {\n  budget: 40\n}\n"
 
         doc = projection.parse_document(text)
@@ -108,7 +107,7 @@ class TestParseDocument:
             "the body must be the text after the closing ---, with the blank separator dropped"
         )
 
-    def test_file_without_frontmatter_reports_none(self):
+    def test_file_without_frontmatter_reports_none(self) -> None:
         text = "CoreRules {\n  AppliesWhen { every context }\n}\n"
 
         doc = projection.parse_document(text)
@@ -118,7 +117,7 @@ class TestParseDocument:
         )
         assert doc.body == text, "the whole text is the body when no frontmatter opens the file"
 
-    def test_horizontal_rule_mid_file_is_not_frontmatter(self):
+    def test_horizontal_rule_mid_file_is_not_frontmatter(self) -> None:
         text = "Some prose\n\n---\n\nmore prose\n"
 
         doc = projection.parse_document(text)
@@ -129,7 +128,7 @@ class TestParseDocument:
 
 
 class TestRewritePaths:
-    def test_tilde_prefix_becomes_the_home_variable(self):
+    def test_tilde_prefix_becomes_the_home_variable(self) -> None:
         rewritten = projection.rewrite_paths(
             "read `~/.claude/references/bash-style-guide.md` in full"
         )
@@ -138,7 +137,7 @@ class TestRewritePaths:
             "a ~/ prefix must resolve, since the generated file sits where ~ is not expanded"
         )
 
-    def test_no_output_names_the_running_user(self):
+    def test_no_output_names_the_running_user(self) -> None:
         rewritten = projection.rewrite_paths(
             "`~/.claude/x` and [y](./rules/y.md) and `../.dotfiles/z`"
         )
@@ -148,14 +147,14 @@ class TestRewritePaths:
             "into a committed file breaks on every other machine"
         )
 
-    def test_bare_tilde_survives(self):
+    def test_bare_tilde_survives(self) -> None:
         text = "~\nHi!\n/~\n"
 
         assert projection.rewrite_paths(text) == text, (
             "a ~ that starts no path is decoration and must survive byte for byte"
         )
 
-    def test_relative_link_target_resolves_against_the_home_variable(self):
+    def test_relative_link_target_resolves_against_the_home_variable(self) -> None:
         rewritten = projection.rewrite_paths(
             "live in [core-rules.md](./rules/core-rules.md) and load"
         )
@@ -164,36 +163,36 @@ class TestRewritePaths:
             "live in [core-rules.md]($HOME/.claude/rules/core-rules.md) and load"
         ), "a link relative to ~/.claude does not resolve from the directory the output sits in"
 
-    def test_parent_relative_link_target_resolves(self):
+    def test_parent_relative_link_target_resolves(self) -> None:
         rewritten = projection.rewrite_paths("see [x](../.dotfiles/git/ignore)")
 
         assert rewritten == "see [x]($HOME/.dotfiles/git/ignore)", (
             "a ../ segment must collapse rather than survive into the resolved path"
         )
 
-    def test_home_variable_link_survives(self):
+    def test_home_variable_link_survives(self) -> None:
         text = "at [x]($HOME/.claude/rules/core-rules.md)"
 
         assert projection.rewrite_paths(text) == text, (
             "a target already naming $HOME must not resolve a second time against ~/.claude"
         )
 
-    def test_url_link_survives(self):
+    def test_url_link_survives(self) -> None:
         text = "per [Peirce](https://plato.stanford.edu/entries/peirce/)"
 
         assert projection.rewrite_paths(text) == text, "an http(s) target names no file on disk"
 
-    def test_anchor_link_survives(self):
+    def test_anchor_link_survives(self) -> None:
         text = "see [above](#precedence)"
 
         assert projection.rewrite_paths(text) == text, "a fragment target names no file on disk"
 
-    def test_absolute_link_survives(self):
+    def test_absolute_link_survives(self) -> None:
         text = f"at [x]({HOME}/.claude/rules/core-rules.md)"
 
         assert projection.rewrite_paths(text) == text, "an already-absolute target needs no rewrite"
 
-    def test_prose_around_a_rewrite_survives_byte_for_byte(self):
+    def test_prose_around_a_rewrite_survives_byte_for_byte(self) -> None:
         text = "Alpha `~/.claude/x` beta\n\n- gamma: delta\n  - epsilon\n"
 
         assert (
@@ -203,7 +202,7 @@ class TestRewritePaths:
 
 
 class TestRestorePaths:
-    def test_home_variable_becomes_a_tilde_prefix(self):
+    def test_home_variable_becomes_a_tilde_prefix(self) -> None:
         restored = projection.restore_paths(
             "read `$HOME/.claude/references/bash-style-guide.md` in full"
         )
@@ -212,7 +211,7 @@ class TestRestorePaths:
             "a source file sits where ~ expands, so the variable the render carries goes back"
         )
 
-    def test_link_target_inside_claude_home_becomes_dot_relative(self):
+    def test_link_target_inside_claude_home_becomes_dot_relative(self) -> None:
         restored = projection.restore_paths(
             "live in [core-rules.md]($HOME/.claude/rules/core-rules.md)"
         )
@@ -221,38 +220,38 @@ class TestRestorePaths:
             "a source names a sibling under ~/.claude by the ./ form the forward run resolves"
         )
 
-    def test_link_target_outside_claude_home_becomes_parent_relative(self):
+    def test_link_target_outside_claude_home_becomes_parent_relative(self) -> None:
         restored = projection.restore_paths("see [x]($HOME/.dotfiles/git/ignore)")
 
         assert restored == "see [x](../.dotfiles/git/ignore)", (
             "a target under the home directory but outside ~/.claude climbs one level"
         )
 
-    def test_url_link_survives(self):
+    def test_url_link_survives(self) -> None:
         text = "per [Peirce](https://plato.stanford.edu/entries/peirce/)"
 
         assert projection.restore_paths(text) == text, "an http(s) target names no file on disk"
 
-    def test_anchor_link_survives(self):
+    def test_anchor_link_survives(self) -> None:
         text = "see [above](#precedence)"
 
         assert projection.restore_paths(text) == text, "a fragment target names no file on disk"
 
-    def test_absolute_link_outside_the_home_directory_survives(self):
+    def test_absolute_link_outside_the_home_directory_survives(self) -> None:
         text = "at [x](/etc/hosts)"
 
         assert projection.restore_paths(text) == text, (
             "a path outside the home directory has no relative form under ~/.claude"
         )
 
-    def test_bare_tilde_and_dollar_survive(self):
+    def test_bare_tilde_and_dollar_survive(self) -> None:
         text = "~\nHi!\n/~\n\n`$dir/$slug__$DD-MM-YY-HHmm.md`\n"
 
         assert projection.restore_paths(text) == text, (
             "a ~ that starts no path and a $ that opens no HOME are text, not paths"
         )
 
-    def test_restore_inverts_rewrite(self):
+    def test_restore_inverts_rewrite(self) -> None:
         source = (
             "~\n/~\n\n"
             "The rules live in [core-rules.md](./rules/core-rules.md) and load.\n\n"
@@ -267,34 +266,34 @@ class TestRestorePaths:
 
 
 class TestReadAgent:
-    def test_absent_tools_key_reads_as_every_tool(self, tmp_path):
+    def test_absent_tools_key_reads_as_every_tool(self, tmp_path) -> None:
         agent = projection.read_agent(_agent_source(tmp_path, "orchestrator"))
 
         assert agent.tools is None, (
             "a source naming no tools grants every tool, which differs from granting none"
         )
 
-    def test_comma_separated_tools_split_into_names(self, tmp_path):
+    def test_comma_separated_tools_split_into_names(self, tmp_path) -> None:
         agent = projection.read_agent(_agent_source(tmp_path, "scout", tools="Read, Grep, Glob"))
 
         assert agent.tools == ("Read", "Grep", "Glob"), (
             "the source writes tools as one comma-separated string"
         )
 
-    def test_absent_model_reads_as_none(self, tmp_path):
+    def test_absent_model_reads_as_none(self, tmp_path) -> None:
         agent = projection.read_agent(_agent_source(tmp_path, "orchestrator"))
 
         assert agent.model is None, "a source naming no model inherits the caller's model"
 
 
 class TestDefaultTargets:
-    def test_claude_home_is_the_checkout_the_script_lives_in(self):
+    def test_claude_home_is_the_checkout_the_script_lives_in(self) -> None:
         assert projection.DEFAULT_TARGETS.claude_home == REPO_ROOT, (
             "a run reads and writes the checkout it was invoked from, so a hook in a worktree "
             "syncs that worktree and needs no argument naming it"
         )
 
-    def test_the_rulesets_directory_resolves_under_the_checkout_that_owns_it(self):
+    def test_the_rulesets_directory_resolves_under_the_checkout_that_owns_it(self) -> None:
         assert projection.DEFAULT_TARGETS.rulesets_dir == REPO_ROOT / "rulesets", (
             "every job reads the always-on bodies through this one property, so a job naming "
             "a rules directory of its own would read a corpus the others do not"

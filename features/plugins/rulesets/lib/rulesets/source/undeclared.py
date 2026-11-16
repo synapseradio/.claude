@@ -22,7 +22,6 @@ class Undeclared:
 
 def undeclared_names(condition: Condition, config: Config) -> Undeclared:
     """The models and flags `condition` tests that `config` does not declare."""
-
     tests = fact_tests(condition)
     return Undeclared(
         tuple(

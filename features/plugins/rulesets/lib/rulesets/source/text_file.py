@@ -12,7 +12,7 @@ class UnreadableFile(Exception):
     refused the read.
     """
 
-    def __init__(self, cause: str, line: int | None):
+    def __init__(self, cause: str, line: int | None) -> None:
         super().__init__(cause)
         self.cause = cause
         self.line = line
@@ -20,15 +20,12 @@ class UnreadableFile(Exception):
 
 def read_text_file(path: pathlib.Path) -> str:
     """The text of `path` with every line ending as written. Raises UnreadableFile."""
-
     try:
         return path.read_bytes().decode("utf-8")
     except OSError as failure:
-        raise UnreadableFile(
-            f"the file cannot be read: {failure.strerror or failure}", None
-        ) from failure
+        msg = f"the file cannot be read: {failure.strerror or failure}"
+        raise UnreadableFile(msg, None) from failure
     except UnicodeDecodeError as failure:
         line = failure.object.count(b"\n", 0, failure.start) + 1
-        raise UnreadableFile(
-            f"the file is not UTF-8 text: {failure.reason} at byte {failure.start}", line
-        ) from failure
+        msg = f"the file is not UTF-8 text: {failure.reason} at byte {failure.start}"
+        raise UnreadableFile(msg, line) from failure

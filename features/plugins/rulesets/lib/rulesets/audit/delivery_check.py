@@ -52,7 +52,6 @@ def delivery_check(
     The recomposition reads the config and pool under `root` as they stand, with the facts,
     flags, and session state the delivery's record names.
     """
-
     directory = read_directory(root)
     records = _deliveries(locations, session_id)
     emitted = _emitted(locations, session_id)
@@ -138,7 +137,6 @@ def _part_differences(
     emitted: tuple[EmittedRecord, ...],
 ) -> list[Difference]:
     """A line for each part after the first that was never emitted, or emitted differently."""
-
     composed = pack_parts(bodies_of(composition, directory.pool))[:MAX_PARTS]
     ends = [
         later.time_ns

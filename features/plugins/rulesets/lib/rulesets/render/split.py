@@ -32,7 +32,6 @@ class _Section:
 
 def _sections(text: str) -> list[_Section] | MalformedRender:
     """The marked sections of a render, each body without the separator before the next marker."""
-
     starts: list[tuple[Marker, int, int]] = []
     offset = 0
     for line in text.split("\n"):
@@ -67,7 +66,6 @@ def split(rendered: pathlib.Path, root: pathlib.Path) -> SplitReport | Malformed
 
     A malformed file writes nothing. A marker names a file; a file name is never parsed.
     """
-
     parsed = _sections(rendered.read_bytes().decode("utf-8"))
     if isinstance(parsed, MalformedRender):
         return parsed

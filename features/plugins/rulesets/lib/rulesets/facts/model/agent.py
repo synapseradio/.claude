@@ -38,7 +38,6 @@ def agent_model(agent_type: str, cwd: str | None, config_dir: pathlib.Path) -> A
     type is a pin that is not a string. A definition that names none hides the built-in
     agent of the same type. A plugin-scoped type never names a built-in agent.
     """
-
     front = definition_front(agent_type, cwd, config_dir)
     if front is not None:
         model = front.get("model")

@@ -27,5 +27,4 @@ _FACT_RANKS: dict[str, Rank] = {
 
 def block_rank(condition: Condition) -> Rank:
     """The highest rank among the facts the condition tests."""
-
     return max(_FACT_RANKS[test.fact] for test in fact_tests(condition))

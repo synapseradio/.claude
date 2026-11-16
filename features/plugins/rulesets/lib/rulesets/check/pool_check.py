@@ -19,7 +19,6 @@ _RELATIVE_REFERENCES = f"{REFERENCES_DIRECTORY}/"
 
 def pool_errors(pool: Pool) -> tuple[CheckError, ...]:
     """Every error in the pool's rule files, rule by rule in name order."""
-
     errors: list[CheckError] = []
     for rule in pool.rules.values():
         subject = RuleSubject(rule.name)
@@ -90,7 +89,6 @@ def pool_errors(pool: Pool) -> tuple[CheckError, ...]:
 
 def pool_warnings(pool: Pool) -> tuple[CheckWarning, ...]:
     """Every layout and body warning of the pool: stray directories first, then rule by rule."""
-
     warnings: list[CheckWarning] = [
         CheckWarning(
             "stray-directory",
@@ -123,9 +121,11 @@ def _body_warnings(pool: Pool, file: PoolFile) -> list[CheckWarning]:
                 f"`{file.path.name}` opens on a marker for another rule or another form of its own",
             )
         )
-    for citation in file.citations:
-        if (warning := _citation_warning(pool, file, citation)) is not None:
-            warnings.append(warning)
+    warnings.extend(
+        warning
+        for citation in file.citations
+        if (warning := _citation_warning(pool, file, citation)) is not None
+    )
     return warnings
 
 

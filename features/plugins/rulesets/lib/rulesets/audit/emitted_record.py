@@ -35,9 +35,9 @@ class EmittedRecord:
     @classmethod
     def from_json(cls, source: Mapping[str, object]) -> EmittedRecord:
         """The record a JSON object holds; `UnreadableRecord` where it is no emitted record."""
-
         if fields.text(source, "kind") != KIND:
-            raise fields.UnreadableRecord("the record is not an emitted record")
+            msg = "the record is not an emitted record"
+            raise fields.UnreadableRecord(msg)
         return cls(
             session_id=fields.text(source, "session_id"),
             agent_id=fields.text_or_none(source, "agent_id"),

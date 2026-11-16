@@ -31,7 +31,7 @@ repository, already reaches a working provider profile without editing a file
 the repository does not name. Three checks say they do not:
 
 | Check | Result |
-|-------|--------|
+| ------- | -------- |
 | `git ls-files \| grep settings` | Names `settings.base.json` alone. Every provider variant is untracked, so nothing tracked carries an endpoint or a model pin. |
 | `git ls-files \| grep cc-profile` | Empty. The switcher lives under `~/.dotfiles/shell/lib/private/`, outside this repository and unreadable by this session. |
 | `grep -c source scripts/zai-api-key.sh` | One. The helper reads a file that exists on one machine, and the repository does not say which file or what it must contain. |
@@ -60,7 +60,7 @@ The question decomposes into four decisions, and each mechanism answers some
 of them without saying which are its own.
 
 | Mechanism | What it decides today | What it also touches |
-|-----------|-----------------------|----------------------|
+| ----------- | ----------------------- | ---------------------- |
 | Settings variants (`settings.gemma.json`) | The endpoint and the eight model pins for one provider | The whole policy surface, since a variant is a complete settings file, and `env.ANTHROPIC_AUTH_TOKEN` sits in the exempt list, so a variant may legally hold a live token |
 | The alignment machinery (`alignment` in `settings.base.json`) | Which paths are policy and which legitimately differ per profile | Nothing else, and this is the mechanism whose scope is already stated precisely |
 | `cc-profile` under `~/.dotfiles/shell/lib/private/` | Which profile is active | Unknown; the path is denied to this session, so the design treats it as prior art and depends on none of it |
@@ -86,7 +86,7 @@ The plugin assigns each decision one owner and takes it away from everyone
 else.
 
 | Decision | Owner | How it reaches the running harness |
-|----------|-------|------------------------------------|
+| ---------- | ------- | ------------------------------------ |
 | Policy true across every profile: hooks, permissions, sandbox rules, defaults | `settings.base.json` | The alignment sweep propagates it into every variant and into `settings.json` |
 | Which paths a profile may own | `alignment.exempt` in `settings.base.json` | A profile declaring a path outside that set fails validation |
 | Provider identity: the endpoint, the model pins, which credential source to use | One profile file under `${CLAUDE_PLUGIN_DATA}/profiles/` | Activation writes exactly the declared paths into `settings.json` |
@@ -202,7 +202,7 @@ capability, so this is out of bounds. Eliminated on a hard constraint.
 ## Comparison
 
 | | C0 stand still | C1 variants as profiles | C2 derive variants | C3 declared path set | C4 env exports | C5 two plugins |
-|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- |
 | Files that may legally hold a credential | 2 or more | one per profile | one per profile | zero | zero, but the value is exported | one per profile |
 | Drift surface | every variant, hand-edited | every variant, hand-edited | none for derived variants | the declared paths only | none | every variant |
 | Preserves keys base does not name | yes | no, a swap overwrites them | no, generation drops them | yes, the write is bounded | yes | no |
@@ -230,7 +230,7 @@ a credential cannot leak one, whatever the layers above it do.
 ### What each rejected candidate would need to become right
 
 | Candidate | Reversal condition |
-|-----------|--------------------|
+| ----------- | -------------------- |
 | C0 stand still | The user decides this layer stays on one machine, at which point de-personalising the skill's paths is still worth doing on its own. |
 | C1 variants as profiles | The harness gains a first-class profile switch that reads whole files, which makes a bounded write pointless. |
 | C2 derive variants | `alignment.exempt` grows to cover everything a variant may hold, at which point a variant carries nothing worth preserving. |
@@ -267,7 +267,7 @@ Every script resolves three paths the same way, and each resolution takes an
 override so a test never touches real user state.
 
 | Name | Resolution | Why the override exists |
-|------|------------|-------------------------|
+| ------ | ------------ | ------------------------- |
 | Config directory | `${CLAUDE_CONFIG_DIR:-${HOME}/.claude}` | `CLAUDE_CONFIG_DIR` is the documented override for the config root, so a test points it at a temporary directory and the scripts read fixtures there. |
 | Plugin data directory | `${HARNESS_CONFIG_DATA:-${CLAUDE_PLUGIN_DATA:-<config>/plugins/data/harness-config}}` | `CLAUDE_PLUGIN_DATA` is set by the harness for a plugin hook. A skill's Bash call may not carry it, so the fallback derives the documented location, and `HARNESS_CONFIG_DATA` lets a test redirect it. |
 | Plugin root | `${CLAUDE_PLUGIN_ROOT:-<the script's own parent's parent>}` | A script invoked by absolute path finds its own siblings without the harness setting anything. |
@@ -299,7 +299,7 @@ One file per profile at `<data>/profiles/<name>.json`.
 ```
 
 | Field | Contract |
-|-------|----------|
+| ------- | ---------- |
 | `schemaVersion` | The integer `1`. A reader that meets a higher number stops rather than guessing. |
 | `name` | Matches `^[a-z0-9][a-z0-9-]*$`, and is neither `base` nor `local`. The name reaches a filename and a settings-variant name, so it takes the narrower of the two alphabets. |
 | `describe` | A non-empty single-line string. The profile list prints it, so it must carry nothing an account identifies. |
@@ -308,7 +308,7 @@ One file per profile at `<data>/profiles/<name>.json`.
 The declared path set passes two independent gates.
 
 | Gate | Rule | What it alone catches |
-|------|------|-----------------------|
+| ------ | ------ | ----------------------- |
 | Exempt bound | Every leaf path in `settings`, with array indices elided, matches a pattern in `alignment.exempt` in `settings.base.json` | A profile reaching outside provider identity and overwriting policy, such as a profile that sets `permissions.allow` |
 | Credential-name guard | No leaf path's last segment ends in `TOKEN`, `KEY`, `SECRET`, `PASSWORD`, or `CREDENTIAL`, compared without regard to case, and no leaf value carries a credential shape | A token written into a profile, which the exempt bound would permit, since `env.ANTHROPIC_AUTH_TOKEN` is exempt |
 
@@ -329,7 +329,7 @@ and it would put the answer inside a file the plugin must not read by value.
 ### The commands
 
 | Command | Arguments | Effect | Exit |
-|---------|-----------|--------|------|
+| --------- | ----------- | -------- | ------ |
 | `harness-setup.sh` | none | Installs the ignore rules and the permission deny rules, creates the data directories, copies the helper template into place if absent, then runs every guard and prints the output | 0 when every guard passes |
 | `harness-profile.sh list` | none | Prints each profile's name, its `describe`, and whether it is active | 0 |
 | `harness-profile.sh show NAME` | a profile name | Prints the profile's key paths and its non-credential values; prints `apiKeyHelper` as a path and its file mode | 0, 3 when the profile is absent |
@@ -354,7 +354,7 @@ The helper is the only thing that ever holds the credential, and nothing in
 the plugin reads it or runs it.
 
 | Clause | Requirement | How the plugin checks it |
-|--------|-------------|--------------------------|
+| -------- | ------------- | -------------------------- |
 | 1 | The path exists | `[[ -e "${path}" ]]` |
 | 2 | The path is a regular file | `[[ -f "${path}" ]]` |
 | 3 | The owner may execute it | `[[ -x "${path}" ]]` |
@@ -378,7 +378,7 @@ The frame ruled certain states invalid. Each one below is unrepresentable or
 rejected, and the mechanism that rejects it is named.
 
 | State the frame rules out | What rejects it |
-|---------------------------|-----------------|
+| --------------------------- | ----------------- |
 | A profile carrying a credential value | The credential-name guard, on both the path and the value shape |
 | A profile overwriting policy | The exempt bound |
 | A profile named `base`, so `settings.base.json` becomes a variant | The name alphabet plus the two reserved names |
@@ -409,7 +409,7 @@ each one is also a copy-pasteable command a user runs alone.
 ## Integration points
 
 | Point | What connects | Contract |
-|-------|---------------|----------|
+| ------- | --------------- | ---------- |
 | `settings.base.json`, key `alignment.exempt` | The exempt bound reads it | The plugin reads the registry and never writes it. Registering a new exempt path stays the skill's interactive job, because it changes the floor and belongs in a reviewed commit. |
 | `settings.base.json`, key `permissions.deny` | `harness-setup.sh` merges the deny fragment | The merge adds entries and removes none. The plugin adds no hook entry, per the constraint. |
 | `settings.json` | Activation writes the declared paths | The write is bounded to the paths the active profile declares. Every other key survives. |

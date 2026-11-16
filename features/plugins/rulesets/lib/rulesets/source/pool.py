@@ -80,7 +80,6 @@ class PoolFile:
 
     def line_of(self, index: int) -> int:
         """The 1-based file line of the character at `index` in the text."""
-
         return _line_of(self.text, index)
 
 
@@ -94,13 +93,11 @@ class Rule:
 
     def files(self) -> tuple[PoolFile, ...]:
         """The default form first, then the variants by name."""
-
         return ((self.default,) if self.default else ()) + tuple(self.variants.values())
 
     @property
     def path(self) -> pathlib.Path:
         """The path of the first file: the default form, else the first variant."""
-
         return self.files()[0].path
 
 
@@ -117,7 +114,6 @@ class Pool:
 
     def has_reference(self, name: str) -> bool:
         """Whether `references/` holds a file at `name`."""
-
         return (self.root / REFERENCES_DIRECTORY / name).is_file()
 
 
@@ -178,7 +174,6 @@ def read_pool(root: pathlib.Path) -> Pool:
     A file's rule is its stem up to the first `@`, and the rest of the stem is its variant.
     The `references/` and `-render/` folders beside the pool are reserved and read as nothing.
     """
-
     pool_directory = root / _POOL_DIRECTORY
     stray = [
         entry

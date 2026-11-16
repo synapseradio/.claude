@@ -49,7 +49,6 @@ def _declares_nothing(root: pathlib.Path) -> bool:
 
 def _empty(root: pathlib.Path) -> bool:
     """Whether the root is missing, empty, or a first session's empty directory."""
-
     if not root.exists():
         return True
     entries = {entry.name for entry in root.iterdir()}

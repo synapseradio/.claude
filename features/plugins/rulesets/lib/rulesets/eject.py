@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import pathlib
+from collections.abc import Iterator
 
 from rulesets.compose.base_context import base_composition
 from rulesets.compose.composition import WithheldRule
@@ -39,7 +40,9 @@ class EjectReport:
         ]
 
 
-def _uncarried(directory: RulesetsDirectory, ejected: set[tuple[str, str | None]]):
+def _uncarried(
+    directory: RulesetsDirectory, ejected: set[tuple[str, str | None]]
+) -> Iterator[Uncarried]:
     if isinstance(directory.config, Present):
         config = directory.config.config
         for block in config.blocks:
@@ -54,7 +57,6 @@ def _uncarried(directory: RulesetsDirectory, ejected: set[tuple[str, str | None]
 
 def eject(directory: RulesetsDirectory, out: pathlib.Path) -> EjectReport:
     """Write `<rule>.md` into `out` for each rule `defaults` gives, at the variant it names."""
-
     composition = base_composition(directory)
     out.mkdir(parents=True, exist_ok=True)
     written: list[pathlib.Path] = []

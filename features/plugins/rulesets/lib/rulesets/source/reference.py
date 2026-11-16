@@ -54,13 +54,11 @@ class Reference:
     @property
     def quoted(self) -> str:
         """The reference as the config writes it, after the key of the list that holds it."""
-
         return f"{'exclude' if self.remove else 'include'} {self.text}"
 
 
 def _old_form_advice(text: str) -> str | None:
     """What to write in place of a word in a form the config no longer reads, or None."""
-
     if text.startswith("-") and len(text) > 1:
         return f"`{text.removeprefix('-')}` belongs under `exclude`, without the `-`"
     if text == "*":
@@ -104,5 +102,4 @@ def parse_reference(text: str, line: int, *, remove: bool = False) -> Reference:
     any other text that is no form to a MalformedTarget, so a caller reports it instead of
     catching an exception.
     """
-
     return Reference(text=text, line=line, remove=remove, target=_target(text))

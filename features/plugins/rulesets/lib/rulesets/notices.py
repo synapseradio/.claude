@@ -66,7 +66,6 @@ class Notice:
 
 def disregarded_variable_notices(env: Mapping[str, str], variable: str) -> tuple[Notice, ...]:
     """The notice naming `variable` as set, where a host-managed provider may have disregarded it."""
-
     if flag_is_set(env, HOST_MANAGED_VARIABLE):
         return (Notice("provider-variable", variable),)
     return ()
@@ -76,7 +75,6 @@ def variant_conflict_notice(
     rule: str, statements: Iterable[tuple[str, int]], variant: str | None
 ) -> Notice:
     """The notice for a rule whose sets conflicted: each statement with its config line, and the variant delivered."""
-
     delivered = "its default form" if variant is None else f"variant `{variant}`"
     stated = ", ".join(f"`{text}` at config line {line}" for text, line in statements)
     return Notice(
@@ -87,7 +85,6 @@ def variant_conflict_notice(
 
 def flag_notice(name: str) -> Notice:
     """The notice for a launch flag the config does not declare."""
-
     return Notice(
         "launch-flag-undeclared", f"the launch flag `{name}` is not declared and is dropped"
     )
@@ -95,7 +92,6 @@ def flag_notice(name: str) -> Notice:
 
 def block_skipped_notice(condition: str, undeclared: Undeclared) -> Notice:
     """The notice for a block whose condition names models or flags the config does not declare."""
-
     reasons = [
         *(f"`{name}` is not a declared model" for name in undeclared.models),
         *(f"`{name}` is not a declared flag" for name in undeclared.flags),
@@ -107,7 +103,6 @@ def block_skipped_notice(condition: str, undeclared: Undeclared) -> Notice:
 
 def key_skipped_notice(key: str, lines: tuple[int, ...]) -> Notice:
     """The notice for a key written more than once in one mapping of the config; every copy is skipped."""
-
     at = ", ".join(str(line) for line in lines[:-1]) + f" and {lines[-1]}"
     return Notice(
         "key-skipped",

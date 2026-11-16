@@ -13,7 +13,6 @@ from rulesets.source.marker import delivered
 
 def engine_rules(directory: RulesetsDirectory, context: ContextKey) -> dict[str, DeliveredText]:
     """The bytes of each rule the directory delivers to the context, at the variant it delivers."""
-
     config = directory.config.config if isinstance(directory.config, Present) else None
     kind = "delegate" if context.agent else "session"
     facts = named_context(context.identifier, context.agent, kind, (), (), config)

@@ -9,7 +9,6 @@ from rulesets.source.pool import Pool
 
 def bodies_of(composition: Composition, pool: Pool) -> tuple[Body, ...]:
     """The body of each composed rule at its variant, in composition order, as the file reads."""
-
     found: list[Body] = []
     for delivered in composition.rules:
         rule = pool.rules[delivered.rule]

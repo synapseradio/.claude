@@ -11,6 +11,5 @@ def flag_is_set(env: Mapping[str, str], name: str) -> bool:
     The false words are `0`, `false`, and `False`. A variable that carries a value, such
     as `ANTHROPIC_MODEL`, is read for its text and never tested with this.
     """
-
     value = env.get(name)
     return bool(value) and value not in FALSE_WORDS

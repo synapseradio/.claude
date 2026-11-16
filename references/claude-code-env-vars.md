@@ -5,7 +5,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Model selection, aliases & tiers
 
 | Variable | What it does (relation to other vars) | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `ANTHROPIC_MODEL` | Session's active model (alias or full name). Read before the `model` setting; `--model`/`/model` override it for the session | Launch on a specific model without editing settings | — |
 | `ANTHROPIC_DEFAULT_MODEL` | Model new sessions start on by default, when nothing else (`--model`, `ANTHROPIC_MODEL`, any settings-file `model`, org default) selects one. Also the model `default`/Default option resolves to, unless an org default applies | Set a fleet-wide starting model without touching every settings file | v2.1.236 |
 | `ANTHROPIC_DEFAULT_OPUS_MODEL` | Model ID the `opus` alias resolves to, and what `opusplan` uses during Plan Mode. Companion vars `_NAME`, `_DESCRIPTION`, `_SUPPORTED_CAPABILITIES` control its picker display/capabilities | Pin Opus to a specific version/ARN on Bedrock, Vertex, Foundry | — |
@@ -30,7 +30,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Effort level & extended thinking
 
 | Variable | What it does (relation to other vars) | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CLAUDE_CODE_EFFORT_LEVEL` | Sets effort (`low`/`medium`/`high`/`xhigh`/`max`/`auto`). Takes precedence over `--effort`, `/effort`, `modelSettings`, `effortLevel` setting | Force low effort in a cost-sensitive CI job | — |
 | `CLAUDE_CODE_ALWAYS_ENABLE_EFFORT` | Sends the `effort` parameter on every request even for models Claude Code doesn't recognize as effort-capable (useful behind a gateway); still excludes models that reject it outright (Claude 3, Sonnet 4.0/4.5, Opus 4.0/4.1, Haiku 4.5) | Force effort through an LLM gateway serving models under custom IDs | — |
 | `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` | On Opus 4.6/Sonnet 4.6 only, falls back to the fixed thinking budget set by `MAX_THINKING_TOKENS` instead of adaptive reasoning. No effect on Fable, Sonnet 5, or Opus 4.7+ (always adaptive) | Revert to fixed-budget thinking for older models | — |
@@ -41,7 +41,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Context window, compaction & extended context
 
 | Variable | What it does (relation to other vars) | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CLAUDE_CODE_AUTO_COMPACT_WINDOW` | Sets the auto-compact window in tokens (100K–1M, plain integer only). Takes precedence over `/autocompact`, `--autocompact`, and the `autoCompactWindow` setting; capped at the model's context window | Force earlier/later compaction in scripted or cloud sessions | — |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | Sets what percentage (1–100) of the auto-compact window triggers compaction; can only lower the threshold, never raise it. Applies to main conversations and subagents | Compact at 50% instead of near-full to save headroom | — |
 | `CLAUDE_CODE_MAX_CONTEXT_TOKENS` | Overrides the context window size Claude Code assumes for the active model; interacts with `CLAUDE_CODE_DISABLE_1M_CONTEXT` and `DISABLE_COMPACT` depending on whether the model ID is recognized as Claude | Correct the assumed window for a gateway-routed or unrecognized model ID | — |
@@ -54,7 +54,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Prompt caching
 
 | Variable | What it does (relation to other vars) | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `DISABLE_PROMPT_CACHING` | Disables prompt caching for all models; takes precedence over the per-tier `DISABLE_PROMPT_CACHING_*` variables | Debug caching-related behavior differences | — |
 | `DISABLE_PROMPT_CACHING_HAIKU` / `_SONNET` / `_OPUS` / `_FABLE` | Disables prompt caching for that one model tier only | Isolate cache effects to one tier | — |
 | `ENABLE_PROMPT_CACHING_1H` | Requests a 1-hour cache TTL instead of 5 minutes (billed at a higher rate). Overridden per-bucket by `CLAUDE_CODE_PROMPT_CACHE_TTL`/`CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`, and by `FORCE_PROMPT_CACHING_5M` | Reduce cache-miss cost across long idle gaps | — |
@@ -67,7 +67,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Authentication & credentials
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `ANTHROPIC_API_KEY` | API key sent as `X-Api-Key`; overrides a Pro/Max/Team/Enterprise subscription | Key-based auth instead of subscription login | — |
 | `ANTHROPIC_AUTH_TOKEN` | Custom `Authorization: Bearer <value>` header | Custom bearer-token auth | — |
 | `ANTHROPIC_AWS_API_KEY` | Workspace API key for Claude Platform on AWS; sent as `x-api-key`, outranks SigV4 | Auth to Claude Platform on AWS without SigV4 | — |
@@ -93,7 +93,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Provider routing & third-party deployments
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `ANTHROPIC_BASE_URL` | Overrides the API endpoint (proxy/gateway). Non-first-party hosts disable MCP tool search by default (`ENABLE_TOOL_SEARCH=true` to re-enable); disables Remote Control off `api.anthropic.com` | Route through an internal LLM gateway | Remote Control gating added v2.1.196 |
 | `ANTHROPIC_AWS_BASE_URL` | Override Claude Platform on AWS endpoint (default `https://aws-external-anthropic.{region}.api.aws`) | Custom-region or gateway-routed Claude Platform on AWS | — |
 | `ANTHROPIC_BEDROCK_BASE_URL` / `ANTHROPIC_BEDROCK_MANTLE_BASE_URL` | Override Bedrock / Bedrock Mantle endpoint URLs | Custom Bedrock endpoints or gateway routing | — |
@@ -116,7 +116,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Vertex region overrides (per model)
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `VERTEX_REGION_CLAUDE_3_5_HAIKU`, `_3_5_SONNET`, `_3_7_SONNET`, `_4_0_OPUS`, `_4_0_SONNET`, `_4_1_OPUS`, `_4_5_OPUS`, `_4_5_SONNET`, `_4_6_OPUS`, `_4_6_SONNET`, `_4_7_OPUS`, `_HAIKU_4_5` | Overrides the Google Cloud Agent Platform region for that specific Claude version | Route a specific model version to a different Vertex region | — |
 | `VERTEX_REGION_CLAUDE_4_8_OPUS` | Same, for Opus 4.8 | — | v2.1.154 |
 | `VERTEX_REGION_CLAUDE_5_OPUS` | Same, for Opus 5 | — | v2.1.219 |
@@ -127,7 +127,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Networking, timeouts & streaming watchdogs
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `API_TIMEOUT_MS` | Per-request API timeout (default 600000ms/10min, max 2147483647) | Slow networks/proxies | — |
 | `API_FORCE_IDLE_TIMEOUT` | Overrides the 5-min body-idle timeout on streaming responses; `0` off, `1` on for every provider; independent of the stream watchdogs | Tolerate a slow gateway/local model with long pauses between chunks | v2.1.169 |
 | `CLAUDE_STREAM_IDLE_TIMEOUT_MS` | Timeout before event-/byte-level stream watchdogs close a stalled connection (min 300000ms when set explicitly); `CLAUDE_BYTE_STREAM_IDLE_TIMEOUT_MS` takes precedence for the byte-level watchdog | Tune stall detection for slow/thinking-heavy responses | — |
@@ -146,7 +146,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Memory, CLAUDE.md, skills & instructions loaded into context
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CLAUDE_CODE_DISABLE_CLAUDE_MDS` | Prevents loading any CLAUDE.md memory file (user/project/auto) | Run with zero project instructions loaded | — |
 | `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD` | Loads CLAUDE.md/`.claude/rules/*.md`/`CLAUDE.local.md` from `--add-dir` directories too (off by default) | Pull in instructions from an added directory | — |
 | `CLAUDE_CODE_DISABLE_AUTO_MEMORY` | Disables auto memory creation/loading; `0` force-enables it even under `--bare`/`autoMemoryEnabled: false` | Turn off (or force on) the auto-memory feature | — |
@@ -171,7 +171,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Hooks & subprocess environment
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` | Strips recognized credentials (Anthropic, cloud provider, package-registry-embedded) from Bash/hook/MCP-stdio subprocess environments; on Linux also isolates Bash subprocesses in a PID namespace (so `ps`/`pgrep`/`kill` can't see host processes) | Reduce secret-exfiltration risk from prompt injection in tool calls | `claude-code-action` sets it automatically with `allowed_non_write_users` |
 | `CLAUDE_CODE_MCP_ALLOWLIST_ENV` | Spawns stdio MCP servers with only a safe baseline env plus the server's own configured `env`, instead of inheriting the shell environment | Prevent an MCP server from reading your full shell env | — |
 | `CLAUDE_CODE_SCRIPT_CAPS` | JSON map of command-substring → call-limit-per-session, enforced alongside `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`; substring-matched, defense-in-depth only | Cap how many times a sensitive script (e.g. `deploy.sh`) can run per session | — |
@@ -187,7 +187,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Subagents, agent teams & workflows
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` | Cap on subagents running at once in a session (default 20) | Limit fan-out concurrency | v2.1.217 |
 | `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` | How many subagent layers may nest below the main conversation (default 3; `1` disables nesting) | Bound recursive delegation depth | v2.1.217 (default raised to 3 in v2.1.219) |
 | `CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION` | **Removed/no-op** since v2.1.224; use the concurrent and depth limits instead | — | removed v2.1.224 |
@@ -216,7 +216,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## MCP servers
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `MCP_CONNECTION_NONBLOCKING` | `0` makes startup wait for MCP servers to connect before the first query (default: non-blocking) | Guarantee MCP tools are ready on turn one | — |
 | `MCP_CONNECT_TIMEOUT_MS` | How long blocking MCP startup waits before snapshotting the tool list (default 5000) | Bound blocking-connect wait | — |
 | `MCP_TIMEOUT` | Timeout for MCP server startup (default 30000) | Slow-starting MCP servers | — |
@@ -234,7 +234,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Plugins & marketplace
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CLAUDE_CODE_PLUGIN_CACHE_DIR` | Overrides the plugins root directory (parent of the cache, default `~/.claude/plugins`) | Relocate plugin storage | — |
 | `CLAUDE_CODE_PLUGIN_SEED_DIR` | Path(s) to read-only plugin seed directories (`:`/`;`-separated) | Bundle pre-populated plugins into a container image | — |
 | `CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS` | Timeout for plugin install/update git operations (default 120000) | Large repos / slow networks | — |
@@ -248,7 +248,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Bash/PowerShell/shell tool behavior
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `BASH_DEFAULT_TIMEOUT_MS` / `BASH_MAX_TIMEOUT_MS` | Default (120000) / model-settable ceiling (600000, floor = larger of the two) for Bash commands | Tune long-running-command timeouts | — |
 | `BASH_MAX_OUTPUT_LENGTH` | Max chars of Bash output read back (default 30000, max 150000); ignored if `bashOutputMaxChars` setting is set | Read more/less of a command's output | — |
 | `CLAUDE_CODE_SHELL` | Path to the `bash`/`zsh` binary Bash tool commands run under | Pin a non-default shell binary | — |
@@ -266,7 +266,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## File/glob/web search tool limits
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS` | Overrides the default token limit for file reads | Read larger files in full | — |
 | `CLAUDE_CODE_GLOB_HIDDEN` | `false` excludes dotfiles from Glob results (included by default) | Hide dotfiles from Glob only | — |
 | `CLAUDE_CODE_GLOB_NO_IGNORE` | `false` makes Glob respect `.gitignore` (ignored by default) | Restrict Glob to non-gitignored files | — |
@@ -283,7 +283,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Session, resume, persistence & multi-config
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CLAUDE_CODE_SESSION_ID` | Exported to Bash/hook/MCP-stdio subprocesses with the current session ID | Correlate external scripts with the launching session | — |
 | `CLAUDE_CODE_CHILD_SESSION` | Set to `1` by Claude Code itself in every subprocess it spawns (not by IDE extensions); excludes a nested `claude` TUI from `--resume`/history/`claude agents` unless `CLAUDE_CODE_FORCE_SESSION_PERSISTENCE=1` | Reliably detect a nested vs. top-level session | v2.1.172 |
 | `CLAUDECODE` | Set to `1` in every Claude-Code-spawned subprocess, and by IDE extensions in their integrated terminals | Detect "running inside Claude Code" from any subprocess | — |
@@ -299,7 +299,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Remote Control & cross-session messaging
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CLAUDE_CODE_BRIDGE_SESSION_ID` | Exported to Bash/hook subprocesses while a Remote Control connection is active; matches the session's `claude.ai/code` URL ID | Link a script's output back to the Remote-Control-connected session | v2.1.199 |
 | `CLAUDE_CODE_REMOTE` / `CLAUDE_CODE_REMOTE_SESSION_ID` | `true` when running as a cloud session; the cloud session's own ID | Detect a cloud session and link back to its transcript | — |
 | `CLAUDE_REMOTE_CONTROL_SESSION_NAME_PREFIX` | Prefix for auto-generated Remote Control session names (default: hostname) | Customize auto-generated session names | — |
@@ -311,7 +311,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Terminal rendering, accessibility & UI
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CLAUDE_CODE_NO_FLICKER` | Enables fullscreen rendering (research preview, less flicker, flat memory); overridden by `CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN` | Try the fullscreen renderer | — |
 | `CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN` | Forces the classic main-screen renderer, keeping native scrollback/`Cmd+f`/tmux copy mode; outranks `CLAUDE_CODE_NO_FLICKER` | Keep native terminal scrollback | — |
 | `CLAUDE_CODE_ALT_SCREEN_FULL_REPAINT` | Repaints the whole screen every frame in fullscreen mode instead of incremental updates (auto-on for background sessions/agent view on Windows) | Fix stale/misplaced fragments in fullscreen mode | — |
@@ -340,7 +340,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Telemetry & OpenTelemetry
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | Enables OTel metrics/logging (required before configuring exporters) | Turn telemetry collection on | — |
 | `DISABLE_TELEMETRY` / `DO_NOT_TRACK` | Opt out of telemetry; also disables feature-flag fetching (same as `DISABLE_GROWTHBOOK`), which disables Remote Control and related features. **`0`/`false` still opts out** for `DISABLE_TELEMETRY`; `DO_NOT_TRACK` reads as a normal boolean | Org-wide telemetry opt-out | — |
 | `DISABLE_GROWTHBOOK` | Disables GrowthBook feature-flag fetching specifically, same downstream effect as `DISABLE_TELEMETRY` on flag-gated features | Disable feature flags without disabling telemetry events | — |
@@ -360,7 +360,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Artifacts, feedback & command visibility
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CLAUDE_CODE_DISABLE_ARTIFACT` | Turns off the Artifact tool permanently (no settings file can re-enable it); use `enableArtifact`/`disableArtifact` settings for a reversible toggle | Hard-disable web-page publishing | — |
 | `CLAUDE_CODE_ARTIFACT_AUTO_OPEN` | `0` stops auto-opening the browser on new artifact publish | Suppress browser auto-open | — |
 | `CLAUDE_CODE_ARTIFACT_COMMENTS` / `_ARTIFACT_COMMENTS_AUTOREACT` | `0` stops Claude reading/replying to artifact comments, or just auto-replying | Control artifact-comment interaction | v2.1.221 / v2.1.228 |
@@ -381,7 +381,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Debugging, installation & updates
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `DEBUG` | Enables debug mode (`--debug` equivalent); only `1`/`true`/`yes`/`on` trigger it | Turn on debug logging | — |
 | `CLAUDE_CODE_DEBUG_LOGS_DIR` | Overrides the debug log file path (a file, not a directory); needs `--debug`/`/debug`/`DEBUG` to actually log | Redirect debug logs | — |
 | `CLAUDE_CODE_DEBUG_LOG_LEVEL` | Minimum level written to the debug log (`verbose`/`debug`/`info`/`warn`/`error`) | Tune debug-log verbosity | — |
@@ -395,7 +395,7 @@ Compiled: 2026-09-08 16:08 CEST, from `https://code.claude.com/docs/en/env-vars.
 ## Model-agnostic misc / SDK
 
 | Variable | What it does | Use cases | Date added |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CLAUDE_CODE_EXTRA_BODY` | JSON merged into the top level of every API request body; a shell-exported value also applies to `claude agents`/`--bg` background sessions | Pass provider-specific request parameters | background-session inheritance fixed v2.1.206 |
 | `CLAUDE_CODE_MAX_TURNS` | Caps agentic turns when no explicit limit is passed; `--max-turns` takes precedence | Bound a runaway automated session | — |
 | `MAX_STRUCTURED_OUTPUT_RETRIES` | Retries when the model's response fails validation against `--json-schema` in non-interactive (`-p`) mode; same count applies to a workflow subagent's structured-output validation (default 5) | Tune retry budget for schema-constrained headless output | — |

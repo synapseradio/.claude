@@ -15,7 +15,6 @@ def held_rules(locations: Locations, session_id: str) -> tuple[RuleKey, ...] | N
 
     None where no counted delivery of the main session is on record.
     """
-
     held = [
         record
         for record in counted(_records(locations, session_id))
@@ -26,7 +25,6 @@ def held_rules(locations: Locations, session_id: str) -> tuple[RuleKey, ...] | N
 
 def supersedes_a_switch(locations: Locations, session_id: str, prompt_id: str | None) -> bool:
     """Whether a switch record already carries `prompt_id`, so a switch under it replaces that record."""
-
     return prompt_id is not None and any(
         _switched_under(record, prompt_id) for record in _records(locations, session_id)
     )

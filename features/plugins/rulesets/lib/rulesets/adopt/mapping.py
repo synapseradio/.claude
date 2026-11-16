@@ -38,13 +38,11 @@ class AdoptedDirectory:
 
 def rule_of(pool_file_name: str) -> str:
     """The rule a pool file belongs to: its name without `.md` and without any `@variant`."""
-
     return pool_file_name.removesuffix(".md").partition("@")[0]
 
 
 def model_name(tier: str) -> str:
     """The model name a tier declares: the tier name without its `claude-` prefix."""
-
     return tier.removeprefix(_MODEL_PREFIX)
 
 
@@ -53,7 +51,6 @@ def map_corpus(corpus: TierCorpus) -> AdoptedDirectory:
 
     A tier's stems to leave out become that block's excludes.
     """
-
     pool = {f"{stem}.md": path for stem, path in corpus.default.items()}
     default_stems = tuple(sorted(corpus.default))
     blocks: list[Block] = []

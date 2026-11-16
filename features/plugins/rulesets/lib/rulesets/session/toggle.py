@@ -40,7 +40,6 @@ def apply_toggle(
     declared_flags: Collection[str], state: SessionState, action: ToggleAction
 ) -> SessionState | UndeclaredFlag:
     """The state after `action`, or the flag name the config does not declare."""
-
     match action:
         case SetBand(band):
             return dataclasses.replace(state, band=band)

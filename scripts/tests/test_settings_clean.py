@@ -25,12 +25,13 @@ MOVED_SCRIPTS = ("rulesets-deliver.py", "rulesets-audit.py")
 
 def commands(wiring: dict) -> list[tuple[str, str | None, str]]:
     """Each (event, matcher, command) a settings-shaped hooks mapping holds."""
-
     found = []
     for event, groups in wiring.items():
         for group in groups:
-            for hook in group.get("hooks", []):
-                found.append((event, group.get("matcher"), hook.get("command", "")))
+            found.extend(
+                (event, group.get("matcher"), hook.get("command", ""))
+                for hook in group.get("hooks", [])
+            )
     return found
 
 
@@ -43,7 +44,7 @@ def plugin_hooks() -> list[tuple[str, str | None, str]]:
 
 
 class TestTheSettingsFileNamesNoPluginHook:
-    def test_no_command_runs_a_script_the_plugin_ships(self):
+    def test_no_command_runs_a_script_the_plugin_ships(self) -> None:
         offenders = [
             (event, matcher, command)
             for event, matcher, command in settings_hooks()
@@ -55,7 +56,7 @@ class TestTheSettingsFileNamesNoPluginHook:
             "own delivers the same ruleset twice into one context"
         )
 
-    def test_the_events_the_plugin_covers_carry_no_entry_of_the_feature_s_own(self):
+    def test_the_events_the_plugin_covers_carry_no_entry_of_the_feature_s_own(self) -> None:
         covered = {(event, matcher) for event, matcher, _ in plugin_hooks()}
         remaining = {
             (event, matcher)
@@ -68,7 +69,7 @@ class TestTheSettingsFileNamesNoPluginHook:
             f"into: {sorted(remaining)}"
         )
 
-    def test_a_hook_no_plugin_owns_is_left_alone(self):
+    def test_a_hook_no_plugin_owns_is_left_alone(self) -> None:
         """The cut is scoped: a hook no plugin owns stays.
 
         `PostToolUse` and `PostToolUseFailure` both run
@@ -76,7 +77,6 @@ class TestTheSettingsFileNamesNoPluginHook:
         that took the moved scripts' events instead of the moved scripts
         themselves would have taken these down too.
         """
-
         found = {
             (event, matcher)
             for event, matcher, command in settings_hooks()

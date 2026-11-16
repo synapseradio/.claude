@@ -11,7 +11,6 @@ from rulesets.documents import split_frontmatter
 
 def is_path_scoped(path: pathlib.Path) -> bool:
     """Whether the file's frontmatter carries a `paths` key, which scopes it to matching paths."""
-
     split = split_frontmatter(path.read_bytes().decode("utf-8", errors="replace"))
     if split is None:
         return False

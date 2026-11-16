@@ -42,7 +42,6 @@ def resolve_context(
     environ: Mapping[str, str],
 ) -> ResolvedContext:
     """Resolve the model, agent, kind, and flags of the context a request starts."""
-
     config = directory.config.config if isinstance(directory.config, Present) else None
     models = config.models if config else ()
     launched = launch_flags(environ, config.flags if config else ())

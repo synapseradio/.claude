@@ -20,7 +20,6 @@ def subagent_default(env: Mapping[str, str]) -> str | None:
     The harness counts a value of `inherit` as unset
     (https://code.claude.com/docs/en/sub-agents.md#choose-a-model), so None answers there too.
     """
-
     value = env.get(SUBAGENT_MODEL_VARIABLE)
     return value if value and value != _INHERIT else None
 
@@ -32,7 +31,6 @@ def active_lever(env: Mapping[str, str]) -> ForceLever | None:
     (https://code.claude.com/docs/en/sub-agents.md#choose-a-model). The coordinator lever
     also fixes the delegate to the parent's model, so it decides where both are set.
     """
-
     for lever in (ForceLever.COORDINATOR, ForceLever.SUBAGENT):
         if flag_is_set(env, lever):
             return lever

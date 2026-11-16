@@ -21,7 +21,6 @@ class LaunchFlags:
 
 def launch_flags(environ: Mapping[str, str], declared: Collection[str]) -> LaunchFlags:
     """Read the comma-separated names in `RULESETS_FLAGS`, splitting them by the config's flags."""
-
     named = [name.strip() for name in environ.get(LAUNCH_VARIABLE, "").split(",")]
     named = list(dict.fromkeys(name for name in named if name))
     return LaunchFlags(
@@ -45,7 +44,6 @@ class FlagFact:
 
 def delegate_flags(launch: LaunchFlags, state: SessionState) -> tuple[FlagFact, ...]:
     """The launch flags, plus each flag a toggle set, minus each flag a toggle unset, by name."""
-
     held = {name: FlagSource.LAUNCH for name in launch.declared}
     for name, setting in state.flags.items():
         match setting:
@@ -58,5 +56,4 @@ def delegate_flags(launch: LaunchFlags, state: SessionState) -> tuple[FlagFact, 
 
 def session_flags(launch: LaunchFlags) -> tuple[FlagFact, ...]:
     """The main session's flags: the launch flags alone, whatever a toggle set."""
-
     return tuple(FlagFact(name, FlagSource.LAUNCH) for name in sorted(launch.declared))

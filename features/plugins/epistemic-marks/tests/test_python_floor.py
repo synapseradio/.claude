@@ -1,4 +1,4 @@
-"""Every module the hooks run parses under Python 3.9:
+"""Every module the hooks run parses under Python 3.9.
 
     python3 -m unittest tests.test_python_floor -v
 
@@ -16,23 +16,20 @@ FLOOR = (3, 9)
 SHIPPED = ("epistemic_marks", "hooks")
 
 
-def shipped_sources():
+def shipped_sources() -> list[Path]:
     """Every Python file the plugin runs, tests excluded."""
-
     return sorted(path for directory in SHIPPED for path in (PLUGIN_ROOT / directory).rglob("*.py"))
 
 
 class TheShippedCodeParsesAtTheFloor(unittest.TestCase):
-    def test_it_checks_the_sources_the_hooks_run(self):
+    def test_it_checks_the_sources_the_hooks_run(self) -> None:
         checked = {path.relative_to(PLUGIN_ROOT).as_posix() for path in shipped_sources()}
-        self.assertIn(
-            "epistemic_marks/scan.py",
-            checked,
-            "a floor test that misses the scanner proves nothing",
+        assert "epistemic_marks/scan.py" in checked, (
+            "a floor test that misses the scanner proves nothing"
         )
-        self.assertIn("hooks/verify-marks.py", checked, "the entrypoint the harness runs")
+        assert "hooks/verify-marks.py" in checked, "the entrypoint the harness runs"
 
-    def test_every_module_parses_at_the_floor(self):
+    def test_every_module_parses_at_the_floor(self) -> None:
         for path in shipped_sources():
             with self.subTest(source=path.relative_to(PLUGIN_ROOT).as_posix()):
                 try:
@@ -46,17 +43,14 @@ class TheShippedCodeParsesAtTheFloor(unittest.TestCase):
 
 
 class TheFormatterTargetsTheFloor(unittest.TestCase):
-    def test_the_lint_target_is_the_floor(self):
+    def test_the_lint_target_is_the_floor(self) -> None:
         # Read as text: tomllib arrived in Python 3.11, above the floor.
         settings = PLUGIN_ROOT / ".ruff.toml"
-        self.assertTrue(
-            settings.is_file(),
-            "without a plugin .ruff.toml the formatter targets the repository's version",
+        assert settings.is_file(), (
+            "without a plugin .ruff.toml the formatter targets the repository's version"
         )
-        self.assertIn(
-            'target-version = "py39"',
-            settings.read_text(encoding="utf-8"),
-            "a formatter targeting a newer Python strips the parentheses a 3.9 parser needs",
+        assert 'target-version = "py39"' in settings.read_text(encoding="utf-8"), (
+            "a formatter targeting a newer Python strips the parentheses a 3.9 parser needs"
         )
 
 

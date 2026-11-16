@@ -29,7 +29,6 @@ class Stale:
 
 def write_tree(folder: pathlib.Path, tree: Mapping[str, str]) -> Written:
     """Replace everything in `folder` with the tree, a mapping from file name to text."""
-
     folder.mkdir(parents=True, exist_ok=True)
     for entry in folder.iterdir():
         if entry.is_dir() and not entry.is_symlink():
@@ -43,7 +42,6 @@ def write_tree(folder: pathlib.Path, tree: Mapping[str, str]) -> Written:
 
 def check_tree(folder: pathlib.Path, tree: Mapping[str, str]) -> Stale | Fresh:
     """Compare the folder with the tree and write nothing."""
-
     held = {entry.name for entry in folder.iterdir()} if folder.is_dir() else set()
     differing = set(held ^ tree.keys())
     differing |= {

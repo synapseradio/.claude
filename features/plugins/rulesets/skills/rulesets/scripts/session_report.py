@@ -56,7 +56,6 @@ def _records(locations: Locations, session: str) -> tuple[DeliveryRecord, ...]:
 
 def scopes(records: tuple[DeliveryRecord, ...]) -> dict[str, DeliveryRecord]:
     """The latest record of each scope: the session, and each delegate as `delegate <type> #<n>`."""
-
     found: dict[str, DeliveryRecord] = {}
     names: dict[str, str] = {}
     started: Counter[str] = Counter()

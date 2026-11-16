@@ -59,7 +59,6 @@ class TierCorpus:
 
 def delivered_stems(entry: TierEntry, default_stems: Collection[str]) -> tuple[str, ...]:
     """The stems a tier delivers, sorted, among those `default` holds."""
-
     match entry:
         case EveryStem(exclude):
             return tuple(sorted(stem for stem in default_stems if stem not in exclude))
@@ -71,9 +70,11 @@ def _yaml_mapping(path: pathlib.Path) -> dict:
     try:
         document = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, yaml.YAMLError) as failure:
-        raise SourceError(f"{path} cannot be read as YAML: {failure}") from failure
+        msg = f"{path} cannot be read as YAML: {failure}"
+        raise SourceError(msg) from failure
     if not isinstance(document, dict):
-        raise SourceError(f"{path} is not a mapping")
+        msg = f"{path} is not a mapping"
+        raise SourceError(msg)
     return document
 
 
@@ -81,19 +82,22 @@ def _stems(value: object, where: str) -> tuple[str, ...]:
     if value is None:
         return ()
     if not isinstance(value, list) or not all(isinstance(stem, str) for stem in value):
-        raise SourceError(f"{where} is not a list of stems")
+        msg = f"{where} is not a list of stems"
+        raise SourceError(msg)
     return tuple(value)
 
 
 def _entry(tier: str, raw: object, manifest: pathlib.Path) -> TierEntry:
     if not isinstance(raw, dict):
-        raise SourceError(f"tier {tier} in {manifest} is not a mapping")
+        msg = f"tier {tier} in {manifest} is not a mapping"
+        raise SourceError(msg)
     include = raw.get("include")
     if include == "*":
         return EveryStem(_stems(raw.get("exclude"), f"exclude of tier {tier} in {manifest}"))
     if isinstance(include, list):
         return Listed(_stems(include, f"include of tier {tier} in {manifest}"))
-    raise SourceError(f"tier {tier} in {manifest} states no include of either form")
+    msg = f"tier {tier} in {manifest} states no include of either form"
+    raise SourceError(msg)
 
 
 def _prefixes(root: pathlib.Path) -> dict[str, tuple[str, ...]]:
@@ -115,11 +119,11 @@ def read_tier_corpus(root: pathlib.Path) -> TierCorpus:
 
     A path-scoped file, and a tier file whose stem `default` does not hold, are set aside.
     """
-
     manifest = root / MANIFEST_FILE
     raw_tiers = _yaml_mapping(manifest).get("tiers")
     if not isinstance(raw_tiers, dict):
-        raise SourceError(f"{manifest} has no `tiers` mapping")
+        msg = f"{manifest} has no `tiers` mapping"
+        raise SourceError(msg)
 
     skipped: list[Skipped] = []
     default: dict[str, pathlib.Path] = {}

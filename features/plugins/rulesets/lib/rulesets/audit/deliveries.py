@@ -38,7 +38,6 @@ class ContextLine:
 
 def deliveries(locations: Locations, session_id: str) -> tuple[ContextLine, ...]:
     """The session's counted deliveries in file order."""
-
     path = log.session_dir(locations, session_id) / log.DELIVERIES_FILE
     return tuple(
         _context_line(record) for record in counted(log.read_as(path, DeliveryRecord.from_json))

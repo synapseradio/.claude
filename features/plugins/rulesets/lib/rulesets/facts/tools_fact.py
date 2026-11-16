@@ -11,7 +11,6 @@ def tools_fact(front: Frontmatter | None) -> ListedTools | AllToolsBut | Absent:
     Each `disallowedTools` entry removes its whole tool, a specifier such as `Bash(git push *)`
     included (https://code.claude.com/docs/en/sub-agents.md#supported-frontmatter-fields).
     """
-
     if front is None:
         return ABSENT
     listed = _tool_names(front.get("tools"))
@@ -23,7 +22,6 @@ def tools_fact(front: Frontmatter | None) -> ListedTools | AllToolsBut | Absent:
 
 def _tool_names(field: object) -> frozenset[str]:
     """The tool names of a comma-separated string or a list, each entry cut at its specifier."""
-
     match field:
         case str():
             entries = _split_entries(field)
@@ -39,7 +37,6 @@ def _tool_names(field: object) -> frozenset[str]:
 
 def _split_entries(text: str) -> list[str]:
     """The comma-separated entries of `text`, keeping a comma inside parentheses in its entry."""
-
     entries: list[str] = []
     depth = 0
     start = 0

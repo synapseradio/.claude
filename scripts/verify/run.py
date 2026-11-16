@@ -18,6 +18,7 @@ import events
 import progress
 from events import Event
 from slots import SlotPool, fair_shares
+
 from tasks import Task
 
 STOP_GRACE_SECONDS = 2.0

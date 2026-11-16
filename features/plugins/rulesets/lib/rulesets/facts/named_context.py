@@ -22,7 +22,6 @@ def named_context(
     A model names itself where a declared name equals it or is the name it opens on, as a
     delivery claims an identifier. No tool named leaves the tools fact absent.
     """
-
     held = frozenset(tools)
     declared = config.models if config else ()
     claimed = (claiming_name(model, frozenset(declared)) or UNCLAIMED) if model else ABSENT

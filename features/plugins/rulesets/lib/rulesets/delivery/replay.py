@@ -15,7 +15,6 @@ from rulesets.locations import Locations
 
 def store_delivery(locations: Locations, request: SubagentStart, plan: Delivering) -> None:
     """Keep the plan a delegate's first delivery composed; a delegate without an `agent_id` keeps none."""
-
     path = _path(locations, request)
     if path is not None:
         path.write_text(json.dumps(plan_document(plan)), encoding="utf-8")
@@ -30,7 +29,6 @@ def deliver_replay(
     stands. The harness re-injects a delegate's context after auto-compaction, and the same
     text is the copy it holds.
     """
-
     path = _path(locations, request)
     if path is None or not path.is_file():
         return None

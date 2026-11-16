@@ -17,7 +17,6 @@ CLAIM_BOUNDARIES = "-["
 
 def claim_model(identifier: object, source: IdentifierSource, models: Iterable[str]) -> ModelFact:
     """Claim an identifier, as reported, for a declared name."""
-
     match identifier:
         case None | "":
             return Missing()
@@ -34,7 +33,6 @@ def claim_model(identifier: object, source: IdentifierSource, models: Iterable[s
 
 def claiming_name(identifier: str, names: frozenset[str]) -> str | None:
     """The longest declared name that claims `identifier`, or None."""
-
     if identifier in names:
         return identifier
     claiming = [name for name in names if name and opens_on(identifier, name)]
@@ -43,7 +41,6 @@ def claiming_name(identifier: str, names: frozenset[str]) -> str | None:
 
 def opens_on(identifier: str, name: str) -> bool:
     """Whether `identifier` is `claude-<name>` or continues it at a `-` or `[`."""
-
     opening = CLAIM_PREFIX + name
     return identifier.startswith(opening) and (
         len(identifier) == len(opening) or identifier[len(opening)] in CLAIM_BOUNDARIES

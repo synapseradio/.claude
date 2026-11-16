@@ -13,7 +13,6 @@ _REPORTERS = {
 
 def model_notice(fact: ModelFact) -> Notice | None:
     """The notice a model fact draws: its identifier where unclaimed, the reason where missing."""
-
     match fact:
         case Claimed():
             return None

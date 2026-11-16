@@ -14,14 +14,16 @@ class UnreadableRecord(ValueError):
 
 def document(value: object, what: str) -> Document:
     if not isinstance(value, Mapping):
-        raise UnreadableRecord(f"{what} is not an object")
+        msg = f"{what} is not an object"
+        raise UnreadableRecord(msg)
     return value
 
 
 def text(source: Document, key: str) -> str:
     value = source.get(key)
     if not isinstance(value, str):
-        raise UnreadableRecord(f"`{key}` is not text")
+        msg = f"`{key}` is not text"
+        raise UnreadableRecord(msg)
     return value
 
 
@@ -32,21 +34,24 @@ def text_or_none(source: Document, key: str) -> str | None:
 def whole_number(source: Document, key: str) -> int:
     value = source.get(key)
     if not isinstance(value, int) or isinstance(value, bool):
-        raise UnreadableRecord(f"`{key}` is not a whole number")
+        msg = f"`{key}` is not a whole number"
+        raise UnreadableRecord(msg)
     return value
 
 
 def truth(source: Document, key: str) -> bool:
     value = source.get(key)
     if not isinstance(value, bool):
-        raise UnreadableRecord(f"`{key}` is not true or false")
+        msg = f"`{key}` is not true or false"
+        raise UnreadableRecord(msg)
     return value
 
 
 def choice[Allowed: str](source: Document, key: str, allowed: tuple[Allowed, ...]) -> Allowed:
     value = text(source, key)
     if value not in allowed:
-        raise UnreadableRecord(f"`{key}` is none of {', '.join(allowed)}")
+        msg = f"`{key}` is none of {', '.join(allowed)}"
+        raise UnreadableRecord(msg)
     return cast(Allowed, value)
 
 
@@ -60,19 +65,20 @@ def each[Parsed](
     source: Document, key: str, parse: Callable[[Document], Parsed]
 ) -> tuple[Parsed, ...]:
     """Each element of the list at `key`, parsed as an object."""
-
     return tuple(parse(document(item, f"an element of `{key}`")) for item in _list(source, key))
 
 
 def texts(source: Document, key: str) -> tuple[str, ...]:
     items = _list(source, key)
     if not all(isinstance(item, str) for item in items):
-        raise UnreadableRecord(f"`{key}` holds more than text")
+        msg = f"`{key}` holds more than text"
+        raise UnreadableRecord(msg)
     return tuple(cast(Sequence[str], items))
 
 
 def _list(source: Document, key: str) -> list[object]:
     value = source.get(key)
     if not isinstance(value, list):
-        raise UnreadableRecord(f"`{key}` is not a list")
+        msg = f"`{key}` is not a list"
+        raise UnreadableRecord(msg)
     return value

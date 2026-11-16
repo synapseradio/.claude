@@ -70,7 +70,6 @@ _OLD_LAYOUT: dict[str, str] = {
 
 def unparsable_error(failure: ConfigParseError) -> CheckError:
     """The error for a config that cannot be read, is not YAML, or is not a mapping."""
-
     return CheckError(
         "config-unparsable", ConfigSubject(), failure.path, failure.line, failure.reason
     )
@@ -78,7 +77,6 @@ def unparsable_error(failure: ConfigParseError) -> CheckError:
 
 def old_file_error(root: pathlib.Path) -> CheckError:
     """The error for a directory that holds the old file and no config."""
-
     return CheckError(
         "config-file",
         ConfigSubject(),
@@ -91,7 +89,6 @@ def old_file_error(root: pathlib.Path) -> CheckError:
 
 def config_errors(config: Config, expander: Expander) -> tuple[CheckError, ...]:
     """Every error in the config, shape errors first, in the order the file reads."""
-
     return (
         *(_shape_error(config, problem) for problem in config.problems),
         *_cycle_errors(config, expander),
@@ -170,7 +167,6 @@ def _shape_error(config: Config, problem: ShapeProblem) -> CheckError:
 
 def _cycle_errors(config: Config, expander: Expander) -> Iterator[CheckError]:
     """One error for each cycle, at the line of the first member written."""
-
     declared = {name: ruleset.line for name, ruleset in config.rulesets.items()}
     if config.defaults is not None:
         declared = {"defaults": config.defaults.line, **declared}
@@ -237,7 +233,6 @@ def _list_errors(config: Config, expander: Expander) -> Iterator[CheckError]:
 
 def _reference_error(config: Config, problem: ReferenceProblem) -> CheckError:
     """The subject names the reference, so the message says only what is wrong with it."""
-
     reference = problem.reference
     match problem:
         case MalformedReference(_, reason):

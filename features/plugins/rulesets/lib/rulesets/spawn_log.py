@@ -33,13 +33,11 @@ def _safe(key: str) -> str:
 
 def audit_dir(state: pathlib.Path) -> pathlib.Path:
     """The directory holding one directory of records for each session."""
-
     return state / "audit"
 
 
 def session_dir(session_id: str, state: pathlib.Path) -> pathlib.Path:
     """The directory holding one session's records."""
-
     return audit_dir(state) / _safe(session_id)
 
 
@@ -54,7 +52,6 @@ def append_spawn(
 
     A caller runs inside a hook, so an unwritable log answers False and raises nothing.
     """
-
     record = {
         "kind": SPAWN,
         "session_id": session_id,
@@ -83,7 +80,6 @@ def read_spawns(
     A record naming no model is left out. A line that does not parse is skipped, so a
     write that failed partway leaves the rest of the log readable.
     """
-
     try:
         records = _records(session_dir(session_id, state) / SPAWNS_FILE, SPAWN)
     except OSError:
@@ -110,7 +106,6 @@ def claim_spawn(
     an exclusive lock together. None where every matching record is claimed, or where a log
     or the lock cannot be read or written.
     """
-
     directory = session_dir(session_id, state)
     try:
         directory.mkdir(parents=True, exist_ok=True)
@@ -144,7 +139,6 @@ def claim_spawn(
 
 def _records(path: pathlib.Path, kind: str) -> dict[int, dict]:
     """The records of `kind` in a JSON-lines log, keyed by line number; a line that does not parse is skipped."""
-
     records: dict[int, dict] = {}
     try:
         lines = path.read_text(encoding="utf-8").splitlines()

@@ -17,7 +17,6 @@ def tier_for(corpus: TierCorpus, identifier: str | None) -> Tier | None:
     A tier named for the identifier wins; else the tier of the longest prefix the prefix map
     holds that the identifier opens on; else `default`.
     """
-
     if identifier is None:
         return None
     if identifier in corpus.tiers:
@@ -40,7 +39,6 @@ def source_rules(
     no marker, so they stand under the marker delivery would write. A tier corpus's files are
     delivered as they are, marker included.
     """
-
     match source:
         case RulesFolder(rules):
             return {

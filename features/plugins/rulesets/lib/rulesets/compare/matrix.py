@@ -24,7 +24,6 @@ def matrix(
     identifiers: Iterable[str | None], definitions: Iterable[AgentDefinition]
 ) -> tuple[ContextKey, ...]:
     """Each distinct identifier with no agent first, then with each definition's agent by name."""
-
     agents = (None, *sorted({definition.name for definition in definitions}))
     return tuple(
         ContextKey(identifier, agent)
