@@ -9,7 +9,7 @@ a quotation, on code, or on an instruction teaches the writer to ignore it.
 
 import unittest
 
-from epistemic_marks.hedges import CAUSE, GUESS, REST, guessed_lines
+from epistemic_marks.hedges import ASKED, CAUSE, GUESS, REST, SAID, guessed_lines
 
 # The message that prompted the check: a status in words, then a sentence
 # building on it. A later diagnosis ruled the claim out.
@@ -81,6 +81,16 @@ GUESSES = (
     "Everything below is a guess from common patterns.",
     "These are assumptions until someone reads the test.",
     "The rest is speculation on my part.",
+    # A noun that labels the claim, where it opens its clause.
+    "The theory is that the cache went stale.",
+    "One hypothesis is a stale cache.",
+    "The cache looks fine, but the theory is that it went stale.",
+    # A modal in a frame where only the doubting sense fits.
+    "It may be the lockfile.",
+    "It could be the lockfile.",
+    "That may be the stale cache again.",
+    "The tests should pass now.",
+    "The build should now succeed.",
 )
 
 QUIET = (
@@ -128,6 +138,31 @@ QUIET = (
     # A plain report of what happened.
     "The suite passed: 107 tests.",
     "I ran the suite and it passed.",
+    # A sentence about guesses, where the noun labels no claim of the writer's.
+    "A prompt carrying a guess is denied before the delegate starts.",
+    "A reply that states a theory is sent back.",
+    "Each hypothesis was tested in turn.",
+    "The sentence carries no doubt wording and no formatting tricks.",
+    # What a format allows and what a contract obliges.
+    "It may be a string or a number.",
+    "It must be the first argument.",
+    "The tests should pass before the merge.",
+    "The job should run again after the cache clears.",
+    # An open question, and a question about what to do.
+    "Is the cache stale?",
+    "Did you run the tests?",
+    "Should I run the suite, so we know?",
+    "You want JSON output, right?",
+    "Don't you want the suite run first?",
+    # The user's words, quoted, and talk about users in general.
+    'The user said "the two tests share a temp dir".',
+    "When the user says yes, the form submits.",
+    "Ask the user whether the cache is stale.",
+    "The user asked for JSON output.",
+    "The user said to skip the e2e suite.",
+    "The work rests on what the user said they want.",
+    "The answer would contradict what the user stated.",
+    "Leave it unmarked where the user stated it in this conversation.",
 )
 
 
@@ -179,9 +214,13 @@ class WhatTheFloorLeavesToTheRuleText(unittest.TestCase):
 
     def test_a_guess_no_wording_gives_away_passes_the_scan(self) -> None:
         for line in (
-            "It may be the lockfile.",
-            "The tests should pass now.",
             "It must be the cache.",
+            "The file may be empty.",
+            # A prompt handing over a diagnosis with no wording of doubt.
+            "Fix the shared temp-dir collision between the two tests.",
+            "Since the tests share a temp dir, give each test its own.",
+            "Two tests share a temp directory. The flaky test fails.",
+            'Ticket: "The flaky test fails because two tests share a temp directory." Fix it.',
             "The parser could be the slow part.",
             "Files in the lane worktrees fall into a project the editor builds without that config.",
             "Did a lockfile change land this week and alter the cache key?",
@@ -298,6 +337,119 @@ class ASentenceNamingAMarkInWordsIsAMention(unittest.TestCase):
     def test_a_sentence_naming_a_mark_with_nothing_guessed_is_no_mention(self) -> None:
         _wording, mentions = guessed_lines(["The unsourced mark sits at the end of a clause."])
         assert mentions == {}
+
+
+class AClaimCarriedInAQuestionIsFound(unittest.TestCase):
+    """A question that asserts, by its form, what it seems to ask.
+
+    An open question hands a hypothesis over for checking and stays quiet.
+    These forms do more: one hangs a consequence on its own premise, one
+    states the claim and asks only for agreement, one leads with a negative.
+    """
+
+    def test_each_asserting_question_is_flagged(self) -> None:
+        for line in (
+            "Did a lockfile change land this week and alter the cache key, so every run reinstalls?",
+            "Is the cache key stale, which would explain the reinstalls?",
+            "The cache is stale, right?",
+            "The cache went stale, didn't it?",
+            "Isn't the cache stale?",
+            "Doesn't the watcher hold the file open?",
+        ):
+            with self.subTest(line=line):
+                assert found(line) == {ASKED: [line]}
+
+    def test_a_marked_or_sourced_question_passes(self) -> None:
+        for line in (
+            "The cache is stale [?], right?",
+            "Isn't the cache stale (src/cache.py:12)?",
+        ):
+            with self.subTest(line=line):
+                assert found(line) == {}
+
+    def test_a_sentence_building_on_a_question_is_found(self) -> None:
+        assert found("Is the cache stale? That would explain the reinstalls.") == {
+            REST: ["That would explain the reinstalls."]
+        }
+
+    def test_a_next_step_or_a_status_after_a_question_passes(self) -> None:
+        for text in (
+            "Is the cache stale? So I'll read the key next.",
+            "Did the suite pass? So far, yes (log.txt:3).",
+            "Want me to run it? That would take one call.",
+        ):
+            with self.subTest(text=text):
+                assert found(text) == {}
+
+
+class AClaimLaidOnTheUserIsFound(unittest.TestCase):
+    """The user's statement goes unmarked only in words a reader can find.
+
+    A sentence that reports what the user said, without quoting it, borrows
+    the one unmarked status the rule grants and shows nothing to check.
+    """
+
+    def test_each_unquoted_attribution_is_flagged(self) -> None:
+        for line in (
+            "As the user said, the two tests share a temp dir.",
+            "The user confirmed that the cache is stale.",
+            "According to the user, the cache is stale.",
+            "Per the user, both tests share a directory.",
+            "The user has already stated the lockfile drifted.",
+        ):
+            with self.subTest(line=line):
+                assert found(line) == {SAID: [line]}
+
+    def test_a_quoted_marked_or_sourced_attribution_passes(self) -> None:
+        for line in (
+            'As the user said, "the two tests share a temp dir".',
+            "As the user said, the two tests share a temp dir [.?].",
+            "The user confirmed that the cache is stale (notes/call.md:4).",
+        ):
+            with self.subTest(line=line):
+                assert found(line) == {}
+
+    def test_a_sentence_building_on_an_attribution_is_found(self) -> None:
+        said = "According to the user, the cache is stale."
+        assert found(f"{said} So the install reruns.") == {
+            SAID: [said],
+            REST: ["So the install reruns."],
+        }
+
+
+class AQuotationWrappedAcrossLinesStaysQuoted(unittest.TestCase):
+    def test_a_quotation_broken_by_a_line_end_holds_no_guess(self) -> None:
+        text = 'The message read "My guess is the cache.\nThat would explain it." and no more.'
+        assert found(text) == {}
+
+    def test_a_guess_after_the_wrapped_quotation_is_still_found(self) -> None:
+        text = 'The message read "the cache\nis stale" and I suspect it is right.'
+        assert found(text) == {GUESS: ['is stale" and I suspect it is right.']}
+
+    def test_a_wrapped_line_opens_no_sentence_of_its_own(self) -> None:
+        for text in (
+            "The second pass leaves it\nunchecked, for the reason the next section gives.",
+            "The lockfile drifted [?] and\nSo-called fixes did not help (log.txt:2), which\nthat would explain.",
+        ):
+            with self.subTest(text=text):
+                assert found(text) == {}
+
+    def test_a_list_item_opens_a_sentence_whatever_the_item_above_ends_on(self) -> None:
+        text = "- I suspect the lockfile drifted\n- That would break the install"
+        assert found(text) == {
+            GUESS: ["- I suspect the lockfile drifted"],
+            REST: ["- That would break the install"],
+        }
+
+    def test_a_line_after_a_finished_sentence_still_opens_one(self) -> None:
+        text = "The second pass ran.\nUnchecked: the watcher holds the file open."
+        assert found(text) == {GUESS: ["Unchecked: the watcher holds the file open."]}
+
+    def test_a_quotation_does_not_reach_across_a_blank_line(self) -> None:
+        text = (
+            'The message opened with a stray " mark.\n\nI suspect the cache went stale, "probably".'
+        )
+        assert found(text) == {GUESS: ['I suspect the cache went stale, "probably".']}
 
 
 if __name__ == "__main__":

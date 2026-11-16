@@ -17,6 +17,18 @@ INLINE_CODE = re.compile(r"`[^`\n]*`")
 # What blanked text is filled with, so an offset into the raw line survives.
 BLANK = "\x00"
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+BLOCKQUOTE = re.compile(r"^ {0,3}>")
+
+# A quotation. Double quotes may run across the line ends of one paragraph,
+# since prose wraps; a single quote also writes an apostrophe, so it pairs
+# only within its line.
+QUOTED = re.compile(
+    r'"[^"]{0,600}"'
+    r"|“[^”]{0,600}”"
+    r"|\u2018[^\u2019\n]*\u2019"
+    r"|(?<!\w)'[^'\n]*'(?!\w)"
+)
+NOT_A_LINE_END = re.compile(r"[^\n]")
 
 
 def text_blocks(message) -> list[str]:
@@ -210,33 +222,59 @@ def _read_line(line) -> tuple[str, set[str]]:
     return "".join(chars), mentioned
 
 
-def claim_prose(line) -> str:
-    """The line with its inline code and its mentioned glyphs blanked."""
-    return _read_line(line)[0]
+def _blank_quotation(match: re.Match[str]) -> str:
+    """The quotation blanked at equal length, unless it holds a mark alone.
+
+    Quotes around a bare mark leave it a claim, as backticks do.
+    """
+    quoted = match.group(0)
+    if quoted[1:-1].strip() in MARKS:
+        return quoted
+    return NOT_A_LINE_END.sub(BLANK, quoted)
 
 
-def mentioned_marks(line) -> set[str]:
-    """The marks the line names in words and writes only as a mention."""
-    return _read_line(line)[1]
+def claim_lines(lines) -> list[tuple[str, set[str]]]:
+    """Per line, the prose a claim can sit in and the marks the line only mentions.
+
+    The prose is the line with its code spans, its mentioned glyphs and
+    its quotations blanked at equal length. A fenced line, a block-quoted
+    line and a blank line hold no claim and come back empty: fenced text
+    is code, and quotation is the form kept for someone else's words. A
+    quotation is found across the wrapped lines of one paragraph.
+    """
+    fenced = fenced_line_numbers(lines)
+    read = [
+        ("", set())
+        if number in fenced or BLOCKQUOTE.match(line) or not line.strip()
+        else _read_line(line)
+        for number, line in enumerate(lines)
+    ]
+    number = 0
+    while number < len(read):
+        end = number
+        while end < len(read) and read[end][0]:
+            end += 1
+        paragraph = "\n".join(prose for prose, _ in read[number:end])
+        for offset, prose in enumerate(QUOTED.sub(_blank_quotation, paragraph).split("\n")):
+            if end > number:
+                read[number + offset] = (prose, read[number + offset][1])
+        number = end + 1
+    return read
 
 
 def marked_lines(blocks) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
     """Lines claiming under a mark and lines merely naming one, each keyed by mark.
 
-    Both mappings skip fenced code. A line reaches the second by naming a
+    Both mappings skip fenced code, block quotes and quotations. A line reaches the second by naming a
     mark in words and writing its glyph as a mention on the same line; it
     blocks nothing, and the Stop pass reports it so the exemption stays
     visible. One line can reach both mappings, by documenting one mark and
     claiming under another.
     """
     lines = [line for block in blocks for line in block.splitlines()]
-    fenced = fenced_line_numbers(lines)
     found = {mark: [] for mark in MARKS}
     named = {mark: [] for mark in MARKS}
-    for number, line in enumerate(lines):
-        if number in fenced:
-            continue
-        prose, mentioned = _read_line(line)
+    for line, (prose, mentioned) in zip(lines, claim_lines(lines)):
         stripped = line.strip()
         for mark in MARKS:
             if mark in prose and stripped not in found[mark]:

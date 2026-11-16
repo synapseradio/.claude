@@ -9,12 +9,19 @@ cannot know, so no generated line names a tool. Each line phrases the act to
 perform rather than the call to make.
 """
 
-from .hedges import CAUSE, GUESS, REST
-from .marks import MARK_CARRY, MARK_RESOLVE, NEEDS_CITATION, VOCABULARY
+from .hedges import ASKED, CAUSE, GUESS, REST, SAID
+from .marks import (
+    MARK_CARRY,
+    MARK_RESOLVE,
+    NEEDS_CITATION,
+    NEEDS_VERIFICATION,
+    VOCABULARY,
+)
 
 # The mark a guess takes once it is written as a claim, read from the
 # vocabulary so no token is spelled out here.
 UNSOURCED = next(mark.token for mark in VOCABULARY if mark.label == NEEDS_CITATION)
+SECONDHAND = next(mark.token for mark in VOCABULARY if mark.label == NEEDS_VERIFICATION)
 
 # A guess in words has no glyph to head its group, so each kind gets a
 # heading, and the two acts a mark record would have carried.
@@ -22,6 +29,8 @@ WORDING_HEADING = {
     GUESS: "Guessed in words, unmarked:",
     CAUSE: "A cause stated with no source and no mark:",
     REST: "Built on a guess, unmarked:",
+    ASKED: "A claim carried in a question:",
+    SAID: "Laid on the user, without their words:",
 }
 
 # The fourth sentence closes the cheapest way out. A writer told only that a
@@ -43,6 +52,16 @@ WORDING_RESOLVE = {
         "Each line below builds on the guess or marked claim before it. End its "
         "clause with the same mark, or put its own source beside it."
     ),
+    ASKED: (
+        "Each line below asserts something in the form of a question. State the "
+        f"claim on its own, with its source or with {UNSOURCED} ending its clause, "
+        "then ask only what you want answered."
+    ),
+    SAID: (
+        "Each line below reports what the user said. Put their words from this "
+        "conversation beside it in quotation marks. Where you hold no words to "
+        f"quote, end its clause with {SECONDHAND}."
+    ),
 }
 
 WORDING_CARRY = {
@@ -56,6 +75,14 @@ WORDING_CARRY = {
     ),
     REST: (
         "Each line below still builds on an unchecked claim. End its clause with that claim's mark."
+    ),
+    ASKED: (
+        "Each line below still asserts through a question. State the claim and "
+        f"end its clause with {UNSOURCED}."
+    ),
+    SAID: (
+        "Each line below still reports the user's statement without their words. "
+        f"End its clause with {SECONDHAND}."
     ),
 }
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """The verification pass for epistemic marks, run from four hook events.
 
-Bare from Stop, blocking the stop once and asking for each mark's
-resolution. With --delegate from SubagentStop, where a relaying mark is left
+Bare from Stop, blocking the stop once for a mark and on every pass for a
+guess in words. With --delegate from SubagentStop, where a relaying mark is left
 standing for the delegate's own report to carry, since nothing this hook
 returns reaches the caller. With --batch from PostToolBatch, which never
 blocks and reports a line once per session. With --prompt from PreToolUse on
@@ -85,11 +85,28 @@ def run_stop(payload, delegate) -> None:
         if delegate
         else {}
     )
-    if (lines_by_mark or wording) and not payload.get("stop_hook_active"):
+    again = bool(payload.get("stop_hook_active"))
+    if not again and (lines_by_mark or wording):
         json.dump(
             {
                 "decision": "block",
                 "reason": build_reason(lines_by_mark, carried, delegate, wording),
+            },
+            sys.stdout,
+        )
+        sys.exit(0)
+    # A mark may stand after one pass, since the check it waits on can be
+    # out of reach. Wording never has to: marking the claim or cutting it
+    # needs no tool, so the block repeats for as long as any is left. The
+    # harness ends a turn its hooks have continued eight times in a row, per
+    # https://code.claude.com/docs/en/hooks, so each repeat also shows the
+    # reader what still stands, before that override can let it through.
+    if again and wording:
+        json.dump(
+            {
+                "decision": "block",
+                "reason": build_reason({}, None, delegate, wording),
+                "systemMessage": build_notice(lines_by_mark, wording=wording),
             },
             sys.stdout,
         )

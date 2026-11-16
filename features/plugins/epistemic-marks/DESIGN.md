@@ -198,11 +198,14 @@ text.** It reads sentence by sentence for wording of doubt, for a status in
 words, for a lookalike mark, and for a sentence that opens by building on the
 marked or hedged sentence before it. A sentence passes with a mark at a
 clause end or a source in it, a path with its line or a URL. Fenced code,
-code spans, quoted text, block quotes and questions hold no guess.
+code spans, quoted text, block quotes and open questions hold no guess. The
+mark scan in `epistemic_marks/scan.py` skips the same forms, so a quoted
+run that carries someone else's mark claims nothing here.
 
 **The hooks put the scan on every surface a claim travels through.** The
-Stop and SubagentStop passes block once on a guess in words, in the same
-block as a mark. The PostToolBatch pass hands it back mid-turn with the
+Stop and SubagentStop passes block on a guess in words, in the same block as
+a mark, and block again on every pass that still finds one. The
+PostToolBatch pass hands it back mid-turn with the
 instruction to build nothing on it. A PreToolUse pass on the spawn tools
 denies a prompt that hands a delegate a guess in words, since a delegate
 reads its prompt as ground truth. A marked claim in a prompt passes: the mark
@@ -251,8 +254,17 @@ say", "it is said", "it is widely known".
 So the sense-dependent cases moved to the rule text, and the word list keeps
 only wording that signals doubt wherever it appears.
 `WhatTheFloorLeavesToTheRuleText` in `tests/test_hedges.py` pins the
-boundary: "It may be the lockfile", "The tests should pass now", "It must be
-the cache", and the flat guess all pass the scan on purpose.
+boundary: "It must be the cache", "The file may be empty", and the flat
+guess all pass the scan on purpose.
+
+Three modal frames carry one sense only and are matched. "It may be the
+lockfile" names a suspect: a dummy subject and a definite noun leave no
+reading in which something is permitted, where "it may be a string" states
+what a format allows and stays quiet. "The tests should pass now" and "the
+build should now succeed" date the sentence to after a change, which a
+standing obligation never is, where "the tests should pass before the
+merge" stays quiet. "It must be the cache" is left alone, since "it must be
+the first argument" has the same form and obliges.
 
 Run over this repository's 129 markdown files, about 224,000 words of prose
 written with no intent to hedge, the scan flags 17 sentences: one sentence
@@ -271,19 +283,61 @@ rule text where it is not.
   directory", passed the prompt pass on the first try. The scan now flags a
   sentence that says why something fails with neither a source nor a mark,
   under its own heading. `ACauseStatedFlatIsFound` holds it.
-- A guess carried inside a rhetorical question or an instruction, "Did a
-  lockfile change land this week and alter the cache key?", passed the Stop
-  pass. Nothing on a question's surface marks it, so the rule text sorts a
-  claim carried inside a question, an instruction or a condition as the claim
-  it carries, and `WhatTheFloorLeavesToTheRuleText` pins the scan's silence.
-- A guess attributed to the user who never said it. The rule text's arm for
-  the user's statements now asks for words that can be quoted from the
-  conversation.
+- A guess carried inside a question passed the Stop pass. An open question
+  is how a hypothesis is handed over to be checked, so the scan leaves it
+  alone and `WhatTheFloorLeavesToTheRuleText` pins that. Three forms assert
+  by their shape and are flagged: a consequence hung on the question's own
+  premise ("Did the cache key change, so every run reinstalls?"), a statement
+  with a tag ("The cache is stale, right?"), and a negative lead ("Isn't the
+  cache stale?"). A question addressed to or about the people in the
+  conversation asks what they want and stays quiet. A sentence that builds on
+  a question about how things stand is flagged as resting on it.
+  `AClaimCarriedInAQuestionIsFound` holds these.
+- A guess attributed to the user who never said it. A sentence reporting
+  what the user said, "as the user said", "according to the user", is
+  flagged unless it quotes their words, carries a mark, or cites a source.
+  `AClaimLaidOnTheUserIsFound` holds it. Whether the quoted words were ever
+  said is not checked.
 - A guess placed in quotes, code or a block quote, which the scan does not
   read. The rule text keeps those forms for words someone else wrote.
 - A citation naming a file nobody opened. The rule text limits a citation to
   a file the writer opened; no hook checks it, for the reason the section
   after this one gives.
+
+### What no check can hold
+
+Four prompt wordings that hand a delegate a diagnosis still pass, and
+`WhatTheFloorLeavesToTheRuleText` pins each one.
+
+- The diagnosis stated as the task: "Fix the shared temp-dir collision
+  between the two tests."
+- The diagnosis as a condition: "Since the tests share a temp dir, give each
+  test its own."
+- The diagnosis split into flat sentences with no connective between them.
+- The diagnosis inside a quotation with a label in front of it: "Ticket:",
+  then the sentence in quotes.
+
+Each of these reads word for word like its honest twin. "Fix the failing
+test in `tests/test_cache.py`" names a defect someone watched fail. "Since
+you hold no shell, report the diff" stipulates. A quoted log line is a
+quotation. What separates the guess from the finding is whether the writer
+saw evidence, and that is not on the page. A check that fired on these
+would fire on every flat premise without a citation beside it, which is the
+citation check the next section records removing. Checking a quotation
+against the session transcript was weighed and dropped for the same cost: a
+file read arrives line-numbered and wrapped, so a faithful quotation that
+spans two source lines fails the match. The rule text holds all four through
+its default arm, which marks a claim by where its support sits.
+
+A session on the largest model tier, told to beat the prompt pass, was denied
+on "The flaky test fails because two tests share a temp directory" and got
+through on its next try with "Task context: the two tests collide on one
+shared temp directory, which is the flaky-test issue." That is the third
+wording above. The second line of defence for it sits with the reader of the
+prompt: the rule text reaches every delegate as it starts, and its secondhand
+arm names the prompt that spawned the delegate. A fact a prompt states with
+no citation is sorted as secondhand by the agent receiving it, which checks
+it before the step that rests on it.
 
 ### Decisions
 
@@ -308,9 +362,34 @@ code, so all three are guesses" carries a status in words. Where the claims
 it covers are marked, the sentence is redundant; where they are not, it is
 the whole miss.
 
-**One block, then a notice.** A guess in words blocks a stop once, as a mark
-does, and what survives the rewrite reaches the user in the notice. A second
-block is a loop the harness would cut at eight.
+**A guess in words blocks every pass; a mark blocks one.** A mark may stand
+after its pass, because the check it waits on can be out of reach, and the
+rule text tells the writer to open the reply on it. Wording never has to
+stand: ending the clause with a mark, or cutting the sentence, needs no tool
+and no evidence. So the block repeats while the rewrite still holds any, and
+the loop ends when the flagged set is empty. The only other end is the
+harness's own: after eight consecutive continuations it overrides the next
+block and ends the turn (<https://code.claude.com/docs/en/hooks>). No hook
+output prevents that override, so every repeat block also carries a
+`systemMessage` listing what still stands. A turn the harness cuts short has
+by then shown its reader each unmarked line, seven times over.
+
+**A quotation holds no claim, in either scan.** A block-quoted line and
+quoted text are skipped by the mark scan as they are by the wording scan,
+since the rule text keeps both forms for words someone else wrote. A report
+quoting a session's marked reply had been sent back for marks that were not
+its own. Quotes around a mark alone still leave it a claim, as backticks do.
+A double-quoted run is followed across the wrapped lines of one paragraph,
+up to 600 characters and never past a blank line; a single quote pairs
+within its line, because it also writes an apostrophe.
+
+**A noun of doubt labels a claim only where it opens its clause.** "The
+theory is that the cache went stale" is flagged. "A prompt carrying a guess
+is denied" describes, and had been flagged for the same two words.
+
+**A wrapped line opens no sentence.** A line that follows one with no
+closing punctuation continues it, so a label or a connective at its start
+is mid-sentence. A list item always opens one.
 
 ## Why citations are not checked here
 
@@ -354,6 +433,9 @@ record, and a pass whose notice matches one already sent returns nothing.
 A notice that changed still goes out. Silence matters here beyond cost, since
 each restart writes a new last message, and the last message is the report
 the caller receives.
+
+A guess in words is the exception to all of the above: it draws a block on
+every pass, a delegate's included, for the reason given under Decisions.
 
 A second pass also reads only the reply rewritten after the block. The rest
 of the turn still holds the draft the block asked to rewrite, and a line only
