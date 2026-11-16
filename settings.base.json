@@ -484,7 +484,7 @@
 			"Bash(knip --fix*)",
 			"Bash(knip * --fix*)"
 		],
-		"defaultMode": "acceptEdits"
+		"defaultMode": "default"
 	},
 	"hooks": {
 		"PostToolUse": [
