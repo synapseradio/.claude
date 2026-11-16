@@ -2,11 +2,11 @@
 	"config": {
 		"default": false,
 
-		// Every rule markdownlint 0.42.1 marks fixable, so the commit hook's
-		// --fix repairs what it reports.
-		// https://github.com/DavidAnson/markdownlint/blob/v0.42.1/doc/Rules.md
+		// Every rule whose markdownlint 0.42.1 source attaches a fix to each
+		// violation it reports, so --fix repairs everything it finds. Rules.md
+		// marks a rule fixable when only some of its violations are.
+		// https://github.com/DavidAnson/markdownlint/tree/v0.42.1/lib
 		"MD004": true, // ul-style
-		"MD005": true, // list-indent
 		"MD007": true, // ul-indent
 		"MD009": true, // no-trailing-spaces
 		"MD010": true, // no-hard-tabs
@@ -23,21 +23,15 @@
 		"MD027": true, // no-multiple-space-blockquote
 		"MD029": true, // ol-prefix
 		"MD030": true, // list-marker-space
-		"MD031": true, // blanks-around-fences
 		"MD032": true, // blanks-around-lists
 		"MD034": true, // no-bare-urls
 		"MD037": true, // no-space-in-emphasis
 		"MD038": true, // no-space-in-code
-		"MD039": true, // no-space-in-links
 		"MD044": true, // proper-names
 		"MD047": true, // single-trailing-newline
 		"MD049": true, // emphasis-style
 		"MD050": true, // strong-style
-		"MD051": true, // link-fragments
-		"MD053": true, // link-image-reference-definitions
-		"MD054": true, // link-image-style
-		"MD058": true, // blanks-around-tables
-		"MD060": true // table-column-style
+		"MD058": true // blanks-around-tables
 	},
 	"ignores": [
 		"node_modules/**",
