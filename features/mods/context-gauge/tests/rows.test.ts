@@ -1,7 +1,7 @@
 import { describe, expect, test } from "claude-code/testing";
 
 import { GAP_FLOOR_SHARE, GAP_FLOOR_TOKENS } from "../hooks/calibration";
-import { PALETTES } from "../hooks/palette";
+import type { GaugeRow } from "../hooks/rows";
 import { gaugeRows } from "../hooks/rows";
 import type { Tally, UsageCategory } from "../types";
 
@@ -30,8 +30,12 @@ function fixedOnly(fixed: UsageCategory[]) {
 	return gaugeRows({ fixed, messages: ZERO, gap: 0 });
 }
 
-describe("gauge rows", () => {
-	test("engine rows are named in bar order, empty rows left out, custom agents as agent descriptions", async () => {
+function labels(rows: readonly GaugeRow[]): string[] {
+	return rows.map((r) => r.label);
+}
+
+describe("the legend's rows", () => {
+	test("the engine's rows are named in bar order, empty rows left out, custom agents as agent descriptions", async () => {
 		const rows = fixedOnly([
 			{ name: "Skills", tokens: 900 },
 			{ name: "System prompt", tokens: 3000 },
@@ -39,34 +43,34 @@ describe("gauge rows", () => {
 			{ name: "Custom agents", tokens: 400 },
 		]);
 
-		expect(rows.map((r) => [r.id, r.label])).toEqual([
-			["system", "system prompt & tools"],
-			["agentList", "agent descriptions"],
-			["skills", "skill list"],
+		expect(labels(rows)).toEqual([
+			"system prompt & tools",
+			"agent descriptions",
+			"skill list",
 		]);
 	});
 
-	test("the system prompt and the system tools make one system row", async () => {
+	test("the system prompt and the system tools make one row", async () => {
 		const rows = fixedOnly([
 			{ name: "System prompt", tokens: 6000 },
 			{ name: "System tools", tokens: 2000 },
 		]);
 
-		expect(rows.map((r) => [r.id, r.label, r.tokens])).toEqual([
-			["system", "system prompt & tools", 8000],
+		expect(rows.map((r) => [r.label, r.tokens])).toEqual([
+			["system prompt & tools", 8000],
 		]);
 	});
 
-	test("the MCP tools and the MCP server instructions make one mcp row", async () => {
+	test("the MCP tools and the MCP server instructions make one row", async () => {
 		const rows = fixedOnly([
 			{ name: "MCP tools", tokens: 1500 },
 			{ name: "Skills", tokens: 100 },
 			{ name: "MCP server instructions", tokens: 500 },
 		]);
 
-		expect(rows.map((r) => [r.id, r.label, r.tokens])).toEqual([
-			["mcp", "MCP servers", 2000],
-			["skills", "skill list", 100],
+		expect(rows.map((r) => [r.label, r.tokens])).toEqual([
+			["MCP servers", 2000],
+			["skill list", 100],
 		]);
 	});
 
@@ -76,19 +80,23 @@ describe("gauge rows", () => {
 			{ name: "Memory files", tokens: 10 },
 		]);
 
-		expect(rows.map((r) => [r.id, r.label])).toEqual([
-			["memory", "memory files"],
-			["other", "workflow scripts"],
-		]);
+		expect(labels(rows)).toEqual(["memory files", "workflow scripts"]);
 	});
 
-	test("message categories draw their calibrated tokens beside the engine's fixed rows, in bar order, carried over right after skills", async () => {
+	test("message categories draw as estimates beside the engine's fixed rows, in bar order, carried over right after skills", async () => {
 		const rows = gaugeRows({
 			fixed: [
 				{ name: "Skills", tokens: 4000 },
 				{ name: "System prompt", tokens: 6000 },
 			],
-			messages: { ...ZERO, read: 3000.4, messages: 1200, carried: 20_000 },
+			messages: {
+				...ZERO,
+				read: 3000.4,
+				messages: 1200,
+				carried: 20_000,
+				relayed: 500,
+				tasks: 700,
+			},
 			gap: 0,
 		});
 
@@ -97,33 +105,27 @@ describe("gauge rows", () => {
 			["skill list", 4000, false],
 			["carried over", 20_000, true],
 			["messages", 1200, true],
+			["background tasks", 700, true],
+			["relayed messages", 500, true],
 			["file reads", 3000, true],
 		]);
 	});
 
-	test(`the attribution gap draws only at or above ${GAP_FLOOR_TOKENS} tokens and ${GAP_FLOOR_SHARE * 100}% of message tokens`, async () => {
+	test("the attribution gap shows only once it reaches both its token floor and its share of message tokens", async () => {
 		const gapOf = (messages: number, gap: number) =>
 			gaugeRows({ fixed: [], messages: { ...ZERO, messages }, gap }).find(
-				(r) => r.id === "gap",
+				(r) => r.label === "attribution gap",
 			);
+		// Message tokens large enough that the share, not the floor, decides;
+		// the gap counts among the message tokens, so the share's boundary sits
+		// where gap = share × (messages + gap).
+		const many = (10 * GAP_FLOOR_TOKENS) / GAP_FLOOR_SHARE;
+		const shareBoundary = (GAP_FLOOR_SHARE * many) / (1 - GAP_FLOOR_SHARE);
 
-		expect(gapOf(10_000, 1499)).toBeUndefined();
-		expect(gapOf(10_000, 1500)?.label).toBe("attribution gap");
-		// 2% of the 204,000 message tokens the gap is among is 4,080.
-		expect(gapOf(200_000, 4000)).toBeUndefined();
-		// 2% of 204,100 is 4,082.
-		expect(gapOf(200_000, 4100)?.tokens).toBe(4100);
-	});
-
-	test("carried over is labelled 'carried over' and draws in the checker texture", async () => {
-		const [carried] = gaugeRows({
-			fixed: [],
-			messages: { ...ZERO, carried: 5000 },
-			gap: 0,
-		});
-
-		expect(carried?.label).toBe("carried over");
-		expect(carried && PALETTES.dark[carried.id].texture).toBe("checker");
-		expect(carried && PALETTES.light[carried.id].texture).toBe("checker");
+		expect(gapOf(0, GAP_FLOOR_TOKENS - 1)).toBeUndefined();
+		expect(gapOf(0, GAP_FLOOR_TOKENS)?.tokens).toBe(GAP_FLOOR_TOKENS);
+		expect(shareBoundary).toBeGreaterThan(GAP_FLOOR_TOKENS);
+		expect(gapOf(many, Math.floor(shareBoundary) - 1)).toBeUndefined();
+		expect(gapOf(many, Math.ceil(shareBoundary) + 1)).toBeDefined();
 	});
 });

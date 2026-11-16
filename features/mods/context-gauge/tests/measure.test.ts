@@ -115,7 +115,7 @@ function pdf(pages: number): ApiContentBlock {
 	};
 }
 
-describe("measureBlock", () => {
+describe("what one block weighs", () => {
 	describe("text-like blocks", () => {
 		test("a text block measures its characters", () => {
 			expect(measureBlock({ type: "text", text: "hello" }, NEW_MODEL)).toEqual({

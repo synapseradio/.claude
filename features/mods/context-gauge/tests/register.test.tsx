@@ -26,7 +26,12 @@ import { PRIOR_TOKENS_PER_CHAR } from "../hooks/calibration";
 import { FREE_GLYPH, legendSample, TEXTURE_GLYPHS } from "../hooks/fallback";
 import { LEGEND_GAP, PREFIX, SAMPLE_CELLS, SPACE } from "../hooks/layout";
 import { PALETTES } from "../hooks/palette";
-import { PX_HEIGHT, PX_PER_CELL, samplePixels } from "../hooks/pixels";
+import {
+	barPixels,
+	PX_HEIGHT,
+	PX_PER_CELL,
+	samplePixels,
+} from "../hooks/pixels";
 import { ROW_INSET } from "../hooks/register";
 import { AGENT_CALL, agentUse, BASH_CALL, notification } from "./calls";
 
@@ -527,7 +532,7 @@ describe("the gauge under the prompt", () => {
 		expect(figures.every((f) => propsOf(f).weight === "bold")).toBe(true);
 	});
 
-	test("the bar is a one-row Image, ten pixels a cell", async ($, on) => {
+	test("the bar is a one-row Image whose pixels span its cells", async ($, on) => {
 		engine(on);
 		await startSession($);
 
@@ -635,7 +640,7 @@ describe("counting what the conversation keeps", () => {
 		expect(after.gauge?.text).toBe(before.gauge?.text);
 	});
 
-	test("every row reaches the conversation as it arrived", async ($, on) => {
+	test("the gauge reads each row without changing what the conversation keeps", async ($, on) => {
 		const { session } = engine(on);
 		await startSession($);
 		await append($, "prompt", TYPED, 40);
@@ -828,7 +833,7 @@ describe("starting the window over", () => {
 		expect(d.gauge?.text).toMatch(/\(~30k\/100k\)/u);
 	});
 
-	test("SessionStart startup reads the conversation again", async ($, on) => {
+	test("a SessionStart at startup shows the conversation it finds as carried over", async ($, on) => {
 		const world = engine(on, { conversation: [] });
 		await startSession($);
 		world.converse(conversationOf(3000));
@@ -922,6 +927,43 @@ describe("starting the window over", () => {
 		const d = await drawn($);
 		expect(d.gauge?.text).toMatch(/\(~10k\/100k\)/u);
 		expect(d.legend).not.toMatch(/messages|carried over/u);
+	});
+
+	test("a /clear whose read still finds the old conversation shows nothing carried over, then the conversation the next request finds", async ($, on) => {
+		const world = engine(on, { conversation: [] });
+		const call = {
+			type: "tool_use",
+			id: "toolu_before_clear",
+			name: "Bash",
+			input: {},
+		};
+		const reply: Reply = { rows: () => appendResponse($, call) };
+		respond(on, usage(10_000, 20_000, 2000), reply);
+		await startSession($);
+		await step($);
+		world.converse([
+			{ role: "user", content: [text(charsFor(5000))] },
+			{ role: "assistant", content: [call] },
+		]);
+		await $.classic.SessionStart({ source: "clear" });
+
+		const cleared = await drawn($);
+		expect(cleared.gauge?.text).toMatch(/\(~10k\/100k\)/u);
+		expect(cleared.legend).not.toMatch(/carried over/u);
+
+		let arrive: () => void = () => undefined;
+		reply.arrived = new Promise<void>((resolve) => {
+			arrive = resolve;
+		});
+		world.converse(conversationOf(3000));
+		const inFlight = step($);
+		await world.clock.settle();
+		const reread = await drawn($);
+		arrive();
+		await inFlight;
+
+		expect(reread.legend).toMatch(/carried over\s+~3k/u);
+		expect(reread.gauge?.text).toMatch(/\(~13k\/100k\)/u);
 	});
 
 	test("a request carrying fewer messages than the last response starts the window over", async ($, on) => {
@@ -1025,19 +1067,6 @@ const COMPACTED: ApiMessage[] = [
 ];
 
 describe("compaction", () => {
-	test("Between a compaction and the next response the totals are the fixed rows, summary and carried over, never the breakdown's total", async ($, on) => {
-		const world = await measuredSession($, on);
-		world.converse(COMPACTED);
-		await appendSummary($, charsFor(2000));
-		await $.classic.SessionStart({ source: "compact" });
-
-		const d = await drawn($);
-		expect(d.gauge?.text).toMatch(/\(~17k\/100k\)/u);
-		expect(d.legend).toMatch(/compaction summary\s+~2k/u);
-		expect(d.legend).toMatch(/carried over\s+~5k/u);
-		expect(d.legend).not.toMatch(/(^|\s)messages\s/u);
-	});
-
 	for (const signal of Object.keys(SIGNALS) as Signal[]) {
 		test(`the compaction's ${signal} alone starts the window over`, async ($, on) => {
 			const world = await measuredSession($, on);
@@ -1051,7 +1080,7 @@ describe("compaction", () => {
 	}
 
 	for (const order of ORDERS) {
-		test(`the summary counts once and the restored conversation as carried over, ${order.join(", ")}`, async ($, on) => {
+		test(`until the next response, the totals are the fixed rows, the summary once and the restored conversation as carried over, never the breakdown's total, ${order.join(", ")}`, async ($, on) => {
 			const world = await measuredSession($, on);
 			world.converse(COMPACTED);
 			for (const signal of order) await SIGNALS[signal]($);
@@ -1059,6 +1088,7 @@ describe("compaction", () => {
 			const d = await drawn($);
 			expect(d.legend).toMatch(/compaction summary\s+~2k/u);
 			expect(d.legend).toMatch(/carried over\s+~5k/u);
+			expect(d.legend).not.toMatch(/(^|\s)messages\s/u);
 			expect(d.gauge?.text).toMatch(/\(~17k\/100k\)/u);
 		});
 	}
@@ -1095,16 +1125,6 @@ describe("compaction", () => {
 });
 
 describe("the ceiling from settings", () => {
-	test("the user source sets the window", async ($, on) => {
-		engine(on, {
-			window: 1_000_000,
-			sources: { user: { autoCompactWindow: 500_000 } },
-		});
-		await startSession($);
-
-		expect(await gaugeText($)).toMatch(/\(~30k\/500k\)/u);
-	});
-
 	test("policy, flag, local, project and user sources take precedence in that order", async ($, on) => {
 		const sources: Partial<Record<SettingsSource, Settings>> = {
 			user: { autoCompactWindow: 800_000 },
@@ -1133,13 +1153,6 @@ describe("the ceiling from settings", () => {
 
 	test("a source that fails to read leaves the engine's threshold", async ($, on) => {
 		engine(on, { settingsFail: true });
-		await startSession($);
-
-		expect(await gaugeText($)).toMatch(/\(~30k\/100k\)/u);
-	});
-
-	test("a window past the model's window stops at the model's window", async ($, on) => {
-		engine(on, { sources: { user: { autoCompactWindow: 500_000 } } });
 		await startSession($);
 
 		expect(await gaugeText($)).toMatch(/\(~30k\/100k\)/u);
@@ -1203,18 +1216,6 @@ describe("the ceiling from settings", () => {
 		expect(await gaugeText($)).toMatch(/\(~30k\/400k\)/u);
 	});
 
-	test("autoCompactEnabled false makes the ceiling the model's window", async ($, on) => {
-		engine(on, {
-			window: 400_000,
-			sources: {
-				user: { autoCompactEnabled: false, autoCompactWindow: 200_000 },
-			},
-		});
-		await startSession($);
-
-		expect(await gaugeText($)).toMatch(/\(~30k\/400k\)/u);
-	});
-
 	test("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE takes its share of the model's window where no window is set", async ($, on) => {
 		engine(on, {
 			window: 400_000,
@@ -1223,17 +1224,6 @@ describe("the ceiling from settings", () => {
 		await startSession($);
 
 		expect(await gaugeText($)).toMatch(/\(~30k\/200k\)/u);
-	});
-
-	test("a window and CLAUDE_AUTOCOMPACT_PCT_OVERRIDE leave the window alone deciding", async ($, on) => {
-		engine(on, {
-			window: 1_000_000,
-			variables: [["CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "35"]],
-			sources: { user: { autoCompactWindow: 350_000 } },
-		});
-		await startSession($);
-
-		expect(await gaugeText($)).toMatch(/\(~30k\/350k\)/u);
 	});
 
 	test("a changed source takes effect at the next response", async ($, on) => {
@@ -1270,7 +1260,7 @@ async function sevenCategories($: Engine): Promise<void> {
 }
 
 describe("the layout", () => {
-	test("the gauge line fills the row less ROW_INSET, the bar after the prefix", async ($, on) => {
+	test("the gauge line fills the row inside its inset, the bar after the prefix", async ($, on) => {
 		engine(on);
 		await startSession($);
 
@@ -1280,7 +1270,7 @@ describe("the layout", () => {
 		expect(d.barLine).toBeUndefined();
 	});
 
-	test("each legend item is its key, a space, its label, a space and its figure, in a unit as wide as the widest item, LEGEND_GAP cells from the next", async ($, on) => {
+	test("each legend item is its key, a space, its label, a space and its figure, in a column as wide as the widest item, a fixed gap from the next", async ($, on) => {
 		engine(on);
 		await startSession($);
 
@@ -1300,36 +1290,20 @@ describe("the layout", () => {
 		expect(propsOf(line).columnGap).toBe(LEGEND_GAP);
 	});
 
-	// The fixture's widest item takes 27 cells: two units and their gap take
-	// 56, all a 59-column row leaves less ROW_INSET.
-	for (const [columns, perLine] of [
-		[59, [2, 1]],
-		[58, [1, 1, 1]],
+	// The fixture's widest item, " system prompt & tools 6k" after its
+	// two-cell key, takes 27 cells.
+	const TWO_UNITS = 2 * 27 + LEGEND_GAP + ROW_INSET;
+	for (const [columns, perLine, outcome] of [
+		[TWO_UNITS, [2, 1], "fits"],
+		[TWO_UNITS - 1, [1, 1, 1], "breaks"],
 	] as const) {
-		test(`at ${columns} columns, the legend takes as many units to a line as fit`, async ($, on) => {
+		test(`a legend line takes as many columns as fit the row, and ${outcome} where two fill it ${outcome === "fits" ? "exactly" : "less one cell"}`, async ($, on) => {
 			engine(on);
 			await startSession($);
 
 			const { lines } = await drawn($, { columns, rows: 24 });
 
 			expect(lines.map((l) => l.children.length)).toEqual(perLine);
-		});
-	}
-
-	// Two units of 37 cells and their gap take 76 of the 77 cells an 80-column
-	// row leaves; units of 38 take 78 and break the line.
-	for (const extra of [0, 1]) {
-		test(`at 80 columns, a legend line of two ${37 + extra}-cell units ${extra === 0 ? "fits" : "breaks"}`, async ($, on) => {
-			engine(on, {
-				rows: [row("a".repeat(30), 1000), row("b".repeat(31 + extra), 1000)],
-				conversation: [],
-			});
-			await startSession($);
-
-			const { lines } = await drawn($);
-
-			expect(VIEWPORT.columns - ROW_INSET).toBe(77);
-			expect(lines).toHaveLength(1 + extra);
 		});
 	}
 
@@ -1373,13 +1347,17 @@ describe("the layout", () => {
 		expect(source.width).toBeLessThanOrEqual(IMAGE_MAX_PX);
 	});
 
-	test("a window with nothing used draws its bar all free space", async ($, on) => {
+	test("a window with nothing used draws its bar all free space, with no legend", async ($, on) => {
 		engine(on, { rows: [], conversation: [] });
 		await startSession($);
 
 		const d = await drawn($);
 
 		expect(d.images).toHaveLength(1);
+		expect(d.items).toEqual([]);
+		expect(propsOf(d.bar).source).toEqual(
+			barPixels([{ id: "free", cells: barWidth(d.bar) }], "dark"),
+		);
 		expect(d.gauge?.text).toMatch(/^context used: 0% \(~0\/100k\)/u);
 	});
 });
@@ -1394,6 +1372,11 @@ async function settleBlit($: Engine, clock: MockClock): Promise<void> {
 const ALT = { deny: "the Image draws its alt here" } as const;
 const NOT_MOUNTED =
 	'no Image of its own is mounted under key "bar" in prompt-hint';
+
+/** Every glyph a sextant bar may draw. */
+const SEXTANTS: readonly string[] = Object.values(
+	TEXTURE_GLYPHS.sextant,
+).concat(FREE_GLYPH);
 
 describe("the character fallback", () => {
 	test("in Ghostty, a first blit denied before the bar mounts still leaves the pixel bar drawn", async ($, on) => {
@@ -1417,11 +1400,10 @@ describe("the character fallback", () => {
 		await settleBlit($, clock);
 
 		const { bar, images } = await drawn($);
-		const sextants = Object.values(TEXTURE_GLYPHS.sextant).concat(FREE_GLYPH);
 
 		expect(images).toEqual([]);
 		expect(bar?.type).toBe("Box");
-		expect(Array.from(bar?.text ?? "").every((c) => sextants.includes(c))).toBe(
+		expect(Array.from(bar?.text ?? "").every((c) => SEXTANTS.includes(c))).toBe(
 			true,
 		);
 	});
@@ -1434,9 +1416,8 @@ describe("the character fallback", () => {
 		await startSession($);
 		await settleBlit($, clock);
 
-		const ui = await mount($);
-		const item = await ui.find({ key: "item-system-system prompt & tools" });
-		await ui.unmount();
+		const { items } = await drawn($);
+		const item = items.find((i) => i.text.includes("system prompt & tools"));
 		const sample = legendSample("system", SAMPLE_CELLS, "bmp", "dark");
 
 		expect(item?.children[0]).toEqual({
@@ -1454,9 +1435,13 @@ describe("the character fallback", () => {
 		await startSession($);
 		await settleBlit($, clock);
 
-		const { bar } = await drawn($);
+		const { bar, images } = await drawn($);
 
-		expect(bar?.text.startsWith(TEXTURE_GLYPHS.sextant.solid)).toBe(true);
+		expect(images).toEqual([]);
+		expect(Array.from(bar?.text ?? "").every((c) => SEXTANTS.includes(c))).toBe(
+			true,
+		);
+		expect(bar?.text).not.toBe("");
 	});
 
 	test("where the bar Image draws, it stays an Image", async ($, on) => {

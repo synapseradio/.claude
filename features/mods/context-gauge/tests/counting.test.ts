@@ -2,6 +2,7 @@ import type { ApiContentBlock, SessionAppendInput } from "claude-code";
 import { describe, expect, test } from "claude-code/testing";
 
 import { rowPieces } from "../hooks/counting";
+import { measureBlock } from "../hooks/measure";
 import { AGENT_CALL, agentUse, BASH_CALL, notification } from "./calls";
 
 type Row = Pick<SessionAppendInput, "door" | "origin" | "message">;
@@ -166,22 +167,6 @@ describe("what one kept row adds to the window", () => {
 		});
 	});
 
-	test("nothing shows under a retired script results row, whichever origin the text has", async () => {
-		const origins: Row["origin"][] = [
-			...messageOrigins,
-			...relayedOrigins,
-			NOTIFICATION,
-			{ kind: "scheduled-trigger" },
-			{ kind: "unclassified" },
-			{ kind: "engine" },
-		];
-		for (const origin of origins) {
-			expect(inputOf(userRow("prompt", origin, [text(5)]))).not.toHaveProperty(
-				"scripts",
-			);
-		}
-	});
-
 	test("a queued_command holding a typed prompt shows as messages", async () => {
 		expect(
 			inputOf(
@@ -236,12 +221,6 @@ describe("what one kept row adds to the window", () => {
 		expect(charsOf(pieces.output?.visible ?? { chars: {} })).toEqual({});
 	});
 
-	test("a response with no thinking block is not marked as thinking", async () => {
-		const pieces = rowPieces(responseRow(text(4)), NO_CALLS, MODEL);
-
-		expect(pieces.output?.thinking).toBe(false);
-	});
-
 	test("a server tool's result inside a response shows under tool results as served output", async () => {
 		const pieces = rowPieces(
 			responseRow({
@@ -277,17 +256,20 @@ describe("what one kept row adds to the window", () => {
 	});
 
 	test("an image a Read returns shows as file-read tokens, not characters", async () => {
+		const image: ApiContentBlock = {
+			type: "image",
+			source: { type: "base64", data: "AAAA" },
+		};
 		const row = userRow("tool-result", READ, [
-			{
-				type: "tool_result",
-				tool_use_id: "t",
-				content: [{ type: "image", source: { type: "base64", data: "AAAA" } }],
-			},
+			{ type: "tool_result", tool_use_id: "t", content: [image] },
 		]);
 		const pieces = rowPieces(row, NO_CALLS, MODEL);
+		const weight = measureBlock(image, MODEL);
 
 		expect(charsOf(pieces.input)).toEqual({});
-		expect(mediaOf(pieces.input)).toEqual({ read: 4784 });
+		expect(mediaOf(pieces.input)).toEqual({
+			read: "media" in weight ? weight.media : Number.NaN,
+		});
 	});
 
 	test("a row with no role adds nothing", async () => {

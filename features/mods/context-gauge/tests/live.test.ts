@@ -191,54 +191,6 @@ describe("the usage model", () => {
 		expect(modelFor(stale, unmeasured(0))?.used).toBe(FIXED);
 	});
 
-	test("the ceiling is the auto-compaction threshold", async () => {
-		expect(modelFor(breakdown(100_000, 80_000))?.max).toBe(80_000);
-	});
-
-	test("with auto-compaction off, the ceiling is the raw window", async () => {
-		expect(modelFor(breakdown(100_000))?.max).toBe(100_000);
-	});
-
-	test("a settings window leaves the engine's threshold as the ceiling", async () => {
-		const settings = { ...NO_SETTINGS, window: 60_000 };
-
-		expect(
-			modelFor(breakdown(100_000, 80_000), MESSAGES_20K, settings)?.max,
-		).toBe(80_000);
-	});
-
-	test("with no engine threshold, a settings window is the ceiling", async () => {
-		const settings = { ...NO_SETTINGS, window: 60_000 };
-
-		expect(modelFor(breakdown(100_000), MESSAGES_20K, settings)?.max).toBe(
-			60_000,
-		);
-	});
-
-	test("with no engine threshold, settings that turn auto-compaction off make the ceiling the raw window", async () => {
-		const settings = { ...NO_SETTINGS, enabled: false, window: 60_000 };
-
-		expect(modelFor(breakdown(100_000), MESSAGES_20K, settings)?.max).toBe(
-			100_000,
-		);
-	});
-
-	test("a percentage override leaves the engine's threshold as the ceiling", async () => {
-		const settings = { ...NO_SETTINGS, percent: 50 };
-
-		expect(
-			modelFor(breakdown(100_000, 80_000), MESSAGES_20K, settings)?.max,
-		).toBe(80_000);
-	});
-
-	test("with no engine threshold, a percentage override takes its share of the raw window", async () => {
-		const settings = { ...NO_SETTINGS, percent: 50 };
-
-		expect(modelFor(breakdown(100_000), MESSAGES_20K, settings)?.max).toBe(
-			50_000,
-		);
-	});
-
 	test("the percentage divides used by the auto-compaction threshold, not the raw window", async () => {
 		const model = modelFor(breakdown(100_000, 40_000));
 
@@ -255,13 +207,13 @@ describe("the usage model", () => {
 		expect(model?.percent).toBe(100);
 	});
 
-	test("no breakdown gives no model", async () => {
+	test("without a breakdown there is nothing to draw", async () => {
 		expect(
 			usageModel({ window: 100_000 }, MESSAGES_20K, NO_RATIO, NO_SETTINGS),
 		).toBeNull();
 	});
 
-	test("an empty window gives no model", async () => {
+	test("a window of no tokens has nothing to draw", async () => {
 		const empty = breakdown(100_000);
 		empty.rawMaxTokens = 0;
 

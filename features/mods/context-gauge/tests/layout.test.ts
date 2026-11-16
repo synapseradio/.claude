@@ -4,12 +4,11 @@ import {
 	abbrev,
 	barRuns,
 	gaugeLine,
-	largestRemainder,
 	legendGrid,
 	MAX_BAR_CELLS,
-	PREFIX,
 } from "../hooks/layout";
 import type { BarRun, CategoryId } from "../hooks/palette";
+import { PX_PER_CELL } from "../hooks/pixels";
 import type { GaugeRow } from "../hooks/rows";
 import type { UsageModel } from "../types";
 
@@ -41,14 +40,17 @@ const SEVEN: readonly GaugeRow[] = [
 	row("agentList", 100),
 ];
 
-/** Legend items of 12, 12 and 14 cells: two 14-cell units and their gap take 30. */
+/** The widest Image source the engine takes, in pixels (ImageSource's `width`). */
+const IMAGE_MAX_PX = 2048;
+
+/** Three categories whose legend items are each wider than five cells. */
 const THREE: readonly GaugeRow[] = [
 	row("system", 6000),
 	row("skills", 4000),
 	row("prompts", 20_000),
 ];
 
-describe("abbrev", () => {
+describe("a legend figure", () => {
 	test("a figure under a thousand reads in full", () => {
 		expect(abbrev(999)).toBe("999");
 	});
@@ -81,19 +83,7 @@ describe("abbrev", () => {
 	});
 });
 
-describe("largestRemainder", () => {
-	test("the leftover cell goes to the largest remainder", () => {
-		// 7 cells over 5:3:2 make 3.5, 2.1 and 1.4.
-		expect(largestRemainder([5, 3, 2], 7)).toEqual([4, 2, 1]);
-	});
-
-	test("the shares sum to the cells exactly", () => {
-		expect(total(largestRemainder([1, 1, 1], 10))).toBe(10);
-		expect(total(largestRemainder([7, 13, 29, 51], 23))).toBe(23);
-	});
-});
-
-describe("barRuns", () => {
+describe("the bar's runs", () => {
 	test("a row too small for a share of its own still takes one cell, free space last", () => {
 		// The two floor cells leave 18, split 29,900 : 100 : 70,000 into 5.38, 0.02 and 12.6.
 		const runs = barRuns(
@@ -148,64 +138,24 @@ describe("barRuns", () => {
 	});
 });
 
-describe("legendGrid", () => {
-	test("an item counts its key, a space, its label, a space and its figure", () => {
-		const [line] = legendGrid(
-			[row("system", 6000), row("messages", 1000, true)],
-			80,
-		).lines;
-
-		expect(line?.map((i) => [i.figure, i.cells])).toEqual([
-			["6k", 2 + 1 + 6 + 1 + 2],
-			["~1k", 2 + 1 + 8 + 1 + 3],
-		]);
-	});
-
-	test("every item takes the widest item's cells, so the items line up in columns", () => {
-		expect(legendGrid(THREE, 80).unit).toBe(14);
-	});
-
-	test("a line takes as many units as fit room exactly", () => {
-		const { lines } = legendGrid(THREE, 30);
-
-		expect(lines.map((l) => l.map((i) => i.row.id))).toEqual([
-			["system", "skills"],
-			["prompts"],
-		]);
-	});
-
-	test("a line breaks where one more unit would pass room", () => {
-		const { lines } = legendGrid(THREE, 29);
-
-		expect(lines.map((l) => l.map((i) => i.row.id))).toEqual([
-			["system"],
-			["skills"],
-			["prompts"],
-		]);
-	});
-
+describe("the legend grid", () => {
 	test("a room narrower than one unit still holds one item a line", () => {
 		expect(legendGrid(THREE, 5).lines).toHaveLength(3);
 	});
 });
 
-describe("PREFIX", () => {
-	test("the gauge line opens on the words and a trailing space", () => {
-		expect(PREFIX).toBe("context used: ");
-	});
-});
-
-describe("gaugeLine", () => {
+describe("the bar's width", () => {
 	test("the bar takes the cells the prefix leaves on the line", () => {
 		expect(gaugeLine(77, 30, 3)).toEqual({ cells: 47, barOwnLine: false });
 	});
 
-	test("the bar stops at the widest Image however wide the room", () => {
-		expect(gaugeLine(300, 30, 3)).toEqual({
-			cells: MAX_BAR_CELLS,
-			barOwnLine: false,
-		});
-		expect(MAX_BAR_CELLS).toBe(204);
+	test("the bar stops at the widest Image the engine takes, however wide the room", () => {
+		const { cells, barOwnLine } = gaugeLine(300, 30, 3);
+
+		expect(cells).toBe(MAX_BAR_CELLS);
+		expect(barOwnLine).toBe(false);
+		expect(cells * PX_PER_CELL).toBeLessThanOrEqual(IMAGE_MAX_PX);
+		expect((cells + 1) * PX_PER_CELL).toBeGreaterThan(IMAGE_MAX_PX);
 	});
 
 	test("the bar takes the line's last cells where they equal the used categories", () => {

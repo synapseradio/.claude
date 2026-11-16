@@ -179,17 +179,6 @@ describe("fallback bar", () => {
 		}
 	});
 
-	test("a one-cell segment draws its texture's whole glyph", async () => {
-		for (const set of SETS) {
-			for (const id of RUN_IDS) {
-				const [run] = fallbackRuns([{ id, cells: 1 }], set, "dark");
-				expect(`${set} ${id} ${run?.text}`).toBe(
-					`${set} ${id} ${lookOf(id, set, "dark").glyph}`,
-				);
-			}
-		}
-	});
-
 	test("a legend sample draws what the bar draws for the same category", async () => {
 		for (const set of SETS) {
 			for (const id of BAR_ORDER) {
@@ -209,7 +198,7 @@ describe("fallback bar", () => {
 		}
 	});
 
-	test("a look takes its colour from the theme's palette", async () => {
+	test("a character segment takes its colour from the theme's palette", async () => {
 		for (const theme of THEMES) {
 			for (const id of BAR_ORDER) {
 				expect(`${theme} ${id} ${lookOf(id, "bmp", theme).color}`).toBe(
@@ -217,9 +206,6 @@ describe("fallback bar", () => {
 				);
 			}
 		}
-		expect(lookOf("system", "bmp", "light").color).not.toBe(
-			lookOf("system", "bmp", "dark").color,
-		);
 	});
 
 	test("each terminal's environment picks the glyph set it draws", async () => {

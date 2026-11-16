@@ -36,59 +36,43 @@ function figure(block: ApiContentBlock): { chars: number; media: number } {
 }
 
 describe("a resumed conversation's history", () => {
-	test("every block counts by its kind through the measure", () => {
+	test("every block, text and picture alike, adds its own weight to what is carried over", () => {
 		const text: ApiContentBlock = { type: "text", text: "hello there" };
 		const use = call("toolu_1", "Read");
 		const output = result("toolu_1", "file body");
 		const thought: ApiContentBlock = { type: "thinking", thinking: "hmm" };
-		const read = historyOf(
-			[user(text), assistant(use, thought), user(output)],
-			MODEL,
-		);
-		const parts = [text, use, output, thought].map(figure);
-		expect(read.chars).toBe(parts.reduce((sum, part) => sum + part.chars, 0));
-		expect(read.media).toBe(parts.reduce((sum, part) => sum + part.media, 0));
-	});
-
-	test("a picture counts as media tokens, as the measure gives them", () => {
 		const image: ApiContentBlock = {
 			type: "image",
 			source: { type: "base64", media_type: "image/png", data: "" },
 		};
-		const read = historyOf([user(image)], MODEL);
-		expect(read.media).toBe(figure(image).media);
-		expect(read.chars).toBe(figure(image).chars);
+		const read = historyOf(
+			[user(text, image), assistant(use, thought), user(output)],
+			MODEL,
+		);
+		const parts = [text, image, use, output, thought].map(figure);
+		expect(read.chars).toBe(parts.reduce((sum, part) => sum + part.chars, 0));
+		expect(read.media).toBe(parts.reduce((sum, part) => sum + part.media, 0));
+		expect(read.media).toBeGreaterThan(0);
 	});
 
-	test("the Agent calls it holds come back by id and no other call does", () => {
-		const read = historyOf(
+	test("the same conversation is known as itself whether or not its thinking survives the read", () => {
+		const answer = [call("toolu_first", "Read")];
+		const withThinking = historyOf(
 			[
 				user({ type: "text", text: "start" }),
-				assistant(call("toolu_a", "Agent"), call("toolu_r", "Read")),
-				user(result("toolu_a", "done"), result("toolu_r", "body")),
-				assistant(call("toolu_b", "Agent")),
+				assistant({ type: "thinking", thinking: "plan" }, ...answer),
 			],
 			MODEL,
 		);
-		expect(read.agentCalls).toEqual(["toolu_a", "toolu_b"]);
-	});
-
-	test("its fingerprint is the first assistant call's id, skipping thinking", () => {
-		const read = historyOf(
-			[
-				user({ type: "text", text: "start" }),
-				assistant(
-					{ type: "thinking", thinking: "plan" },
-					call("toolu_first", "Read"),
-				),
-				assistant(call("toolu_second", "Read")),
-			],
+		const stripped = historyOf(
+			[user({ type: "text", text: "start" }), assistant(...answer)],
 			MODEL,
 		);
-		expect(read.fingerprint).toBe("toolu_first");
+		expect(withThinking.fingerprint).toBe(stripped.fingerprint);
+		expect(stripped.fingerprint).not.toBeNull();
 	});
 
-	test("its fingerprint stays when context is prepended to the first message", () => {
+	test("the same conversation is known as itself when context is prepended to its first message", () => {
 		const tail = [assistant({ type: "text", text: "Sure, on it." })];
 		const plain = historyOf(
 			[user({ type: "text", text: "hi" }), ...tail],
@@ -108,18 +92,18 @@ describe("a resumed conversation's history", () => {
 		expect(plain.fingerprint).not.toBeNull();
 	});
 
-	test("a different first answer gives a different fingerprint", () => {
+	test("conversations with different first answers are told apart", () => {
 		const first = historyOf([assistant({ type: "text", text: "one" })], MODEL);
 		const second = historyOf([assistant({ type: "text", text: "two" })], MODEL);
 		expect(first.fingerprint).not.toBe(second.fingerprint);
 	});
 
-	test("a conversation with no assistant block has no fingerprint", () => {
+	test("a conversation with no answer yet is never taken for another", () => {
 		const read = historyOf([user({ type: "text", text: "hi" })], MODEL);
 		expect(read.fingerprint).toBeNull();
 	});
 
-	test("a read of 4096 messages is marked truncated and a shorter one is not", () => {
+	test("a read as long as the engine's 4096-message limit is marked as possibly cut off, a shorter one is not", () => {
 		const message = user({ type: "text", text: "x" });
 		expect(historyOf(Array(4096).fill(message), MODEL).truncated).toBe(true);
 		expect(historyOf(Array(4095).fill(message), MODEL).truncated).toBe(false);

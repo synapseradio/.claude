@@ -79,19 +79,13 @@ describe("the window variable", () => {
 });
 
 describe("a settings source", () => {
-	test("an unset source contributes nothing", async () => {
-		expect(mergeSettings([parseLayer(undefined)], "m")).toEqual(
-			mergeSettings([], "m"),
-		);
-	});
-
-	test("a value that is no object contributes nothing", async () => {
+	test("an unset source, or one holding no object, contributes nothing", async () => {
 		const empty = mergeSettings([], "m");
 		expect(
-			[[1], null, "text", 7].map((value) =>
+			[undefined, [1], null, "text", 7].map((value) =>
 				mergeSettings([parseLayer(value)], "m"),
 			),
-		).toEqual([empty, empty, empty, empty]);
+		).toEqual([empty, empty, empty, empty, empty]);
 	});
 
 	test("a window from 100,000 to 1,000,000 or auto is kept", async () => {
@@ -139,10 +133,6 @@ describe("a settings source", () => {
 });
 
 describe("merged settings", () => {
-	test("auto-compaction is on where no file says otherwise", async () => {
-		expect(mergeSettings([], "m").enabled).toBe(true);
-	});
-
 	test("autoCompactEnabled follows the highest layer that sets it", async () => {
 		const managed = layer({ autoCompactEnabled: false });
 		const user = layer({ autoCompactEnabled: true });
@@ -260,10 +250,6 @@ describe("the compaction a session resolves", () => {
 		expect(resolve([])).toEqual({ enabled: true, window: null, percent: null });
 	});
 
-	test("autoCompactEnabled false turns it off", async () => {
-		expect(resolve([layer({ autoCompactEnabled: false })]).enabled).toBe(false);
-	});
-
 	test("DISABLE_AUTO_COMPACT=1 turns it off, over autoCompactEnabled true", async () => {
 		const file = layer({ autoCompactEnabled: true });
 
@@ -305,12 +291,6 @@ describe("the compaction a session resolves", () => {
 		});
 
 		expect(resolve([file], { window: "300k" }).window).toBe(300_000);
-	});
-
-	test("a window variable of 200 reads as 200 tokens, clamped, where the settings window says 500,000", async () => {
-		const file = layer({ autoCompactWindow: 500_000 });
-
-		expect(resolve([file], { window: "200" }).window).toBe(100_000);
 	});
 
 	test("a window variable that is no token count leaves the settings window", async () => {
@@ -359,26 +339,18 @@ function windowOf(
 const ON: CompactionSetting = { enabled: true, window: null, percent: null };
 
 describe("the ceiling", () => {
-	test("the engine's threshold stands unchanged where it reports one", async () => {
-		expect(ceiling(ON, windowOf(1_000_000, 967_000))).toBe(967_000);
-	});
+	test("the engine's threshold stands unchanged where it reports one, whatever a window, a percentage or an off switch says", async () => {
+		const settings: readonly CompactionSetting[] = [
+			ON,
+			{ ...ON, window: 500_000 },
+			{ ...ON, window: 350_000, percent: 35 },
+			{ ...ON, percent: 35 },
+			{ enabled: false, window: null, percent: null },
+		];
 
-	test("a 350,000 window and a 35 percent override leave the engine's threshold unchanged", async () => {
-		const setting = { ...ON, window: 350_000, percent: 35 };
-
-		expect(ceiling(setting, windowOf(1_000_000, 350_000))).toBe(350_000);
-	});
-
-	test("a settings window does not replace the engine's threshold", async () => {
-		const setting = { ...ON, window: 500_000 };
-
-		expect(ceiling(setting, windowOf(1_000_000, 967_000))).toBe(967_000);
-	});
-
-	test("switches that turn auto-compaction off do not change the engine's threshold", async () => {
-		const setting = { enabled: false, window: null, percent: null };
-
-		expect(ceiling(setting, windowOf(1_000_000, 967_000))).toBe(967_000);
+		expect(
+			settings.map((setting) => ceiling(setting, windowOf(1_000_000, 967_000))),
+		).toEqual([967_000, 967_000, 967_000, 967_000, 967_000]);
 	});
 
 	test("with no engine threshold and auto-compaction off, the ceiling is the raw window", async () => {

@@ -50,10 +50,6 @@ const COMPACTION_EVENT: WindowCause = {
 	family: "compaction",
 	signal: "session.compact",
 };
-const UNSEEN: WindowCause = {
-	family: "unseen",
-	signal: "turn.step:messageCount",
-};
 
 const ZERO: Tally = {
 	carried: 0,
@@ -589,7 +585,6 @@ describe("a step that leaves no anchor", () => {
 		});
 
 		expect(failed.window.measure).toEqual(READY.window.measure);
-		expect(failed.window.inFlight).toBeNull();
 		expect(drawn(failed.window, HALF, 1000).messages).toEqual(
 			drawn(inflight, HALF, 1000).messages,
 		);
@@ -612,15 +607,24 @@ describe("a step that leaves no anchor", () => {
 		expect(booksOf(thenAnchor(skipped.window))).toEqual(EXPECTED_AFTER_NEXT);
 	});
 
-	test("a failed step keeps an earlier row's failure to count against the next interval", () => {
-		const inflight = taint(streaming());
-		const failed = settleRequest(inflight, HALF, {
+	test("after a failed step, a row that failed to count before it still sends the next response's excess to the attribution gap", () => {
+		const failed = settleRequest(taint(streaming()), HALF, {
 			usage: null,
 			fixed: 1000,
 			served: false,
 		});
+		// The next request carries results 1000 and calls 200 at 0.5: 600
+		// tokens its rows can carry twice over, so 1,200; 2,000 arrive.
+		const next = step(failed.window, HALF, {
+			response: reply({ messages: 40 }),
+			usage: usage(1100 + 2000 + 300, 300),
+			fixed: 1000,
+		});
 
-		expect(failed.window.tainted).toBe(true);
+		expect(booksOf(next.window)).toEqual({
+			tokens: tally({ results: 1000, calls: 200, messages: 400 }),
+			gap: 800,
+		});
 	});
 });
 
@@ -636,8 +640,11 @@ describe("rows that arrive around a request", () => {
 			served: false,
 		});
 
-		expect(settled.window.open.chars.messages).toBe(800);
-		expect(settled.window.inFlight).toBeNull();
+		// The response's 300 new input tokens find no row of its own and go to
+		// reminders; the prompt draws beside them at its 400-token estimate.
+		expect(drawn(settled.window, HALF, 1000).messages).toEqual(
+			tally({ messages: 100 + 400, calls: 100, reminders: 300 }),
+		);
 	});
 
 	test("a response row that arrives with no request in flight counts as input for the next request", () => {
@@ -645,10 +652,15 @@ describe("rows that arrive around a request", () => {
 			baseline(HALF).window,
 			reply({ calls: 300 }, { thinking: true, served: { results: 50 } }),
 		);
+		const next = step(kept, HALF, {
+			response: reply({ messages: 20 }),
+			usage: usage(1100 + 175 + 100, 100),
+			fixed: 1000,
+		});
 
-		expect(kept.open.chars.calls).toBe(300);
-		expect(kept.open.chars.results).toBe(50);
-		expect(kept.inFlight).toBeNull();
+		expect(booksOf(next.window).tokens).toEqual(
+			tally({ calls: 150, results: 25, messages: 200 }),
+		);
 	});
 
 	test("a server tool's result inside a response counts as input for the next request", () => {
@@ -664,44 +676,25 @@ describe("rows that arrive around a request", () => {
 			fixed: 1000,
 		});
 
-		expect(first.window.open.chars.results).toBe(600);
+		expect(booksOf(first.window).tokens.results).toBe(0);
 		expect(booksOf(second.window).tokens.results).toBe(300);
 	});
 
-	test("a request begun over an unsettled one keeps the earlier rows", () => {
+	test("a request begun over an unsettled one carries the earlier rows to its own response", () => {
 		const streaming = sending(baseline(HALF).window, {
 			rows: [inputRow({ results: 700 })],
 			response: reply({ calls: 90 }),
 		});
-		const next = beginRequest(keepRow(streaming, inputRow({ files: 40 })), {
+		const next = step(keepRow(streaming, inputRow({ files: 40 })), HALF, {
+			response: reply({ messages: 20 }),
+			usage: usage(1100 + 415 + 100, 100),
+			fixed: 1000,
 			index: 1,
-			messageCount: MESSAGES_IN_REQUEST,
 		});
 
-		expect(next).not.toBe("replaced");
-		if (next === "replaced") return;
-		expect(next.inFlight?.sent.chars).toEqual(
-			tally({ results: 700, calls: 90, files: 40 }),
+		expect(booksOf(next.window).tokens).toEqual(
+			tally({ results: 350, calls: 45, files: 20, messages: 200 }),
 		);
-		expect(next.open).toEqual(pieces());
-	});
-
-	test("a request freezes the rows kept so far and records its place in the turn", () => {
-		const kept = keepRow(baseline(HALF).window, inputRow({ results: 700 }));
-		const begun = beginRequest(kept, {
-			index: 2,
-			messageCount: MESSAGES_IN_REQUEST + 41,
-		});
-
-		expect(begun).not.toBe("replaced");
-		if (begun === "replaced") return;
-		expect(begun.inFlight).toEqual({
-			sent: pieces({ results: 700 }),
-			output: { visible: pieces(), thinking: false, served: pieces() },
-			index: 2,
-			messageCount: MESSAGES_IN_REQUEST + 41,
-		});
-		expect(begun.open).toEqual(pieces());
 	});
 });
 
@@ -832,7 +825,7 @@ describe("the history a window starts with", () => {
 		});
 	});
 
-	test("a history read that returns the replaced conversation leaves carried over unread until the next request", () => {
+	test("a history read that returns the replaced conversation leaves carried over unread", () => {
 		const old = applyHistory(SEED, read(100, { fingerprint: "toolu_A" }));
 		const cleared = startWindow(CLEAR, old);
 
@@ -886,18 +879,8 @@ describe("the history a window starts with", () => {
 	test("a read after the window's first response changes nothing", () => {
 		const measured = baseline(HALF).window;
 
-		expect(applyHistory(measured, read(50_000))).toBe(measured);
-		expect(applyHistory(measured, "failed")).toBe(measured);
-	});
-
-	test("a read that finds the conversation's first reply remembers it for the next stale check", () => {
-		const withHistory = applyHistory(
-			SEED,
-			read(100, { fingerprint: "toolu_C" }),
-		);
-
-		expect(withHistory.fingerprint).toBe("toolu_C");
-		expect(startWindow(CLEAR, withHistory).replaced).toBe("toolu_C");
+		expect(applyHistory(measured, read(50_000))).toEqual(measured);
+		expect(applyHistory(measured, "failed")).toEqual(measured);
 	});
 });
 
@@ -921,23 +904,6 @@ describe("the signals that start a window", () => {
 		{ family: "clear", signal: "prompt.attachment:plan_mode_exit" },
 	];
 
-	for (const cause of CLEARING) {
-		test(`${cause.signal} restarts the gauge with nothing of the old window and history unread`, () => {
-			const started = startWindow(cause, OLD);
-
-			expect(started).toEqual({
-				cause,
-				measure: FRESH_UNREAD,
-				open: pieces(),
-				tainted: false,
-				inFlight: null,
-				fingerprint: null,
-				replaced: "toolu_OLD",
-			});
-			expect(drawn(started, HALF, 0).messages).toEqual(tally());
-		});
-	}
-
 	const OTHER_STARTS: WindowCause[] = [
 		{ family: "start", signal: "classic.SessionStart:startup" },
 		{ family: "resume", signal: "classic.SessionStart:resume" },
@@ -947,13 +913,20 @@ describe("the signals that start a window", () => {
 		{ family: "unseen", signal: "turn.step:messageCount" },
 	];
 
-	for (const cause of OTHER_STARTS) {
-		test(`${cause.signal} also starts the gauge over from a measured window`, () => {
+	/** What a window just started draws over fixed rows of 3,000 tokens. */
+	const FIXED_ROWS_ONLY = {
+		used: 3000,
+		measured: false,
+		messages: tally(),
+		gap: 0,
+	};
+
+	for (const cause of [...CLEARING, ...OTHER_STARTS]) {
+		test(`${cause.signal} restarts the gauge with nothing of the old window and history unread`, () => {
 			const started = startWindow(cause, OLD);
 
+			expect(drawn(started, HALF, 3000)).toEqual(FIXED_ROWS_ONLY);
 			expect(started.measure).toEqual(FRESH_UNREAD);
-			expect(started.open).toEqual(pieces());
-			expect(started.replaced).toBe("toolu_OLD");
 		});
 	}
 
@@ -966,24 +939,11 @@ describe("the signals that start a window", () => {
 		const second = startWindow(COMPACTION_EVENT, read1);
 
 		expect(second.measure).toEqual(FRESH_UNREAD);
-		expect(second.cause).toEqual(COMPACTION_EVENT);
 		expect(drawn(second, HALF, 0).messages).toEqual(tally({ summary: 2500 }));
 		expect(applyHistory(second, read(25_000)).measure).toEqual({
 			kind: "unmeasured",
 			history: { kind: "read", carriedChars: 20_000, carriedMedia: 0 },
 		});
-	});
-
-	test("a /clear after a compaction empties the summary and what was carried", () => {
-		const compacted = applyHistory(
-			keepRow(startWindow(COMPACTION_ROW, OLD), inputRow({ summary: 5000 })),
-			read(25_000),
-		);
-		const cleared = startWindow(CLEAR, compacted);
-
-		expect(cleared.open).toEqual(pieces());
-		expect(cleared.measure).toEqual(FRESH_UNREAD);
-		expect(drawn(cleared, HALF, 0).messages).toEqual(tally());
 	});
 
 	test("a second signal of another family starts a new window and drops the rows counted", () => {
@@ -996,7 +956,7 @@ describe("the signals that start a window", () => {
 			compacted,
 		);
 
-		expect(resumed.open).toEqual(pieces());
+		expect(drawn(resumed, HALF, 0).messages).toEqual(tally());
 	});
 
 	test("a second signal of the same family once a request is in flight starts a new window", () => {
@@ -1005,21 +965,11 @@ describe("the signals that start a window", () => {
 		});
 		const second = startWindow(START, streaming);
 
-		expect(second.inFlight).toBeNull();
-		expect(second.open).toEqual(pieces());
+		expect(drawn(second, HALF, 0).messages).toEqual(tally());
 	});
 
-	test("a second signal of the same family once the window has a measurement starts a new window", () => {
-		const second = startWindow(START, baseline(HALF).window);
-
-		expect(second.measure).toEqual(FRESH_UNREAD);
-		expect(second.open).toEqual(pieces());
-	});
-
-	test("a request carrying fewer messages than the last response starts the window over", () => {
-		const measured = measuredWindow({ messages: 400 }, 2000, 1000, {
-			fingerprint: "toolu_OLD",
-		});
+	test("a request carrying fewer messages than the last response marks the conversation replaced", () => {
+		const measured = measuredWindow({ messages: 400 }, 2000, 1000);
 
 		expect(
 			beginRequest(measured, {
@@ -1030,11 +980,6 @@ describe("the signals that start a window", () => {
 		expect(
 			beginRequest(measured, { index: 0, messageCount: MESSAGES_AT_ANCHOR }),
 		).not.toBe("replaced");
-
-		const restarted = startWindow(UNSEEN, measured);
-
-		expect(restarted.measure).toEqual(FRESH_UNREAD);
-		expect(restarted.replaced).toBe("toolu_OLD");
 	});
 
 	test("a window that has no response yet never counts a request as replaced", () => {

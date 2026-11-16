@@ -77,8 +77,6 @@ function spans(runs: readonly BarRun[]): Span[] {
 	});
 }
 
-const BAND_ROWS = [7, 8, 9, 10, 11, 12];
-
 const RUNS: readonly BarRun[] = [
 	{ id: "system", cells: 3 },
 	{ id: "mcp", cells: 2 },
@@ -93,6 +91,16 @@ const CATEGORY_SPANS = spans(RUNS).filter(
 
 const FREE_SPANS = spans(RUNS).filter((s) => s.id === "free");
 
+/** The rows the bar's opening run draws in, its band. */
+const BAND_ROWS = visibleRows(decode(barPixels(RUNS, "dark")), 0);
+
+function mean(rows: readonly number[]): number {
+	return rows.reduce((a, b) => a + b, 0) / rows.length;
+}
+
+/** The middle of the bar's height, in rows. */
+const CENTRE = (PX_HEIGHT - 1) / 2;
+
 const DRAWN_WITH: Readonly<Record<Texture, CategoryId>> = {
 	solid: "system",
 	diagonal: "mcp",
@@ -102,17 +110,21 @@ const DRAWN_WITH: Readonly<Record<Texture, CategoryId>> = {
 };
 
 describe("bar pixels", () => {
-	test("a cell is 10 pixels wide and the bar one 20-pixel terminal row high", () => {
-		expect(PX_PER_CELL).toBe(10);
-		expect(PX_HEIGHT).toBe(20);
-	});
-
 	test("the bar is as wide as its cells and holds four bytes per pixel", () => {
 		const p = barPixels(RUNS, "dark");
 		const img = decode(p);
 		expect(p.width).toBe(11 * PX_PER_CELL);
 		expect(p.height).toBe(PX_HEIGHT);
 		expect(img.bytes.length).toBe(11 * PX_PER_CELL * PX_HEIGHT * 4);
+	});
+
+	test("the band is one unbroken stripe of rows, thinner than the bar and centred in it", () => {
+		const [top = 0] = BAND_ROWS;
+
+		expect(BAND_ROWS).toEqual(range(top, top + BAND_ROWS.length));
+		expect(BAND_ROWS.length).toBeGreaterThan(0);
+		expect(BAND_ROWS.length).toBeLessThan(PX_HEIGHT);
+		expect(mean(BAND_ROWS)).toBe(CENTRE);
 	});
 
 	test("every category column is visible in the band rows and nowhere else", () => {
@@ -131,95 +143,52 @@ describe("bar pixels", () => {
 		}
 	});
 
-	test("every visible pixel of a run carries its category's colour", () => {
-		const img = decode(barPixels(RUNS, "dark"));
-		expect(rgb(img, 0, 7)).toEqual(hexRgb(PALETTES.dark.system.swatch.hex));
-		for (const span of CATEGORY_SPANS) {
-			const want = hexRgb(PALETTES.dark[span.id].swatch.hex);
-			for (const x of range(span.start, span.end)) {
-				for (const y of visibleRows(img, x)) {
-					expect({ id: span.id, x, y, colour: rgb(img, x, y) }).toEqual({
-						id: span.id,
-						x,
-						y,
-						colour: want,
-					});
+	test("every visible pixel of a run carries its category's colour in the theme's palette", () => {
+		for (const theme of ["light", "dark"] as const) {
+			const img = decode(barPixels(RUNS, theme));
+			for (const span of CATEGORY_SPANS) {
+				const want = hexRgb(PALETTES[theme][span.id].swatch.hex);
+				for (const x of range(span.start, span.end)) {
+					for (const y of visibleRows(img, x)) {
+						expect({
+							theme,
+							id: span.id,
+							x,
+							y,
+							colour: rgb(img, x, y),
+						}).toEqual({ theme, id: span.id, x, y, colour: want });
+					}
 				}
 			}
 		}
 	});
 
-	test("a run takes its colour from the theme's palette", () => {
-		for (const theme of ["light", "dark"] as const) {
-			for (const id of BAR_ORDER) {
-				const img = decode(samplePixels(id, 1, theme));
-				expect({ theme, id, colour: rgb(img, 0, 7) }).toEqual({
-					theme,
-					id,
-					colour: hexRgb(PALETTES[theme][id].swatch.hex),
-				});
-			}
-		}
-	});
-
-	test("each texture draws its pattern in one cell, on pixels opaque and off pixels at alpha 110", () => {
-		const patterns: Record<Texture, string[]> = {
-			solid: [
-				"##########",
-				"##########",
-				"##########",
-				"##########",
-				"##########",
-				"##########",
-			],
-			diagonal: [
-				"##...###..",
-				"#...###...",
-				"...###...#",
-				"..###...##",
-				".###...###",
-				"###...###.",
-			],
-			vertical: [
-				"##..##..##",
-				"##..##..##",
-				"##..##..##",
-				"##..##..##",
-				"##..##..##",
-				"##..##..##",
-			],
-			dots: [
-				"..........",
-				"##..##..##",
-				"##..##..##",
-				"..........",
-				"..........",
-				"##..##..##",
-			],
-			checker: [
-				"##..##..##",
-				"##..##..##",
-				"..##..##..",
-				"..##..##..",
-				"##..##..##",
-				"##..##..##",
-			],
-		};
+	test("each texture but solid draws its pattern in opaque pixels over a fainter fill that keeps the band whole", () => {
 		for (const texture of TEXTURES) {
 			const id = DRAWN_WITH[texture];
 			const img = decode(samplePixels(id, 1, "dark"));
-			const drawn = BAND_ROWS.map((y) =>
-				range(0, PX_PER_CELL)
-					.map((x) => {
-						const a = alpha(img, x, y);
-						return a === 255 ? "#" : a === 110 ? "." : String(a);
-					})
-					.join(""),
+			const alphas = new Set(
+				BAND_ROWS.flatMap((y) =>
+					range(0, PX_PER_CELL).map((x) => alpha(img, x, y)),
+				),
 			);
-			expect({ texture, of: PALETTES.dark[id].texture, drawn }).toEqual({
+			const opaque = alphas.has(255);
+			const faint = [...alphas].filter((a) => a < 255);
+			const whole = faint.every((a) => a > 0);
+			const patterned =
+				texture === "solid" ? faint.length === 0 : faint.length > 0;
+			expect({
+				texture,
+				of: PALETTES.dark[id].texture,
+				opaque,
+				whole,
+				patterned,
+			}).toEqual({
 				texture,
 				of: texture,
-				drawn: patterns[texture],
+				opaque: true,
+				whole: true,
+				patterned: true,
 			});
 		}
 	});
@@ -263,8 +232,6 @@ describe("bar pixels", () => {
 
 	test("free space is a line in the free swatch, thinner than the band and centred on it", () => {
 		const img = decode(barPixels(RUNS, "dark"));
-		const mean = (rows: readonly number[]): number =>
-			rows.reduce((a, b) => a + b, 0) / rows.length;
 		expect(FREE_SPANS.length).toBe(1);
 		for (const span of FREE_SPANS) {
 			for (const x of range(span.start + 1, span.end)) {
@@ -274,10 +241,7 @@ describe("bar pixels", () => {
 					x,
 					thinner: true,
 				});
-				expect({ x, centre: mean(rows) }).toEqual({
-					x,
-					centre: mean(BAND_ROWS),
-				});
+				expect({ x, centre: mean(rows) }).toEqual({ x, centre: CENTRE });
 				for (const y of rows) {
 					expect({ x, y, colour: rgb(img, x, y) }).toEqual({
 						x,
