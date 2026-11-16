@@ -30,16 +30,27 @@ setup::step() {
 }
 
 #######################################
-# Replace this checkout's gauge types with the primary checkout's copy.
+# Replace this checkout's gauge types with the primary checkout's copy. The
+# copy lands in a staging sibling first, so the types directory is absent only
+# between two renames; the mod's tsconfig extends a file inside it, and an
+# editor's TypeScript server drops the extended config while it is missing. A
+# staging or aside directory left by an interrupted run is cleared first.
 # Globals:
 #   PRIMARY_ROOT, SETUP_GAUGE_TYPES_PATH
 # Arguments:
 #   None
 #######################################
 setup::copy_gauge_types() {
-  rm -rf -- "${SETUP_GAUGE_TYPES_PATH}" || return 1
-  mkdir -p -- "${SETUP_GAUGE_TYPES_PATH%/*}" || return 1
-  cp -R -- "${PRIMARY_ROOT}/${SETUP_GAUGE_TYPES_PATH}" "${SETUP_GAUGE_TYPES_PATH%/*}/" || return 1
+  local target="${SETUP_GAUGE_TYPES_PATH}"
+  local staging="${target}.staging" aside="${target}.old"
+  mkdir -p -- "${target%/*}" || return 1
+  rm -rf -- "${staging}" "${aside}" || return 1
+  cp -R -- "${PRIMARY_ROOT}/${target}" "${staging}" || return 1
+  if [[ -e "${target}" ]]; then
+    mv -- "${target}" "${aside}" || return 1
+  fi
+  mv -- "${staging}" "${target}" || return 1
+  rm -rf -- "${aside}" || return 1
 }
 
 #######################################

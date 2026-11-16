@@ -126,3 +126,66 @@ setup() {
   [ -d .cache/verify ]
   [ -n "$(ls .cache/verify)" ]
 }
+
+# Run setup::copy_gauge_types from a plain checkout directory against a primary
+# checkout holding 'primary types'. A cp stub records whether the types
+# directory exists when the copy starts.
+prepare_gauge_types_refresh() {
+  setup_sandbox_test_env
+  write_gauge_types "${BATS_TEST_TMPDIR}/primary" 'primary types'
+  write_gauge_types "${BATS_TEST_TMPDIR}/checkout" 'old types'
+  printf 'stale\n' >"${BATS_TEST_TMPDIR}/checkout/${GAUGE_TYPES}/stale.d.ts"
+  export PRIMARY_ROOT="${BATS_TEST_TMPDIR}/primary"
+  export COPY_PROBE="${BATS_TEST_TMPDIR}/copy-probe.log"
+  write_stub cp <<'STUB'
+if [[ -d features/mods/context-gauge/.claude-plugin/types ]]; then
+  echo present >>"${COPY_PROBE}"
+else
+  echo missing >>"${COPY_PROBE}"
+fi
+exec /bin/cp "$@"
+STUB
+  cd "${BATS_TEST_TMPDIR}/checkout" || return 1
+}
+
+GAUGE_TYPES='features/mods/context-gauge/.claude-plugin/types'
+
+refresh_gauge_types() {
+  run bash -c 'source "$1" && setup::copy_gauge_types' _ "${BATS_TEST_DIRNAME}/../deps.sh"
+}
+
+@test "a gauge types refresh leaves the types directory in place while it copies" {
+  prepare_gauge_types_refresh
+  refresh_gauge_types
+  [ "${status}" -eq 0 ]
+  [ -s "${COPY_PROBE}" ]
+  run ! grep -qx missing "${COPY_PROBE}"
+}
+
+@test "a gauge types refresh over existing types leaves the primary copy and no extra directory" {
+  prepare_gauge_types_refresh
+  refresh_gauge_types
+  [ "${status}" -eq 0 ]
+  [ -d "${GAUGE_TYPES}" ]
+  [ "$(cat "${GAUGE_TYPES}/tsconfig.json")" = 'primary types' ]
+  [ ! -e "${GAUGE_TYPES}/stale.d.ts" ]
+  [ "$(ls "${GAUGE_TYPES%/*}")" = 'types' ]
+}
+
+@test "a gauge types refresh succeeds after an interrupted run left staging and aside directories" {
+  prepare_gauge_types_refresh
+  mkdir -p "${GAUGE_TYPES}.staging" "${GAUGE_TYPES}.old"
+  printf 'partial\n' >"${GAUGE_TYPES}.staging/partial.d.ts"
+  printf 'aside\n' >"${GAUGE_TYPES}.old/aside.d.ts"
+  refresh_gauge_types
+  [ "${status}" -eq 0 ]
+  [ "$(cat "${GAUGE_TYPES}/tsconfig.json")" = 'primary types' ]
+  [ "$(ls "${GAUGE_TYPES%/*}")" = 'types' ]
+}
+
+@test "a gauge types refresh that fails to copy exits 1 and keeps the existing types" {
+  prepare_gauge_types_refresh
+  PRIMARY_ROOT="${BATS_TEST_TMPDIR}/missing" refresh_gauge_types
+  [ "${status}" -eq 1 ]
+  [ "$(cat "${GAUGE_TYPES}/tsconfig.json")" = 'old types' ]
+}
