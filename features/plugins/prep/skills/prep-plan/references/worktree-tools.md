@@ -34,7 +34,7 @@ The `wt` command, <https://worktrunk.dev>. Its `-C <path>` names the worktree a 
 | --- | --- |
 | create | `wt -C [primary checkout] switch --create [branch] --base [base] --no-cd --format json`; the `path` field of the JSON it prints is `<worktree>` |
 | provision | a `pre-start` hook in the repository's `.config/wt.toml` runs as the worktree is created and finishes before the command returns; where there is none, the lane's provisioning commands |
-| squash | `wt -C <worktree> step squash [trunk]`; it writes a commit message of its own, so reword it with `git -C <worktree> commit --amend -m '<message>'` |
+| squash | `wt -C <worktree> step squash [trunk]`; the commit message it writes stands, with no amend after it |
 | land | `wt -C <worktree> merge [trunk]`, which rebases onto the trunk, fast-forwards the trunk, and removes the worktree and the branch |
 | remove | done by `merge`; `wt -C [primary checkout] step prune --dry-run` lists anything left |
 

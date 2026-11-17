@@ -212,7 +212,7 @@ The run-book file at `/work/term-app-notes/usage-meter.runbook/lane-meter-palett
 - skills: none
 - delegates: none
 - early start: none
-- commit: through the hooks with `git -C <worktree> commit -m '<message>' -- <paths>`; `git -C <worktree> status --short` prints nothing after each commit
+- commit: through the hooks, with `git -C <worktree> add <paths>` naming your owns-line paths and every file a formatter or linter changed -> confirm `git -C <worktree> diff --cached --name-only` lists only them -> `git -C <worktree> commit -m '<message>'`, with no pathspec; `git -C <worktree> status --short` prints nothing after each commit
 - land, once the checks pass:
   1. Squash into one commit: `git -C <worktree> reset --soft "$(git -C <worktree> merge-base main HEAD)"`, then `git -C <worktree> commit -m 'feat(meter): add light and dark palettes'`. Confirm `git -C <worktree> log --oneline main..HEAD` lists one commit.
   2. `git -C <worktree> rebase main`, then `git -C /work/term-app merge --ff-only meter-palette`, then `git -C /work/term-app worktree remove <worktree>` and `git -C /work/term-app branch -d meter-palette`. A conflict stops the rebase ? resolve it keeping both lanes' changes, and run the checks again. `main` moved ? repeat this step, at most twice more.

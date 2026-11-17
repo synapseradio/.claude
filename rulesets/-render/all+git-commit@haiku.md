@@ -589,13 +589,13 @@ Keep URLs and co-author trailers out of every message.
 Commit once the work unit's checks pass, with no approval asked -> report what landed.
 Keep every push and every post to an external platform on its own approval.
 During a multi-step build, commit at each green checkpoint and end every slice with `git status --short` empty.
-Each delegate commits only its own paths with `git commit -- <paths>`.
+Each delegate commits only its own paths and every file a formatter or linter changed: `git add <paths>` naming them -> confirm `git diff --cached --name-only` lists only them -> `git commit -m '<message>'`, with no pathspec.
 Stage generated copies in the same commit as the source they derive from.
 Verify the staged set with `git diff --cached --name-only`, with a planning artifact in it only on the user's ask -> compose the message -> commit.
 Keep `--no-verify` out of every command.
 
 worktree
-  | you work in one made for the work = commit with `git -C <worktree> commit -- <paths>` naming the worktree by its absolute path, and leave `git -C <worktree> status --short` empty after each commit
+  | you work in one made for the work = commit by those same steps through `git -C <worktree>`, naming the worktree by its absolute path, and leave `git -C <worktree> status --short` empty after each commit
 
 hook
   | it rejects = make the rejection the next task -> fix the cause -> commit anew

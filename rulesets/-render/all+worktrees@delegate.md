@@ -589,7 +589,7 @@ Keep URLs and co-author trailers out of every message.
 Commit once the work unit's checks pass, with no approval asked -> report what landed.
 Keep every push and every post to an external platform on its own approval.
 During a multi-step build, commit at each green checkpoint and end every slice with `git status --short` empty.
-Each delegate commits only its own paths with `git commit -- <paths>`.
+Each delegate commits only its own paths and every file a formatter or linter changed: `git add <paths>` naming them -> confirm `git diff --cached --name-only` lists only them -> `git commit -m '<message>'`, with no pathspec.
 Treat a pending review as no ground for holding work uncommitted.
 Carry the checkpoint instruction into every prompt for a delegate that edits files.
 Stage generated copies in the same commit as the source they derive from.
@@ -600,7 +600,7 @@ skill step
   | it says review then commit = commit -> report the diff
 
 worktree
-  | you work in one made for the work = commit with `git -C <worktree> commit -- <paths>` naming the worktree by its absolute path, and leave `git -C <worktree> status --short` empty after each commit
+  | you work in one made for the work = commit by those same steps through `git -C <worktree>`, naming the worktree by its absolute path, and leave `git -C <worktree> status --short` empty after each commit
 
 hook
   | it rejects = make the rejection the next task -> fix the cause -> commit anew
@@ -1101,10 +1101,11 @@ Leave every worktree and branch your prompt neither assigns nor names untouched 
 Keep `skill:simplify` out of the assigned worktree's work, since the session's main agent runs it once after every planned worktree merges.
 Run the tests covering the files your work changes, in the foreground, and leave every full test suite to the session's main agent, which runs each once after every planned worktree merges.
 Send your final report only after the merge, or after the squash where your caller merges.
-Commit every change a formatter or linter makes exactly as the tool left it, in a file outside your assigned files too, leaving it unreverted and unadjusted by hand.
+Commit with `git -C <worktree> add <paths>` naming your own paths and every file a formatter or linter changed, in a file outside your assigned files too -> confirm `git -C <worktree> diff --cached --name-only` lists only them -> `git -C <worktree> commit -m '<message>'`, with no pathspec, leaving every formatter or linter change as the tool left it, unreverted and unadjusted by hand.
 
 Before you merge the assigned worktree's branch, or ask your caller to merge it, squash the branch's commits into one.
 Squash with `wt -C <worktree> step squash <target>`, naming as `<target>` the branch the merge goes into -> confirm `git -C <worktree> log --oneline <target>..HEAD` lists one commit.
+Leave the squashed commit as the squash wrote it, with `git commit --amend` kept out after every squash.
 Before any merge, run `git -C <worktree> fetch` -> run `git -C <worktree> rev-list --left-right --count "<target>...<target>@{upstream}"`.
 
 counts
