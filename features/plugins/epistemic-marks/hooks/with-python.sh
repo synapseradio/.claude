@@ -39,7 +39,6 @@ readonly REQUIREMENT='uv, to run the hooks under Python 3.14'
 readonly UV_DOCS_URL='https://docs.astral.sh/uv/'
 readonly UV_INSTALLER_URL='https://astral.sh/uv/install.sh'
 
-INSTALLER_TMP=''
 FAILURE_REASON=''
 
 err() {
@@ -47,40 +46,42 @@ err() {
 }
 
 #######################################
-# Print the path of the uv to run.
+# Print the path of the uv in the plugin data directory's bin.
 # Globals:
 #   CLAUDE_PLUGIN_DATA
 # Outputs:
-#   The uv found on PATH, else the one in the plugin data directory's bin, on
-#   STDOUT.
+#   The path, on STDOUT.
 # Returns:
-#   0 where a uv was found.
+#   0 where that uv is executable.
 #######################################
-resolve_uv() {
-  command -v uv 2>/dev/null && return 0
-  if [[ -x "${CLAUDE_PLUGIN_DATA}/bin/uv" ]]; then
-    echo "${CLAUDE_PLUGIN_DATA}/bin/uv"
-    return 0
-  fi
-  return 1
+resolve_plugin_uv() {
+  [[ -x "${CLAUDE_PLUGIN_DATA}/bin/uv" ]] || return 1
+  echo "${CLAUDE_PLUGIN_DATA}/bin/uv"
 }
 
 #######################################
 # Download the installer script to a file, with curl or else wget.
 # Globals:
-#   INSTALLER_TMP
+#   FAILURE_REASON
 #   UV_INSTALLER_URL
+# Arguments:
+#   The file to download into.
 # Returns:
-#   0 where the file holds the download.
+#   0 where the file holds the download; else 1, with FAILURE_REASON set.
 #######################################
 download_installer() {
+  local file="$1"
   if command -v curl >/dev/null 2>&1; then
-    curl -LsSf -o "${INSTALLER_TMP}" "${UV_INSTALLER_URL}" >&2
+    curl -LsSf -o "${file}" "${UV_INSTALLER_URL}" >&2
   elif command -v wget >/dev/null 2>&1; then
-    wget -q -O "${INSTALLER_TMP}" "${UV_INSTALLER_URL}" >&2
+    wget -q -O "${file}" "${UV_INSTALLER_URL}" >&2
   else
+    FAILURE_REASON='no curl or wget'
     return 1
-  fi
+  fi || {
+    FAILURE_REASON='the installer download failed'
+    return 1
+  }
 }
 
 #######################################
@@ -88,7 +89,6 @@ download_installer() {
 # installer, leaving shell profiles alone.
 # Globals:
 #   CLAUDE_PLUGIN_DATA
-#   INSTALLER_TMP
 # Outputs:
 #   Everything the download and the installer print, on STDERR.
 #   FAILURE_REASON
@@ -97,32 +97,38 @@ download_installer() {
 #######################################
 install_uv() {
   local status=0
-  if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
-    FAILURE_REASON='no curl or wget'
-    return 1
-  fi
-  INSTALLER_TMP="$(mktemp "${TMPDIR:-/tmp}/uv-install.XXXXXX")" || {
+  local installer
+  installer="$(mktemp "${TMPDIR:-/tmp}/uv-install.XXXXXX")" || {
     FAILURE_REASON='no temporary file could be made'
     return 1
   }
-  trap 'rm -f -- "${INSTALLER_TMP}"' EXIT
 
   # Standalone installer: https://docs.astral.sh/uv/getting-started/installation/
   # Environment variables: https://docs.astral.sh/uv/reference/installer/
-  if download_installer; then
+  if download_installer "${installer}"; then
     UV_NO_MODIFY_PATH=1 UV_INSTALL_DIR="${CLAUDE_PLUGIN_DATA}/bin" \
-      sh "${INSTALLER_TMP}" --quiet </dev/null >&2 || {
+      sh "${installer}" --quiet </dev/null >&2 || {
       status=1
       FAILURE_REASON='the installer failed'
     }
   else
     status=1
-    FAILURE_REASON='the installer download failed'
   fi
 
-  rm -f -- "${INSTALLER_TMP}"
-  trap - EXIT
+  rm -f -- "${installer}"
   return "${status}"
+}
+
+#######################################
+# Print a JSON object holding the model-facing members and a systemMessage.
+# Arguments:
+#   The model-facing JSON members, without braces.
+#   The system message text.
+# Outputs:
+#   One JSON object on STDOUT, systemMessage last.
+#######################################
+print_with_system_message() {
+  printf '{%s,"systemMessage":"%s"}\n' "$1" "$2"
 }
 
 #######################################
@@ -144,29 +150,32 @@ report_failure_to_model() {
   event="$(printf '%s' "${payload}" |
     grep -o '"hook_event_name"[[:space:]]*:[[:space:]]*"[^"]*"' |
     head -n 1 | sed 's/.*:[[:space:]]*"\(.*\)"$/\1/')" || true
-  local text="epistemic-marks: the hooks could not run under uv on Python 3.14 (${FAILURE_REASON}), so this session runs with no epistemic-marks rule text and no checks. Where uv is missing, install it from ${UV_DOCS_URL}."
-
-  local unreadable_text="epistemic-marks: the hook event could not be read, so the hooks could not run under uv on Python 3.14 (${FAILURE_REASON}), and this session runs with no epistemic-marks rule text and no checks. Where uv is missing, install it from ${UV_DOCS_URL}."
+  local tail="this session runs with no epistemic-marks rule text and no checks. Where uv is missing, install it from ${UV_DOCS_URL}."
+  local text="epistemic-marks: the hooks could not run under uv on Python 3.14 (${FAILURE_REASON}), so ${tail}"
+  local unreadable_text="epistemic-marks: the hook event could not be read, so the hooks could not run under uv on Python 3.14 (${FAILURE_REASON}), and ${tail}"
+  local fragment
 
   case "${event}" in
   SessionStart | SubagentStart | PostToolBatch)
-    printf '{"hookSpecificOutput":{"hookEventName":"%s","additionalContext":"%s"},"systemMessage":"%s"}\n' \
-      "${event}" "${text}" "${text}"
+    printf -v fragment '"hookSpecificOutput":{"hookEventName":"%s","additionalContext":"%s"}' \
+      "${event}" "${text}"
+    print_with_system_message "${fragment}" "${text}"
     ;;
   PreToolUse)
-    printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"},"systemMessage":"%s"}\n' \
-      "${text}" "${text}"
+    printf -v fragment '"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}' \
+      "${text}"
+    print_with_system_message "${fragment}" "${text}"
     ;;
   Stop | SubagentStop)
     if ! printf '%s' "${payload}" |
       grep -Eq '"stop_hook_active"[[:space:]]*:[[:space:]]*true'; then
-      printf '{"decision":"block","reason":"%s","systemMessage":"%s"}\n' \
-        "${text}" "${text}"
+      printf -v fragment '"decision":"block","reason":"%s"' "${text}"
+      print_with_system_message "${fragment}" "${text}"
     fi
     ;;
   *)
-    printf '{"decision":"block","reason":"%s","systemMessage":"%s"}\n' \
-      "${unreadable_text}" "${unreadable_text}"
+    printf -v fragment '"decision":"block","reason":"%s"' "${unreadable_text}"
+    print_with_system_message "${fragment}" "${unreadable_text}"
     ;;
   esac
 }
@@ -207,12 +216,14 @@ main() {
     fail_launch
   fi
 
-  local uv
-  if ! uv="$(resolve_uv)"; then
-    install_uv || true
-    uv="$(resolve_uv)" || {
-      [[ -n "${FAILURE_REASON}" ]] || FAILURE_REASON='it is still missing after the install'
-      fail_launch
+  local uv=uv
+  if ! command -v uv >/dev/null 2>&1; then
+    uv="$(resolve_plugin_uv)" || {
+      install_uv || true
+      uv="$(resolve_plugin_uv)" || {
+        [[ -n "${FAILURE_REASON}" ]] || FAILURE_REASON='it is still missing after the install'
+        fail_launch
+      }
     }
   fi
 
