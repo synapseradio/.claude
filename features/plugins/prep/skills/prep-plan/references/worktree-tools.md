@@ -12,8 +12,6 @@ Take the first that applies:
 
 Where `uv` is not on PATH, install it with `curl -LsSf https://astral.sh/uv/install.sh | sh`, then run `scripts/detect-tools.py` through `uv`.
 
-A program named `wt` counts as worktrunk only where its help says so; other programs share the name.
-
 ## git
 
 Needs nothing but git. No hook runs when a worktree is created, so the lane's provisioning line carries the commands.
