@@ -24,6 +24,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from support import isolated_environment
+
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 LAUNCHER = PLUGIN_ROOT / "hooks" / "with-python.sh"
 
@@ -52,28 +54,6 @@ def recording_uv(path: Path, record: Path, real_interpreter: str) -> None:
     )
 
 
-def isolated_environment(
-    home: Path, path_dirs: list[str], plugin_data: Path | None = None
-) -> dict[str, str]:
-    """A child process's whole environment: a throwaway HOME, XDG, git config, and PATH.
-
-    CLAUDE_PLUGIN_DATA is set only where `plugin_data` is given, as the harness
-    sets it for a hook and as it is absent outside the harness.
-    """
-    child_environment = {
-        "HOME": str(home),
-        "XDG_CONFIG_HOME": str(home / "config"),
-        "XDG_CACHE_HOME": str(home / "cache"),
-        "XDG_DATA_HOME": str(home / "data"),
-        "GIT_CONFIG_GLOBAL": os.devnull,
-        "GIT_CONFIG_NOSYSTEM": "1",
-        "PATH": os.pathsep.join(path_dirs),
-    }
-    if plugin_data is not None:
-        child_environment["CLAUDE_PLUGIN_DATA"] = str(plugin_data)
-    return child_environment
-
-
 def run_launcher(
     script: Path, child_environment: dict[str, str], stdin: str = ""
 ) -> subprocess.CompletedProcess[str]:
@@ -100,7 +80,8 @@ class TheLauncherHandsTheScriptToUvAt3_14(unittest.TestCase):
 
             data = scratch / "data"
             result = run_launcher(
-                script, isolated_environment(scratch / "home", [str(bindir)], data)
+                script,
+                isolated_environment(scratch / "home", path_dirs=[str(bindir)], plugin_data=data),
             )
             args = record.read_text().splitlines()
             uv_environment = Path(f"{record}.env").read_text().splitlines()
@@ -126,7 +107,9 @@ class TheLauncherHandsTheScriptToUvAt3_14(unittest.TestCase):
 
             result = run_launcher(
                 script,
-                isolated_environment(scratch / "home", [str(bindir)], scratch / "data"),
+                isolated_environment(
+                    scratch / "home", path_dirs=[str(bindir)], plugin_data=scratch / "data"
+                ),
                 stdin='{"a": 1}',
             )
 
@@ -214,7 +197,7 @@ class TheLauncherInstallsAMissingUv(unittest.TestCase):
 
     def environment(self) -> dict[str, str]:
         child_environment = isolated_environment(
-            self.home, [str(self.stubs), str(self.tools)], self.data
+            self.home, path_dirs=[str(self.stubs), str(self.tools)], plugin_data=self.data
         )
         child_environment["TMPDIR"] = str(self.scratch)
         return child_environment
@@ -284,7 +267,7 @@ class TheLauncherReportsAnInstallThatCannotHappen(unittest.TestCase):
         if curl_stub:
             path_dirs.insert(0, str(self.scratch / "stubs"))
         child_environment = isolated_environment(
-            self.scratch / "home", path_dirs, self.scratch / "plugin-data"
+            self.scratch / "home", path_dirs=path_dirs, plugin_data=self.scratch / "plugin-data"
         )
         child_environment["TMPDIR"] = str(self.scratch)
         return child_environment
@@ -412,7 +395,7 @@ class TheLauncherReportsAnInstallThatCannotHappen(unittest.TestCase):
         recording_uv(stubs / "uv", uv_record, sys.executable)
         stub_curl(stubs / "curl", self.scratch / "curl-log.txt", "exit 1\n")
         child_environment = isolated_environment(
-            self.scratch / "home", [str(stubs), str(self.tools)]
+            self.scratch / "home", path_dirs=[str(stubs), str(self.tools)]
         )
         child_environment["TMPDIR"] = str(self.scratch)
         payload = json.dumps({"hook_event_name": "SessionStart"})
@@ -447,8 +430,8 @@ class TheRealUvRunsTheScriptOn3_14(unittest.TestCase):
             scratch = Path(scratch)
             child_environment = isolated_environment(
                 scratch / "home",
-                [str(Path(uv).parent), os.environ.get("PATH", os.defpath)],
-                scratch / "data",
+                path_dirs=[str(Path(uv).parent), os.environ.get("PATH", os.defpath)],
+                plugin_data=scratch / "data",
             )
             child_environment["UV_OFFLINE"] = "1"
             if not real_uv_serves_3_14(child_environment):

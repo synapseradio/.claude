@@ -9,6 +9,8 @@ cannot know, so no generated line names a tool. Each line phrases the act to
 perform rather than the call to make.
 """
 
+from enum import StrEnum
+
 from .hedges import ASKED, CAUSE, GUESS, REST, SAID
 from .marks import (
     MARK_CARRY,
@@ -111,6 +113,13 @@ CAPPED_HEADING = (
     "This turn's block limit is reached, so this notice does not block. The "
     "findings below still stand. Open your next reply on them."
 )
+
+# The lead of a block: a finding followed by its act.
+BLOCK_LEAD = (
+    "Your {verb} carries unchecked claims. Act on each group below, then "
+    "re-emit the whole {verb}.\n\n"
+)
+
 MENTION_HEADING = "Naming a mark in code rather than claiming under it, so left unchecked:"
 
 # The act for a mention, which no mark record can carry: a mention is exempt
@@ -163,41 +172,65 @@ def _mention_part(mentions) -> str:
     return f"{MENTION_HEADING}\n{MENTION_ACT}\n\n" + _listing(mentions)
 
 
-def build_reason(
-    lines_by_mark, carried=None, delegate=False, wording=None, standing=None, mentions=None
-) -> str:
-    """The block message a Stop pass returns.
+class Mode(StrEnum):
+    """What a pass does with its findings: block on them, carry them past the cap, or report them."""
 
-    `carried` holds the lines a delegate hands upward, keyed by mark, and is
-    empty at top level, where the caller is the user and every mark resolves
-    here. `delegate` picks the noun for what gets re-emitted.
-    `wording` holds the sentences that guess in words, keyed by kind.
-    `standing` holds the lines a block already sent back once, which a later
-    pass found still marked and not yet opened on, keyed by mark.
-    `mentions` holds the lines naming a mark rather than claiming under it,
-    which ride in the block so the model reads them in the same message.
+    BLOCK = "block"
+    CAPPED = "capped"
+    NOTICE = "notice"
+
+
+def build_findings(
+    mode,
+    lines_by_mark,
+    carried=None,
+    delegate=False,
+    wording=None,
+    standing=None,
+    mentions=None,
+) -> str:
+    """The message a Stop pass returns for what it found.
+
+    `mode` picks the lead and the act each group is read under. A block
+    asks the writer to resolve each group and re-emit; the capped mode
+    carries that same block message under CAPPED_HEADING, since the pass can
+    no longer block; a notice reports a surviving mark or a mention with
+    the carry act, since the pass that could resolve it already ran. The
+    model reads a notice as additionalContext and can still write each item
+    into its reply or report, and the user sees the same text. A mention
+    costs nothing to write and exempts the line it sits on, so it reaches
+    the reader here rather than passing in silence.
+
+    `lines_by_mark` holds the found lines keyed by mark. `carried` holds the
+    lines a delegate hands upward, keyed by mark, and is empty at top level,
+    where the caller is the user and every mark resolves here. Without it a
+    delegate's report whose only mark rides up produces no output at all, and
+    the question dies where it was written. `delegate` picks the noun for
+    what gets re-emitted. `wording` holds the sentences that guess in words,
+    keyed by kind. `standing` holds the lines a block already sent back once,
+    which a later pass found still marked and not yet opened on, keyed by
+    mark. `mentions` holds the lines naming a mark rather than claiming
+    under it, which ride in the message so the model reads them with it.
     """
     verb = "report" if delegate else "reply"
-    parts = _resolving(lines_by_mark, wording)
+    if mode is Mode.NOTICE:
+        parts = [_wording_sections(wording, WORDING_CARRY)] if wording else []
+        if lines_by_mark:
+            parts.append(f"{SURVIVING_HEADING}\n\n" + _sections(lines_by_mark, MARK_CARRY))
+    else:
+        parts = _resolving(lines_by_mark, wording)
     if standing:
         parts.append(STANDING_HEADING.format(verb=verb) + "\n\n" + _sections(standing, MARK_CARRY))
     if carried:
         parts.append(f"{RELAY_HEADING}\n\n" + _sections(carried, MARK_CARRY))
     if mentions:
         parts.append(_mention_part(mentions))
-    return (
-        f"Your {verb} carries unchecked claims. Act on each group below, then "
-        f"re-emit the whole {verb}.\n\n" + "\n\n".join(parts)
-    )
-
-
-def build_capped(reason) -> str:
-    """The additionalContext a Stop pass returns in place of a block past the cap.
-
-    `reason` is the block message the pass would have returned, so the
-    findings read the same as they would have in a block.
-    """
-    return f"{CAPPED_HEADING}\n\n{reason}"
+    lead = {
+        Mode.BLOCK: BLOCK_LEAD,
+        Mode.CAPPED: f"{CAPPED_HEADING}\n\n{BLOCK_LEAD}",
+        Mode.NOTICE: "",
+    }[mode].format(verb=verb)
+    return lead + "\n\n".join(parts)
 
 
 def build_context(lines_by_mark, wording=None) -> str:
@@ -225,27 +258,3 @@ def build_denial(wording) -> str:
         "This prompt hands a delegate a guess as a finding. Act on each group "
         "below, then send the prompt again.\n\n" + _wording_sections(wording, WORDING_RESOLVE)
     )
-
-
-def build_notice(lines_by_mark, mentions=None, carried=None, wording=None) -> str:
-    """The report a Stop pass makes on a surviving mark or a mention.
-
-    Each group carries its act. A surviving mark takes the carry act, since
-    the pass that could resolve it already ran. The model reads this as
-    additionalContext and can still write each item into its reply or
-    report, and the user sees the same text. A mention costs nothing to
-    write and exempts the line it sits on, so it reaches the reader here
-    rather than passing in silence.
-
-    `carried` is the delegate's relay group, which no block carries when the
-    pass finds nothing else. Without it a report whose only mark rides up
-    produces no output at all, and the question dies where it was written.
-    """
-    parts = [_wording_sections(wording, WORDING_CARRY)] if wording else []
-    if lines_by_mark:
-        parts.append(f"{SURVIVING_HEADING}\n\n" + _sections(lines_by_mark, MARK_CARRY))
-    if carried:
-        parts.append(f"{RELAY_HEADING}\n\n" + _sections(carried, MARK_CARRY))
-    if mentions:
-        parts.append(_mention_part(mentions))
-    return "\n\n".join(parts)

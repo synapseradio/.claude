@@ -19,9 +19,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from epistemic_marks.delivery import rule_text
+from epistemic_marks.output import context
 
 
-def main():
+def main() -> None:
     try:
         payload = json.load(sys.stdin)
     except ValueError:
@@ -33,10 +34,7 @@ def main():
     text = rule_text()
     if not text:
         sys.exit(0)
-    json.dump(
-        {"hookSpecificOutput": {"hookEventName": event, "additionalContext": text}},
-        sys.stdout,
-    )
+    json.dump(context(event, text), sys.stdout)
     sys.exit(0)
 
 

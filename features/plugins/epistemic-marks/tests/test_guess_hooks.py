@@ -9,13 +9,12 @@ directory.
 """
 
 import json
-import os
-import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from typing import ClassVar
+
+from support import PLUGIN_ROOT, assistant_text, isolated_environment, run_hook, user_text
 
 from epistemic_marks.hedges import ASKED, CAUSE, GUESS, REST, SAID
 from epistemic_marks.marks import MARKS
@@ -24,14 +23,11 @@ from epistemic_marks.messages import (
     WORDING_CARRY,
     WORDING_HEADING,
     WORDING_RESOLVE,
+    Mode,
     build_context,
     build_denial,
-    build_notice,
-    build_reason,
+    build_findings,
 )
-
-PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = PLUGIN_ROOT / "hooks" / "verify-marks.py"
 
 INCIDENT_GUESS = (
     "My unconfirmed guess is that files in the lane worktrees fall into a project "
@@ -54,41 +50,21 @@ NOTHING_GUESSED = (
 )
 
 
-def entry(kind, content) -> str:
-    return json.dumps({"type": kind, "message": {"role": kind, "content": content}})
-
-
-def run_hook(payload, *args, state) -> dict | None:
-    inherited = {
-        key: value
-        for key, value in os.environ.items()
-        if key not in ("VERIFY_MARKS_STATE_DIR", "CLAUDE_PLUGIN_DATA")
-    }
-    completed = subprocess.run(
-        [sys.executable, str(SCRIPT), *args],
-        input=json.dumps(payload),
-        capture_output=True,
-        text=True,
-        check=False,
-        env={**inherited, "VERIFY_MARKS_STATE_DIR": state},
-    )
-    assert completed.returncode == 0, completed.stderr
-    return json.loads(completed.stdout) if completed.stdout.strip() else None
-
-
 class HookCase(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
-        self.state = str(Path(self._tmp.name) / "state")
+        root = Path(self._tmp.name)
+        self.env = isolated_environment(root / "home", state_dir=root / "state")
 
     def run_hook(self, payload, *args) -> dict | None:
-        return run_hook(payload, *args, state=self.state)
+        code, out = run_hook(payload, *args, env=self.env)
+        assert code == 0, out
+        return json.loads(out) if out.strip() else None
 
     def transcript(self, *texts) -> str:
         path = Path(self._tmp.name) / "session.jsonl"
-        lines = [entry("user", "do the thing")]
-        lines += [entry("assistant", [{"type": "text", "text": text}]) for text in texts]
+        lines = [user_text("do the thing"), *(assistant_text(text) for text in texts)]
         path.write_text("\n".join(lines) + "\n")
         return str(path)
 
@@ -392,9 +368,9 @@ class TheGuessMessagesSayWhatToDo(unittest.TestCase):
 
     def outputs(self) -> dict[str, str]:
         return {
-            "reason": build_reason({}, wording=self.wording),
+            "reason": build_findings(Mode.BLOCK, {}, wording=self.wording),
             "context": build_context({}, wording=self.wording),
-            "notice": build_notice({}, wording=self.wording),
+            "notice": build_findings(Mode.NOTICE, {}, wording=self.wording),
             "denial": build_denial(self.wording),
         }
 
@@ -420,7 +396,7 @@ class TheGuessMessagesSayWhatToDo(unittest.TestCase):
         assert "still a guess" in WORDING_RESOLVE[GUESS]
 
     def test_a_reply_with_no_guess_draws_no_guess_instruction(self) -> None:
-        output = build_reason({MARKS[0]: [f"A claim {MARKS[0]}."]})
+        output = build_findings(Mode.BLOCK, {MARKS[0]: [f"A claim {MARKS[0]}."]})
         for kind in (GUESS, CAUSE, REST):
             assert WORDING_HEADING[kind] not in output
 

@@ -23,8 +23,6 @@ Exits 0 with no problem, 1 with a problem, 2 where the file holds no unit
 line. Reads only. Runs on Python 3.14 and later with the standard library alone.
 """
 
-from __future__ import annotations
-
 import sys
 from itertools import combinations
 from pathlib import Path

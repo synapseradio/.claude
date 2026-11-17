@@ -5,76 +5,37 @@
 Each test drives the entrypoint through stdin the way the harness does, and
 builds every fixture it needs in a temporary directory: the transcripts it
 scans and the state directory it writes. No test reads a real session's
-transcript, a real settings file, or state a real session keeps, and run_hook
-drops the two variables that could point the hook at any of them.
+transcript, a real settings file, or state a real session keeps, and
+isolated_environment drops the variables that could point the hook at any of them.
 """
 
 import json
-import os
-import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+from support import assistant_text, entry, isolated_environment, run_hook, user_text
 
 # The group headings, imported so a test asserting what rides up anchors on
 # the heading itself rather than on a copy of its wording. conftest.py puts
 # the plugin root on the import path.
 from epistemic_marks.messages import RELAY_HEADING, STANDING_HEADING
 
-PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = PLUGIN_ROOT / "hooks" / "verify-marks.py"
-
-
-def entry(kind, content) -> str:
-    return json.dumps({"type": kind, "message": {"role": kind, "content": content}})
-
-
-def user_text(text) -> str:
-    return entry("user", text)
-
 
 def tool_result() -> str:
     return entry("user", [{"type": "tool_result", "tool_use_id": "t1", "content": "ok"}])
-
-
-def assistant_text(text) -> str:
-    return entry("assistant", [{"type": "text", "text": text}])
 
 
 def assistant_tool_use() -> str:
     return entry("assistant", [{"type": "tool_use", "id": "t1", "name": "Read", "input": {}}])
 
 
-def run_hook(payload, *args, env=None) -> tuple[int, str]:
-    """Drive the entrypoint the way the harness does, on a scrubbed env.
-
-    Both variables that could point the hook at a real session's state are
-    dropped before the run, so a test reaches that state on no machine even
-    when the developer's shell exports one of them. A case that needs state
-    passes a temporary directory of its own.
-    """
-    inherited = {
-        key: value
-        for key, value in os.environ.items()
-        if key not in ("VERIFY_MARKS_STATE_DIR", "CLAUDE_PLUGIN_DATA")
-    }
-    completed = subprocess.run(
-        [sys.executable, str(SCRIPT), *args],
-        input=json.dumps(payload),
-        capture_output=True,
-        text=True,
-        check=False,
-        env={**inherited, **(env or {})},
-    )
-    return completed.returncode, completed.stdout
-
-
 class VerifyMarksStopHook(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
-        self.state = str(Path(self._tmp.name) / "state")
+        root = Path(self._tmp.name)
+        self.env = isolated_environment(root / "home", state_dir=root / "state")
 
     def transcript(self, *lines) -> str:
         path = Path(self._tmp.name) / "session.jsonl"
@@ -82,7 +43,7 @@ class VerifyMarksStopHook(unittest.TestCase):
         return str(path)
 
     def decision(self, payload) -> dict | None:
-        code, out = run_hook(payload, env={"VERIFY_MARKS_STATE_DIR": self.state})
+        code, out = run_hook(payload, env=self.env)
         assert code == 0
         return json.loads(out) if out.strip() else None
 
@@ -322,7 +283,7 @@ class VerifyMarksStopHook(unittest.TestCase):
         assert "nobody else calls it [?]." in result["reason"]
 
     def delegate_decision(self, payload) -> dict | None:
-        code, out = run_hook(payload, "--delegate", env={"VERIFY_MARKS_STATE_DIR": self.state})
+        code, out = run_hook(payload, "--delegate", env=self.env)
         assert code == 0
         return json.loads(out) if out.strip() else None
 
@@ -674,7 +635,8 @@ class VerifyMarksBatchHook(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
-        self.state = str(Path(self._tmp.name) / "state")
+        root = Path(self._tmp.name)
+        self.env = isolated_environment(root / "home", state_dir=root / "state")
 
     def transcript(self, *lines) -> str:
         path = Path(self._tmp.name) / "session.jsonl"
@@ -706,7 +668,7 @@ class VerifyMarksBatchHook(unittest.TestCase):
         code, out = run_hook(
             payload,
             "--batch",
-            env={"VERIFY_MARKS_STATE_DIR": self.state},
+            env=self.env,
         )
         assert code == 0
         return json.loads(out) if out.strip() else None
@@ -854,7 +816,7 @@ class VerifyMarksBatchHook(unittest.TestCase):
         code, out = run_hook(
             {"hook_event_name": "PostToolBatch", "session_id": "session-one"},
             "--batch",
-            env={"VERIFY_MARKS_STATE_DIR": self.state},
+            env=self.env,
         )
         assert code == 0
         assert out.strip() == "", "no transcript means nothing to scan"

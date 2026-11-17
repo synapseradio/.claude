@@ -66,27 +66,43 @@ def prune(directory, now) -> None:
             continue
 
 
-def read_reported(path) -> list:
+def _read_json(path) -> object:
+    """The value stored at `path`, or None where it is missing or unreadable."""
     try:
-        reported = json.loads(path.read_text())
-    except (OSError, ValueError):
-        return []
-    return reported if isinstance(reported, list) else []
+        return json.loads(path.read_text())
+    except OSError, ValueError:
+        return None
 
 
-def write_reported(path, reported) -> None:
+def _write_json(path, value) -> None:
     try:
-        path.write_text(json.dumps(reported))
+        path.write_text(json.dumps(value))
     except OSError:
         return
 
 
+def unrecorded(groups, seen) -> dict[str, list[str]]:
+    """The lines of each group whose fingerprint is not in `seen`, empty groups dropped."""
+    fresh = {}
+    for key, lines in groups.items():
+        kept = [line for line in lines if fingerprint(line) not in seen]
+        if kept:
+            fresh[key] = kept
+    return fresh
+
+
+def read_reported(path) -> list:
+    reported = _read_json(path)
+    return reported if isinstance(reported, list) else []
+
+
+def write_reported(path, reported) -> None:
+    _write_json(path, reported)
+
+
 def read_turn(path) -> tuple[list, int]:
     """The lines a turn has sent the model and the blocks it has drawn, as (list, int)."""
-    try:
-        record = json.loads(path.read_text())
-    except (OSError, ValueError):
-        return [], 0
+    record = _read_json(path)
     if not isinstance(record, dict):
         return [], 0
     sent, blocks = record.get("sent"), record.get("blocks")
@@ -97,7 +113,12 @@ def read_turn(path) -> tuple[list, int]:
 
 
 def write_turn(path, sent, blocks) -> None:
+    _write_json(path, {"sent": sent, "blocks": blocks})
+
+
+def forget_turn(path) -> None:
+    """Remove a turn's record, so the turn's next pass starts it over."""
     try:
-        path.write_text(json.dumps({"sent": sent, "blocks": blocks}))
+        path.unlink(missing_ok=True)
     except OSError:
         return

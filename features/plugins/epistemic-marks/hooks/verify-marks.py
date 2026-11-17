@@ -41,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from epistemic_marks.hedges import guessed_lines, unchecked_claims
 from epistemic_marks.ledger import (
     fingerprint,
+    forget_turn,
     prepare,
     prune,
     read_reported,
@@ -48,17 +49,13 @@ from epistemic_marks.ledger import (
     state_dir,
     state_key,
     state_path,
+    unrecorded,
     write_reported,
     write_turn,
 )
 from epistemic_marks.marks import RELAY_MARKS
-from epistemic_marks.messages import (
-    build_capped,
-    build_context,
-    build_denial,
-    build_notice,
-    build_reason,
-)
+from epistemic_marks.messages import Mode, build_context, build_denial, build_findings
+from epistemic_marks.output import block, context, deny
 from epistemic_marks.scan import batch_transcript, last_turn_text
 
 # The most blocks one turn draws from this hook. The harness overrides the
@@ -71,21 +68,26 @@ BLOCK_CAP = 5
 UNRECORDED_CAP = 1
 
 
-def emit(output, text) -> None:
-    """Print one output whose model-facing field holds `text`, shown to the user too."""
-    json.dump({**output, "systemMessage": text}, sys.stdout)
+def emit(output) -> None:
+    """Print one output from epistemic_marks/output.py and end the pass."""
+    json.dump(output, sys.stdout)
     sys.exit(0)
 
 
-def opens_on(reply, standing, marked) -> bool:
-    """Whether the reply puts every standing line ahead of every line with no mark.
+def flat(*groups) -> list[str]:
+    """Every line of every group, in order."""
+    return [line for group in groups for lines in group.values() for line in lines]
+
+
+def opens_on(reply, standing_lines, marked) -> bool:
+    """Whether the reply puts every line in `standing_lines` ahead of every line with no mark.
 
     `marked` holds every line the scan found carrying a mark, any of which
     may sit in the opening. Blank lines, headings and labels ending in a
     colon are passed over, as STANDING_HEADING in messages.py tells the
     reader.
     """
-    wanted = {line for lines in standing.values() for line in lines}
+    wanted = set(standing_lines)
     for raw in reply.splitlines():
         if not wanted:
             break
@@ -103,7 +105,7 @@ def run_stop(payload, delegate) -> None:
     # so last_assistant_message carries the final reply and the transcript
     # supplies the earlier messages of the same turn.
     reply = payload.get("last_assistant_message") or ""
-    blocks = [reply]
+    texts = [reply]
     # agent_transcript_path names the calling subagent's own transcript;
     # transcript_path names the session-level file every concurrent subagent
     # and the orchestrator write to.
@@ -113,16 +115,13 @@ def run_stop(payload, delegate) -> None:
     # messages of the turn hold the superseded draft, whose lines the rewrite
     # already answered, so only the rewrite is read.
     if transcript and Path(transcript).exists() and not again:
-        blocks = last_turn_text(transcript) + blocks
-    lines_by_mark, wording, mentions = unchecked_claims(blocks)
+        texts = last_turn_text(transcript) + texts
+    lines_by_mark, wording, mentions = unchecked_claims(texts)
     carried = (
         {token: lines_by_mark.pop(token) for token in RELAY_MARKS if token in lines_by_mark}
         if delegate
         else {}
     )
-    marked = {
-        line for group in (lines_by_mark, carried) for lines in group.values() for line in lines
-    }
 
     # The record holds every line a pass sent the model since the turn's
     # first pass, which starts it over: the harness sets stop_hook_active
@@ -133,25 +132,24 @@ def run_stop(payload, delegate) -> None:
     # hook continued, still goes out. The record also counts the blocks the
     # turn has drawn. Where no record can be kept, no line counts as sent, so
     # every pass sends every line, and UNRECORDED_CAP sets the block count.
+    # A first pass has no record to read and draws no block yet, so only a
+    # later pass asks whether the directory can be written.
     directory = state_dir()
-    path = state_path(directory, f"{state_key(payload)}-stop-sent") if prepare(directory) else None
-    recorded, blocks = read_turn(path) if path and again else ([], 0)
+    path = state_path(directory, f"{state_key(payload)}-stop-sent")
+    recordable = False
+    recorded, issued, cap = [], 0, BLOCK_CAP
+    if again:
+        recordable = prepare(directory)
+        if recordable:
+            recorded, issued = read_turn(path)
+        else:
+            issued, cap = 1, UNRECORDED_CAP
     sent = set(recorded)
-    issued = blocks if path else int(again)
-    cap = BLOCK_CAP if path else UNRECORDED_CAP
     capped = issued >= cap
 
-    def unsent(groups) -> dict[str, list[str]]:
-        fresh = {}
-        for key, lines in groups.items():
-            kept = [line for line in lines if fingerprint(line) not in sent]
-            if kept:
-                fresh[key] = kept
-        return fresh
-
-    fresh = unsent(lines_by_mark)
-    new_mentions = unsent(mentions)
-    new_relay = unsent(carried)
+    fresh = unrecorded(lines_by_mark, sent)
+    new_mentions = unrecorded(mentions, sent)
+    new_relay = unrecorded(carried, sent)
     # A marked line already sent back for its check may stand, since the
     # check it waits on can be out of reach, but only at the head of the
     # reply, where the rule text tells the writer to put it. Wording never
@@ -159,45 +157,41 @@ def run_stop(payload, delegate) -> None:
     # loop ends when the reply does what the block asked; the harness's own
     # end is its override after eight consecutive continuations, per
     # https://code.claude.com/docs/en/hooks
-    listed = {
-        mark: kept
-        for mark, lines in lines_by_mark.items()
-        if (kept := [line for line in lines if line not in fresh.get(mark, [])])
-    }
-    standing = listed if again and not opens_on(reply, listed, marked) else {}
+    standing = {}
+    if again:
+        listed = {
+            mark: kept
+            for mark, lines in lines_by_mark.items()
+            if (kept := [line for line in lines if line not in fresh.get(mark, [])])
+        }
+        marked = set(flat(lines_by_mark, carried))
+        if not opens_on(reply, flat(listed), marked):
+            standing = listed
 
     owed = bool(fresh or wording or standing)
-    if path is not None:
-        newly = [
-            line
-            for group in (fresh, new_mentions, new_relay)
-            for lines in group.values()
-            for line in lines
-        ]
-        write_turn(
-            path,
-            sorted(sent | {fingerprint(line) for line in newly}),
-            issued + int(owed and not capped),
-        )
+    newly = flat(fresh, new_mentions, new_relay)
+    if newly or owed:
+        if recordable or prepare(directory):
+            write_turn(
+                path,
+                sorted(sent | {fingerprint(line) for line in newly}),
+                issued + int(owed and not capped),
+            )
+    elif not again:
+        forget_turn(path)
 
     event = "SubagentStop" if delegate else "Stop"
     if owed:
-        reason = build_reason(fresh, new_relay, delegate, wording, standing, new_mentions)
-        if capped:
-            notice = build_capped(reason)
-            emit(
-                {"hookSpecificOutput": {"hookEventName": event, "additionalContext": notice}},
-                notice,
-            )
-        emit({"decision": "block", "reason": reason}, reason)
+        mode = Mode.CAPPED if capped else Mode.BLOCK
+        message = build_findings(mode, fresh, new_relay, delegate, wording, standing, new_mentions)
+        emit(context(event, message) if capped else block(message))
     # A mention claims nothing and a relayed line is the caller's to settle,
     # so neither blocks. additionalContext still hands each one to the model
     # and continues it, the one way a Stop or SubagentStop hook has to do
     # that without a block, per https://code.claude.com/docs/en/hooks. The
     # record keeps a line it carried from going out twice.
     if new_mentions or new_relay:
-        notice = build_notice({}, new_mentions, new_relay)
-        emit({"hookSpecificOutput": {"hookEventName": event, "additionalContext": notice}}, notice)
+        emit(context(event, build_findings(Mode.NOTICE, {}, new_relay, mentions=new_mentions)))
     sys.exit(0)
 
 
@@ -205,7 +199,7 @@ def run_batch(payload) -> None:
     transcript = batch_transcript(payload)
     if not transcript or not Path(transcript).exists():
         sys.exit(0)
-    lines_by_mark, wording, _mentions = unchecked_claims(last_turn_text(transcript))
+    lines_by_mark, wording, _ = unchecked_claims(last_turn_text(transcript))
     directory = state_dir()
     if not prepare(directory):
         sys.exit(0)
@@ -213,36 +207,16 @@ def run_batch(payload) -> None:
     path = state_path(directory, state_key(payload))
     reported = read_reported(path)
     seen = set(reported)
-    fingerprints = {}
-
-    def unseen(groups) -> dict[str, list[str]]:
-        """The lines of each group no earlier batch reported, empty groups dropped."""
-        fresh = {}
-        for key, lines in groups.items():
-            kept = [
-                line
-                for line in lines
-                if fingerprints.setdefault(line, fingerprint(line)) not in seen
-            ]
-            if kept:
-                fresh[key] = kept
-        return fresh
-
-    fresh_marks, fresh_wording = unseen(lines_by_mark), unseen(wording)
+    fresh_marks, fresh_wording = unrecorded(lines_by_mark, seen), unrecorded(wording, seen)
     if not fresh_marks and not fresh_wording:
         sys.exit(0)
-    for lines in [*fresh_marks.values(), *fresh_wording.values()]:
-        for line in lines:
-            fp = fingerprints[line]
-            if fp not in seen:
-                seen.add(fp)
-                reported.append(fp)
+    for line in flat(fresh_marks, fresh_wording):
+        fp = fingerprint(line)
+        if fp not in seen:
+            seen.add(fp)
+            reported.append(fp)
     write_reported(path, reported)
-    context = build_context(fresh_marks, fresh_wording)
-    emit(
-        {"hookSpecificOutput": {"hookEventName": "PostToolBatch", "additionalContext": context}},
-        context,
-    )
+    emit(context("PostToolBatch", build_context(fresh_marks, fresh_wording)))
 
 
 def run_prompt(payload) -> None:
@@ -258,20 +232,10 @@ def run_prompt(payload) -> None:
     prompt = tool_input.get("prompt") if isinstance(tool_input, dict) else None
     if not isinstance(prompt, str):
         sys.exit(0)
-    wording, _mentions = guessed_lines([prompt])
+    wording, _ = guessed_lines([prompt])
     if not wording:
         sys.exit(0)
-    denial = build_denial(wording)
-    emit(
-        {
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "permissionDecisionReason": denial,
-            }
-        },
-        denial,
-    )
+    emit(deny(build_denial(wording)))
 
 
 def main() -> None:

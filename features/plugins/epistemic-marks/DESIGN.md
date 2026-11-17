@@ -505,7 +505,9 @@ holds each form.
 
 Enforcement on its own would correct a model against something nothing taught
 it, so the teaching ships with it. `rule-text/epistemic-marks.md` holds the
-rule text, and `hooks/deliver-rule.py` hands it over at every start.
+rule text, and `hooks/deliver-rule.py` hands it over at every start. Like
+every output, it also carries the same text as a `systemMessage`, which shows
+the user what the session was taught.
 
 On `SessionStart` the delivery entry in `hooks/hooks.json` has no matcher, so
 it runs on every source of a session start, compaction included. Injected

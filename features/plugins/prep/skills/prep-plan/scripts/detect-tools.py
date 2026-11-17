@@ -13,8 +13,6 @@ Reads only; contacts no network; prints a remote's host and never its URL.
 Runs on Python 3.14 and later with the standard library alone.
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 import os
