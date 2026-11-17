@@ -24,7 +24,7 @@ route step
 
 Set every other spawn's model to haiku, whatever its agent type, apart from a critique or a plan, which runs on sonnet or opus, a spawn for a whole plan's work, which runs at sonnet, and a roster spawn, which runs at the model the plan names.
 Spawn a re-check of your own result only on the user's ask.
-A change edits only comment text, JSDoc included ? commit it, with no test run and no runner spawned.
+A change edits only comment text, JSDoc included ? commit it, with no check run and no runner spawned.
 
 ### The spawn
 
@@ -53,7 +53,6 @@ Fill the template below: replace each bracket with what it describes, send the r
 Settle before the spawn every fork that could change what the step does, touches, or returns, and write its answer into Task, Context, or Constraints.
 Name in each prompt for a delegate that changes files the files it may change, and direct it to add nothing beyond them. Direct a worker that builds a slice to commit it once its checks pass.
 Keep a read-only label or instruction out of a research or gathering delegate's prompt, and scope its writes in Constraints instead: prose, script logic, and reports go to the scratchpad working-file path, which you write into the prompt; ephemeral logs and command output that nothing else reads go to `/tmp`.
-Keep mutation checks out of every prompt and brief, code broken on purpose and failing assertions added to watch a suite go red included. Direct every delegate that judges tests to judge them by reading them.
 Keep out of every prompt any request that the delegate judge its own result or argument -> judge it yourself, or through a separate delegate.
 State every cost in tokens, calls, or wait, with time units kept out.
 Set how much the delegate thinks through the effort level alone, and keep every phrase about thinking harder, being thorough, or answering without deliberating out of the prompt. Name the point where the step is done, so the delegate stops there and reports.

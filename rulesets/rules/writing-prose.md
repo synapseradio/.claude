@@ -27,7 +27,6 @@ Give every pronoun and referring noun phrase a referent already on the page, the
 Gloss a term of art where it first lands.
 In a template a person reads and in stored data a person may open, spell every term out and derive each id from words, function-1 for one, leaving standard tokens, UTC or a file extension for one, as they are.
 Name a set in place of its size, "the test files" for one, writing a count only where the reader asked for one. Keep identifiers, exit codes, versions, and ticket and pull request numbers, and the numbers in a table.
-A docstring would state a property its test asserts ? leave the property to the test.
 You would refer the reader to the artifact itself ? hand over its content.
 State what is true now, with confidence, and what the subject offers, in the affirmative.
 Contrast only with what would otherwise happen, what a source says, or a claim someone made.

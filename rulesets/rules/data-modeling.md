@@ -12,7 +12,7 @@ Count a newtype wrapper as ergonomics, with every state it wraps still admitted.
 
 Treat every runtime check for a state that should never happen as a modeling decision. Test a state only where the type can represent it.
 A runtime check, assertion, or throw guards a state that should never happen ? ask each move's test question below, apply each move whose answer is yes, then model the state out or knowingly accept the panic.
-A test must exercise a "should never happen" branch ? strengthen the type until the branch disappears, at the first rung the gain pays for: a precise type > an abstract type with a smart constructor, validated inside, exposing only invariant-preserving methods, its method set closed > a test guarding the invariant, in place of the declined type.
+A "should never happen" branch outlasts the moves ? strengthen the type until the branch disappears, at the first rung the gain pays for: a precise type > an abstract type with a smart constructor, validated inside, exposing only invariant-preserving methods, its method set closed > a check guarding the invariant, in place of the declined type.
 
 ### The moves
 

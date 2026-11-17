@@ -32,7 +32,7 @@ route step
 
 One delegate completes the task ? spawn one.
 Spawn a re-check of your own result only on the user's ask.
-A change edits only comment text, JSDoc included ? commit it, with no test run and no runner spawned.
+A change edits only comment text, JSDoc included ? commit it, with no check run and no runner spawned.
 
 ### The spawn
 

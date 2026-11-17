@@ -21,7 +21,6 @@ home k
   | why an invariant holds = ask the user -> write only on approval
   | a platform or library behavior the code rests on or is limited by, with a page = Why linking it
   | a platform or library behavior with no page = Hazard
-  | why a test asserts what it does = Why in the test, linking a page per browser, framework, or library behavior it assumes
   | what an export or a file is for = Summary
   | code, a name, a type, or a test can hold it whole = the first that can, improving code until the comment falls away
   | spans files, or a page holds it whole = docs
@@ -31,7 +30,7 @@ home k
 Hazard written ? tell the user in conversation, outside every artifact, why no test can exercise it and where you looked for a page.
 
 Keep each invariant only in a type, a test, or a name.
-Its test lands in a later change ? write a TODO naming the test by its description, plus an owner or ticket, leaving the assertion to the test.
+Its home lands in a later change ? write a TODO naming that home by its description, plus an owner or ticket, leaving the invariant to it.
 Owner and ticket both unknown ? ask the user first.
 A comment holding an invariant sits in the change's scope ? move the invariant to its home -> remove the comment.
 An edit leaves a nearby comment restating its neighbors, contradicting the code, or recounting a path left behind ? remove it in that edit.
@@ -53,5 +52,5 @@ In doubt ? leave it out.
 The point needs more words than a caller needs to act ? fix what forced it: rename until the name carries it, split the function until each part explains itself, or move it to a doc -> link it.
 A comment outruns its code ? move it to a doc -> link it.
 A convention demands a comment per declaration ? write the one sentence a caller needs plus what static analysis and IDE tooling require, JSDoc types under @ts-check for one.
-Describe code outside the comment's file only in a test's Why, naming the behavior under test the assertion rests on.
+Describe in a comment only code in the comment's own file.
 Name of a linked page, test, or file only the behavior relied on.

@@ -23,7 +23,7 @@ route step
 
 Set every other spawn's model to haiku, whatever its agent type, apart from a critique or a plan, which runs on sonnet or opus, a spawn for a whole plan's work, which runs at sonnet, and a roster spawn, which runs at the model the plan names.
 Spawn a re-check of your own result only on the user's ask.
-A change edits only comment text, JSDoc included ? commit it, with no test run and no runner spawned.
+A change edits only comment text, JSDoc included ? commit it, with no check run and no runner spawned.
 
 ### The spawn
 

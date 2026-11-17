@@ -87,7 +87,6 @@ Stop a process with `kill` and the PID it started under, with `pkill` and `killa
 ### Git state
 
 Squash a branch with `wt -C <worktree> step squash <target>`. Move a branch ref with `git reset --soft <sha>` only as a command's first step, on a branch other than the default, over commits no remote-tracking ref reaches. Restore a path to a commit's state with `git checkout <sha> -- <path>`. Set work aside with a temporary commit. Keep a bare `git stash` and `git stash pop` out of every command.
-Run a test suite against each commit of a branch in a plain shell, looping over `git checkout --detach <sha>` with `GIT_DIR` and `GIT_WORK_TREE` unset, with every test run kept out of `git rebase --exec`.
 
 <!-- rule: claims -->
 ## claims
@@ -148,7 +147,6 @@ home k
   | why an invariant holds = ask the user -> write only on approval
   | a platform or library behavior the code rests on or is limited by, with a page = Why linking it
   | a platform or library behavior with no page = Hazard
-  | why a test asserts what it does = Why in the test, linking a page per browser, framework, or library behavior it assumes
   | what an export or a file is for = Summary
   | code, a name, a type, or a test can hold it whole = the first that can, improving code until the comment falls away
   | spans files, or a page holds it whole = docs
@@ -158,7 +156,7 @@ home k
 Hazard written ? tell the user in conversation, outside every artifact, why no test can exercise it and where you looked for a page.
 
 Keep each invariant only in a type, a test, or a name.
-Its test lands in a later change ? write a TODO naming the test by its description, plus an owner or ticket, leaving the assertion to the test.
+Its home lands in a later change ? write a TODO naming that home by its description, plus an owner or ticket, leaving the invariant to it.
 Owner and ticket both unknown ? ask the user first.
 A comment holding an invariant sits in the change's scope ? move the invariant to its home -> remove the comment.
 An edit leaves a nearby comment restating its neighbors, contradicting the code, or recounting a path left behind ? remove it in that edit.
@@ -180,7 +178,7 @@ In doubt ? leave it out.
 The point needs more words than a caller needs to act ? fix what forced it: rename until the name carries it, split the function until each part explains itself, or move it to a doc -> link it.
 A comment outruns its code ? move it to a doc -> link it.
 A convention demands a comment per declaration ? write the one sentence a caller needs plus what static analysis and IDE tooling require, JSDoc types under @ts-check for one.
-Describe code outside the comment's file only in a test's Why, naming the behavior under test the assertion rests on.
+Describe in a comment only code in the comment's own file.
 Name of a linked page, test, or file only the behavior relied on.
 
 <!-- rule: core-rules -->
@@ -227,7 +225,7 @@ Count a newtype wrapper as ergonomics, with every state it wraps still admitted.
 
 Treat every runtime check for a state that should never happen as a modeling decision. Test a state only where the type can represent it.
 A runtime check, assertion, or throw guards a state that should never happen ? ask each move's test question below, apply each move whose answer is yes, then model the state out or knowingly accept the panic.
-A test must exercise a "should never happen" branch ? strengthen the type until the branch disappears, at the first rung the gain pays for: a precise type > an abstract type with a smart constructor, validated inside, exposing only invariant-preserving methods, its method set closed > a test guarding the invariant, in place of the declined type.
+A "should never happen" branch outlasts the moves ? strengthen the type until the branch disappears, at the first rung the gain pays for: a precise type > an abstract type with a smart constructor, validated inside, exposing only invariant-preserving methods, its method set closed > a check guarding the invariant, in place of the declined type.
 
 ### The moves
 
@@ -262,7 +260,6 @@ Fill the template below: replace each bracket with what it describes, send the r
 Settle before the spawn every fork that could change what the step does, touches, or returns, and write its answer into Task, Context, or Constraints.
 Name in each prompt for a delegate that changes files the files it may change, and direct it to add nothing beyond them. Direct a worker that builds a slice to commit it once its checks pass.
 Keep a read-only label or instruction out of a research or gathering delegate's prompt, and scope its writes in Constraints instead: prose, script logic, and reports go to the scratchpad working-file path, which you write into the prompt; ephemeral logs and command output that nothing else reads go to `/tmp`.
-Keep mutation checks out of every prompt and brief, code broken on purpose and failing assertions added to watch a suite go red included. Direct every delegate that judges tests to judge them by reading them.
 Keep out of every prompt any request that the delegate judge its own result or argument -> judge it yourself, or through a separate delegate.
 State every cost in tokens, calls, or wait, with time units kept out.
 Set how much the delegate thinks through the effort level alone, and keep every phrase about thinking harder, being thorough, or answering without deliberating out of the prompt. Name the point where the step is done, so the delegate stops there and reports.
@@ -757,7 +754,7 @@ A worktree the current work created outlives its branch's merge ? run `git -C <p
 <!-- rule: writing-code -->
 ## writing-code
 
-For all source code you write or modify, its tests and dependencies included, and every verdict on whether it works, optimize for code that does what its tests assert, each part distinct and its purpose plain.
+For all source code you write or modify, its dependencies included, and every verdict on whether it works, optimize for code that does what its contracts state at the lowest burden of complexity to its future maintainers.
 
 Keep in view the larger work your code joins, and write for a maintainer who reads it years later without having written it.
 
@@ -807,24 +804,16 @@ Unsure whether the premise applies ? ask before disabling.
 Read a lint rule's own metadata, its fix classification and severity, before predicting what a fix run changes.
 Take a git hook's own edits as they land, with diffing or auditing them kept out.
 
-### Testing
+### Verifying
 
-Verify through the plan's checks and a test written red-first for each new behavior, watched failing for the right reason. Judge an existing test by reading it. Keep mutation checks out of the work and every prompt: deliberately broken code, scratch mutants, and temporary failing assertions.
-
-Treat a test count, total or passing, as no evidence a change is safe and as no acceptance criterion. Name the property a change promises -> check that property directly.
+Verify a change through the plan's checks and the checks the project already has.
 A refactor must keep output ? diff every generated artifact byte for byte against a pre-change baseline at each increment.
 
-A test would assert behavior suspected wrong and still undecided ? write it as a todo test, `it.todo()` for one, its intended assertion commented out beneath a block comment stating the mechanism, the stake for whoever uses the product, and the options unranked. Keep schedule, ticket, and owner out of that comment. Keep every green assertion on a suspected defect out of a suite, one beside a hazard comment included.
-
 Count a finding as fixed or closed only after every part its claim names, each direction, host, and variant, had a live read.
-A part resists testing ? reach it through another input method, or report exactly what blocks it, the finding left open.
+A part resists a live read ? reach it through another input method, or report exactly what blocks it, the finding left open.
 
-A test or build fails on a branch with changes ? hold the branch as its cause -> find the change that caused it and fix it, with runs on the base and the word "unattributed" kept out.
-A run reports no tests found ? count it as a miss, its exit code as no ground for a pass -> run the suite through the runner its own package declares.
-
-Mock GraphQL at the network boundary, MSW for one, in place of module mocks of the query hook or the store it feeds.
-Test each repository's behavior in its own suite alone, with a sibling repository's paths, CLI, and installed copies kept out of every test. Keep each of two isolated repositories' paths and tools out of the other's code and commits.
-A test sources code that would load a sibling repository ? point that loader at a missing path, so the result holds whether the sibling is installed or not.
+A check or build fails on a branch with changes ? hold the branch as its cause -> find the change that caused it and fix it, with runs on the base and the word "unattributed" kept out.
+A check reports that it ran nothing ? count it as a miss, its exit code as no ground for a pass.
 
 <!-- rule: writing-plans -->
 ## writing-plans
@@ -872,7 +861,6 @@ Give every pronoun and referring noun phrase a referent already on the page, the
 Gloss a term of art where it first lands.
 In a template a person reads and in stored data a person may open, spell every term out and derive each id from words, function-1 for one, leaving standard tokens, UTC or a file extension for one, as they are.
 Name a set in place of its size, "the test files" for one, writing a count only where the reader asked for one. Keep identifiers, exit codes, versions, and ticket and pull request numbers, and the numbers in a table.
-A docstring would state a property its test asserts ? leave the property to the test.
 You would refer the reader to the artifact itself ? hand over its content.
 State what is true now, with confidence, and what the subject offers, in the affirmative.
 Contrast only with what would otherwise happen, what a source says, or a claim someone made.
@@ -950,3 +938,63 @@ Prefer the specific verb to the general, and the plain word to the learned where
 Give a list as many items as the content has, none added to reach three.
 Texture binds the artifact; in conversation, keep your own rhythm, commitments, and presence as the writer.
 A texture line would misstate the meaning ? write the meaning -> name in the message the texture line it cost.
+
+<!-- rule: writing-tests -->
+## writing-tests
+
+For every test you write, change, remove, run, or judge, optimize for a suite of few tests, each failing only when a behavior a person relies on breaks.
+
+- story: an outcome a person gets, with the acceptance lines that show it
+- exposed interface: a surface that code or people outside a module call or read and that its owner promises to keep, a public API, a module's entry point, a command's flags and exit codes, a route, a file format, or a documented guarantee for one
+- internal: everything behind an exposed interface
+
+### Which tests
+
+Take every expected value from a source outside the code under test, a story, a spec, a decision, or an example worked by hand.
+Sort each behavior, taking the first arm that fits.
+
+choose behavior
+  | an existing test fails when it breaks = write none
+  | a story states it
+      = one test for the story, driven the way its person drives the subject, asserting its acceptance lines, named for what that person observes
+  | it is a promise at an exposed interface = one contract test through that interface, asserting only the promise
+  | otherwise, it is internal = write none
+
+Give a story a second test only for a starting state the first cannot reach, and an edge a test only where an acceptance line or a documented promise names it.
+Write a test before or after its source, in the order the plan gives.
+A test would have to exercise a branch for a state that should never happen ? strengthen the type until the branch disappears, and write a test guarding the invariant only where that type was declined.
+
+Before writing a test, put four questions to it:
+
+1. Would it fail under a restructuring that keeps every outcome a person observes and every promise of the interface?
+2. Does its expected value come from the code under test, a copied constant, the source's own formula, or a snapshot of internals for one?
+3. Does every wrong implementation that fails it also fail another test?
+4. Do its assertions read stand-ins for collaborators the subject owns, in place of an outcome?
+
+A yes to any ? raise the test to the outcome or the promise, or leave it unwritten.
+
+### Inside a test
+
+A test would assert behavior suspected wrong and still undecided ? write it as a todo test, `it.todo()` for one, its intended assertion commented out beneath a block comment stating the mechanism, the stake for whoever uses the product, and the options unranked. Keep schedule, ticket, and owner out of that comment. Keep every green assertion on a suspected defect out of a suite, one beside a hazard comment included.
+A comment would say why a test asserts what it does ? write it in the test as the rationale, linking a page per browser, framework, or library behavior the assertion assumes. That comment may describe code outside the test's file, naming the behavior under test the assertion rests on.
+A test for an invariant lands in a later change ? write a TODO in the source naming the test by its description, plus an owner or ticket, leaving the assertion to the test.
+A docstring would state a property a test asserts ? leave the property to the test.
+
+### Judging
+
+Judge an existing test by reading it. Direct every delegate that judges tests to judge them by reading them.
+Keep mutation checks out of the work and every prompt and brief: deliberately broken code, scratch mutants, and failing assertions added to watch a suite go red.
+
+### Runs
+
+Treat a test count, total or passing, as no evidence a change is safe and as no acceptance criterion. Name the property a change promises -> check that property directly.
+A test fails on a branch with changes ? hold the branch as its cause -> find the change that caused it and fix it, with runs on the base and the word "unattributed" kept out.
+A run reports no tests found ? count it as a miss, its exit code as no ground for a pass -> run the suite through the runner its own package declares.
+A change edits only comment text, JSDoc included ? commit it with no test run.
+Run a test suite against each commit of a branch in a plain shell, looping over `git checkout --detach <sha>` with `GIT_DIR` and `GIT_WORK_TREE` unset, with every test run kept out of `git rebase --exec`.
+
+### Boundaries
+
+Mock GraphQL at the network boundary, MSW for one, in place of module mocks of the query hook or the store it feeds.
+Test each repository's behavior in its own suite alone, with a sibling repository's paths, CLI, and installed copies kept out of every test. Keep each of two isolated repositories' paths and tools out of the other's code and commits.
+A test sources code that would load a sibling repository ? point that loader at a missing path, so the result holds whether the sibling is installed or not.

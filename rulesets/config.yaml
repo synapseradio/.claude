@@ -42,12 +42,12 @@ agent orchestrator:
   not model haiku:
     include: dialogue.* planning.*
   model opus fable:
-    include: orchestration.*
+    include: orchestration.* writing-tests
 
 agent critic thinkies:
   include: reasoning.* lookup.* prose.*
 agent critic:
-  include: writing-code
+  include: writing-code writing-tests
 agent diagnostician:
   include: reasoning.* lookup.* prose.* debugging
 
@@ -64,7 +64,7 @@ agent systems-thinker:
 agent instruction-crafter:
   include: reasoning.* lookup.* prose.*
   model opus fable:
-    include: orchestration.*
+    include: orchestration.* writing-tests
 agent prompt-refiner:
   include: reasoning.* lookup.* prose.*
 
@@ -80,12 +80,15 @@ agent shell-scripter:
 agent software-implementer software-refiner software-tester shell-scripter:
   not model haiku:
     include: code.*
+agent software-refiner software-tester shell-scripter:
+  not model haiku:
+    include: writing-tests
 agent prose-writer:
   include: reasoning.* lookup.* prose.* git.*
 agent git-operator:
   include: reasoning.* lookup.* prose.* git.* orchestration.* comments
   not model haiku:
-    include: writing-code
+    include: writing-code writing-tests
 
 agent eval-runner:
   include: reasoning.* lookup.*
@@ -95,7 +98,7 @@ agent scout spider:
 agent general-purpose:
   include: reasoning.* lookup.* prose.* git.* resolving-input comments bash-commands
   not model haiku:
-    include: code.* dialogue.*
+    include: code.* dialogue.* writing-tests
   model opus fable:
     include: orchestration.*
 
@@ -104,6 +107,6 @@ agent Explore:
 agent claude-code-guide:
   include: lookup.* bash-commands
 agent Plan:
-  include: reasoning.* lookup.* bash-commands writing-code
+  include: reasoning.* lookup.* bash-commands writing-code writing-tests
   not model haiku:
     include: planning.*
