@@ -52,6 +52,36 @@
 						"type": "command",
 						"timeout": 5,
 						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 10"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 11"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 12"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 13"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 14"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 15"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 16"
 					}
 				]
 			}
@@ -108,6 +138,36 @@
 						"type": "command",
 						"timeout": 5,
 						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 10"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 11"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 12"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 13"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 14"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 15"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 16"
 					}
 				]
 			}
@@ -164,6 +224,36 @@
 						"type": "command",
 						"timeout": 5,
 						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 10"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 11"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 12"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 13"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 14"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 15"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 16"
 					}
 				]
 			}

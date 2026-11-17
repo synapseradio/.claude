@@ -96,7 +96,7 @@ Run `RUN CLI check --root ROOT`. Each line reads `FILE:LINE: warning [KIND] SUBJ
 | `dangling-reference` | putting the cited file under `ROOT/references/`, or correcting the path |
 | `external-reference` | moving the cited file under `ROOT/references/` and citing it there |
 | `stray-directory` | moving a directory that holds no rule out of the rulesets directory, after asking the person |
-| `too-many-parts` | withholding rules from that context or shortening them, since a delivery carries at most 10 parts of 9,000 characters |
+| `too-many-parts` | withholding rules from that context or shortening them, since a delivery carries at most 16 parts of 9,000 characters |
 | `marker-for-another-rule` | deleting the opening marker line |
 
 ## 8. Move a rule out of the harness's own rules folder

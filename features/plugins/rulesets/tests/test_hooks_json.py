@@ -26,12 +26,13 @@ from delivery_world import (
     scratch_environment,
     select_commands,
 )
+from rulesets.delivery.parts import MAX_PARTS
 
 PLUGIN_ROOT_VARIABLE = "${CLAUDE_PLUGIN_ROOT}"
 LAUNCHER_WORD = f"{PLUGIN_ROOT_VARIABLE}/hooks/with-python.sh"
 SCRIPT_PREFIX = f"{PLUGIN_ROOT_VARIABLE}/hooks/"
 RECORD_SCRIPTS = {"record-load.py", "record-spawn.py"}
-ALL_PARTS = [str(number) for number in range(1, 11)]
+ALL_PARTS = [str(number) for number in range(1, MAX_PARTS + 1)]
 
 # A fork's conversation already holds its rules, so `deliver.py` answers it with nothing once
 # its arguments parse, before it reads or writes any state.

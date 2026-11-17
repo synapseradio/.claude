@@ -7,7 +7,7 @@ import dataclasses
 from rulesets.part_budget import PART_BUDGET
 from rulesets.source.marker import delivered
 
-MAX_PARTS = 10
+MAX_PARTS = 16
 
 
 @dataclasses.dataclass(frozen=True)

@@ -33,6 +33,7 @@ from launcher_stubs import launch, stub
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
+from rulesets.delivery.parts import MAX_PARTS  # noqa: E402
 from rulesets.locations import Locations  # noqa: E402  (path must be set before this import)
 from rulesets.session.state import (  # noqa: E402
     Band,
@@ -358,7 +359,9 @@ class TestEveryPartOfOneDeliveryCarriesWhatItsFirstPartComposed:
         (world.rulesets / "rules" / "c-rule.md").unlink()
         write_state(Locations(world.config), "s1", SessionState(Band.ALL))
         world.environment["RULESETS_FLAGS"] = "strict"
-        later = {part: world.run_part("SubagentStart", payload, part) for part in range(2, 11)}
+        later = {
+            part: world.run_part("SubagentStart", payload, part) for part in range(2, MAX_PARTS + 1)
+        }
 
         delivery = Delivery({1: first, **later})
         assert delivery.context == "".join(bodies.values())
@@ -367,10 +370,10 @@ class TestEveryPartOfOneDeliveryCarriesWhatItsFirstPartComposed:
 
 
 class TestRulesPastTheLastPartReachAShownNotice:
-    def test_a_composition_needing_eleven_parts_delivers_ten_and_names_the_rule_left_out(
+    def test_a_composition_one_part_past_the_cap_delivers_the_cap_and_names_the_rule_left_out(
         self, world
     ) -> None:
-        names = [f"rule-{number:02d}" for number in range(10)]
+        names = [f"rule-{number:02d}" for number in range(MAX_PARTS)]
         bodies = {name: name + " " + "x" * (8500 - len(name) - 2) + "\n" for name in names}
         for name, text in bodies.items():
             world.rule(name, text)
@@ -458,7 +461,9 @@ class TestAToggleReachesOnlyDelegateDeliveriesThatBeginAfterIt:
         world.rule("b-rule", "b-rule EDITED after the first part\n")
         (world.rulesets / "rules" / "c-rule.md").unlink()
         assert world.toggle("none").returncode == 0
-        later = {part: world.run_part("SubagentStart", payload, part) for part in range(2, 11)}
+        later = {
+            part: world.run_part("SubagentStart", payload, part) for part in range(2, MAX_PARTS + 1)
+        }
 
         delivery = Delivery({1: first, **later})
         assert delivery.context == "".join(bodies.values()) + "text of writing-code\n"
@@ -937,7 +942,9 @@ class TestADelegateReceivesAllItsRulesAtItsStart:
 
         first = world.run_part("SubagentStart", payload, 1)
         three_part_pool(world, mark="NEW")
-        later = {part: world.run_part("SubagentStart", payload, part) for part in range(2, 11)}
+        later = {
+            part: world.run_part("SubagentStart", payload, part) for part in range(2, MAX_PARTS + 1)
+        }
         running = Delivery({1: first, **later})
         next_delegate = world.start_delegate(agent_id="a2")
 
@@ -1694,7 +1701,9 @@ class TestASessionReceivesAllItsRulesAtEveryStart:
             2: delivered("b-rule", bodies["b-rule"]) + delivered("c-rule", bodies["c-rule"]),
         }
         assert all(len(text) <= 9000 for text in delivery.received_parts.values())
-        assert [delivery.outputs[part].strip() for part in range(3, 11)] == [""] * 8
+        assert [delivery.outputs[part].strip() for part in range(3, MAX_PARTS + 1)] == [""] * (
+            MAX_PARTS - 2
+        )
 
     def test_two_bodies_totalling_exactly_9000_characters_share_a_part(self, world) -> None:
         bodies = {"a-rule": "a" * 4477, "b-rule": "b" * 4477, "c-rule": "c" * 10}

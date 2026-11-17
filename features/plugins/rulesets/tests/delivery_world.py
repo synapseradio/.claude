@@ -29,6 +29,7 @@ CLI = PLUGIN_ROOT / "lib" / "rulesets" / "cli.py"
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
 from rulesets import cli  # noqa: E402  (path must be set before this import)
+from rulesets.delivery.parts import MAX_PARTS  # noqa: E402
 from rulesets.hook_entry import (  # noqa: E402
     HookResult,
     deliver,
@@ -448,7 +449,9 @@ class World:
             argv, done.returncode, done.stdout.encode("utf-8"), done.stderr.encode("utf-8")
         )
 
-    def run_event(self, event: str, payload: dict, parts: range = range(1, 11)) -> Delivery:
+    def run_event(
+        self, event: str, payload: dict, parts: range = range(1, MAX_PARTS + 1)
+    ) -> Delivery:
         """Every entry of the event at once, as the harness runs them."""
         with ThreadPoolExecutor(max_workers=len(parts)) as pool:
             outputs = list(pool.map(lambda part: self.run_part(event, payload, part), parts))
