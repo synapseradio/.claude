@@ -123,7 +123,7 @@ setup() {
 }
 
 @test "a bare bunx named by path is denied" {
-  assert_denies '/usr/local/bin/bunx cowsay'
+  assert_denies '${DOTTY_LOCAL_PREFIX:-/usr/local}/bin/bunx cowsay'
 }
 
 @test "a denial names the package, the version, and the tool that falls short" {
