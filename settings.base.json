@@ -46,6 +46,12 @@
 	"includeGitInstructions": true,
 	"disableMobileSimulatorTools": true,
 	"disableRemoteControl": true,
+	"autoMode": {
+		"allow": [
+			"$defaults",
+			"Documentation Fetch: a `curl -sfL`, `tvly extract`, or `tvly search` GET of a public documentation site's llms.txt, llms-full.txt, or doc pages, printed to stdout, piped into read-only filters (head, grep, jq), or saved under /tmp or ~/.scratchpad, is a read-only lookup the user's instructions require before using a third-party tool. It is not Undermining Oversight, Exfil Scouting, or Auto-Mode Bypass. Does not cover a request carrying a body, upload, form, or non-GET method."
+		]
+	},
 	"permissions": {
 		"allow": [
 			"Read",
@@ -73,6 +79,16 @@
 			"Skill(hindsight-coding-agent)",
 			"Bash(tvly:*)",
 			"Bash(exa:*)",
+			"Bash(head:*)",
+			"Bash(tail:*)",
+			"Bash(grep:*)",
+			"Bash(wc:*)",
+			"Bash(cut:*)",
+			"Bash(cat:*)",
+			"Bash(ls:*)",
+			"Bash(uniq:*)",
+			"Bash(wt list)",
+			"Bash(wt list *)",
 			"Bash(git status:*)",
 			"Bash(git commit -m:*)",
 			"Bash(git commit -am:*)",
@@ -669,13 +685,5 @@
 		"prep@claude-root": true,
 		"rulesets@claude-root": true,
 		"warden@claude-root": true
-	},
-	"extraKnownMarketplaces": {
-		"claude-root": {
-			"source": {
-				"source": "directory",
-				"path": "$HOME/.claude"
-			}
-		}
 	}
 }
