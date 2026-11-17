@@ -311,5 +311,5 @@ def test_a_run_writes_nothing_into_the_home_or_the_repository(tmp_path) -> None:
     assert sorted(path.name for path in machine.repo.iterdir()) == before
 
 
-def test_the_script_parses_under_python_3_9() -> None:
-    ast.parse(SCRIPT.read_text(encoding="utf-8"), filename=str(SCRIPT), feature_version=(3, 9))
+def test_the_script_parses_under_python_3_14() -> None:
+    ast.parse(SCRIPT.read_text(encoding="utf-8"), filename=str(SCRIPT), feature_version=(3, 14))

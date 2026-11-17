@@ -1,7 +1,6 @@
-#!/usr/bin/env python3
 """Report the tools a plan can lean on, as JSON on stdout.
 
-    python3 detect-tools.py [--repo PATH]
+    uv run --python 3.14 --no-project detect-tools.py [--repo PATH]
 
 Looks at the commands on PATH and the files of the repository holding PATH
 (default: the current directory). For each job a plan has, it lists what it
@@ -11,7 +10,7 @@ list means the plan uses nothing for that job. Inside a git repository the
 worktrees list always ends with git itself.
 
 Reads only; contacts no network; prints a remote's host and never its URL.
-Runs on Python 3.9 and later with the standard library alone.
+Runs on Python 3.14 and later with the standard library alone.
 """
 
 from __future__ import annotations
@@ -69,7 +68,7 @@ def run(args: list[str], cwd: Path) -> str | None:
             check=False,
             stdin=subprocess.DEVNULL,
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError, subprocess.TimeoutExpired:
         return None
     return result.stdout.strip() if result.returncode == 0 else None
 
@@ -177,7 +176,7 @@ def task_runner(directory: Path) -> list[dict]:
     if package.is_file():
         try:
             scripts = json.loads(package.read_text(encoding="utf-8")).get("scripts")
-        except (OSError, ValueError, AttributeError):
+        except OSError, ValueError, AttributeError:
             scripts = None
         if scripts:
             lockfile = first_present(directory, LOCKFILES)

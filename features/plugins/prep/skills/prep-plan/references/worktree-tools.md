@@ -10,7 +10,7 @@ Take the first that applies:
 2. the first `worktrees` finding of `scripts/detect-tools.py`
 3. git itself
 
-Where `python3` is missing, run these probes by hand:
+Where `uv` is missing, run these probes by hand:
 
 ```sh
 git rev-parse --show-toplevel                        # the repository root

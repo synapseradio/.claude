@@ -1,7 +1,7 @@
 {
 	"$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
 	"name": "prep",
-	"version": "0.3.1",
+	"version": "1.0.0",
 	"description": "Holds the planning loop as a skill, and the work-coordinator agent that runs an approved plan as delegated work.",
 	"keywords": ["planning", "plans", "coordination", "delegation"]
 }

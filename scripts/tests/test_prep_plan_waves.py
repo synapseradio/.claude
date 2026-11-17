@@ -202,5 +202,5 @@ def test_a_file_with_no_unit_line_is_a_usage_error(tmp_path) -> None:
     assert "no line starting '- unit:'" in result.stderr
 
 
-def test_the_script_parses_under_python_3_9() -> None:
-    ast.parse(SCRIPT.read_text(encoding="utf-8"), filename=str(SCRIPT), feature_version=(3, 9))
+def test_the_script_parses_under_python_3_14() -> None:
+    ast.parse(SCRIPT.read_text(encoding="utf-8"), filename=str(SCRIPT), feature_version=(3, 14))

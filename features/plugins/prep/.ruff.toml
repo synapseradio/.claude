@@ -1,5 +1,5 @@
 extend = "../../../.ruff.toml"
 
-# The prep-plan skill's scripts run under whatever python3 a machine has, from
-# 3.9 up, and each script's test in scripts/tests fails on syntax newer than that.
-target-version = "py39"
+# The prep-plan skill's scripts run through uv on Python 3.14, and each script's
+# test in scripts/tests fails on syntax newer than that.
+target-version = "py314"

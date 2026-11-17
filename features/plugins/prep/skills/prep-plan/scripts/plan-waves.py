@@ -1,7 +1,6 @@
-#!/usr/bin/env python3
 """Print the parallel waves a readiness file's unit and contract lines allow.
 
-    python3 plan-waves.py READINESS_FILE
+    uv run --python 3.14 --no-project plan-waves.py READINESS_FILE
 
 Reads every line of these two forms, fields separated by `|`, free text allowed
 in any field that carries no key:
@@ -21,7 +20,7 @@ neither fixed nor open, a cycle, a repeated name, or two units that own the
 same path or region while neither waits on the other.
 
 Exits 0 with no problem, 1 with a problem, 2 where the file holds no unit
-line. Reads only. Runs on Python 3.9 and later with the standard library alone.
+line. Reads only. Runs on Python 3.14 and later with the standard library alone.
 """
 
 from __future__ import annotations
