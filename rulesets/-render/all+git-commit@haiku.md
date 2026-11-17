@@ -790,8 +790,7 @@ Treat avoiding the decision of where a real artifact lives as no ground for writ
 For every lookup and every Jira or Notion read and write, optimize for an answer the reader can trace to the highest source the lookup reached.
 
 - third-party subject: a library, package, CLI, platform, registry, or hosted service the repository does not own
-- first-party subject: the repository's own code and its local docs
-- local docs: the files inside a directory named `docs` anywhere in the repository's tree, with every code comment and every file outside such a directory left out
+- first-party subject: the repository's own code and its own docs
 - probe: a run of a tool, or a request sent to a service, made to see what it does
 - lookup: one the user asked for, one before writing against a package the lockfile resolves, any question about a third-party subject's behavior, configuration, limits, or errors, one after a tool call that fails, and one after any tool's warning or error message, whether or not the call failed
 
@@ -802,7 +801,7 @@ Put a year in a query only where the user supplies one.
 
 lookup start
   | the subject is third-party = fetch the publisher's online documentation first, through the online lookup and the documentation-site steps below, before any probe, any read of installed source, or any further run of the tool
-  | otherwise = read the local docs first, then the code
+  | otherwise = search for the repository's own docs and read them first, then the code
 
 online lookup
   | the tvly CLI (Tavily's command line) is available = use it first in each of its modes, documentation lookups included
@@ -837,8 +836,9 @@ scraped page
 The rungs run highest first: publisher, artifact, measured, practitioner, hearsay.
 
 Publisher for a third-party subject is what the maintainer publishes online for the version, its documentation first and its issues after.
-Publisher for a first-party subject is its local docs alone.
-Artifact is the code or the spec itself, its comments and installed source and types and `--help` included, and what a run or a probe prints.
+Publisher for a first-party subject is the repository's own docs.
+Artifact is the code or the spec itself, installed source and types and `--help` included, and what a run or a probe prints.
+Trust no code comment as real documentation.
 Measured is a method a reader can rerun with its data shown.
 Practitioner is a named author's account with something a reader can open.
 Hearsay is every other source, whatever its publisher.
