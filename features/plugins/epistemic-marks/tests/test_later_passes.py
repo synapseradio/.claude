@@ -16,6 +16,10 @@ the state directory, HOME, XDG directories and git config all pointed into a
 temporary directory.
 """
 
+import contextlib
+import functools
+import importlib.util
+import io
 import json
 import os
 import subprocess
@@ -23,6 +27,8 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import ModuleType
+from unittest import mock
 
 from epistemic_marks.messages import CAPPED_HEADING, STANDING_HEADING
 
@@ -38,6 +44,15 @@ CALLER = "I read the request as covering staging only [^?]."
 MENTION = "The unsourced mark, `[?]`, ends a clause nobody sourced."
 GUESS = "I suspect the cache went stale."
 PROSE = "Here is what I found."
+
+
+@functools.cache
+def load_entrypoint() -> ModuleType:
+    """The hook script's module, loaded once so a pass can run without a launch."""
+    spec = importlib.util.spec_from_file_location("verify_marks_entrypoint", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def model_text(result) -> str:
@@ -79,7 +94,8 @@ class HookCase(unittest.TestCase):
             "VERIFY_MARKS_STATE_DIR": str(root / "state"),
         }
 
-    def hook(self, payload, *args) -> dict | None:
+    def launch(self, payload, args) -> str:
+        """The stdout of one launch of the hook script, as the harness runs it."""
         completed = subprocess.run(
             [sys.executable, str(SCRIPT), *args],
             input=json.dumps(payload),
@@ -90,19 +106,40 @@ class HookCase(unittest.TestCase):
             timeout=8,
         )
         assert completed.returncode == 0, completed.stderr
-        result = json.loads(completed.stdout) if completed.stdout.strip() else None
+        return completed.stdout
+
+    def call_in_process(self, payload, args) -> str:
+        """The stdout of one run of the script's entry, under this case's isolated environment."""
+        entry = load_entrypoint()
+        stdout = io.StringIO()
+        with (
+            mock.patch.dict(os.environ, self.env, clear=True),
+            mock.patch.object(sys, "argv", [str(SCRIPT), *args]),
+            mock.patch.object(sys, "stdin", io.StringIO(json.dumps(payload))),
+            contextlib.redirect_stdout(stdout),
+            contextlib.suppress(SystemExit),
+        ):
+            entry.main()
+        return stdout.getvalue()
+
+    def hook(self, payload, *args, in_process=False) -> dict | None:
+        run = self.call_in_process if in_process else self.launch
+        stdout = run(payload, args)
+        result = json.loads(stdout) if stdout.strip() else None
         if result is not None:
             text = model_text(result)
             assert result.get("systemMessage") == text, "the user sees what the model was sent"
         return result
 
-    def stop(self, message, *, again, key="session-one", delegate=False) -> dict | None:
+    def stop(
+        self, message, *, again, key="session-one", delegate=False, in_process=False
+    ) -> dict | None:
         payload = {
             "stop_hook_active": again,
             "last_assistant_message": message,
             ("agent_id" if delegate else "session_id"): key,
         }
-        return self.hook(payload, *(["--delegate"] if delegate else []))
+        return self.hook(payload, *(["--delegate"] if delegate else []), in_process=in_process)
 
     def unwritable_state(self) -> None:
         blocker = Path(self._tmp.name) / "a-file"
@@ -152,9 +189,18 @@ class EveryOutputReachesTheModel(HookCase):
                 for again in (False, True):
                     with self.subTest(delegate=delegate, message=message, again=again):
                         key = f"{delegate}-{message}-{again}"
-                        self.stop(message, again=False, key=key, delegate=delegate)
+                        self.stop(message, again=False, key=key, delegate=delegate, in_process=True)
                         if again:
-                            self.stop(message, again=True, key=key, delegate=delegate)
+                            self.stop(
+                                message, again=True, key=key, delegate=delegate, in_process=True
+                            )
+
+    def test_a_first_and_a_later_pass_through_the_script_reach_the_model(self) -> None:
+        for delegate in (False, True):
+            with self.subTest(delegate=delegate):
+                key = f"launched-{delegate}"
+                assert self.stop(FIRST, again=False, key=key, delegate=delegate) is not None
+                assert self.stop(f"{FIRST}\n{THIRD}", again=True, key=key, delegate=delegate)
 
     def test_the_batch_pass(self) -> None:
         transcript = Path(self._tmp.name) / "session.jsonl"
