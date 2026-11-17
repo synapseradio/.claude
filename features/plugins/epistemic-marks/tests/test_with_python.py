@@ -1,15 +1,22 @@
-"""Tests for hooks/with-python.sh, the interpreter chooser every hook command runs through.
+"""Tests for hooks/with-python.sh, the uv launcher every hook command runs through.
 
-Hook commands name the chooser instead of an interpreter directly. Run from the plugin root:
+Hook commands name the launcher instead of an interpreter directly. Run from the plugin root:
 
     python3 -m unittest discover -s tests -p test_with_python.py -v
 
-Every interpreter here is a mock executable placed in a temporary directory
-that becomes the child process's whole PATH, so a test never depends on
-which real interpreters happen to be installed on the machine running it.
+The launcher hands every hook script to `uv run --python 3.14 --no-project`.
+Most tests put a mock `uv` in a temporary directory that becomes the child
+process's whole PATH, so they never depend on a real uv or on which
+interpreters the machine has. One test runs the real uv where it can serve a
+3.14 interpreter without the network. Every child runs with an isolated
+HOME, XDG, and git config, and with CLAUDE_PLUGIN_DATA in a temporary
+directory, the only place the launcher may install anything. No test
+downloads anything: a stub curl stands in for the network.
 """
 
+import json
 import os
+import shutil
 import stat
 import subprocess
 import sys
@@ -18,165 +25,433 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-CHOOSER = PLUGIN_ROOT / "hooks" / "with-python.sh"
-ESCAPE_HATCH = "EPISTEMIC_MARKS_PYTHON"
+LAUNCHER = PLUGIN_ROOT / "hooks" / "with-python.sh"
 
 PROBE_SCRIPT = "print('PROBE-OK')\n"
+VERSION_SCRIPT = "import sys\nprint('.'.join(map(str, sys.version_info[:2])))\n"
 
 
-def make_executable(path, body) -> None:
+def make_executable(path: Path, body: str) -> None:
     path.write_text(body)
-    mode = path.stat().st_mode
-    path.chmod(mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+    path.chmod(path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def working_mock(path, real_interpreter) -> None:
-    """A stand-in that behaves like a real interpreter at or above the floor.
+def recording_uv(path: Path, record: Path, real_interpreter: str) -> None:
+    """A stand-in uv that records its arguments and runs its last one as the script.
 
-    It answers a `-c` version probe and a script invocation alike by handing
-    both to the real interpreter underneath, so it passes with-python.sh's
-    usability check and then actually runs whatever script it is given.
+    The tests give the launcher a script and no further arguments, so the
+    script is the final argument the launcher passes to uv. The uv-related
+    environment it was started with goes in a file beside the record.
     """
-    make_executable(path, f'#!/bin/bash\nexec "{real_interpreter}" "$@"\n')
-
-
-def unusable_mock(path) -> None:
-    """A stand-in for an interpreter below the floor.
-
-    It is found on PATH but fails the version probe every time, the way a pre-3.9 python would.
-    """
-    make_executable(path, "#!/bin/bash\nexit 1\n")
-
-
-def version_reporting_mock(path, real_interpreter, version) -> None:
-    """A stand-in that reports `version` to a `-c` probe and runs scripts for real.
-
-    The probe is evaluated by the real interpreter with `sys.version_info`
-    replaced first, so the launcher's own comparison decides the outcome and
-    a probe set too high or too low fails a test. A script invocation passes
-    straight through to the real interpreter.
-    """
-    reported = f"({version[0]}, {version[1]}, 0, 'final', 0)"
     make_executable(
         path,
         "#!/bin/bash\n"
-        'if [[ "${1:-}" == -c ]]; then\n'
-        f'  exec "{real_interpreter}" -c "import sys; sys.version_info = {reported}; ${{2}}"\n'
-        "fi\n"
-        f'exec "{real_interpreter}" "$@"\n',
+        f'printf "%s\\n" "$@" > "{record}"\n'
+        f'printf "%s\\n%s\\n" "${{UV_PYTHON_INSTALL_DIR-}}" "${{UV_CACHE_DIR-}}" > "{record}.env"\n'
+        f'exec "{real_interpreter}" "${{@: -1}}"\n',
     )
 
 
-def run_chooser(script, path_dirs, env_extra=None) -> subprocess.CompletedProcess[str]:
-    env = {key: value for key, value in os.environ.items() if key not in (ESCAPE_HATCH, "PATH")}
-    env["PATH"] = os.pathsep.join(str(d) for d in path_dirs)
-    env.update(env_extra or {})
+def isolated_environment(
+    home: Path, path_dirs: list[str], plugin_data: Path | None = None
+) -> dict[str, str]:
+    """A child process's whole environment: a throwaway HOME, XDG, git config, and PATH.
+
+    CLAUDE_PLUGIN_DATA is set only where `plugin_data` is given, as the harness
+    sets it for a hook and as it is absent outside the harness.
+    """
+    child_environment = {
+        "HOME": str(home),
+        "XDG_CONFIG_HOME": str(home / "config"),
+        "XDG_CACHE_HOME": str(home / "cache"),
+        "XDG_DATA_HOME": str(home / "data"),
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "PATH": os.pathsep.join(path_dirs),
+    }
+    if plugin_data is not None:
+        child_environment["CLAUDE_PLUGIN_DATA"] = str(plugin_data)
+    return child_environment
+
+
+def run_launcher(
+    script: Path, child_environment: dict[str, str], stdin: str = ""
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["/bin/bash", str(CHOOSER), str(script)],
+        ["/bin/bash", str(LAUNCHER), str(script)],
         capture_output=True,
         text=True,
-        env=env,
+        input=stdin,
+        env=child_environment,
         timeout=10,
     )
 
 
-class WithPythonFallsBackWhenThePreferredInterpreterIsAbsent(unittest.TestCase):
-    def test_it_execs_python3_when_no_versioned_interpreter_is_on_path(self) -> None:
-        real = sys.executable
-        with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
-            bindir = Path(bindir)
-            # No versioned interpreter anywhere on this PATH; only a python3 stands in.
-            working_mock(bindir / "python3", real)
-            script = Path(scratch) / "probe.py"
+class TheLauncherHandsTheScriptToUvAt3_14(unittest.TestCase):
+    def test_uv_runs_the_script_at_3_14_with_no_project(self) -> None:
+        with tempfile.TemporaryDirectory() as scratch:
+            scratch = Path(scratch)
+            bindir = scratch / "bin"
+            bindir.mkdir()
+            record = scratch / "uv-args.txt"
+            recording_uv(bindir / "uv", record, sys.executable)
+            script = scratch / "probe.py"
             script.write_text(PROBE_SCRIPT)
 
-            result = run_chooser(script, [bindir])
+            data = scratch / "data"
+            result = run_launcher(
+                script, isolated_environment(scratch / "home", [str(bindir)], data)
+            )
+            args = record.read_text().splitlines()
+            uv_environment = Path(f"{record}.env").read_text().splitlines()
 
         assert result.returncode == 0, result.stderr
         assert result.stdout.strip() == "PROBE-OK"
+        assert args[0] == "run"
+        assert args[args.index("--python") + 1] == "3.14"
+        assert "--no-project" in args, "the repository's own requirement must not pick the Python"
+        assert args[-1] == str(script)
+        assert uv_environment == [str(data / "python"), str(data / "uv-cache")], (
+            "a downloaded Python and uv's cache must land in the plugin data directory"
+        )
+
+    def test_stdin_reaches_the_script(self) -> None:
+        with tempfile.TemporaryDirectory() as scratch:
+            scratch = Path(scratch)
+            bindir = scratch / "bin"
+            bindir.mkdir()
+            recording_uv(bindir / "uv", scratch / "uv-args.txt", sys.executable)
+            script = scratch / "echo.py"
+            script.write_text("import sys\nsys.stdout.write(sys.stdin.read())\n")
+
+            result = run_launcher(
+                script,
+                isolated_environment(scratch / "home", [str(bindir)], scratch / "data"),
+                stdin='{"a": 1}',
+            )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout == '{"a": 1}'
 
 
-class WithPythonHonorsTheEscapeHatch(unittest.TestCase):
-    def test_the_named_interpreter_runs_even_though_every_candidate_fails_its_probe(self) -> None:
-        real = sys.executable
-        with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
-            bindir = Path(bindir)
-            # Both default candidates are on PATH, but neither can serve the
-            # hook: only the escape hatch's own interpreter can. If the
-            # chooser ignored the variable and walked its own candidate list
-            # instead, this run would exit 1 with no interpreter found.
-            unusable_mock(bindir / "python3.15")
-            unusable_mock(bindir / "python3")
-            named = bindir / "chosen-interpreter"
-            working_mock(named, real)
-            script = Path(scratch) / "probe.py"
-            script.write_text(PROBE_SCRIPT)
+INSTALLER_URL = "https://astral.sh/uv/install.sh"
+LAUNCHER_TOOLS = (
+    "sh",
+    "bash",
+    "mktemp",
+    "rm",
+    "date",
+    "cat",
+    "mkdir",
+    "chmod",
+    "dirname",
+    "grep",
+    "head",
+    "sed",
+)
 
-            result = run_chooser(script, [bindir], env_extra={ESCAPE_HATCH: str(named)})
+
+def tools_directory(scratch: Path) -> Path:
+    """A directory of symlinks to the system tools the launcher needs, and no curl, wget, or uv."""
+    tools = scratch / "tools"
+    tools.mkdir()
+    for name in LAUNCHER_TOOLS:
+        found = shutil.which(name)
+        if found is not None:
+            (tools / name).symlink_to(found)
+    return tools
+
+
+def stub_curl(path: Path, log: Path, installer_body: str, exit_code: int = 0) -> None:
+    """A curl that logs its arguments and writes `installer_body` to the file named after -o.
+
+    The launcher downloads Astral's installer to a temporary file with
+    `curl -LsSf -o <file> <url>`, then runs that file with sh. The stub serves
+    a fake installer in place of the network.
+    """
+    make_executable(
+        path,
+        "#!/bin/bash\n"
+        f'printf "%s\\n" "$*" >> "{log}"\n'
+        f"if (( {exit_code} != 0 )); then exit {exit_code}; fi\n"
+        "while (( $# > 0 )); do\n"
+        '  if [[ "$1" == -o ]]; then target="$2"; fi\n'
+        "  shift\n"
+        "done\n"
+        f"cat > \"$target\" <<'INSTALLER'\n{installer_body}INSTALLER\n",
+    )
+
+
+def fake_installer(record: Path, real_interpreter: str) -> str:
+    """An installer that puts a recording uv in UV_INSTALL_DIR and notes its own environment."""
+    return (
+        'mkdir -p "$UV_INSTALL_DIR"\n'
+        f'echo "NO_MODIFY=$UV_NO_MODIFY_PATH INSTALL_DIR=$UV_INSTALL_DIR ARGS=$*"'
+        f' > "{record.parent / "installer-env.txt"}"\n'
+        "cat > \"$UV_INSTALL_DIR/uv\" <<'UV'\n"
+        "#!/bin/bash\n"
+        f'printf "%s\\n" "$@" > "{record}"\n'
+        f'exec "{real_interpreter}" "${{@: -1}}"\n'
+        "UV\n"
+        'chmod +x "$UV_INSTALL_DIR/uv"\n'
+    )
+
+
+class TheLauncherInstallsAMissingUv(unittest.TestCase):
+    def setUp(self) -> None:
+        self.scratch_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.scratch_dir.cleanup)
+        self.scratch = Path(self.scratch_dir.name)
+        self.home = self.scratch / "home"
+        self.data = self.scratch / "plugin-data"
+        self.tools = tools_directory(self.scratch)
+        self.stubs = self.scratch / "stubs"
+        self.stubs.mkdir()
+        self.curl_log = self.scratch / "curl-log.txt"
+        self.uv_record = self.scratch / "uv-args.txt"
+        self.script = self.scratch / "probe.py"
+        self.script.write_text(PROBE_SCRIPT)
+
+    def environment(self) -> dict[str, str]:
+        child_environment = isolated_environment(
+            self.home, [str(self.stubs), str(self.tools)], self.data
+        )
+        child_environment["TMPDIR"] = str(self.scratch)
+        return child_environment
+
+    def test_it_downloads_installs_into_the_data_dir_and_runs_the_script_through_the_new_uv(
+        self,
+    ) -> None:
+        stub_curl(
+            self.stubs / "curl",
+            self.curl_log,
+            fake_installer(self.uv_record, sys.executable),
+        )
+
+        result = run_launcher(self.script, self.environment())
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == "PROBE-OK", "installer output must stay off stdout"
+        assert (self.data / "bin" / "uv").is_file()
+        assert not (self.home / ".local").exists(), "nothing is installed in home"
+        assert INSTALLER_URL in self.curl_log.read_text()
+        installer_env = (self.scratch / "installer-env.txt").read_text()
+        assert "NO_MODIFY=1" in installer_env, "the installer must not edit shell profiles"
+        assert f"INSTALL_DIR={self.data / 'bin'}" in installer_env
+        args = self.uv_record.read_text().splitlines()
+        assert args[args.index("--python") + 1] == "3.14"
+        assert list(self.scratch.glob("uv-install.*")) == [], "the downloaded installer is removed"
+
+    def test_it_reuses_a_uv_already_in_the_data_dir_without_downloading(self) -> None:
+        data_bin = self.data / "bin"
+        data_bin.mkdir(parents=True)
+        recording_uv(data_bin / "uv", self.uv_record, sys.executable)
+        stub_curl(self.stubs / "curl", self.curl_log, "exit 1\n")
+
+        result = run_launcher(self.script, self.environment())
 
         assert result.returncode == 0, result.stderr
         assert result.stdout.strip() == "PROBE-OK"
+        assert not self.curl_log.exists(), "an installed uv needs no download"
 
+    def test_a_uv_on_the_path_wins_over_the_data_dir_and_downloads_nothing(self) -> None:
+        data_bin = self.data / "bin"
+        data_bin.mkdir(parents=True)
+        recording_uv(data_bin / "uv", self.scratch / "data-uv-args.txt", sys.executable)
+        recording_uv(self.stubs / "uv", self.uv_record, sys.executable)
+        stub_curl(self.stubs / "curl", self.curl_log, "exit 1\n")
 
-class WithPythonReportsAndExitsNonZeroWhenNothingServes(unittest.TestCase):
-    def test_it_names_the_requirement_on_stderr_and_leaves_stdout_empty(self) -> None:
-        with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
-            bindir = Path(bindir)
-            unusable_mock(bindir / "python3.15")
-            unusable_mock(bindir / "python3")
-            script = Path(scratch) / "probe.py"
-            script.write_text(PROBE_SCRIPT)
-
-            result = run_chooser(script, [bindir])
-
-        assert result.returncode == 1
-        assert result.stdout == ""
-        assert "3.9" in result.stderr
-        assert ESCAPE_HATCH in result.stderr
-
-
-class WithPythonBindsItsFloorFromBothSides(unittest.TestCase):
-    def test_an_interpreter_reporting_3_9_serves_the_script(self) -> None:
-        real = sys.executable
-        with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
-            bindir = Path(bindir)
-            version_reporting_mock(bindir / "python3", real, (3, 9))
-            script = Path(scratch) / "probe.py"
-            script.write_text(PROBE_SCRIPT)
-
-            result = run_chooser(script, [bindir])
+        result = run_launcher(self.script, self.environment())
 
         assert result.returncode == 0, result.stderr
-        assert result.stdout.strip() == "PROBE-OK"
+        assert self.uv_record.exists()
+        assert not (self.scratch / "data-uv-args.txt").exists()
+        assert not self.curl_log.exists()
+        assert not (self.home / ".local").exists()
 
-    def test_an_interpreter_reporting_3_8_is_refused_and_the_floor_is_named(self) -> None:
-        real = sys.executable
-        with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
-            bindir = Path(bindir)
-            version_reporting_mock(bindir / "python3", real, (3, 8))
-            script = Path(scratch) / "probe.py"
-            script.write_text(PROBE_SCRIPT)
 
-            result = run_chooser(script, [bindir])
+class TheLauncherReportsAnInstallThatCannotHappen(unittest.TestCase):
+    def setUp(self) -> None:
+        self.scratch_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.scratch_dir.cleanup)
+        self.scratch = Path(self.scratch_dir.name)
+        self.tools = tools_directory(self.scratch)
+        self.script = self.scratch / "probe.py"
+        self.script.write_text(PROBE_SCRIPT)
 
-        assert result.returncode == 1
-        assert result.stdout == ""
-        assert "3.9" in result.stderr
-        assert ESCAPE_HATCH in result.stderr
+    def environment(self, curl_stub: bool = False) -> dict[str, str]:
+        path_dirs = [str(self.tools)]
+        if curl_stub:
+            path_dirs.insert(0, str(self.scratch / "stubs"))
+        child_environment = isolated_environment(
+            self.scratch / "home", path_dirs, self.scratch / "plugin-data"
+        )
+        child_environment["TMPDIR"] = str(self.scratch)
+        return child_environment
 
-    def test_a_versioned_interpreter_serves_where_python3_is_unusable(self) -> None:
-        real = sys.executable
-        with tempfile.TemporaryDirectory() as bindir, tempfile.TemporaryDirectory() as scratch:
-            bindir = Path(bindir)
-            unusable_mock(bindir / "python3")
-            working_mock(bindir / "python3.11", real)
-            script = Path(scratch) / "probe.py"
-            script.write_text(PROBE_SCRIPT)
+    def stub(self, installer_body: str, exit_code: int = 0) -> None:
+        (self.scratch / "stubs").mkdir(exist_ok=True)
+        stub_curl(
+            self.scratch / "stubs" / "curl",
+            self.scratch / "curl-log.txt",
+            installer_body,
+            exit_code,
+        )
 
-            result = run_chooser(script, [bindir])
+    def run_failing(
+        self, event: str, stop_hook_active: bool = False, curl_stub: bool = False
+    ) -> subprocess.CompletedProcess[str]:
+        """Run the launcher on `event` where no uv can be found or installed."""
+        payload = json.dumps({"hook_event_name": event, "stop_hook_active": stop_hook_active})
+        return run_launcher(self.script, self.environment(curl_stub), stdin=payload)
+
+    def assert_model_and_user_both_told(
+        self, result: subprocess.CompletedProcess[str], event: str
+    ) -> str:
+        """Check the stdout JSON for `event` and return the text the model is sent."""
+        assert result.returncode == 0, result.stderr
+        output = json.loads(result.stdout)
+        text = output["systemMessage"]
+        assert "uv" in text
+        assert "3.14" in text
+        assert "uv" in result.stderr, "the stderr line stays for a person reading the log"
+        specific = output.get("hookSpecificOutput", {})
+        model_text = (
+            output.get("reason")
+            or specific.get("additionalContext")
+            or specific.get("permissionDecisionReason")
+        )
+        assert model_text == text, f"{event}: the model must be sent what the user is shown"
+        return model_text
+
+    def test_session_start_and_subagent_start_send_additional_context(self) -> None:
+        for event in ("SessionStart", "SubagentStart"):
+            with self.subTest(event=event):
+                result = self.run_failing(event)
+                self.assert_model_and_user_both_told(result, event)
+                specific = json.loads(result.stdout)["hookSpecificOutput"]
+                assert specific["hookEventName"] == event
+                assert "decision" not in json.loads(result.stdout)
+
+    def test_post_tool_batch_sends_additional_context_and_does_not_block(self) -> None:
+        result = self.run_failing("PostToolBatch")
+        self.assert_model_and_user_both_told(result, "PostToolBatch")
+        output = json.loads(result.stdout)
+        assert output["hookSpecificOutput"]["hookEventName"] == "PostToolBatch"
+        assert "decision" not in output
+
+    def test_pre_tool_use_denies_with_the_reason_the_model_reads(self) -> None:
+        result = self.run_failing("PreToolUse")
+        self.assert_model_and_user_both_told(result, "PreToolUse")
+        specific = json.loads(result.stdout)["hookSpecificOutput"]
+        assert specific["hookEventName"] == "PreToolUse"
+        assert specific["permissionDecision"] == "deny"
+
+    def test_stop_and_subagent_stop_block_with_the_reason_the_model_reads(self) -> None:
+        for event in ("Stop", "SubagentStop"):
+            with self.subTest(event=event):
+                result = self.run_failing(event)
+                self.assert_model_and_user_both_told(result, event)
+                assert json.loads(result.stdout)["decision"] == "block"
+
+    def test_a_stop_already_continued_by_the_failure_says_nothing_more(self) -> None:
+        for event in ("Stop", "SubagentStop"):
+            with self.subTest(event=event):
+                result = self.run_failing(event, stop_hook_active=True)
+                assert result.returncode == 0, result.stderr
+                assert result.stdout == "", "a second block would loop until the harness cap"
+
+    def test_an_unreadable_event_falls_back_to_stderr_and_exit_1(self) -> None:
+        for payload in ('{"hook_event_name": "Foo"}', "nope", ""):
+            with self.subTest(payload=payload):
+                result = run_launcher(self.script, self.environment(), stdin=payload)
+                assert result.returncode == 1
+                assert result.stdout == ""
+                assert "uv" in result.stderr
+                assert "3.14" in result.stderr
+
+    def test_with_no_downloader_the_text_names_the_missing_downloader(self) -> None:
+        text = self.assert_model_and_user_both_told(
+            self.run_failing("SessionStart"), "SessionStart"
+        )
+        assert "no curl or wget" in text
+
+    def test_when_the_download_fails_the_text_says_so_and_the_temp_file_is_gone(self) -> None:
+        self.stub("", exit_code=22)
+        result = self.run_failing("SessionStart", curl_stub=True)
+        text = self.assert_model_and_user_both_told(result, "SessionStart")
+        assert "download failed" in text
+        assert list(self.scratch.glob("uv-install.*")) == []
+
+    def test_when_the_installer_fails_the_text_says_so_and_no_uv_is_left(self) -> None:
+        self.stub("exit 3\n")
+        result = self.run_failing("SessionStart", curl_stub=True)
+        text = self.assert_model_and_user_both_told(result, "SessionStart")
+        assert "installer failed" in text
+        assert not (self.scratch / "plugin-data" / "bin" / "uv").exists()
+        assert not (self.scratch / "home" / ".local").exists()
+
+    def test_when_the_installer_leaves_no_uv_the_text_says_so(self) -> None:
+        self.stub(":\n")
+        result = self.run_failing("SessionStart", curl_stub=True)
+        text = self.assert_model_and_user_both_told(result, "SessionStart")
+        assert "still missing" in text
+
+    def test_with_no_plugin_data_dir_it_fails_to_the_model_and_writes_nothing_to_home(self) -> None:
+        stubs = self.scratch / "stubs"
+        stubs.mkdir(exist_ok=True)
+        uv_record = self.scratch / "uv-args.txt"
+        recording_uv(stubs / "uv", uv_record, sys.executable)
+        stub_curl(stubs / "curl", self.scratch / "curl-log.txt", "exit 1\n")
+        child_environment = isolated_environment(
+            self.scratch / "home", [str(stubs), str(self.tools)]
+        )
+        child_environment["TMPDIR"] = str(self.scratch)
+        payload = json.dumps({"hook_event_name": "SessionStart"})
+
+        result = run_launcher(self.script, child_environment, stdin=payload)
+
+        text = self.assert_model_and_user_both_told(result, "SessionStart")
+        assert "CLAUDE_PLUGIN_DATA is not set" in text
+        assert not uv_record.exists(), "no hook runs where nothing may be installed"
+        assert not (self.scratch / "curl-log.txt").exists()
+        assert not (self.scratch / "home").exists(), "nothing is written to home"
+
+
+def real_uv_serves_3_14(child_environment: dict[str, str]) -> bool:
+    """Whether the real uv finds a 3.14 without the network, under the isolated environment."""
+    probe = subprocess.run(
+        ["uv", "python", "find", "3.14", "--no-project", "--offline"],
+        capture_output=True,
+        text=True,
+        env=child_environment,
+        timeout=10,
+    )
+    return probe.returncode == 0
+
+
+class TheRealUvRunsTheScriptOn3_14(unittest.TestCase):
+    def test_the_script_sees_python_3_14(self) -> None:
+        uv = shutil.which("uv")
+        if uv is None:
+            self.skipTest("uv is not installed on this machine")
+        with tempfile.TemporaryDirectory() as scratch:
+            scratch = Path(scratch)
+            child_environment = isolated_environment(
+                scratch / "home",
+                [str(Path(uv).parent), os.environ.get("PATH", os.defpath)],
+                scratch / "data",
+            )
+            child_environment["UV_OFFLINE"] = "1"
+            if not real_uv_serves_3_14(child_environment):
+                self.skipTest("uv finds no installed 3.14 interpreter without the network")
+            script = scratch / "version.py"
+            script.write_text(VERSION_SCRIPT)
+
+            result = run_launcher(script, child_environment)
 
         assert result.returncode == 0, result.stderr
-        assert result.stdout.strip() == "PROBE-OK"
+        assert result.stdout.strip() == "3.14"
 
 
 if __name__ == "__main__":

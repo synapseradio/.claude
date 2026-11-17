@@ -1,5 +1,6 @@
 extend = "../../../.ruff.toml"
 
-# The hooks run on the first interpreter from 3.9 up (hooks/with-python.sh),
-# and tests/test_python_floor.py fails on syntax newer than that.
-target-version = "py39"
+# The hooks run on Python 3.14, which uv provisions for them
+# (hooks/with-python.sh), and tests/test_python_floor.py fails on syntax newer
+# than that.
+target-version = "py314"

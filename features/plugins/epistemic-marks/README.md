@@ -33,9 +33,9 @@ This check is a word list, and a word list has limits. It leaves "may", "should"
 
 ## Requirements
 
-The plugin runs on Claude Code 2.1.268 or later, the oldest version tested, and on Python 3.9 or later.
+The plugin runs on Claude Code 2.1.268 or later, the oldest version tested, and on Python 3.14 or later, provisioned by [uv](https://docs.astral.sh/uv/).
 
-The hooks look for Python under `python3`, then `python3.15` down to `python3.9`, and use the first that is 3.9 or later. If none is, set `EPISTEMIC_MARKS_PYTHON` to a suitable interpreter's path, in the environment Claude Code starts from. Without a usable Python, each hook prints one line to stderr, and the session runs with no rule text and no checks.
+The hooks run through `uv run --python 3.14 --no-project`, so a 3.14 interpreter runs them even where the system `python3` is older. The launcher looks for uv on the path, then at `bin/uv` in the plugin's data directory (`CLAUDE_PLUGIN_DATA`, which survives plugin updates). If it finds none, it installs uv with [Astral's standalone installer](https://docs.astral.sh/uv/getting-started/installation/) into that `bin`, without editing any shell profile, and uses that copy. A Python 3.14 that uv downloads and uv's cache go in the same data directory, so nothing is installed in your home directory. Where `CLAUDE_PLUGIN_DATA` is unset, the launcher takes the failure path below. If the installer cannot run or fails, the session runs with no rule text and no checks, and each hook says so to the model and the user alike: it prints a JSON output naming uv on stdout and exits 0, in the form the event reads (`additionalContext` on SessionStart, SubagentStart and PostToolBatch, a deny reason on PreToolUse, a block reason on Stop and SubagentStop), with the same text as `systemMessage`. A Stop or SubagentStop already continued by that failure says nothing more. The launcher never falls back to the system Python.
 
 ## Install
 
@@ -72,7 +72,6 @@ To show each marked line only once, the hooks keep a record of the lines they ha
 
 These environment variables configure the plugin, and nothing else does.
 
-- `EPISTEMIC_MARKS_PYTHON` names the Python that runs the hooks, tried before every other name.
 - `VERIFY_MARKS_STATE_DIR` names the directory for the record. Without it, the record goes to `verify-marks` under `CLAUDE_PLUGIN_DATA`, or else to `epistemic-marks-verify-marks` in the system temporary directory.
 
 The plugin delivers its rule text as shipped, from `rule-text/epistemic-marks.md`, and no setting points it at another file. An update replaces that file, so a local edit to it is lost.

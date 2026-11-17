@@ -1,10 +1,10 @@
-"""Every module the hooks run parses under Python 3.9.
+"""Every module the hooks run parses under Python 3.14.
 
     python3 -m unittest tests.test_python_floor -v
 
-The launcher accepts any interpreter from 3.9 up, so a module using syntax
-newer than 3.9 fails at the first hook run on a machine whose newest Python is
-3.9, and that session starts with no rule and no check.
+The launcher runs the hooks under a 3.14 interpreter that uv provisions, so a
+module using syntax newer than 3.14 fails at the first hook run, and that
+session starts with no rule and no check.
 """
 
 import ast
@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-FLOOR = (3, 9)
+FLOOR = (3, 14)
 SHIPPED = ("epistemic_marks", "hooks")
 
 
@@ -38,19 +38,19 @@ class TheShippedCodeParsesAtTheFloor(unittest.TestCase):
                     )
                 except SyntaxError as error:
                     self.fail(
-                        f"{path.name}:{error.lineno} needs syntax newer than Python 3.9: {error.msg}"
+                        f"{path.name}:{error.lineno} needs syntax newer than Python 3.14: "
+                        f"{error.msg}"
                     )
 
 
 class TheFormatterTargetsTheFloor(unittest.TestCase):
     def test_the_lint_target_is_the_floor(self) -> None:
-        # Read as text: tomllib arrived in Python 3.11, above the floor.
         settings = PLUGIN_ROOT / ".ruff.toml"
         assert settings.is_file(), (
             "without a plugin .ruff.toml the formatter targets the repository's version"
         )
-        assert 'target-version = "py39"' in settings.read_text(encoding="utf-8"), (
-            "a formatter targeting a newer Python strips the parentheses a 3.9 parser needs"
+        assert 'target-version = "py314"' in settings.read_text(encoding="utf-8"), (
+            "a formatter targeting a newer Python rewrites code to syntax the floor cannot parse"
         )
 
 

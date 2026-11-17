@@ -145,9 +145,9 @@ check its writer owes. A bare list reports the state and leaves the agent
 with nothing to do about it. Each output states what it found, then what to
 do now, in plain terms rather than as an out-of-band command, since the
 harness warns that `additionalContext` framed that way can read as an
-injection. A top-level second-pass notice goes to the user as a
-`systemMessage` and never reaches the agent, so there the act tells the user
-what the reply left undone.
+injection. Every output reaches the model, and a `systemMessage` carrying the
+same text shows it to the user too, so no output informs the user alone and
+every group, a second pass's included, states the act for the agent.
 
 One constraint governs every generated string. The output is read by an agent
 on a machine whose toolset this plugin cannot know, so no generated line names
@@ -370,9 +370,14 @@ and no evidence. So the block repeats while the rewrite still holds any, and
 the loop ends when the flagged set is empty. The only other end is the
 harness's own: after eight consecutive continuations it overrides the next
 block and ends the turn (<https://code.claude.com/docs/en/hooks>). No hook
-output prevents that override, so every repeat block also carries a
-`systemMessage` listing what still stands. A turn the harness cuts short has
-by then shown its reader each unmarked line, seven times over.
+output prevents that override, so a block cannot be the only way a finding
+reaches the model. `BLOCK_CAP = 5` in `hooks/verify-marks.py` is the most
+blocks one turn draws, well short of the override. Once a turn holds that
+many, a Stop or SubagentStop pass that would block returns the same findings
+as `additionalContext`, with a `systemMessage` mirror, and never blocks again
+that turn. Where no state directory can be written, no count survives a pass,
+so the cap is one block: the first pass blocks, and any pass the harness
+reports as continued sends its findings as context.
 
 **A quotation holds no claim, in either scan.** A block-quoted line and
 quoted text are skipped by the mark scan as they are by the wording scan,
@@ -409,30 +414,31 @@ the caller. Injecting context into the caller after a delegate returns would
 need a `PostToolUse` hook on the `Agent` tool, which this plugin does not use.
 
 The delegate's relay listing travels as `hookSpecificOutput.additionalContext`
-with `hookEventName` set to `"SubagentStop"`, not as a block and not as a
-`systemMessage`. A `systemMessage` reaches the user, which is the wrong
-reader, and a block would stall a delegate on a question it cannot answer.
+with `hookEventName` set to `"SubagentStop"`, not as a block, since a block
+would stall a delegate on a question it cannot answer. Like every output, it
+also carries the same text as a `systemMessage`, which shows it to the user
+and reaches no one else.
 
 `additionalContext` continues the subagent, and it travels the same loop
 protections a block does: the `stop_hook_active` input and the harness's cap
 of eight consecutive continuations, per
-<https://code.claude.com/docs/en/hooks>. So the relay group is sent on a first
-pass and withheld once `stop_hook_active` is set. The first pass is the one
-the listing exists for — the delegate rewrites its report with the question
-surfaced — and re-sending it every pass is a loop, wasteful for all eight.
-`ledger.py` is the wrong instrument for that guard: its dedup record is keyed
-by the agent id inside a subagent, and the batch pass writes line fingerprints
-to the same file, so a line the batch pass reported mid-turn would silently
-suppress the relay notice.
+<https://code.claude.com/docs/en/hooks>. Re-sending the listing every pass is
+a loop, wasteful for all eight, so a record decides what a later pass sends.
 
-The surviving list a second pass still sends travels the same channel, so it
-too continues the subagent, which stops again with `stop_hook_active` set.
-Each agent is handed a given notice once: `verify-marks.py` records a
-fingerprint of every notice it sent, in a file of its own beside the batch
-record, and a pass whose notice matches one already sent returns nothing.
-A notice that changed still goes out. Silence matters here beyond cost, since
-each restart writes a new last message, and the last message is the report
-the caller receives.
+`verify-marks.py` keeps that record per turn, in a file of its own beside the
+batch record: a fingerprint of every line it sent the model since the turn's
+first pass. A later pass sends each line once. A line already in the record
+returns nothing, and a line first written after a block, or in a turn another
+plugin's Stop hook continued, still goes out, since `stop_hook_active` says
+only that some hook continued the turn. Where no record can be kept, every
+pass sends every line until the harness's cap ends the turn. Silence matters
+here beyond cost, since each restart writes a new last message, and the last
+message is the report the caller receives.
+
+What a later pass blocks on follows from the same record. A mark already sent
+back for its check may stand, if the reply opens on it, as the rule text
+tells the writer to do. A guess in words blocks again whatever the record
+holds.
 
 A guess in words is the exception to all of the above: it draws a block on
 every pass, a delegate's included, for the reason given under Decisions.
@@ -440,6 +446,60 @@ every pass, a delegate's included, for the reason given under Decisions.
 A second pass also reads only the reply rewritten after the block. The rest
 of the turn still holds the draft the block asked to rewrite, and a line only
 that draft carries is one the rewrite already answered.
+
+## The uv launcher and where it installs
+
+The floor is Python 3.14, because no supported machine runs below it, and uv
+is required. `hooks/with-python.sh` runs each hook script with
+`uv run --python 3.14 --no-project`, so a 3.14 interpreter runs it even where
+the system `python3` is older, and the launcher never falls back to the
+system Python.
+
+Everything the launcher installs goes in `${CLAUDE_PLUGIN_DATA}`, never in
+`$HOME/.local/bin` or another home path. The harness exports that variable to
+every hook as "the plugin's persistent data directory, for dependencies and
+state that should survive plugin updates", and describes the pattern of
+checking for the dependency on first use and installing on a miss
+(<https://code.claude.com/docs/en/hooks>). The launcher resolves uv in this
+order:
+
+1. `uv` on `PATH`.
+2. `${CLAUDE_PLUGIN_DATA}/bin/uv`.
+3. Astral's standalone installer, run with
+   `UV_INSTALL_DIR="${CLAUDE_PLUGIN_DATA}/bin"` and `UV_NO_MODIFY_PATH=1`,
+   which edits no shell profile.
+
+It also sets `UV_PYTHON_INSTALL_DIR` and `UV_CACHE_DIR` under
+`${CLAUDE_PLUGIN_DATA}`, so a downloaded 3.14 and uv's cache land there too,
+beside the `verify-marks` record the hooks keep in the same directory. Where
+`CLAUDE_PLUGIN_DATA` is unset, as outside the harness, the launcher fails
+through the path below before it resolves or installs anything, so nothing is
+written to a home directory.
+
+## What the launcher hands back when it cannot run a hook
+
+`hooks/with-python.sh` runs before any hook script, so a failure there
+(no `CLAUDE_PLUGIN_DATA`, or no uv and no way to install one) is the one
+output no Python code can shape. It still follows the contract that every
+output reaches the model. A
+non-zero exit shows the user a hook error and the model nothing
+(<https://code.claude.com/docs/en/hooks>), so on failure the launcher reads
+`hook_event_name` from the payload and prints the event's own model-facing
+JSON on stdout with exit 0, naming uv and the cause, with the same text as
+`systemMessage`:
+
+- SessionStart, SubagentStart and PostToolBatch carry it as
+  `hookSpecificOutput.additionalContext`.
+- PreToolUse denies the call with `permissionDecisionReason`, the one field
+  the docs give that event for reaching the model. The failure therefore
+  stops a spawn the hook cannot check.
+- Stop and SubagentStop block with `reason`, and say nothing once
+  `stop_hook_active` is set, so the failure sent once does not loop to the
+  harness's cap.
+
+A payload with no readable event falls back to one stderr line and exit 1,
+since there is no event field to put the text in. `tests/test_with_python.py`
+holds each form.
 
 ## Why delivery runs on both start events
 
@@ -507,7 +567,7 @@ it could not tell the two apart.
 
 ## Testing
 
-From the plugin directory, with any Python 3.9 or later:
+From the plugin directory, with Python 3.14 or later:
 
 ```sh
 python3 -m unittest discover -s tests -q
@@ -517,10 +577,8 @@ The tests need only the standard library and read nothing outside the plugin.
 `tests/test_hedges.py` holds the scan for a guess in words on both sides, the
 sentences it must flag and the sentences it must pass, and
 `tests/test_guess_hooks.py` drives each hook surface with them.
-`tests/test_python_floor.py` parses every shipped module at Python 3.9, and
-`tests/test_with_python.py` holds the launcher to the same floor. Run the
-suite on the oldest and the newest interpreter at hand after a change to
-either.
+`tests/test_python_floor.py` parses every shipped module at Python 3.14, and
+`tests/test_with_python.py` holds the uv launcher to the same floor.
 
 To check an installed copy without a session, feed each hook its input by
 hand. `PLUGIN_DIR` is the `installPath` from `claude plugin list --json`, or

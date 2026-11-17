@@ -13,10 +13,10 @@ Some steps happen inside the person's Claude Code session, which you cannot type
 2. Run this command:
 
    ```sh
-   python3 -c 'import sys; sys.exit(sys.version_info < (3, 9))'
+   uv --version
    ```
 
-   The exit code must be 0. If it is not, ask the person for the path of a Python 3.9 or later. Tell them to set `EPISTEMIC_MARKS_PYTHON` to that path in the environment Claude Code starts from.
+   The output must start with `uv `. If the command is not found, continue: the hooks install uv into the plugin's data directory on their first run, and uv provisions the Python 3.14 the hooks run on, in that directory too. The first run needs the network.
 
 ## 2. Install
 
