@@ -69,30 +69,23 @@ delivery and from `render`, and `split` then refuses the render for the repeated
 belongs to delivery and to `render`, so a rule file carries none.
 
 After a split, run `render` again. The edited rule appears in every other render that holds it, and
-until you render, those renders differ from the pool. Commit the files `render` writes together
-with the rule change.
+until you render, those renders differ from the pool. Renders stay local: git ignores `-render/`,
+and the pre-commit hook rewrites it whenever a rule or `config.yaml` is staged.
 
-## The pre-push gate
+## The commit check
 
-The `sync-agent-configs` job in `lefthook.yml` runs on a push from `main`. Among its steps it runs
-two commands against `rulesets/`:
+The pre-commit hook's `rulesets-check` job (`scripts/verify/jobs.toml`) runs:
 
 ```bash
 $CLI check --root rulesets
-$CLI render --check --root rulesets
 ```
 
-`check` fails the push on an error: a variant with no default form, a reference to a name nothing
+`check` fails the commit on an error: a variant with no default form, a reference to a name nothing
 declares, a ruleset cycle, a condition that tests anything but a fact, a rule file longer than 9,000
-characters with its marker. Warnings print and do not fail it. `render --check` fails the push when a
-file under `-render/` differs from what `render` would write, and names each such file. The gate's
-message says what to do: run `render` without `--check`, commit the renders it writes, and push
-again.
+characters with its marker. Warnings print and do not fail it.
 
-The same job regenerates and checks the pi and opencode configs, which read each rule's default form
-from the pool. A variant never reaches them.
-
-Run both commands yourself before pushing to see what the gate will say.
+The pi and opencode projections read each rule's default form from the pool. A variant never
+reaches them.
 
 ## What stays out of the pool
 

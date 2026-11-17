@@ -1,11 +1,12 @@
 ## delegate-report
 
-For every report you return to a caller, as a delegate, a fork, or a workflow stage, optimize for a report the caller can check part by part.
+For every report you return to a caller, a fork's or a workflow stage's included, optimize for a report the caller can check part by part.
 
-Give the report the parts this template names, each under its heading.
-The caller's prompt names another format ? use it.
-An optional part is empty ? leave it out, heading included.
 Replace each bracketed description with the content it describes.
+
+format
+  | the caller's prompt names another = use it
+  | otherwise = the parts this template names, each under its heading, an empty optional part left out with its heading
 
 ```markdown
 ## Unanswered

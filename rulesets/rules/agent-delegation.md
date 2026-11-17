@@ -1,48 +1,60 @@
 ## agent-delegation
 
-For every step a delegate could take, and every spawn through Agent, Fork, or any other spawning tool, a delegate's own included, optimize for a step done by the cheapest model able to take it, through a spawn that pays its cost in tokens and wait and returns a result the caller can check.
+For every step a delegate could take and every spawn through any spawning tool, a delegate's own included, optimize for a step done by the cheapest model able to take it through a spawn that pays its cost in tokens and wait and returns a result the caller can check.
 
-- gauges: inference, what the delegate must infer beyond the prompt and its evidence; span, whether the work fits one context; reversibility, the cost of undoing a wrong result; verifiability, the check outside the delegate that catches a wrong answer; surviving critiques, critique findings awaiting repair
-- gathering: a read, grep, log scan, or command run for its output, a test suite's run for one, never a command that changes, commits, edits, or installs
-- shared focus: a file, artifact, decision, term, or convention two or more agents in one orchestration read, write, or state, a spec two delegates edit for one
+- gauges:
+  - inference: what the delegate must infer beyond the prompt and its evidence
+  - span: whether the work fits one context
+  - reversibility: the cost of undoing a wrong result
+  - verifiability: the check outside the delegate that catches a wrong answer
+  - surviving critiques: critique findings awaiting repair
+- gathering: any read or command run for its output, a test suite's run included, never one that changes state
+- shared focus: anything two or more agents in one orchestration read or write or state, a term or a convention included
 - roster: the orchestration's running agents, each with its address and the slice it owns
-- plan work: a step that carries out an approved plan, a unit, a lane, a landing, or the plan's finish
+- plan work: a step that carries out an approved plan, its landing and its finish included
 
 ### Whether to spawn
 
-Keep the conversation with the user, the routing, the prompts you compose, and the grounding of what comes back.
-Hold gathering as work beyond the context in hand. Take the first arm that fits.
+Keep the conversation with the user, the routing, the prompts you compose and the grounding of what comes back.
+Hold gathering as work beyond the context in hand.
 
 route step
   | no spawning tool is in hand = act directly
-  | plan work, with you at the session's top level = spawn it once for the whole plan, in the background, at sonnet, effort medium, its prompt holding the plan file's absolute path -> advise: answer what it hands up, relay its reports, and leave every file the plan covers to it and its delegates
-  | a thinkies skill run other than `thinkies:check-notes` = spawn it at opus, effort high -> relay only its final output
-  | it writes, reviews, or repairs a shell script, a shell startup file, a git hook or other extensionless shell file, or a bats suite, a run of any of them left to the arms below = spawn it with a prompt for the task
+  | plan work with you at the session's top level = spawn it once for the whole plan in the background at sonnet and effort medium, its prompt holding the plan file's absolute path -> answer what it hands up -> relay its reports -> leave every file the plan covers to it and its delegates
+  | a thinkies skill run other than `thinkies:check-notes` = spawn it at opus and effort high -> relay only its final output
+  | any work on a shell file but running it, a git hook or a bats suite included = spawn it with a prompt for the task
   | it finishes in one tool call with the context in hand = act directly
-  | git work needing judgment as it goes, a rebase with conflicts for one = spawn it
+  | git work needing judgment as it goes, such as a rebase with conflicts = spawn it
   | a git operation whose command you can state whole, outside a slice you built = spawn it at haiku
   | an observed failure of unknown cause = spawn it
   | a break's fix would pull you off the current task = spawn it
-  | the Read that Edit or an overwriting Write requires before your next change, the newest handoff note read at a session's first turn, a cited line opened to confirm it backs a claim, or a scan of saved command output by grep, jq, ast-grep, or a Read by line range = act directly
+  | the Read that Edit or an overwriting Write requires before your next change = act directly
+  | the newest handoff note read at a session's first turn = act directly
+  | a cited line opened to confirm it backs a claim = act directly
+  | a scan of saved command output = act directly
   | any other gathering = spawn a fresh haiku, one holding the step's related reads > parallel haikus, each saving every command run's output to a scratchpad file
   | a unit of a plan whose units run in sequence on one working tree = act directly, whatever delegates the plan names, its gathering spawned as above and every verdict on its work judged by you
   | sizeable work independent of the step in hand = spawn it
   | it finishes with the context in hand = act directly
-  | a map, implementation, critique, design, or plan = spawn it
+  | a map or an implementation or a critique or a design or a plan = spawn it
 
-One delegate completes the task ? spawn one.
+Spawn one delegate where one completes the task.
 Spawn a re-check of your own result only on the user's ask.
-A change edits only comment text, JSDoc included ? commit it, with no check run and no runner spawned.
+
+change
+  | it edits only comment text, JSDoc included = commit it with no check run and no runner spawned
 
 ### The spawn
 
-Take the gauges -> choose the agent type whose description claims the step, then model and effort, each by its block below -> compose the prompt -> spawn -> hold each reported claim pending until you find its source.
-Span exceeds one context, a haiku delegate's held as a 99k-token budget ? split the work into sequential spawns, each finishing its slice end to end, in place of one layer across every feature.
+Take the gauges -> choose the agent type whose description claims the step, then model and effort by the blocks below -> compose the prompt -> spawn -> hold each reported claim pending until you find its source.
+
+span
+  | it exceeds one context, a haiku delegate's held as a 99k-token budget = split the work into sequential spawns that each finish a slice end to end, in place of one layer across every feature
 
 model
   | the user named one = that model
-  | the step's route arm names one = that model
-  | a read, map, list, summary, verbatim copy of a prepared payload, or git operation the prompt states whole = haiku
+  | the step's route line names one = that model
+  | a read, a verbatim copy of a prepared payload, or a git operation the prompt states whole = haiku
   | implementing from a design, refining a diff, or critiquing = sonnet
   | a design, a plan, or an irreversible edit = opus
   | the prompt states every step, reading verifies the result, and no file changes = haiku
@@ -56,20 +68,28 @@ effort prompt
   | the user asked for or permitted one = that effort
   | a sonnet delegate's prompt states every step in one part = low
   | the delegate runs on sonnet = medium
-  | the step's route arm names one = that effort
+  | the step's route line names one = that effort
   | it states every step of a task in one part = low
   | otherwise = medium
 
-Effort field exists ? set it : state the depth in the prompt: search breadth, alternatives to weigh, the check to run.
+effort field
+  | it exists = set it
+  | otherwise = state the depth in the prompt: search breadth, alternatives to weigh, the check to run
 
 ### What comes back
 
-Resume a delegate only where the step needs what it alone holds, the sources behind its own report for one.
-Review findings come back ? send the delegate that did the work only the user's decisions and defects in the behavior the task requests -> drop every other finding, unmentioned and unasked.
-A delegate hands up a question, in a message or in a report ? answer a question under the caller's mark from the plan and what you hold -> put a question under the standing question to the user through AskUserQuestion -> send the answer to it through SendMessage at its agent ID, which resumes it where it has stopped.
+Resume a delegate only where the step needs what it alone holds, such as the sources behind its own report.
+
+return
+  | review findings = send the delegate that did the work only the user's decisions and defects in the behavior the task requests -> drop every other finding, unmentioned and unasked
+  | a question handed up in a message or a report = answer one under the caller's mark from the plan and what you hold -> put one under the standing question to the user through AskUserQuestion -> send the answer through SendMessage at its agent ID, which resumes it where it stopped
 
 ### Agents running at once
 
-Two or more agents run at once and a shared focus exists or could arise ? keep each agent's roster current, in its prompt and then by message, telling every running agent when one joins -> give all agents their shared conventions, worded identically -> direct each agent, before settling a wording or decision, to agree on it through SendMessage with every agent whose files state it -> address every final report to the caller.
-One agent's edits wait on another's finishing ? direct the finisher to message the waiter with what it changed and decided.
+agents
+  | two or more run at once and a shared focus exists or could arise = keep each agent's roster current in its prompt and then by message, telling every running agent when one joins -> give all agents their shared conventions worded identically -> direct each agent to agree each wording or decision through SendMessage with every agent whose files state it before settling it -> address every final report to the caller
+
+wait
+  | one agent's edits wait on another's finishing = direct the finisher to message the waiter with what it changed and decided
+
 Let agents edit each file one at a time.
