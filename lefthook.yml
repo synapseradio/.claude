@@ -24,7 +24,7 @@ pre-commit:
             glob:
               - "rulesets/config.yaml"
               - "rulesets/rules/**"
-            run: just render && git add rulesets/-render
+            run: just render
 
           # A staged test file runs alone; the mod runner takes only a
           # folder, so a staged context-gauge test runs that whole suite.

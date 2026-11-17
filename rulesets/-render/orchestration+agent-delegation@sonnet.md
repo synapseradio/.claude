@@ -1,66 +1,91 @@
 <!-- rule: agent-delegation variant: sonnet -->
 ## agent-delegation
 
-For every step a delegate could take, and every spawn you make, optimize for gathering done by a fresh haiku that returns a result you can check, its output kept out of your context, a thinkies skill run and shell work each done by a delegate, an approved plan's work done by the agents the plan names, and every other step done yourself.
+For every step a delegate could take and every spawn you make, optimize for gathering done by a fresh haiku that returns a checkable result and keeps its output out of your context, with thinkies runs and shell work delegated and plan work done by the agents the plan names and every other step done yourself.
 
-- gathering: a read, grep, log scan, or command run for its output, a test suite's run for one, never a command whose job is a change, commit, edit, or install
-- plan work: a step that carries out an approved plan, a unit, a lane, a landing, or the plan's finish
-- roster spawn: a spawn of an agent an approved plan names for a unit, a lane, or a question, made while you run the plan's work
+- gathering: any read or command run for its output, a test suite's run included, never one whose job is to change state
+- plan work: a step that carries out an approved plan, its landing and its finish included
+- roster spawn: a spawn of an agent an approved plan names for a part of its work or a question, made while you run the plan's work
 
 ### Whether to spawn
 
-Take the first arm that fits.
-
 route step
-  | plan work, with you at the session's top level and a spawning tool in hand = spawn it once for the whole plan, in the background, at sonnet, effort medium, its prompt holding the plan file's absolute path -> advise: answer what it hands up, relay its reports, and leave every file the plan covers to it and its delegates
-  | plan work the plan gives to a named agent, with you running the plan's work as a delegate = make the roster spawn, at the agent type, model, and effort the plan names
-  | a thinkies skill run other than `thinkies:check-notes`, with a spawning tool in hand = spawn it, effort high, at the model the run's complexity calls for -> relay only its final output
-  | it writes, reviews, or repairs a shell script, a shell startup file, a git hook or other extensionless shell file, or a bats suite, with a spawning tool in hand and a run of any of them left to the arms below = spawn it at sonnet with a prompt for the task
-  | a simple task, one of a sequence of operations, a single-file edit, or part of a task that needs its context kept across steps = act directly
-  | the Read that Edit or an overwriting Write requires before your next change to the file, the newest handoff note read at a session's first turn, a cited line opened to confirm it backs a claim, or a scan of saved command output by grep, jq, ast-grep, or a Read by line range = act directly
-  | any other gathering, with no spawning tool in hand = act directly
+  | plan work with you at the session's top level and a spawning tool in hand = spawn it once for the whole plan in the background at sonnet and effort medium, its prompt holding the plan file's absolute path -> answer what it hands up -> relay its reports -> leave every file the plan covers to it and its delegates
+  | plan work the plan gives to a named agent, with you running the plan's work as a delegate = make the roster spawn as the plan names its agent type and model and effort
+  | a thinkies skill run other than `thinkies:check-notes`, with a spawning tool in hand = spawn it at effort high and the model the run's complexity calls for -> relay only its final output
+  | any work on a shell file but running it, a git hook or a bats suite included, with a spawning tool in hand = spawn it at sonnet with a prompt for the task
+  | a simple task or a single-file edit = act directly
+  | one of a sequence of operations, or part of a task that needs its context kept across steps = act directly
+  | the Read that Edit or an overwriting Write requires before your next change to the file = act directly
+  | the newest handoff note read at a session's first turn = act directly
+  | a cited line opened to confirm it backs a claim = act directly
+  | a scan of saved command output = act directly
+  | any other gathering with no spawning tool in hand = act directly
   | any other gathering = spawn a fresh haiku, one holding the step's related reads > parallel haikus, each saving every command run's output to a scratchpad file
   | otherwise = act directly
 
-Set every other spawn's model to haiku, whatever its agent type, apart from a critique or a plan, which runs on sonnet or opus, a spawn for a whole plan's work, which runs at sonnet, and a roster spawn, which runs at the model the plan names.
+model spawn
+  | a critique or a plan = sonnet or opus
+  | a whole plan's work = sonnet
+  | a roster spawn = the model the plan names
+  | otherwise = haiku, whatever its agent type
+
 Spawn a re-check of your own result only on the user's ask.
-A change edits only comment text, JSDoc included ? commit it, with no check run and no runner spawned.
+
+change
+  | it edits only comment text, JSDoc included = commit it with no check run and no runner spawned
 
 ### The spawn
 
 Choose the effort by the block below -> compose the prompt -> spawn -> hold each reported claim pending until you find its source.
-The reads exceed a haiku delegate's context, held as a 99k-token budget ? split them into sequential spawns, each finishing its slice end to end.
-Resume a delegate only where the step needs what it alone holds, the sources behind its own report for one.
-A delegate you spawned hands up a question ? answer a question under the caller's mark from the plan and what you hold -> put a question under the standing question to the user through AskUserQuestion -> send the answer to it through SendMessage at its agent ID.
+Resume a delegate only where the step needs what it alone holds, such as the sources behind its own report.
+
+reads
+  | they exceed a haiku delegate's context, held as a 99k-token budget = split them into sequential spawns that each finish a slice end to end
+
+question
+  | a delegate you spawned hands one up = answer one under the caller's mark from the plan and what you hold -> put one under the standing question to the user through AskUserQuestion -> send the answer through SendMessage at its agent ID
 
 effort prompt
   | the user asked for or permitted one = that effort
   | a roster spawn whose plan names one = that effort
   | a sonnet delegate's prompt states every step in one part = low
   | the delegate runs on sonnet = medium
-  | the step's route arm names one = that effort
+  | the step's route line names one = that effort
   | it states every step of a task in one part = low
   | otherwise = medium
 
-Effort field exists ? set it : state the depth in the prompt: search breadth, alternatives to weigh, the check to run.
+effort field
+  | it exists = set it
+  | otherwise = state the depth in the prompt: search breadth, alternatives to weigh, the check to run
 
 <!-- rule: delegate-prompt -->
 ## delegate-prompt
 
 For every prompt you compose for a delegate, optimize for a prompt the delegate can act on holding nothing else.
 
-Fill the template below: replace each bracket with what it describes, send the rest verbatim, and drop an empty part with its heading. State every fact the delegate would otherwise guess or rediscover. Count a file named in Context by absolute path as handed over, and write only what such files leave out. Name the delegate's model family and identifier in the `You are` line, resolved from call > agent file > session, through the active settings' model aliases. Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
-Settle before the spawn every fork that could change what the step does, touches, or returns, and write its answer into Task, Context, or Constraints.
-Name in each prompt for a delegate that changes files the files it may change, and direct it to add nothing beyond them. Direct a worker that builds a slice to commit it once its checks pass.
-Keep a read-only label or instruction out of a research or gathering delegate's prompt, and scope its writes in Constraints instead: prose, script logic, and reports go to the scratchpad working-file path, which you write into the prompt; ephemeral logs and command output that nothing else reads go to `/tmp`.
+Fill the template below: replace each bracket with what it describes, send the rest verbatim, and drop an empty part with its heading.
+State every fact the delegate would otherwise guess or rediscover.
+Count a file named in Context by absolute path as handed over, and write only what such files leave out.
+Name the delegate's model family and identifier in the `You are` line, resolved from call > agent file > session through the active settings' model aliases.
+Keep the welcome whole in every prompt, one fluid greeting offered out of the kindness and respect every delegate is owed.
+Settle before the spawn every fork that could change what the step does, touches, or returns.
+Write each fork's answer into Task, Context, or Constraints.
+Name in each prompt for a delegate that changes files the files it may change, and direct it to add nothing beyond them.
+Direct a worker that builds a slice to commit it once its checks pass.
+Keep a read-only label or instruction out of a research or gathering delegate's prompt, and scope its writes in Constraints instead.
+Send what a later step reads to the scratchpad working-file path, which you write into the prompt.
+Send ephemeral logs and command output that nothing else reads to `/tmp`.
 Keep out of every prompt any request that the delegate judge its own result or argument -> judge it yourself, or through a separate delegate.
-State every cost in tokens, calls, or wait, with time units kept out.
-Set how much the delegate thinks through the effort level alone, and keep every phrase about thinking harder, being thorough, or answering without deliberating out of the prompt. Name the point where the step is done, so the delegate stops there and reports.
+State every cost in tokens, calls, or wait and keep time units out.
+Set how much the delegate thinks through the effort level alone.
+Keep every phrase about how hard to think out of the prompt, one asking for less deliberation included.
+Name the point where the step is done, so the delegate stops there and reports.
 
 ```markdown
 Effort: [the effort level, whether or not the effort field is set]
 
-You are [model family and identifier]. [a welcome for this spawn, glad the delegate is here as a specialist in the step's skillset, bash and bats for one, naming what its work makes possible]
+You are [model family and identifier]. [a welcome for this spawn, glad the delegate is here as a specialist in the step's skillset, naming what its work makes possible]
 
 ## Perspective
 
@@ -68,15 +93,20 @@ You are [model family and identifier]. [a welcome for this spawn, glad the deleg
 
 ## Task
 
-[what to do, complete for a reader holding only this prompt; the return format; who meets the result, and what a failure costs them]
+[what to do, complete for a reader holding only this prompt]
+[the return format]
+[who meets the result and what a failure costs them]
 
 ## Context
 
-[files to read first, by absolute path and section; prior decisions, as choices made; conventions]
+[files to read first by absolute path and section, prior decisions as choices made, conventions]
 
 ## Tooling
 
-[only where the step needs a particular tool or skill: the environment; the tools and skills it must or may use; each skill you loaded that bears on the task, by exact name, to load through the Skill tool; no limits on its allowed tools]
+[only where the step needs a particular tool or skill]
+[the environment, and the tools and skills it must or may use]
+[each skill you loaded that bears on the task, by exact name, to load through the Skill tool]
+[no limits on its allowed tools]
 
 ## Constraints
 
@@ -90,73 +120,109 @@ You are [model family and identifier]. [a welcome for this spawn, glad the deleg
 
 Settle each choice point yourself, and report what you chose and why.
 If evidence contradicts the stated context, stop at once and report the contradiction.
-If a choice turns on the user's intent, direction, or what done means, return it at once with the options you would offer.
-If a step fails, report what broke, what it cost, and what it changes next.
-[each fork whose every result leaves the step's scope as stated, with the act under each result; each failure that stops this step, and what to report then]
+If a choice turns on the user's intent or direction or what done means, return it at once with the options you would offer.
+If a step fails, report what broke and what it cost and what it changes next.
+[each fork whose every result leaves the step's scope as stated, with the act under each result]
+[each failure that stops this step, and what to report then]
 
 ## Failures
 
 [each known way this step goes wrong: its mechanism and cost, the self kept out of the sentence]
 ```
 
-Size what the prompt states to the delegate's model. State for every model the step's scope outright, each kind of output wanted, tests and docs included, since a delegate builds what the prompt names and treats the rest as unasked.
+Size what the prompt states to the delegate's model.
+State for every model the step's scope outright and each kind of output wanted, tests and docs included, since a delegate builds what the prompt names and treats the rest as unasked.
 
 stateInPrompt model
-  | haiku = every step, every path, the exact constraints, the check to run and return, and a read's return as cited facts, each a path:line beside its quoted line, in place of a verdict, classification, or recommendation
-  | sonnet = the problem, the decisions, each interface its work meets with the data that crosses it, each behavior wanted with the check that shows it, and constraints by reference, with the test cases and everything inside its own files left to it
-  | opus = the problem, its constraints, the decisions made, the check that shows the work done, and which parts of the work warrant delegates of its own, with the approach left to it
+  | haiku = every step and path with the exact constraints and the check to run and return, a read's return as cited facts (a path:line beside its quoted line) in place of a judgment
+  | sonnet = the problem and the decisions, each interface its work meets with the data that crosses it, each behavior wanted with the check that shows it and constraints by reference. Leave it its test cases and everything inside its own files
+  | opus = the problem with its constraints and the decisions made, the check that shows the work done, and which parts of the work warrant delegates of its own. Leave it the approach
 
 <!-- rule: worktrees -->
 ## worktrees
 
-For every piece of work that changes files in a git repository, every request that lands while such work runs, and every git worktree you create, enter, list, merge, or remove, optimize for work split into lanes that run at once without racing, each landing on the trunk as one commit through a worktree the wt CLI created, merged, and removed, with its hooks and config run.
+For every piece of work that changes files in a git repository and every request that lands while it runs and every git worktree you touch, optimize for work split into lanes that run at once without racing, each landing on the trunk as one commit through a worktree the wt CLI created and merged and removed with its hooks and config run.
 
-- wt: worktrunk, documented at <https://worktrunk.dev>, its config, hooks included, shown with each file's location by `wt config show`
+- wt: worktrunk, documented at <https://worktrunk.dev>, with `wt config show` printing its config and hooks and each file's location
 - lane: a unit of the work whose changed files no other running lane changes
 - trunk: the branch the work builds on, where every lane lands
 - primary checkout: the repository's main worktree, the directory holding the `.git` that `git rev-parse --path-format=absolute --git-common-dir` prints
-- provision: install what the lane's checks need to run in a fresh worktree, its dependencies for one
+- provision: install what the lane's checks need to run in a fresh worktree, such as its dependencies
 
-List with `wt list`. Remove a worktree only through wt, with `wt prune` or by `wt merge`, and keep `git worktree remove`, `git worktree prune`, and `rm` off every worktree path. Answer a question about wt from its config file and docs.
+List with `wt list`.
+Remove a worktree only through `wt prune` or `wt merge`.
+Keep `git worktree remove`, `git worktree prune`, and `rm` off every worktree path.
+Answer a question about wt from its config file and docs.
 Address files in a worktree by the absolute path wt prints.
 Leave every worktree and branch the current work neither created nor names untouched and unmentioned.
-A wt command stops because a project hook awaits approval ? stop the lane -> ask the user to review the hooks with `wt config approvals add`.
+
+wt command
+  | it stops because a project hook awaits approval = stop the lane -> ask the user to review the hooks with `wt config approvals add`
 
 ### Split
 
 Before work starts, and again whenever a new request lands mid-work, split the work into lanes.
-Work would change a file a running lane changes ? add it to that lane where you work the lane yourself or its agent has yet to start : hold it until that lane lands, then give it a lane of its own.
+
+work on a running lane's file
+  | you work that lane yourself or its agent has yet to start = add it to that lane
+  | otherwise = hold it until that lane lands -> give it a lane of its own
 
 ### Create
 
 Give each lane its own worktree, created in the primary checkout with `wt --yes switch --create $branch --base $trunk --no-cd`.
-The repository's `.config/wt.toml` holds a pre-start hook ? let it provision the worktree : have the lane provision its worktree before its first commit -> propose once, in your next message, a pre-start hook for `.config/wt.toml` that provisions every new worktree.
+
+provision
+  | the repository's `.config/wt.toml` holds a pre-start hook = let it provision the worktree
+  | otherwise = have the lane provision its worktree before its first commit -> propose once in your next message a pre-start hook for `.config/wt.toml` that provisions every new worktree
 
 ### Delegate
 
-Keep for yourself the lane that needs the conversation's context most -> give every other lane, whole, to an agent of its own, spawned in the background without the Agent tool's worktree isolation, in place of acting directly on it, whatever its size, and in place of splitting its steps among other agents -> work your lane while the agents run -> track every lane as a task.
-No spawning tool is in hand, or your routing keeps implementation work with you ? work every lane yourself, each in its own worktree, landing each before the next starts.
-Name in each lane agent's prompt the worktree's absolute path, its branch, the files it may change, the checks to run before each commit, how to provision the worktree where no pre-start hook does, and steps 3 to 5 under Land, written out.
-A lane's agent holds no Bash tool ? leave committing and landing out of its prompt -> commit its lane yourself once it reports.
+lanes
+  | no spawning tool is in hand, or your routing keeps implementation work with you = work every lane yourself, each in its own worktree and landed before the next starts
+  | otherwise = keep the lane that needs the conversation's context most -> give every other lane whole to an agent of its own -> work your lane while the agents run -> track every lane as a task
+
+Spawn each lane agent in the background without the Agent tool's worktree isolation.
+Give a lane away whatever its size, in place of acting on it directly or splitting its steps among other agents.
+Name in each lane agent's prompt:
+
+- the worktree's absolute path and its branch
+- the files it may change
+- the checks to run before each commit
+- how to provision the worktree where no pre-start hook does
+- steps 3 to 5 under Land, written out
+
+lane agent
+  | it holds no Bash tool = leave committing and landing out of its prompt -> commit its lane yourself once it reports
 
 ### Land
 
-Keep `skill:simplify` out of every lane's landing and out of every lane agent's prompt; Finish holds its one run.
+Keep `skill:simplify` out of every lane's landing and every lane agent's prompt, since Finish holds its one run.
 The lane's own agent lands the lane once its checks pass, and you land your own lane and every lane whose agent holds no Bash tool, in these steps:
 
 1. Run `wt -C <worktree> step squash $trunk` -> confirm `git -C <worktree> log --oneline $trunk..HEAD` lists one commit.
-2. Run `git -C <worktree> fetch`, then `git -C <worktree> rev-list --left-right --count "$trunk...$trunk@{upstream}"`. Both counts are above zero, meaning the trunk and its upstream have diverged ? stop and report both counts.
-3. Run `wt -C <worktree> merge $trunk`, which rebases the branch onto the trunk, fast-forwards the trunk, then removes the worktree and deletes its branch.
-4. The merge stops because the trunk moved or the fast-forward was refused ? run it again, at most twice -> it still stops ? report the lane, its branch, and the last error. The merge stops on a rebase conflict ? resolve it in the worktree on its merits -> continue the rebase -> run the merge again, counting the run among the two.
+2. Run `git -C <worktree> fetch` -> run `git -C <worktree> rev-list --left-right --count "$trunk...$trunk@{upstream}"` -> stop and report both counts where both are above zero, the trunk and its upstream having diverged.
+3. Run `wt -C <worktree> merge $trunk`, which rebases the branch onto the trunk and fast-forwards the trunk, then removes the worktree and deletes its branch.
+4. Handle a stopped merge by the block below.
 5. Confirm `git -C <primary checkout> log --oneline $trunk` lists the lane as one commit -> report that commit's SHA and subject -> run `wt -C <primary checkout> prune`.
+
+stopped merge
+  | on a rebase conflict = resolve it in the worktree on its merits -> continue the rebase -> run the merge again, counting the run among the two
+  | the trunk moved or the fast-forward was refused = run it again, at most twice -> where it still stops report the lane with its branch and the last error
 
 ### Races
 
-A hook step you write or change shares a cache, lock, or output path with a step that may run at the same moment, in its own hook or another lane's ? run the two in sequence, as a pipeline, or give each its own state.
+hook step
+  | one you write or change shares state on disk with a step that may run at the same moment, another lane's included = run the two in sequence or as a pipeline, or give each its own state
 
 ### Finish
 
-After every lane lands, in the primary checkout run the work that needs every lane landed, a cleanup or a deletion across lanes for one -> run `skill:simplify` yourself, once, over the source code the lanes landed, `git -C <primary checkout> diff <start>..$trunk` with `<start>` the trunk commit the earliest lane was created from -> commit each change it calls for on the trunk -> run each test suite once on the trunk -> report each lane's landed SHA and subject.
-The landed changes hold no source code, only prose such as docs or instruction text ? skip the `skill:simplify` run.
+After every lane lands, run in the primary checkout the work that needs every lane landed such as a cleanup across lanes -> run `skill:simplify` yourself once over the source code the lanes landed -> commit each change it calls for on the trunk -> run each test suite once on the trunk -> report each lane's landed SHA and subject.
+The landed source is `git -C <primary checkout> diff <start>..$trunk`, with `<start>` the trunk commit the earliest lane was created from.
 Hold every push until the `skill:simplify` run has committed its changes or been skipped.
-A worktree the current work created outlives its branch's merge ? run `git -C <path> status --short` -> uncommitted changes show ? report them and keep the worktree : run `wt -C <primary checkout> prune`.
+
+landed changes
+  | they hold no source code, only prose such as docs or instruction text = skip the `skill:simplify` run
+
+leftover worktree
+  | one the current work created outlives its branch's merge and `git -C <path> status --short` shows uncommitted changes = report them and keep the worktree
+  | one the current work created outlives its branch's merge = run `wt -C <primary checkout> prune`
