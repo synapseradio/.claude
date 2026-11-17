@@ -28,7 +28,9 @@
 # Where no uv can be had, a hook's stderr reaches the user alone, so the
 # launcher reads the event from the payload and answers in the JSON that event
 # shows the model, with exit 0, and also writes one line to stderr. An event it
-# cannot read keeps the plain stderr line and exit 1. Per-event output fields:
+# cannot read gets the one shape every event accepts without a hookEventName,
+# the universal continue, stopReason and systemMessage fields, because
+# hookSpecificOutput requires that name. Per-event output fields:
 # https://code.claude.com/docs/en/hooks
 
 set -uo pipefail
@@ -132,9 +134,8 @@ install_uv() {
 #   The hook payload, as read from STDIN.
 # Outputs:
 #   One JSON object on STDOUT, or nothing for a Stop or SubagentStop payload
-#   with stop_hook_active true, where a second block would loop.
-# Returns:
-#   0 where the event was known; 1 where it was unreadable or unknown.
+#   with stop_hook_active true, where a second block would loop. An event that
+#   is unreadable or unknown gets the universal fields alone.
 #######################################
 report_failure_to_model() {
   local payload="$1"
@@ -143,6 +144,8 @@ report_failure_to_model() {
     grep -o '"hook_event_name"[[:space:]]*:[[:space:]]*"[^"]*"' |
     head -n 1 | sed 's/.*:[[:space:]]*"\(.*\)"$/\1/')" || true
   local text="epistemic-marks: the hooks could not run under uv on Python 3.14 (${FAILURE_REASON}), so this session runs with no epistemic-marks rule text and no checks. Where uv is missing, install it from ${UV_DOCS_URL}."
+
+  local unreadable_text="epistemic-marks: the hook event could not be read, so the hooks could not run under uv on Python 3.14 (${FAILURE_REASON}), and this session runs with no epistemic-marks rule text and no checks. Where uv is missing, install it from ${UV_DOCS_URL}."
 
   case "${event}" in
   SessionStart | SubagentStart | PostToolBatch)
@@ -161,7 +164,8 @@ report_failure_to_model() {
     fi
     ;;
   *)
-    return 1
+    printf '{"continue":false,"stopReason":"%s","systemMessage":"%s"}\n' \
+      "${unreadable_text}" "${unreadable_text}"
     ;;
   esac
 }
@@ -175,13 +179,13 @@ report_failure_to_model() {
 #   UV_DOCS_URL
 # Outputs:
 #   One line on STDERR naming the requirement and the reason, and the
-#   model-facing JSON on STDOUT where the event is known.
+#   model-facing JSON on STDOUT.
 # Returns:
-#   Does not return: exits 0 where the event was known, else 1.
+#   Does not return: exits 0.
 #######################################
 fail_launch() {
   err "the epistemic-marks hooks need ${REQUIREMENT} (${FAILURE_REASON}); see ${UV_DOCS_URL}."
-  report_failure_to_model "$(cat)" || exit 1
+  report_failure_to_model "$(cat)"
   exit 0
 }
 

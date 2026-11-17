@@ -361,14 +361,20 @@ class TheLauncherReportsAnInstallThatCannotHappen(unittest.TestCase):
                 assert result.returncode == 0, result.stderr
                 assert result.stdout == "", "a second block would loop until the harness cap"
 
-    def test_an_unreadable_event_falls_back_to_stderr_and_exit_1(self) -> None:
+    def test_an_unreadable_event_sends_the_failure_to_the_model_and_the_user(self) -> None:
         for payload in ('{"hook_event_name": "Foo"}', "nope", ""):
             with self.subTest(payload=payload):
                 result = run_launcher(self.script, self.environment(), stdin=payload)
-                assert result.returncode == 1
-                assert result.stdout == ""
+                assert result.returncode == 0, result.stderr
+                output = json.loads(result.stdout)
+                assert "hookSpecificOutput" not in output, "it requires a hookEventName"
+                assert output["continue"] is False
+                text = output["stopReason"]
+                assert output["systemMessage"] == text
+                assert "the hook event could not be read" in text
+                assert "uv" in text
+                assert "3.14" in text
                 assert "uv" in result.stderr
-                assert "3.14" in result.stderr
 
     def test_with_no_downloader_the_text_names_the_missing_downloader(self) -> None:
         text = self.assert_model_and_user_both_told(
