@@ -10,14 +10,7 @@ Take the first that applies:
 2. the first `worktrees` finding of `scripts/detect-tools.py`
 3. git itself
 
-Where `uv` is missing, run these probes by hand:
-
-```sh
-git rev-parse --show-toplevel                        # the repository root
-git worktree list --porcelain                        # the first entry is the primary checkout
-git symbolic-ref --short refs/remotes/origin/HEAD    # the trunk follows "origin/"
-command -v wt && wt --help | grep -i worktrunk       # worktrunk, where both succeed
-```
+Where `uv` is not on PATH, install it with `curl -LsSf https://astral.sh/uv/install.sh | sh`, then run `scripts/detect-tools.py` through `uv`.
 
 A program named `wt` counts as worktrunk only where its help says so; other programs share the name.
 
