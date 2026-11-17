@@ -14,6 +14,19 @@ dev = [
   "rumdl~=0.3.4",
 ]
 
+# The epistemic-marks hooks and tests import the plugin package and the tests'
+# support module from their own directories, which the plugin's conftest and
+# hook scripts put on sys.path at runtime.
+[tool.pyright]
+executionEnvironments = [
+  { root = "features/plugins/epistemic-marks", pythonVersion = "3.14", extraPaths = [
+    "features/plugins/epistemic-marks",
+    "features/plugins/epistemic-marks/tests",
+  ] },
+  { root = "features/plugins/prep", pythonVersion = "3.14" },
+  { root = "." },
+]
+
 # Only rules that `rumdl rule -o json` rates fix_availability "Always", so
 # `rumdl check --fix` repairs every finding it reports. MD013 carries that
 # rating yet reports long lines it leaves in place, MD063 rewrites identifier

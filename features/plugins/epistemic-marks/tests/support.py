@@ -74,10 +74,22 @@ def isolated_environment(
     return environment
 
 
+def exit_status(code: str | int | None) -> int:
+    """The process status `sys.exit(code)` produces: None is 0, a message is 1."""
+    if code is None:
+        return 0
+    if isinstance(code, int):
+        return code
+    return 1
+
+
 @functools.cache
 def load_entrypoint(script: Path) -> ModuleType:
     """A hook script's module, loaded once so a pass can run without a launch."""
     spec = importlib.util.spec_from_file_location(f"{script.stem}_entrypoint", script)
+    if spec is None or spec.loader is None:
+        message = f"no loader for {script}"
+        raise ImportError(message)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -120,7 +132,7 @@ def run_hook(
         try:
             entrypoint.main()
         except SystemExit as ended:
-            code = ended.code or 0
+            code = exit_status(ended.code)
     return code, stdout.getvalue()
 
 

@@ -200,7 +200,7 @@ def report(units: dict[str, dict], contracts: dict[str, str], problems: list[str
 
 def main() -> int:
     if len(sys.argv) != 2:
-        sys.stderr.write(__doc__)
+        sys.stderr.write(__doc__ or "")
         return 2
     units, contracts, problems = parse(Path(sys.argv[1]).read_text(encoding="utf-8"))
     if not units:

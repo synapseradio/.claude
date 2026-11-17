@@ -199,7 +199,7 @@ def tracker(host: str | None) -> list[dict]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").partition("\n")[0])
     parser.add_argument("--repo", default=".", help="a path inside the repository to inspect")
     start = Path(parser.parse_args().repo).resolve()
     repo = repository(start)
