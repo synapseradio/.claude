@@ -187,7 +187,7 @@ For every piece of work that changes files in a git repository and every request
 - provision: install what the lane's checks need to run in a fresh worktree, such as its dependencies
 
 List with `wt list`.
-Remove a worktree only through `wt prune` or `wt merge`.
+Remove a worktree only through `wt prune` or `wt merge`, or through `wt remove` in the superseded case below.
 Keep `git worktree remove`, `git worktree prune`, and `rm` off every worktree path.
 Answer a question about wt from its config file and docs.
 Address files in a worktree by the absolute path wt prints.
@@ -195,6 +195,9 @@ Leave every worktree and branch the current work neither created nor names untou
 
 wt command
   | it stops because a project hook awaits approval = stop the lane -> ask the user to review the hooks with `wt config approvals add`
+
+superseded worktree
+  | its work landed by another route or was replaced, so `wt merge` would land superseded code = back up its commits with `git -C <primary checkout> bundle create <file> <branch>`, the file in the scratchpad directory -> confirm `git -C <primary checkout> bundle verify <file>` passes -> save its uncommitted changes, untracked files included, as a patch or tarball in the same directory -> remove it with `wt -C <primary checkout> remove <branch> -D`, adding `-f` where it holds uncommitted changes
 
 ### Split
 

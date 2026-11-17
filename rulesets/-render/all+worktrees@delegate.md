@@ -1069,8 +1069,11 @@ counts
   | otherwise = merge
 
 After the merge, run `wt -C <primary checkout> prune`, with the primary checkout your prompt names.
-Remove a worktree only through `wt prune` or `wt merge`.
+Remove a worktree only through `wt prune` or `wt merge`, or through `wt remove` in the superseded case below, with the primary checkout your prompt names.
 Keep `git worktree remove`, `git worktree prune`, and `rm` off every worktree path.
+
+superseded worktree
+  | its work landed by another route or was replaced, so `wt merge` would land superseded code = back up its commits with `git -C <primary checkout> bundle create <file> <branch>`, the file in the scratchpad directory -> confirm `git -C <primary checkout> bundle verify <file>` passes -> save its uncommitted changes, untracked files included, as a patch or tarball in the same directory -> remove it with `wt -C <primary checkout> remove <branch> -D`, adding `-f` where it holds uncommitted changes
 
 <!-- rule: writing-code -->
 ## writing-code
