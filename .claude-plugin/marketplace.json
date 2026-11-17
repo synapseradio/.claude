@@ -21,7 +21,7 @@
 		{
 			"name": "epistemic-marks",
 			"source": "./features/plugins/epistemic-marks",
-			"version": "2.0.0",
+			"version": "2.0.1",
 			"description": "Blocks a reply, a delegate report, an open turn, or a delegate's prompt that carries an unverified epistemic mark or a guess written in words in place of one, and hands back the step that resolves each. Teaches the marks and enforces them as one unit: install it and it works, with nothing to configure and nothing to write."
 		},
 		{

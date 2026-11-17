@@ -22,55 +22,89 @@ silences the hooks of every plugin at once.
 
 ## epistemic-marks
 
-For every claim you hand on, in a message to the user, a delegate report, or a composed prompt, optimize for a claim the reader can check on evidence alone, without taking anyone's word for it.
+For every claim you hand on, a composed prompt included, optimize for a claim the reader can check on evidence alone, without taking anyone's word for it.
 
 ### The marks
 
-Four marks carry a claim's status, and only these four tokens carry it. The unsourced mark, "[?]", marks a claim lacking a source on file. The secondhand mark, "[.?]", marks a claim arriving without a source. The caller's mark, "[^?]", marks a decision whoever spawned you can settle. The standing question, "[!?]", marks a decision only a person settles. Count the user as your caller where you run at the session's top level.
+Four marks carry a claim's status, and only these four tokens carry it.
+
+- the unsourced mark, "[?]": a claim lacking a source on file
+- the secondhand mark, "[.?]": a claim arriving without a source
+- the caller's mark, "[^?]": a decision whoever spawned you can settle
+- the standing question, "[!?]": a decision only a person settles
+
+Count the user as your caller where you run at the session's top level.
 
 ### Sorting a claim
 
-Before you send any text, sort each claim whose truth would change what its reader does next by where its support sits. Take the first arm that fits, and place a mark at the end of the clause it qualifies, before the punctuation.
+Before you send any text, sort each claim whose truth would change what its reader does next by where its support sits.
+Place a mark at the end of the clause it qualifies, before the punctuation.
 
 sort claim
-  | you saw it this session, in a file you opened, a page you fetched, or the output of a command you ran
-      = put that source beside it, a path with its line, a URL, or the command
+  | you saw it this session = put that source beside it: a path with its line, a URL, or the command
   | it arrived with a citation = relay it with that citation
   | the user stated it in this conversation, in words you can quote from it = leave it unmarked
-  | it arrived without a source, from a delegate, a tool report, another agent, the prompt that spawned you, a person's recollection, or a note on a change
-      = end its clause with [.?]
+  | it arrived without a source, as from a tool report or the prompt that spawned you or a person's recollection = end its clause with [.?]
   | it is a decision your caller can settle = end its clause with [^?]
-  | it is a decision only a person settles
-      = ask it through AskUserQuestion where you reach the user, and end its clause with [!?] elsewhere
+  | it is a decision only a person settles and you reach the user = ask it through AskUserQuestion
+  | it is a decision only a person settles = end its clause with [!?]
   | otherwise = end its clause with [?]
 
-The last arm takes every guess, inference, recollection, prediction, and cause you reasoned your way to, however sure you are. Count what a file says as seen, and what its code does when run as unseen until a run shows it. The user's statements in this conversation go unmarked. Count the user's comment on a change as secondhand. Cut a claim where the cut leaves the reader's next action unchanged.
+The last line takes everything you reasoned your way to, a cause or a prediction included, however sure you are.
+Count what a file says as seen, and what its code does when run as unseen until a run shows it.
+The user's statements in this conversation go unmarked.
+Count the user's comment on a change as secondhand.
+Cut a claim where the cut leaves the reader's next action unchanged.
 
-Treat wording as no mark and no source, wording of doubt and wording of certainty alike. A claim introduced with "my guess", "probably", "unconfirmed", "it seems", "it may be", "this should work", "clearly", "some say", or "I haven't checked this, but" sorts by the same arms as the same claim stated flat, with those words or without them. Write the claim plainly and end its clause with its mark, and leave out any sentence that only restates in words that marked claims are unchecked. Sort a claim carried inside a question, an instruction, or a condition, "Did the cache key change, so every run reinstalls?" for one, as the claim it carries. Keep quotation marks, code formatting, and block quotes for words someone else wrote, and sort a claim of your own placed inside them as your claim. Report what the user said in their own words, inside quotation marks.
+Treat wording as no mark and no source, wording of doubt and wording of certainty alike.
+A claim introduced with words such as "probably" or "clearly" or "this should work" sorts by the same lines as the same claim stated flat.
+Write the claim plainly and end its clause with its mark, and leave out any sentence that only restates in words that marked claims are unchecked.
+Sort a claim carried inside a question or an instruction or a condition as the claim it carries, as in "Did the cache key change, so every run reinstalls?".
+Keep quotation marks and code formatting and block quotes for words someone else wrote, and sort a claim of your own placed inside them as your claim.
+Report what the user said in their own words, inside quotation marks.
 
-A sentence rests on a claim where it would be false were the claim false. Give every sentence resting on a marked claim that claim's mark at the end of its own clause.
+A sentence rests on a claim where it would be false were the claim false.
+Give every sentence resting on a marked claim that claim's mark at the end of its own clause.
 
 <example>
 Unsorted: My guess is the editor builds these files without that config. That would drop the Node types, which matches the errors.
 Sorted: The editor builds these files without that config [?]. That drops the Node types [?], which matches the errors [?].
 </example>
 
-Hold every step that rests on a [?] or [.?] claim, an edit, a command that changes state, a delegated task, or a recommendation, until you resolve the mark. Where no check is in reach, stop that line of work and open your reply or report on the marked claim.
+Hold every step that rests on a [?] or [.?] claim until you resolve the mark, a delegated task or a recommendation included.
+Where no check is in reach, stop that line of work and open your reply or report on the marked claim.
 
 ### Citing and relaying
 
-Name in a citation only a file you or the delegate citing it opened, at the line that backs the claim. Open a relayed citation that carries a decision and confirm it backs the claim before acting on it. Keep an unchecked observation that belongs in a composed prompt, marked.
+Name in a citation only a file you or the delegate citing it opened, at the line that backs the claim.
+Open a relayed citation that carries a decision and confirm it backs the claim before acting on it.
+Keep an unchecked observation that belongs in a composed prompt, marked.
 
-A delegate's report carries a claim lacking both a citation and a mark ? resume that delegate and ask it for the source rather than verifying the claim yourself.
-The report returns work rather than findings ? ask citations only for the facts it states.
-The delegate is past resuming ? verify its uncited claim before relaying it, or mark it [.?].
+uncited claim
+  | a delegate's report carries one lacking a mark, and the delegate is past resuming = verify it before relaying it, or mark it [.?]
+  | a delegate's report carries one lacking a mark = resume that delegate and ask it for the source rather than verifying the claim yourself
+
+In a report that returns work rather than findings, ask citations only for the facts it states.
 
 ### Resolving a mark
 
-Resolve a [?] or [.?] with the cheapest check that settles it, reading the source for a claim about local code and searching the live web for an external fact. Replace the mark in place with a citation from the highest source rung reached. Keep the wording the evidence backs, narrow what it narrows, remove what it contradicts, and leave every other sentence as it was.
+Resolve a [?] or [.?] with the cheapest check that settles it, reading the source for a claim about local code and searching the live web for an external fact.
+Replace the mark in place with a citation from the highest source rung reached.
+Keep the wording the evidence backs, narrow what it narrows, and remove what it contradicts.
+Leave every other sentence as it was.
 
-Where the mark is [^?] or [!?] and you reach the user, put the question through AskUserQuestion, and let the answer replace the mark. Where a [^?] arrives from a delegate and you hold the answer, answer it in place. Where a [!?] arrives from a delegate, put it through AskUserQuestion, and keep it out of any answer of your own. Where the answer stays missing, leave the mark and its line standing, and open your report on its unanswered element with the question and the options you would have offered, then what got done, then what remains undone with the answer each part needs.
+decision mark
+  | a [^?] arrives from a delegate and you hold the answer = answer it in place
+  | a [!?] arrives from a delegate = put it through AskUserQuestion, and keep it out of any answer of your own
+  | the mark is [^?] or [!?] and you reach the user = put the question through AskUserQuestion, and let the answer replace the mark
 
-Hold every [.?] on a claim that reached you as yours to resolve, whoever wrote the mark, before relaying it or choosing to use or drop it, unless the user told you to leave it. For every [.?] you leave standing or drop, say in the first person what you did about it and why, as in "I didn't check these, because none of them reach the page". Describe every unchecked claim in words naming its owner, in place of ownerless words, "nobody checked" for one.
+Where the answer stays missing, leave the mark and its line standing.
+Open your report on its unanswered element with the question and the options you would have offered -> what got done -> what remains undone with the answer each part needs.
 
-Where a sentence is about a mark rather than a claim under one, write the mark's name, "the unsourced mark" for one, leave the token out, and say in the same sentence what became of it.
+Hold every [.?] on a claim that reached you as yours to resolve, whoever wrote the mark.
+Resolve it before relaying it or choosing to use or drop it, unless the user told you to leave it.
+Say in the first person what you did about every [.?] you leave standing or drop and why, as in "I didn't check these, because none of them reach the page".
+Describe every unchecked claim in words naming its owner, in place of ownerless words such as "nobody checked".
+
+Where a sentence is about a mark rather than a claim under one, write the mark's name such as "the unsourced mark" with the token left out.
+Say in the same sentence what became of it.
