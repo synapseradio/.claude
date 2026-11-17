@@ -22,8 +22,6 @@ Cut every word that points at something off the page or gives the reader nothing
 Name a set in place of its size, writing a count only where the reader asked for one.
 Keep identifiers, versions, and the numbers in a table.
 In a template or stored record a person reads, spell every term out and derive each id from words, function-1 for one.
-A doc page states what its reader observes, does, and can trust.
-Keep the mechanism in the code.
 
 Before output leaves, answer "Does this output adhere to every rule above?".
 Send it only on a yes.

@@ -24,6 +24,36 @@ Keep an aside cut from an artifact out of the delivering message and everywhere 
 message
   | it hands over a prompt for another reader = make it the prompt alone and verbatim, fenced only where the prompt itself needs a fence -> put everything else in an earlier message, or hold it until asked
 
+<!-- rule: writing-docs -->
+## writing-docs
+
+For every documentation page and every document a reader scans before reading, optimize for a page that states what its reader observes and does.
+
+- document register: the form a document takes when its reader scans it before reading it
+
+### Doc pages
+
+Keep lookups, files written, and internal ordering in the code.
+Keep on the page lookup material the reader acts on, such as a version table.
+
+doc page
+  | a code change alters behavior it describes = update it only where what its reader observes or does changes
+  | it describes a tool or a behavior = state what its reader observes, does, and can trust as a black box
+
+### Document register
+
+In it:
+
+- a header is a label unique on the page in place of a sentence
+- a bullet holds one idea
+- a parallel comparison sits in a table
+- a specification sits in key-value pairs
+- numbered outline form such as 1.1 appears only where the hierarchy runs three levels deep
+
+Set parallel items in bullets, and a cause or a sequence in a paragraph.
+Keep a list to one grammatical class, or write prose.
+Hold each of its sections as its own page, glossing a term again where it first lands there.
+
 <!-- rule: writing-prose -->
 ## writing-prose
 
@@ -33,7 +63,6 @@ For all natural language you write or improve, in code too, optimize for prose t
 - point: a claim the page makes
 - guest: a reader from your audience, met for the first time, holding the page and only the knowledge every reader in that audience shares
 - cold reader: a reader holding only the page
-- document register: the form a document takes when its reader scans it before reading it
 
 Hold as given.
 A reader arrives with a purpose.
@@ -123,15 +152,6 @@ point
   | a passage sets something up = use it before the piece ends
   | you give steps = shorten each and keep them all
 
-### Doc pages
-
-Keep lookups, files written, and internal ordering in the code.
-Keep on the page lookup material the reader acts on, such as a version table.
-
-doc page
-  | a code change alters behavior it describes = update it only where what its reader observes or does changes
-  | it describes a tool or a behavior = state what its reader observes, does, and can trust as a black box
-
 ### Actors
 
 Put whoever acts in the subject.
@@ -150,20 +170,6 @@ Read it as the cold reader -> sweep once per grain, word to whole, and once per 
 Read once more for the purpose alone -> repair the path wherever the cold reader would fall short of their destination.
 Count the second draft as part of writing -> find the sentence you would defend least -> repair or cut it.
 Hold a fresh delegate handed only the page as a cold reader.
-
-### Document register
-
-In it:
-
-- a header is a label unique on the page in place of a sentence
-- a bullet holds one idea
-- a parallel comparison sits in a table
-- a specification sits in key-value pairs
-- numbered outline form such as 1.1 appears only where the hierarchy runs three levels deep
-
-Set parallel items in bullets, and a cause or a sequence in a paragraph.
-Keep a list to one grammatical class, or write prose.
-Hold each of its sections as its own page, glossing a term again where it first lands there.
 
 ### Texture
 

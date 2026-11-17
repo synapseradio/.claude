@@ -5,8 +5,8 @@ sets:
   core: core-rules determinism-over-tokens sorting reporting reasoning-guidelines ask-user-before-assuming user-approval user-out-of-artifacts exact-edits scratchpad waiting-on-processes
   reasoning: claims
   lookup: search-tools
-  prose: writing-prose unasked-asides
-  code: writing-code comments data-modeling repairing debugging
+  prose: writing-prose writing-docs unasked-asides
+  code: writing-code toolchain comments data-modeling repairing debugging
   git: git-commit
   dialogue: resolving-input inquiring asking-questions
   planning: writing-plans handoff persistent-memory
@@ -18,12 +18,12 @@ model sonnet:
 model fable:
   include: core-rules@fable
 model haiku:
-  include: agent-delegation@haiku writing-prose@haiku git-commit@haiku
+  include: agent-delegation@haiku writing-prose@haiku writing-docs@haiku git-commit@haiku
   exclude: reasoning-guidelines
   # An exclude in the variant's own list would cancel its include, variant and all; under `then`
   # it excludes the rule at model rank and leaves the variant set for the agent blocks that include it.
   then:
-    exclude: writing-prose git-commit
+    exclude: writing-prose writing-docs git-commit
   # `kind any` lifts this block to agent rank, where its excludes beat every agent block's
   # includes; at model rank alone they would lose to them.
   kind any:
@@ -47,7 +47,7 @@ agent orchestrator:
 agent critic thinkies:
   include: reasoning.* lookup.* prose.*
 agent critic:
-  include: writing-code writing-tests
+  include: writing-code toolchain writing-tests
 agent diagnostician:
   include: reasoning.* lookup.* prose.* debugging
 
@@ -88,7 +88,7 @@ agent prose-writer:
 agent git-operator:
   include: reasoning.* lookup.* prose.* git.* orchestration.* comments
   not model haiku:
-    include: writing-code writing-tests
+    include: writing-code toolchain writing-tests
 
 agent eval-runner:
   include: reasoning.* lookup.*
@@ -107,6 +107,6 @@ agent Explore:
 agent claude-code-guide:
   include: lookup.* bash-commands
 agent Plan:
-  include: reasoning.* lookup.* bash-commands writing-code writing-tests
+  include: reasoning.* lookup.* bash-commands writing-code toolchain writing-tests
   not model haiku:
     include: planning.*

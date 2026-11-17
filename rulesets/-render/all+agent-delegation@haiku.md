@@ -883,6 +883,47 @@ conclusion
   | the caller asked for one = state it first, the entries beneath it as its evidence
   | otherwise = leave joining the entries to the caller
 
+<!-- rule: toolchain -->
+## toolchain
+
+For every repository's toolchain and lint rules and every dependency you add or change, optimize for code that passes the checks the toolchain runs, on dependencies pinned the way the repository pins them.
+
+### Toolchain
+
+Before the first source file, extend what the repository has into the language's standard toolchain -> write each line to pass it.
+Include one version pin every tool reads, a strict type checker, and a commit hook.
+Import through the module system, with runtime load-path edits kept out.
+Name each module so it imports by name and shadows nothing.
+Keep every inline suppression directive out of the code -> restructure until the check passes.
+
+commit hook
+  | it skips a formatter, safe autofix, or linter its toolchain offers = add it to run on the staged files with the fixed files restaged
+
+### Dependencies
+
+Treat fewer dependencies as no ground for hand-rolling a job, and a missing module as no ground for a standard-library stand-in or for dropping the task.
+Install a Python tool with `uv tool install`.
+State the package and version in the message that installs it.
+Declare every direct dependency at an exact version or a `~` patch range, `~` by default.
+Add a package bare, with its version kept off the command line -> narrow the range the package manager wrote.
+Leave override floors on transitive packages as the repository's version convention sets them.
+Before changing a pinned version, find what binds it, holding a recorded reason as a lead until a run confirms the coupling -> move every package bound to it in the same change.
+
+dependency
+  | a common, maintained library does a job the code needs = install it and use it, in place of a hand-rolled implementation
+  | an update, add, or audit fix touches a direct one = narrow every `^` it wrote
+
+### Lint rules
+
+Keep every lint rule enabled.
+Read a lint rule's own metadata, its fix classification and severity, before predicting what a fix run changes.
+Take a git hook's own edits as they land, with diffing or auditing them kept out.
+
+lint rule
+  | it conflicts with a compiler strictness flag = change the types or the interface until both pass, the config unchanged
+  | its premise misses a package, such as a React hook rule where no React code runs = disable it in that package's own config alone, with a comment linking the rule's docs
+  | unsure whether the premise applies = ask before disabling
+
 <!-- rule: unasked-asides -->
 ## unasked-asides
 
@@ -1066,17 +1107,6 @@ Keep each contract simple enough that a reader notices its concepts and requirem
 Write at the altitude and abstraction level the operation sits at.
 Keep abstractions composable wherever composing leaves each one's contract unchanged.
 
-### Toolchain
-
-Before the first source file, extend what the repository has into the language's standard toolchain -> write each line to pass it.
-Include one version pin every tool reads, a strict type checker, and a commit hook.
-Import through the module system, with runtime load-path edits kept out.
-Name each module so it imports by name and shadows nothing.
-Keep every inline suppression directive out of the code -> restructure until the check passes.
-
-commit hook
-  | it skips a formatter, safe autofix, or linter its toolchain offers = add it to run on the staged files with the fixed files restaged
-
 ### Design
 
 Give each change one objective.
@@ -1114,31 +1144,6 @@ unused code
   | its only callers are commented out = comment it out beside them
   | the link to a caller is only inferred = ask
 
-### Dependencies
-
-Treat fewer dependencies as no ground for hand-rolling a job, and a missing module as no ground for a standard-library stand-in or for dropping the task.
-Install a Python tool with `uv tool install`.
-State the package and version in the message that installs it.
-Declare every direct dependency at an exact version or a `~` patch range, `~` by default.
-Add a package bare, with its version kept off the command line -> narrow the range the package manager wrote.
-Leave override floors on transitive packages as the repository's version convention sets them.
-Before changing a pinned version, find what binds it, holding a recorded reason as a lead until a run confirms the coupling -> move every package bound to it in the same change.
-
-dependency
-  | a common, maintained library does a job the code needs = install it and use it, in place of a hand-rolled implementation
-  | an update, add, or audit fix touches a direct one = narrow every `^` it wrote
-
-### Lint rules
-
-Keep every lint rule enabled.
-Read a lint rule's own metadata, its fix classification and severity, before predicting what a fix run changes.
-Take a git hook's own edits as they land, with diffing or auditing them kept out.
-
-lint rule
-  | it conflicts with a compiler strictness flag = change the types or the interface until both pass, the config unchanged
-  | its premise misses a package, such as a React hook rule where no React code runs = disable it in that package's own config alone, with a comment linking the rule's docs
-  | unsure whether the premise applies = ask before disabling
-
 ### Verifying
 
 Verify a change through the plan's checks and the checks the project already has.
@@ -1149,6 +1154,36 @@ verify
   | a part resists a live read = reach it through another input method, or report exactly what blocks it with the finding left open
   | a check or build fails on a branch with changes = hold the branch as its cause -> find the change that caused it and fix it, with runs on the base and the word "unattributed" kept out
   | a check reports that it ran nothing = count it as a miss, its exit code as no ground for a pass
+
+<!-- rule: writing-docs -->
+## writing-docs
+
+For every documentation page and every document a reader scans before reading, optimize for a page that states what its reader observes and does.
+
+- document register: the form a document takes when its reader scans it before reading it
+
+### Doc pages
+
+Keep lookups, files written, and internal ordering in the code.
+Keep on the page lookup material the reader acts on, such as a version table.
+
+doc page
+  | a code change alters behavior it describes = update it only where what its reader observes or does changes
+  | it describes a tool or a behavior = state what its reader observes, does, and can trust as a black box
+
+### Document register
+
+In it:
+
+- a header is a label unique on the page in place of a sentence
+- a bullet holds one idea
+- a parallel comparison sits in a table
+- a specification sits in key-value pairs
+- numbered outline form such as 1.1 appears only where the hierarchy runs three levels deep
+
+Set parallel items in bullets, and a cause or a sequence in a paragraph.
+Keep a list to one grammatical class, or write prose.
+Hold each of its sections as its own page, glossing a term again where it first lands there.
 
 <!-- rule: writing-plans -->
 ## writing-plans
@@ -1181,7 +1216,6 @@ For all natural language you write or improve, in code too, optimize for prose t
 - point: a claim the page makes
 - guest: a reader from your audience, met for the first time, holding the page and only the knowledge every reader in that audience shares
 - cold reader: a reader holding only the page
-- document register: the form a document takes when its reader scans it before reading it
 
 Hold as given.
 A reader arrives with a purpose.
@@ -1271,15 +1305,6 @@ point
   | a passage sets something up = use it before the piece ends
   | you give steps = shorten each and keep them all
 
-### Doc pages
-
-Keep lookups, files written, and internal ordering in the code.
-Keep on the page lookup material the reader acts on, such as a version table.
-
-doc page
-  | a code change alters behavior it describes = update it only where what its reader observes or does changes
-  | it describes a tool or a behavior = state what its reader observes, does, and can trust as a black box
-
 ### Actors
 
 Put whoever acts in the subject.
@@ -1298,20 +1323,6 @@ Read it as the cold reader -> sweep once per grain, word to whole, and once per 
 Read once more for the purpose alone -> repair the path wherever the cold reader would fall short of their destination.
 Count the second draft as part of writing -> find the sentence you would defend least -> repair or cut it.
 Hold a fresh delegate handed only the page as a cold reader.
-
-### Document register
-
-In it:
-
-- a header is a label unique on the page in place of a sentence
-- a bullet holds one idea
-- a parallel comparison sits in a table
-- a specification sits in key-value pairs
-- numbered outline form such as 1.1 appears only where the hierarchy runs three levels deep
-
-Set parallel items in bullets, and a cause or a sequence in a paragraph.
-Keep a list to one grammatical class, or write prose.
-Hold each of its sections as its own page, glossing a term again where it first lands there.
 
 ### Texture
 
