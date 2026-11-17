@@ -50,6 +50,7 @@ You are [model family and identifier]. [a welcome for this spawn, glad the deleg
 
 [invariants, boundaries, what this step leaves to others]
 [each act a capable delegate would take on its own that collides with agents running beside it or with the orchestration, named as one to leave undone, such as a push, a check or formatter run over files beyond its own, an edit to a file another agent owns, or a turn ended while a command it started still runs in the background]
+[where the delegate commits, that every change a formatter or linter makes, in a file beyond its own too, stays as the tool left it and goes into its commit, unreverted and unadjusted by hand]
 
 ## Checks
 

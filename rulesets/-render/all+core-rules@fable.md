@@ -483,6 +483,7 @@ You are [model family and identifier]. [a welcome for this spawn, glad the deleg
 
 [invariants, boundaries, what this step leaves to others]
 [each act a capable delegate would take on its own that collides with agents running beside it or with the orchestration, named as one to leave undone, such as a push, a check or formatter run over files beyond its own, an edit to a file another agent owns, or a turn ended while a command it started still runs in the background]
+[where the delegate commits, that every change a formatter or linter makes, in a file beyond its own too, stays as the tool left it and goes into its commit, unreverted and unadjusted by hand]
 
 ## Checks
 
@@ -1148,6 +1149,7 @@ Name in each lane agent's prompt:
 - the files it may change
 - the checks to run before each commit: the tests covering the lane's own files, each run in the foreground, with every full suite left to Finish
 - the acts it leaves undone: a push, a check or formatter run over files outside its own, an edit to a file outside its own such as a README or a contract module another lane owns, and an end to its turn while a command it started still runs in the background
+- that every change a formatter or linter makes, in a file outside its own too, stays as the tool left it and goes into its commit, unreverted and unadjusted by hand
 - how to provision the worktree where no pre-start hook does
 - steps 3 to 5 under Land, written out, with its final report sent only once step 5 holds
 

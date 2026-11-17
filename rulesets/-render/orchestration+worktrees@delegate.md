@@ -148,6 +148,7 @@ You are [model family and identifier]. [a welcome for this spawn, glad the deleg
 
 [invariants, boundaries, what this step leaves to others]
 [each act a capable delegate would take on its own that collides with agents running beside it or with the orchestration, named as one to leave undone, such as a push, a check or formatter run over files beyond its own, an edit to a file another agent owns, or a turn ended while a command it started still runs in the background]
+[where the delegate commits, that every change a formatter or linter makes, in a file beyond its own too, stays as the tool left it and goes into its commit, unreverted and unadjusted by hand]
 
 ## Checks
 
@@ -184,6 +185,7 @@ Leave every worktree and branch your prompt neither assigns nor names untouched 
 Keep `skill:simplify` out of the assigned worktree's work, since the session's main agent runs it once after every planned worktree merges.
 Run the tests covering the files your work changes, in the foreground, and leave every full test suite to the session's main agent, which runs each once after every planned worktree merges.
 Send your final report only after the merge, or after the squash where your caller merges.
+Commit every change a formatter or linter makes exactly as the tool left it, in a file outside your assigned files too, leaving it unreverted and unadjusted by hand.
 
 Before you merge the assigned worktree's branch, or ask your caller to merge it, squash the branch's commits into one.
 Squash with `wt -C <worktree> step squash <target>`, naming as `<target>` the branch the merge goes into -> confirm `git -C <worktree> log --oneline <target>..HEAD` lists one commit.
