@@ -16,12 +16,18 @@ the state directory, HOME, XDG directories and git config all pointed into a
 temporary directory.
 """
 
-import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from support import assistant_text, isolated_environment, run_hook, user_text
+from support import (
+    assistant_text,
+    hook_output,
+    isolated_environment,
+    required,
+    run_hook,
+    user_text,
+)
 
 from epistemic_marks.messages import CAPPED_HEADING, STANDING_HEADING
 
@@ -58,9 +64,9 @@ class HookCase(unittest.TestCase):
         self.env = isolated_environment(root / "home", state_dir=root / "state")
 
     def hook(self, payload, *args, in_process=False) -> dict | None:
-        code, stdout = run_hook(payload, *args, env=self.env, in_process=in_process)
-        assert code == 0, stdout
-        result = json.loads(stdout) if stdout.strip() else None
+        code, stdout, stderr = run_hook(payload, *args, env=self.env, in_process=in_process)
+        assert code == 0, f"{stdout}{stderr}"
+        result = hook_output(stdout)
         if result is not None:
             text = model_text(result)
             assert result.get("systemMessage") == text, "the user sees what the model was sent"
@@ -150,14 +156,14 @@ class EveryOutputReachesTheModel(HookCase):
         assert self.hook(payload, "--batch") is None, "a line the model holds goes once"
 
     def test_the_spawn_prompt_pass(self) -> None:
-        result = self.hook({"tool_input": {"prompt": GUESS}}, "--prompt")
+        result = required(self.hook({"tool_input": {"prompt": GUESS}}, "--prompt"))
         assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 
 class ATopLevelLaterPass(HookCase):
     def test_a_mark_first_written_after_the_block_blocks(self) -> None:
         self.assert_blocks_on(self.stop(FIRST, again=False), FIRST)
-        result = self.stop(f"{FIRST}\n{SECOND}", again=True)
+        result = required(self.stop(f"{FIRST}\n{SECOND}", again=True))
         self.assert_blocks_on(result, SECOND)
         assert f"- {FIRST}" not in result["reason"], "the reply opens on what it was sent"
 
@@ -172,7 +178,7 @@ class ATopLevelLaterPass(HookCase):
         self.stop(FIRST, again=False)
         for attempt in range(3):
             with self.subTest(attempt=attempt):
-                result = self.stop(f"{PROSE}\n{FIRST}", again=True)
+                result = required(self.stop(f"{PROSE}\n{FIRST}", again=True))
                 self.assert_blocks_on(result, FIRST)
                 assert STANDING_HEADING.format(verb="reply") in result["reason"]
 
@@ -183,7 +189,7 @@ class ATopLevelLaterPass(HookCase):
                 assert self.stop(opening, again=True) is None, "the model holds this already"
 
     def test_a_mention_reaches_the_model_once(self) -> None:
-        result = self.stop(MENTION, again=False)
+        result = required(self.stop(MENTION, again=False))
         assert "decision" not in result, "a mention claims nothing, so it never blocks"
         assert MENTION in result["hookSpecificOutput"]["additionalContext"]
         assert result["hookSpecificOutput"]["hookEventName"] == "Stop"
@@ -215,19 +221,25 @@ class ATopLevelLaterPass(HookCase):
 class ADelegateLaterPass(HookCase):
     def test_a_mark_first_written_after_the_block_blocks(self) -> None:
         self.stop(FIRST, again=False, key="agent-one", delegate=True)
-        result = self.stop(f"{FIRST}\n{THIRD}", again=True, key="agent-one", delegate=True)
+        result = required(
+            self.stop(f"{FIRST}\n{THIRD}", again=True, key="agent-one", delegate=True)
+        )
         self.assert_blocks_on(result, THIRD)
         assert f"- {FIRST}" not in result["reason"]
 
     def test_a_sent_mark_below_unmarked_text_blocks_with_the_opening_act(self) -> None:
         self.stop(FIRST, again=False, key="agent-one", delegate=True)
-        result = self.stop(f"{PROSE}\n{FIRST}", again=True, key="agent-one", delegate=True)
+        result = required(
+            self.stop(f"{PROSE}\n{FIRST}", again=True, key="agent-one", delegate=True)
+        )
         self.assert_blocks_on(result, FIRST)
         assert STANDING_HEADING.format(verb="report") in result["reason"]
 
     def test_a_relay_line_written_later_reaches_the_delegate_without_a_block(self) -> None:
         self.stop(FIRST, again=False, key="agent-one", delegate=True)
-        result = self.stop(f"{FIRST}\n{CALLER}", again=True, key="agent-one", delegate=True)
+        result = required(
+            self.stop(f"{FIRST}\n{CALLER}", again=True, key="agent-one", delegate=True)
+        )
         assert "decision" not in result, "a delegate cannot settle its caller's question"
         assert CALLER in result["hookSpecificOutput"]["additionalContext"]
 

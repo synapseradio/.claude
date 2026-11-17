@@ -9,12 +9,19 @@ transcript, a real settings file, or state a real session keeps, and
 isolated_environment drops the variables that could point the hook at any of them.
 """
 
-import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from support import assistant_text, entry, isolated_environment, run_hook, user_text
+from support import (
+    assistant_text,
+    entry,
+    hook_output,
+    isolated_environment,
+    required,
+    run_hook,
+    user_text,
+)
 
 # The group headings, imported so a test asserting what rides up anchors on
 # the heading itself rather than on a copy of its wording. conftest.py puts
@@ -43,9 +50,9 @@ class VerifyMarksStopHook(unittest.TestCase):
         return str(path)
 
     def decision(self, payload) -> dict | None:
-        code, out = run_hook(payload, env=self.env)
-        assert code == 0
-        return json.loads(out) if out.strip() else None
+        code, out, err = run_hook(payload, env=self.env)
+        assert code == 0, err
+        return hook_output(out)
 
     def test_stop_blocks_on_a_marked_line_since_the_last_real_user_message(self) -> None:
         transcript = self.transcript(
@@ -98,25 +105,29 @@ class VerifyMarksStopHook(unittest.TestCase):
         )
 
     def test_the_reason_heads_each_group_with_the_glyph_its_lines_carry(self) -> None:
-        result = self.decision(
-            {
-                "stop_hook_active": False,
-                "last_assistant_message": "I read the request as covering staging only [^?].",
-            }
+        result = required(
+            self.decision(
+                {
+                    "stop_hook_active": False,
+                    "last_assistant_message": "I read the request as covering staging only [^?].",
+                }
+            )
         )
         assert "\n[^?]\n" in result["reason"], (
             "a glyph reaches the output as the heading over the lines carrying it"
         )
 
     def test_reason_groups_lines_under_the_mark_each_one_carries(self) -> None:
-        result = self.decision(
-            {
-                "stop_hook_active": False,
-                "last_assistant_message": (
-                    "No other team depends on this endpoint [?].\n"
-                    "I read the request as covering staging only [^?]."
-                ),
-            }
+        result = required(
+            self.decision(
+                {
+                    "stop_hook_active": False,
+                    "last_assistant_message": (
+                        "No other team depends on this endpoint [?].\n"
+                        "I read the request as covering staging only [^?]."
+                    ),
+                }
+            )
         )
         reason = result["reason"]
         source_heading = reason.index("\n[?]\n")
@@ -283,9 +294,9 @@ class VerifyMarksStopHook(unittest.TestCase):
         assert "nobody else calls it [?]." in result["reason"]
 
     def delegate_decision(self, payload) -> dict | None:
-        code, out = run_hook(payload, "--delegate", env=self.env)
-        assert code == 0
-        return json.loads(out) if out.strip() else None
+        code, out, err = run_hook(payload, "--delegate", env=self.env)
+        assert code == 0, err
+        return hook_output(out)
 
     def delegate_notice(self, result) -> str:
         """The text a SubagentStop pass hands back to the delegate that stopped.
@@ -325,11 +336,13 @@ class VerifyMarksStopHook(unittest.TestCase):
     def test_a_delegate_relay_listing_reaches_the_delegate_and_the_user_sees_the_same_text(
         self,
     ) -> None:
-        result = self.delegate_decision(
-            {
-                "stop_hook_active": False,
-                "last_assistant_message": "I read the request as covering staging only [^?].",
-            }
+        result = required(
+            self.delegate_decision(
+                {
+                    "stop_hook_active": False,
+                    "last_assistant_message": "I read the request as covering staging only [^?].",
+                }
+            )
         )
         specific = result["hookSpecificOutput"]
         assert specific["hookEventName"] == "SubagentStop"
@@ -461,11 +474,13 @@ class VerifyMarksStopHook(unittest.TestCase):
     ) -> None:
         caller_line = "I read the request as covering staging only [^?]."
         human_line = "Whether to ship behind a flag is unsettled [!?]."
-        result = self.delegate_decision(
-            {
-                "stop_hook_active": False,
-                "last_assistant_message": f"The count is 12 [?].\n{caller_line}\n{human_line}",
-            }
+        result = required(
+            self.delegate_decision(
+                {
+                    "stop_hook_active": False,
+                    "last_assistant_message": f"The count is 12 [?].\n{caller_line}\n{human_line}",
+                }
+            )
         )
         reason = result["reason"]
         caller_step = reason.index("\n[^?]\n")
@@ -501,12 +516,14 @@ class VerifyMarksStopHook(unittest.TestCase):
         lines = "The count is 12 [?].\nThe migration ran on every shard [.?]."
         payload = {"stop_hook_active": False, "agent_id": "agent-one"}
         self.delegate_decision({**payload, "last_assistant_message": lines})
-        result = self.delegate_decision(
-            {
-                **payload,
-                "stop_hook_active": True,
-                "last_assistant_message": f"Here is what I found.\n{lines}",
-            }
+        result = required(
+            self.delegate_decision(
+                {
+                    **payload,
+                    "stop_hook_active": True,
+                    "last_assistant_message": f"Here is what I found.\n{lines}",
+                }
+            )
         )
         assert result["decision"] == "block", "the caller reads the report as found"
         assert STANDING_HEADING.format(verb="report") in result["reason"]
@@ -555,8 +572,14 @@ class VerifyMarksStopHook(unittest.TestCase):
             "last_assistant_message": "The count is 12 [?].",
         }
         self.delegate_decision(first)
-        result = self.delegate_decision(
-            {**first, "stop_hook_active": True, "last_assistant_message": "The total is 40 [?]."}
+        result = required(
+            self.delegate_decision(
+                {
+                    **first,
+                    "stop_hook_active": True,
+                    "last_assistant_message": "The total is 40 [?].",
+                }
+            )
         )
         assert result["decision"] == "block"
         assert "- The total is 40 [?]." in result["reason"]
@@ -568,24 +591,28 @@ class VerifyMarksStopHook(unittest.TestCase):
             "last_assistant_message": "The count is 12 [?].",
         }
         self.delegate_decision(payload)
-        result = self.delegate_decision(
-            {**payload, "stop_hook_active": True, "agent_id": "agent-two"}
+        result = required(
+            self.delegate_decision({**payload, "stop_hook_active": True, "agent_id": "agent-two"})
         )
         assert "- The count is 12 [?]." in result["reason"], (
             "one agent's record silences no other agent"
         )
 
     def test_a_main_thread_second_pass_keeps_its_plain_notice(self) -> None:
-        result = self.decision(
-            {"stop_hook_active": True, "last_assistant_message": "The count is 12 [?]."}
+        result = required(
+            self.decision(
+                {"stop_hook_active": True, "last_assistant_message": "The count is 12 [?]."}
+            )
         )
         assert RELAY_HEADING not in result["systemMessage"], (
             "at top level nothing rides up, so the notice names no relay group"
         )
 
     def test_a_delegate_first_pass_grounds_an_evidence_mark_rather_than_handing_it_up(self) -> None:
-        result = self.delegate_decision(
-            {"stop_hook_active": False, "last_assistant_message": "The count is 12 [?]."}
+        result = required(
+            self.delegate_decision(
+                {"stop_hook_active": False, "last_assistant_message": "The count is 12 [?]."}
+            )
         )
         reason = result["reason"]
         assert "Gather the evidence" in reason, "a delegate settles what it can settle here"
@@ -594,8 +621,10 @@ class VerifyMarksStopHook(unittest.TestCase):
         )
 
     def test_a_main_thread_first_pass_hands_an_evidence_mark_to_nobody(self) -> None:
-        result = self.decision(
-            {"stop_hook_active": False, "last_assistant_message": "The count is 12 [?]."}
+        result = required(
+            self.decision(
+                {"stop_hook_active": False, "last_assistant_message": "The count is 12 [?]."}
+            )
         )
         assert RELAY_HEADING not in result["reason"], (
             "at top level the reader is the user, who wants the reply and not a debt list"
@@ -665,13 +694,13 @@ class VerifyMarksBatchHook(unittest.TestCase):
             "tool_calls": [],
         }
         payload.update(extra)
-        code, out = run_hook(
+        code, out, err = run_hook(
             payload,
             "--batch",
             env=self.env,
         )
-        assert code == 0
-        return json.loads(out) if out.strip() else None
+        assert code == 0, err
+        return hook_output(out)
 
     def context_of(self, result) -> str:
         assert result is not None
@@ -813,12 +842,12 @@ class VerifyMarksBatchHook(unittest.TestCase):
         )
 
     def test_batch_stays_silent_without_a_readable_transcript(self) -> None:
-        code, out = run_hook(
+        code, out, err = run_hook(
             {"hook_event_name": "PostToolBatch", "session_id": "session-one"},
             "--batch",
             env=self.env,
         )
-        assert code == 0
+        assert code == 0, err
         assert out.strip() == "", "no transcript means nothing to scan"
 
 

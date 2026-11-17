@@ -37,8 +37,8 @@ class TheRecordHoldsIdentitiesAndNotText(unittest.TestCase):
             "transcript_path": str(self.transcript),
             "tool_calls": [],
         }
-        code, out = run_hook(payload, "--batch", env=self.env)
-        assert code == 0
+        code, out, err = run_hook(payload, "--batch", env=self.env)
+        assert code == 0, err
         return out
 
     def written_files(self) -> list[Path]:

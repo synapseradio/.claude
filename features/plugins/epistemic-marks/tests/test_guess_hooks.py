@@ -14,7 +14,15 @@ import unittest
 from pathlib import Path
 from typing import ClassVar
 
-from support import PLUGIN_ROOT, assistant_text, isolated_environment, run_hook, user_text
+from support import (
+    PLUGIN_ROOT,
+    assistant_text,
+    hook_output,
+    isolated_environment,
+    required,
+    run_hook,
+    user_text,
+)
 
 from epistemic_marks.hedges import ASKED, CAUSE, GUESS, REST, SAID
 from epistemic_marks.marks import MARKS
@@ -58,9 +66,9 @@ class HookCase(unittest.TestCase):
         self.env = isolated_environment(root / "home", state_dir=root / "state")
 
     def run_hook(self, payload, *args) -> dict | None:
-        code, out = run_hook(payload, *args, env=self.env)
-        assert code == 0, out
-        return json.loads(out) if out.strip() else None
+        code, out, err = run_hook(payload, *args, env=self.env)
+        assert code == 0, f"{out}{err}"
+        return hook_output(out)
 
     def transcript(self, *texts) -> str:
         path = Path(self._tmp.name) / "session.jsonl"
@@ -89,7 +97,7 @@ class AReplyGuessingInWordsIsSentBack(HookCase):
         assert "I suspect the cache went stale." in result["reason"]
 
     def test_a_guess_and_a_mark_arrive_in_one_block(self) -> None:
-        result = self.stop("The count is 12 [?].\n\nI suspect the cache went stale.")
+        result = required(self.stop("The count is 12 [?].\n\nI suspect the cache went stale."))
         assert result["decision"] == "block"
         assert "- The count is 12 [?]." in result["reason"]
         assert "- I suspect the cache went stale." in result["reason"]
@@ -101,7 +109,7 @@ class AReplyGuessingInWordsIsSentBack(HookCase):
 
     def test_a_sentence_naming_a_mark_in_words_does_not_block(self) -> None:
         line = "My guess, under the unsourced mark, is a stale cache."
-        result = self.stop(line)
+        result = required(self.stop(line))
         assert "decision" not in (result or {})
         assert MENTION_HEADING in result["systemMessage"]
         assert line in result["systemMessage"], "the exemption must stay visible"
@@ -112,7 +120,7 @@ class AReplyGuessingInWordsIsSentBack(HookCase):
     def test_a_guess_still_in_the_rewrite_blocks_again_every_time(self) -> None:
         for attempt in range(3):
             with self.subTest(attempt=attempt):
-                result = self.again("I suspect the cache went stale.")
+                result = required(self.again("I suspect the cache went stale."))
                 assert result["decision"] == "block", "a guess left standing got through"
                 assert (
                     f"{WORDING_RESOLVE[GUESS]}\n- I suspect the cache went stale."
@@ -122,15 +130,15 @@ class AReplyGuessingInWordsIsSentBack(HookCase):
     def test_a_repeat_block_shows_the_reader_what_the_model_was_sent(self) -> None:
         # The harness ends a turn its hooks have continued eight times, so
         # the lines reach the reader on every repeat, before that can happen.
-        result = self.again("I suspect the cache went stale.")
+        result = required(self.again("I suspect the cache went stale."))
         assert result["systemMessage"] == result["reason"]
 
     def test_a_rewrite_with_the_guess_marked_ends_the_loop(self) -> None:
         # The mark is new to the model, so it is sent back once for its
         # check. A reply opening on it after that may stand, since the check
         # it waits on can be out of reach.
-        assert self.stop("I suspect the cache went stale.")["decision"] == "block"
-        assert self.again("The cache went stale [?].")["decision"] == "block"
+        assert required(self.stop("I suspect the cache went stale."))["decision"] == "block"
+        assert required(self.again("The cache went stale [?]."))["decision"] == "block"
         assert self.again("The cache went stale [?].") is None, "a mark opening the reply stands"
 
     def test_a_rewrite_with_nothing_guessed_ends_in_silence(self) -> None:
@@ -146,7 +154,7 @@ class AReplyGuessingInWordsIsSentBack(HookCase):
                 assert self.stop(message) is None, "someone else's mark was read as a claim"
 
     def test_a_mark_outside_the_quotation_still_blocks(self) -> None:
-        result = self.stop('The log says "cache miss", so the key drifted [?].')
+        result = required(self.stop('The log says "cache miss", so the key drifted [?].'))
         assert result["decision"] == "block"
 
 
@@ -158,33 +166,37 @@ class ALineNamingAMarkBesideItsGlyphIsAMention(HookCase):
 
     def test_a_glyph_straight_after_its_own_name_does_not_block(self) -> None:
         line = "That sentence needed the unsourced mark [?] at the end of its first clause."
-        result = self.stop(line)
+        result = required(self.stop(line))
         assert "decision" not in (result or {})
         assert line in result["systemMessage"]
 
     def test_a_quoted_glyph_on_a_line_naming_it_does_not_block(self) -> None:
         line = 'The unsourced mark, "[?]", was missing from that sentence.'
-        result = self.stop(line)
+        result = required(self.stop(line))
         assert "decision" not in (result or {})
         assert line in result["systemMessage"]
 
     def test_a_glyph_after_a_different_marks_name_still_blocks(self) -> None:
-        result = self.stop("The cache is stale, unlike the secondhand mark [?] case.")
+        result = required(self.stop("The cache is stale, unlike the secondhand mark [?] case."))
         assert result["decision"] == "block"
 
     def test_a_second_bare_glyph_on_the_line_still_blocks(self) -> None:
-        result = self.stop("The unsourced mark [?] was missing, and the cache is stale [?].")
+        result = required(
+            self.stop("The unsourced mark [?] was missing, and the cache is stale [?].")
+        )
         assert result["decision"] == "block"
 
     def test_a_quoted_glyph_on_a_line_that_never_names_it_still_blocks(self) -> None:
-        result = self.stop('The cache is stale "[?]".')
+        result = required(self.stop('The cache is stale "[?]".'))
         assert result["decision"] == "block"
 
 
 class ADelegateReportGuessingInWordsIsSentBack(HookCase):
     def test_a_first_pass_blocks(self) -> None:
-        result = self.run_hook(
-            {"stop_hook_active": False, "last_assistant_message": INCIDENT}, "--delegate"
+        result = required(
+            self.run_hook(
+                {"stop_hook_active": False, "last_assistant_message": INCIDENT}, "--delegate"
+            )
         )
         assert result["decision"] == "block"
         assert INCIDENT_GUESS in result["reason"]
@@ -193,14 +205,16 @@ class ADelegateReportGuessingInWordsIsSentBack(HookCase):
     def test_a_guess_still_in_the_rewritten_report_blocks_again_every_time(self) -> None:
         for attempt in range(3):
             with self.subTest(attempt=attempt):
-                result = self.run_hook(
-                    {
-                        "stop_hook_active": True,
-                        "agent_id": "a1",
-                        "session_id": "s1",
-                        "last_assistant_message": "I suspect the cache went stale.",
-                    },
-                    "--delegate",
+                result = required(
+                    self.run_hook(
+                        {
+                            "stop_hook_active": True,
+                            "agent_id": "a1",
+                            "session_id": "s1",
+                            "last_assistant_message": "I suspect the cache went stale.",
+                        },
+                        "--delegate",
+                    )
                 )
                 assert result["decision"] == "block", "a caller acts on the report as found"
                 assert "- I suspect the cache went stale." in result["reason"]
@@ -229,7 +243,7 @@ class AGuessWrittenMidTurnIsHandedBackOnce(HookCase):
         )
 
     def test_the_guess_reaches_the_agent_before_its_next_step(self) -> None:
-        result = self.batch(self.transcript(INCIDENT))
+        result = required(self.batch(self.transcript(INCIDENT)))
         context = result["hookSpecificOutput"]["additionalContext"]
         assert result["hookSpecificOutput"]["hookEventName"] == "PostToolBatch"
         assert INCIDENT_GUESS in context

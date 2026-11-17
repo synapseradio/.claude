@@ -102,8 +102,8 @@ def run_hook(
     script: Path = VERIFY_MARKS,
     in_process: bool = False,
     timeout: float = HOOK_TIMEOUT,
-) -> tuple[int, str]:
-    """Drive a hook script's entry the way the harness does, as (exit code, stdout).
+) -> tuple[int, str, str]:
+    """Drive a hook script's entry the way the harness does, as (exit code, stdout, stderr).
 
     The script runs in a child process under `env` and `timeout`. With
     `in_process` its `main` runs in this one instead, under the same `env`,
@@ -119,21 +119,36 @@ def run_hook(
             env=env,
             timeout=timeout,
         )
-        return completed.returncode, completed.stdout
+        return completed.returncode, completed.stdout, completed.stderr
     entrypoint = load_entrypoint(script)
     stdout = io.StringIO()
+    stderr = io.StringIO()
     code = 0
     with (
         mock.patch.dict(os.environ, env, clear=True),
         mock.patch.object(sys, "argv", [str(script), *args]),
         mock.patch.object(sys, "stdin", io.StringIO(json.dumps(payload))),
         contextlib.redirect_stdout(stdout),
+        contextlib.redirect_stderr(stderr),
     ):
         try:
             entrypoint.main()
         except SystemExit as ended:
             code = exit_status(ended.code)
-    return code, stdout.getvalue()
+    return code, stdout.getvalue(), stderr.getvalue()
+
+
+def hook_output(stdout: str) -> dict | None:
+    """A hook's JSON output, or None where it printed nothing."""
+    return json.loads(stdout) if stdout.strip() else None
+
+
+def required(output: dict | None) -> dict:
+    """The hook's output, failing the test where the hook stayed silent."""
+    if output is None:
+        message = "the hook printed no output, and this test needs it"
+        raise AssertionError(message)
+    return output
 
 
 def entry(kind, content) -> str:

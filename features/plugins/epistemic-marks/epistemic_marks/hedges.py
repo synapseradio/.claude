@@ -266,14 +266,14 @@ def guessed_lines(blocks: list[str]) -> tuple[dict[str, list[str]], dict[str, li
     # Whether the line above stopped mid-sentence, so this line's first
     # words continue it and open nothing.
     wrapped = False
-    for line, (prose, _mentioned) in zip(lines, claim_lines(lines)):
+    for line, (prose, _mentioned) in zip(lines, claim_lines(lines), strict=True):
         if not prose:
             resting_ground = wrapped = False
             continue
         continues = wrapped and not LIST_ITEM.match(line)
         wrapped = not ENDS_A_SENTENCE.search(prose)
         for raw, masked in _sentences(line, prose):
-            opening = "" if continues else masked[LEAD.match(masked).end() :]
+            opening = "" if continues else LEAD.sub("", masked, count=1)
             continues = False
             hedged = bool(HEDGE.search(masked) or OPENING_HEDGE.match(opening))
             builds = resting_ground and bool(RESTING.match(opening))
