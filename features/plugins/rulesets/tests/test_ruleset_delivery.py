@@ -21,6 +21,7 @@ import yaml
 from delivery_world import (
     DECLARED,
     HOOKS_JSON,
+    MAX_PARTS,
     OPUS,
     Delivery,
     World,
@@ -33,7 +34,6 @@ from launcher_stubs import launch, stub
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
-from rulesets.delivery.parts import MAX_PARTS  # noqa: E402
 from rulesets.locations import Locations  # noqa: E402  (path must be set before this import)
 from rulesets.session.state import (  # noqa: E402
     Band,

@@ -18,6 +18,8 @@ import sys
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 
+from rulesets.delivery.parts import MAX_PARTS
+
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 HOOKS = PLUGIN_ROOT / "hooks"
 HOOKS_JSON = HOOKS / "hooks.json"
@@ -29,7 +31,6 @@ CLI = PLUGIN_ROOT / "lib" / "rulesets" / "cli.py"
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
 from rulesets import cli  # noqa: E402  (path must be set before this import)
-from rulesets.delivery.parts import MAX_PARTS  # noqa: E402
 from rulesets.hook_entry import (  # noqa: E402
     HookResult,
     deliver,
