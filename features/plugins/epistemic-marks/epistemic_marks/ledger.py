@@ -1,4 +1,4 @@
-"""Which flagged lines the batch pass has already reported."""
+"""The records of what the passes have reported, and of what a turn has blocked."""
 
 import hashlib
 import json
@@ -13,12 +13,12 @@ STALE_SECONDS = 24 * 60 * 60
 DIR_MODE = 0o700
 
 
-def fingerprint(line):
+def fingerprint(line) -> str:
     """An identity for a line, carrying none of its text."""
     return hashlib.sha256(line.encode("utf-8")).hexdigest()
 
 
-def state_dir():
+def state_dir() -> Path:
     """The first location named: the override, the plugin's data directory, then temp.
 
     The harness sets PLUGIN_DATA_ENV to a directory that outlives a plugin
@@ -34,12 +34,12 @@ def state_dir():
     return Path(tempfile.gettempdir()) / f"epistemic-marks-{STATE_DIR_NAME}"
 
 
-def state_path(directory, key):
+def state_path(directory, key) -> Path:
     safe = "".join(c for c in key if c.isalnum() or c in "-_")
     return directory / f"{safe or 'session'}.json"
 
 
-def state_key(payload):
+def state_key(payload) -> str:
     """The identity whose reported lines this payload's record holds.
 
     The harness sends agent_id from within a subagent alone, per
@@ -48,7 +48,7 @@ def state_key(payload):
     return payload.get("agent_id") or payload.get("session_id") or "session"
 
 
-def prepare(directory):
+def prepare(directory) -> bool:
     """Make the directory, reporting whether it can be written."""
     try:
         directory.mkdir(parents=True, exist_ok=True, mode=DIR_MODE)
@@ -57,7 +57,7 @@ def prepare(directory):
     return True
 
 
-def prune(directory, now):
+def prune(directory, now) -> None:
     for path in directory.glob("*.json"):
         try:
             if now - path.stat().st_mtime > STALE_SECONDS:
@@ -66,7 +66,7 @@ def prune(directory, now):
             continue
 
 
-def read_reported(path):
+def read_reported(path) -> list:
     try:
         reported = json.loads(path.read_text())
     except (OSError, ValueError):
@@ -74,8 +74,30 @@ def read_reported(path):
     return reported if isinstance(reported, list) else []
 
 
-def write_reported(path, reported):
+def write_reported(path, reported) -> None:
     try:
         path.write_text(json.dumps(reported))
+    except OSError:
+        return
+
+
+def read_turn(path) -> tuple[list, int]:
+    """The lines a turn has sent the model and the blocks it has drawn, as (list, int)."""
+    try:
+        record = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return [], 0
+    if not isinstance(record, dict):
+        return [], 0
+    sent, blocks = record.get("sent"), record.get("blocks")
+    return (
+        sent if isinstance(sent, list) else [],
+        blocks if isinstance(blocks, int) and blocks > 0 else 0,
+    )
+
+
+def write_turn(path, sent, blocks) -> None:
+    try:
+        path.write_text(json.dumps({"sent": sent, "blocks": blocks}))
     except OSError:
         return

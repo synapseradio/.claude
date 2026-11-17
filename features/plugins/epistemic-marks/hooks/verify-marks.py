@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """The verification pass for epistemic marks, run from four hook events.
 
-Bare from Stop, blocking on every pass that finds a line still owed an act.
+Bare from Stop, blocking on a pass that finds a line still owed an act, up to
+BLOCK_CAP blocks in a turn.
 With --delegate from SubagentStop, where a relaying mark is left standing for
 the delegate's own report to carry, since nothing this hook returns reaches
 the caller. With --batch from PostToolBatch, which never blocks and reports a
@@ -18,6 +19,13 @@ The model-facing field is `decision` with `reason` on Stop and SubagentStop,
 that text as `systemMessage`, which reaches the user alone, per
 https://code.claude.com/docs/en/hooks, so no output is a `systemMessage`
 alone. A pass stays silent only about lines the model was already sent.
+
+Once a turn holds BLOCK_CAP blocks, a Stop or SubagentStop pass that would
+block returns the same findings as `additionalContext` and never blocks again
+that turn, which keeps the hook under the harness's override after eight
+consecutive continuations. Without a writable state directory the cap is one
+block: the first pass blocks, and any pass the harness reports as continued
+carries its findings as context.
 
 epistemic_marks/marks.py holds the vocabulary. The rule text teaching it ships under
 rule-text/ and reaches a session through hooks/deliver-rule.py.
@@ -36,14 +44,31 @@ from epistemic_marks.ledger import (
     prepare,
     prune,
     read_reported,
+    read_turn,
     state_dir,
     state_key,
     state_path,
     write_reported,
+    write_turn,
 )
 from epistemic_marks.marks import RELAY_MARKS
-from epistemic_marks.messages import build_context, build_denial, build_notice, build_reason
+from epistemic_marks.messages import (
+    build_capped,
+    build_context,
+    build_denial,
+    build_notice,
+    build_reason,
+)
 from epistemic_marks.scan import batch_transcript, last_turn_text
+
+# The most blocks one turn draws from this hook. The harness overrides the
+# next block after eight consecutive continuations, per
+# https://code.claude.com/docs/en/hooks, so the hook stops blocking well short.
+BLOCK_CAP = 5
+
+# Without a state directory no count survives a pass. The first pass blocks,
+# and a pass arriving with stop_hook_active set counts as following that block.
+UNRECORDED_CAP = 1
 
 
 def emit(output, text) -> None:
@@ -105,12 +130,16 @@ def run_stop(payload, delegate) -> None:
     # https://code.claude.com/docs/en/hooks. stop_hook_active says some hook
     # continued the turn, not that this one sent the model every line, so a
     # line first written after a block, or in a turn another plugin's Stop
-    # hook continued, still goes out. Where no record can be kept, no line
-    # counts as sent, so every pass sends every line until the harness's
-    # cap ends the turn.
+    # hook continued, still goes out. The record also counts the blocks the
+    # turn has drawn. Where no record can be kept, no line counts as sent, so
+    # every pass sends every line, and UNRECORDED_CAP sets the block count.
     directory = state_dir()
     path = state_path(directory, f"{state_key(payload)}-stop-sent") if prepare(directory) else None
-    sent = set(read_reported(path)) if path and again else set()
+    recorded, blocks = read_turn(path) if path and again else ([], 0)
+    sent = set(recorded)
+    issued = blocks if path else int(again)
+    cap = BLOCK_CAP if path else UNRECORDED_CAP
+    capped = issued >= cap
 
     def unsent(groups) -> dict[str, list[str]]:
         fresh = {}
@@ -137,6 +166,7 @@ def run_stop(payload, delegate) -> None:
     }
     standing = listed if again and not opens_on(reply, listed, marked) else {}
 
+    owed = bool(fresh or wording or standing)
     if path is not None:
         newly = [
             line
@@ -144,10 +174,21 @@ def run_stop(payload, delegate) -> None:
             for lines in group.values()
             for line in lines
         ]
-        write_reported(path, sorted(sent | {fingerprint(line) for line in newly}))
+        write_turn(
+            path,
+            sorted(sent | {fingerprint(line) for line in newly}),
+            issued + int(owed and not capped),
+        )
 
-    if fresh or wording or standing:
+    event = "SubagentStop" if delegate else "Stop"
+    if owed:
         reason = build_reason(fresh, new_relay, delegate, wording, standing, new_mentions)
+        if capped:
+            notice = build_capped(reason)
+            emit(
+                {"hookSpecificOutput": {"hookEventName": event, "additionalContext": notice}},
+                notice,
+            )
         emit({"decision": "block", "reason": reason}, reason)
     # A mention claims nothing and a relayed line is the caller's to settle,
     # so neither blocks. additionalContext still hands each one to the model
@@ -156,7 +197,6 @@ def run_stop(payload, delegate) -> None:
     # record keeps a line it carried from going out twice.
     if new_mentions or new_relay:
         notice = build_notice({}, new_mentions, new_relay)
-        event = "SubagentStop" if delegate else "Stop"
         emit({"hookSpecificOutput": {"hookEventName": event, "additionalContext": notice}}, notice)
     sys.exit(0)
 

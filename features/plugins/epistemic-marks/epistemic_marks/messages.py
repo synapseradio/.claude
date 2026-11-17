@@ -103,6 +103,14 @@ STANDING_HEADING = (
     "put each one ahead of every line that carries no mark, with at most a "
     "heading or a label ending in a colon above them."
 )
+
+# The heading a pass carries its findings under once the turn's blocks are
+# spent. The pass can no longer block, so it states that the findings stand
+# and where the next reply starts.
+CAPPED_HEADING = (
+    "This turn's block limit is reached, so this notice does not block. The "
+    "findings below still stand. Open your next reply on them."
+)
 MENTION_HEADING = "Naming a mark in code rather than claiming under it, so left unchecked:"
 
 # The act for a mention, which no mark record can carry: a mention is exempt
@@ -181,6 +189,15 @@ def build_reason(
         f"Your {verb} carries unchecked claims. Act on each group below, then "
         f"re-emit the whole {verb}.\n\n" + "\n\n".join(parts)
     )
+
+
+def build_capped(reason) -> str:
+    """The additionalContext a Stop pass returns in place of a block past the cap.
+
+    `reason` is the block message the pass would have returned, so the
+    findings read the same as they would have in a block.
+    """
+    return f"{CAPPED_HEADING}\n\n{reason}"
 
 
 def build_context(lines_by_mark, wording=None) -> str:

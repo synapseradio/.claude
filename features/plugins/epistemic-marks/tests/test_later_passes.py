@@ -7,7 +7,9 @@ https://code.claude.com/docs/en/hooks. So every output carries a field the
 model reads, and its `systemMessage` only mirrors that text. A later Stop pass,
 the one arriving with stop_hook_active set, blocks on any marked line the
 model was never sent and on any line it was sent but the reply does not open
-on. It stays silent only about lines the model already holds.
+on. It stays silent only about lines the model already holds. Once a turn has
+drawn BLOCK_CAP blocks, a pass that would block carries the same findings as
+`additionalContext` and never blocks again that turn.
 
 Each test drives the entrypoint through stdin the way the harness does, with
 the state directory, HOME, XDG directories and git config all pointed into a
@@ -22,7 +24,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from epistemic_marks.messages import STANDING_HEADING
+from epistemic_marks.messages import CAPPED_HEADING, STANDING_HEADING
+
+BLOCK_CAP = 5
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = PLUGIN_ROOT / "hooks" / "verify-marks.py"
@@ -99,6 +103,31 @@ class HookCase(unittest.TestCase):
             ("agent_id" if delegate else "session_id"): key,
         }
         return self.hook(payload, *(["--delegate"] if delegate else []))
+
+    def unwritable_state(self) -> None:
+        blocker = Path(self._tmp.name) / "a-file"
+        blocker.write_text("")
+        self.env["VERIFY_MARKS_STATE_DIR"] = str(blocker / "state")
+
+    def assert_carries_as_context(self, result, line, event="Stop") -> None:
+        assert result is not None, "a finding the model was never sent went unreported"
+        assert "decision" not in result, "the turn's blocks are spent"
+        specific = result["hookSpecificOutput"]
+        assert specific["hookEventName"] == event
+        assert CAPPED_HEADING in specific["additionalContext"]
+        assert f"- {line}" in specific["additionalContext"]
+
+    def spend_the_blocks(self, *, key="session-one", delegate=False) -> list[str]:
+        """Block BLOCK_CAP times in one turn, each pass on a mark it was never sent.
+
+        Returns the lines written so far, for the next pass to carry forward.
+        """
+        written = []
+        for index in range(BLOCK_CAP):
+            written.append(f"Claim {index} holds [?].")
+            result = self.stop("\n".join(written), again=index > 0, key=key, delegate=delegate)
+            self.assert_blocks_on(result, written[-1])
+        return written
 
     def assert_blocks_on(self, result, line) -> None:
         assert result is not None, "a finding the model was never sent went unreported"
@@ -206,11 +235,10 @@ class ATopLevelLaterPass(HookCase):
         self.assert_blocks_on(self.stop(FIRST, again=True, key="session-two"), FIRST)
 
     def test_without_a_writable_state_directory_every_pass_sends_every_line(self) -> None:
-        blocker = Path(self._tmp.name) / "a-file"
-        blocker.write_text("")
-        self.env["VERIFY_MARKS_STATE_DIR"] = str(blocker / "state")
+        self.unwritable_state()
         self.assert_blocks_on(self.stop(FIRST, again=False), FIRST)
-        self.assert_blocks_on(self.stop(FIRST, again=True), FIRST)
+        self.assert_carries_as_context(self.stop(FIRST, again=True), FIRST)
+        self.assert_carries_as_context(self.stop(FIRST, again=True), FIRST)
 
 
 class ADelegateLaterPass(HookCase):
@@ -231,6 +259,61 @@ class ADelegateLaterPass(HookCase):
         result = self.stop(f"{FIRST}\n{CALLER}", again=True, key="agent-one", delegate=True)
         assert "decision" not in result, "a delegate cannot settle its caller's question"
         assert CALLER in result["hookSpecificOutput"]["additionalContext"]
+
+
+class TheBlockCap(HookCase):
+    def test_the_pass_after_the_last_block_carries_its_findings_as_context(self) -> None:
+        written = self.spend_the_blocks()
+        written.append("Claim next holds [?].")
+        result = self.stop("\n".join(written), again=True)
+        self.assert_carries_as_context(result, written[-1])
+
+    def test_every_later_pass_that_turn_stays_context(self) -> None:
+        written = self.spend_the_blocks()
+        for index in range(3):
+            written.append(f"Claim later {index} holds [?].")
+            result = self.stop("\n".join(written), again=True)
+            self.assert_carries_as_context(result, written[-1])
+
+    def test_a_reply_not_opening_on_its_sent_lines_is_context_past_the_cap(self) -> None:
+        written = self.spend_the_blocks()
+        result = self.stop(f"{PROSE}\n" + "\n".join(written), again=True)
+        self.assert_carries_as_context(result, written[0])
+
+    def test_a_pass_with_nothing_owed_stays_silent_past_the_cap(self) -> None:
+        written = self.spend_the_blocks()
+        assert self.stop("\n".join(written), again=True) is None
+
+    def test_a_new_turn_resets_the_count(self) -> None:
+        self.spend_the_blocks()
+        self.assert_blocks_on(self.stop(FIRST, again=False), FIRST)
+        for index in range(BLOCK_CAP - 1):
+            line = f"Claim fresh {index} holds [?]."
+            self.assert_blocks_on(self.stop(line, again=True), line)
+        self.assert_carries_as_context(self.stop(THIRD, again=True), THIRD)
+
+    def test_each_agent_counts_its_own_blocks(self) -> None:
+        self.spend_the_blocks(key="agent-one", delegate=True)
+        self.assert_blocks_on(self.stop(FIRST, again=False, key="session-one"), FIRST)
+        result = self.stop(THIRD, again=False, key="agent-two", delegate=True)
+        self.assert_blocks_on(result, THIRD)
+        self.assert_carries_as_context(
+            self.stop(SECOND, again=True, key="agent-one", delegate=True),
+            SECOND,
+            event="SubagentStop",
+        )
+
+    def test_a_delegate_past_the_cap_carries_findings_as_context(self) -> None:
+        written = self.spend_the_blocks(key="agent-one", delegate=True)
+        written.append("Claim next holds [?].")
+        result = self.stop("\n".join(written), again=True, key="agent-one", delegate=True)
+        self.assert_carries_as_context(result, written[-1], event="SubagentStop")
+
+    def test_without_a_writable_state_directory_one_block_is_the_cap(self) -> None:
+        self.unwritable_state()
+        self.assert_blocks_on(self.stop(FIRST, again=False), FIRST)
+        for _ in range(3):
+            self.assert_carries_as_context(self.stop(f"{FIRST}\n{SECOND}", again=True), SECOND)
 
 
 if __name__ == "__main__":
