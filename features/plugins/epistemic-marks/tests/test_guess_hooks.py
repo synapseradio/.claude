@@ -143,17 +143,19 @@ class AReplyGuessingInWordsIsSentBack(HookCase):
                     in result["reason"]
                 )
 
-    def test_a_repeat_block_shows_the_reader_what_still_stands(self) -> None:
+    def test_a_repeat_block_shows_the_reader_what_the_model_was_sent(self) -> None:
         # The harness ends a turn its hooks have continued eight times, so
         # the lines reach the reader on every repeat, before that can happen.
         result = self.again("I suspect the cache went stale.")
-        assert (
-            f"{WORDING_CARRY[GUESS]}\n- I suspect the cache went stale." in result["systemMessage"]
-        )
+        assert result["systemMessage"] == result["reason"]
 
     def test_a_rewrite_with_the_guess_marked_ends_the_loop(self) -> None:
-        result = self.again("The cache went stale [?].")
-        assert "decision" not in result, "a mark with no check in reach may stand"
+        # The mark is new to the model, so it is sent back once for its
+        # check. A reply opening on it after that may stand, since the check
+        # it waits on can be out of reach.
+        assert self.stop("I suspect the cache went stale.")["decision"] == "block"
+        assert self.again("The cache went stale [?].")["decision"] == "block"
+        assert self.again("The cache went stale [?].") is None, "a mark opening the reply stands"
 
     def test_a_rewrite_with_nothing_guessed_ends_in_silence(self) -> None:
         assert self.again("I ran the suite and it passed.") is None
