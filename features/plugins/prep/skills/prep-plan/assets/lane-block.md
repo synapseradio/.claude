@@ -27,7 +27,8 @@ Under the header `references/run-book.md` gives:
 ```markdown
 - provisioning: [the hook that provisions the worktree as it is created, named with the file that holds it, or the commands to run in `<worktree>` before its first commit]
 - owns: [the lane entry's owns line, word for word]
-- checks: [the command that runs only the tests this lane adds or changes, through the runner's file or name filter, with its passing result]; leave unrun the full suite, other lanes' tests, and what the commit hook runs: [the hook's formatter, linter, and type check, by name]
+- checks: [the command that runs only the tests this lane adds or changes, through the runner's file or name filter, with its passing result], each run in the foreground; leave unrun the full suite, other lanes' tests, and what the commit hook runs: [the hook's formatter, linter, and type check, by name]
+- leave undone: a push; a check, suite, or formatter run over files outside your owns line; an edit outside your owns line, a shared file such as a README or a module holding a contract included, which goes to the coordinator in a message; and an end to your turn while a command you started still runs in the background
 - skills: [each skill that bears on this lane's task, by exact name, loaded before the first change; or none]
 - delegates: [none, or each agent you may spawn, in the order they run, a test writer ahead of the implementation for one]; you write each one's prompt, each works only inside `<worktree>` on this lane's files, and each reports to you
 - early start: [none, or: write your red tests as soon as `<worktree>` exists, against the fixed contracts alone; when the coordinator messages that an awaited lane landed, rebase onto [trunk] before the rest]
@@ -38,7 +39,7 @@ Under the header `references/run-book.md` gives:
   3. Rebase the lane onto [trunk], fast-forward [trunk] to the lane's one commit, and, once the fast-forward holds, remove `<worktree>` and the branch [branch]: `[land command]`[, then `[remove command]`]. The rebase stops on a conflict in a file another lane also changed ? resolve it on its merits, keeping what both lanes changed, and run the lane's checks again before the fast-forward. The trunk moved or the fast-forward was refused ? repeat steps 2 and 3, at most twice more.
   4. Confirm `git -C [primary checkout] log --oneline -1 [trunk]` shows the lane's one commit, and `git -C [primary checkout] worktree list` no longer lists `<worktree>`.
   You alone answer for `<worktree>`: every change, commit, check, and landing step in it is yours. A command you cannot run goes to the coordinator, whole, in a message.
-- report: one final message to the coordinator, opening `landed [SHA] [subject]` or `blocked: [question]`, then what changed, then what the next wave must know. A contract found wrong is reported, never changed.
+- report: once the lane has landed or a blocker stops it, one final message to the coordinator, opening `landed [SHA] [subject]` or `blocked: [question]`, then what changed, then what the next wave must know. A contract found wrong is reported, never changed.
 
 ## Work
 

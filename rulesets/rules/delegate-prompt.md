@@ -49,10 +49,11 @@ You are [model family and identifier]. [a welcome for this spawn, glad the deleg
 ## Constraints
 
 [invariants, boundaries, what this step leaves to others]
+[each act a capable delegate would take on its own that collides with agents running beside it or with the orchestration, named as one to leave undone, such as a push, a check or formatter run over files beyond its own, an edit to a file another agent owns, or a turn ended while a command it started still runs in the background]
 
 ## Checks
 
-[each check to run before reporting, with its command and passing result]
+[each check to run before reporting, with its command and passing result, each run in the foreground and, where other agents run beside it, covering only the files it changes]
 
 ## Invitations
 

@@ -27,7 +27,7 @@ place material
       = that reader's run-book file
 ```
 
-The last arm holds a lane's provisioning, checks, commit rule, and landing steps; a unit's behaviors and the facts known in advance; a piece of code or a fixture one unit starts from; the full statement of a contract only one unit meets, an outside API one lane calls for one; a researcher's question; and a worker's own notes as it goes.
+The last arm holds a lane's provisioning, checks, the acts it leaves undone, commit rule, and landing steps; a unit's behaviors and the facts known in advance; a piece of code or a fixture one unit starts from; the full statement of a contract only one unit meets, an outside API one lane calls for one; a researcher's question; and a worker's own notes as it goes.
 
 A plan one agent works alone has one reader and no run book.
 

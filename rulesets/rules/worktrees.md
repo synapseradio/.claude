@@ -46,9 +46,10 @@ Name in each lane agent's prompt:
 
 - the worktree's absolute path and its branch
 - the files it may change
-- the checks to run before each commit
+- the checks to run before each commit: the tests covering the lane's own files, each run in the foreground, with every full suite left to Finish
+- the acts it leaves undone: a push, a check or formatter run over files outside its own, an edit to a file outside its own such as a README or a contract module another lane owns, and an end to its turn while a command it started still runs in the background
 - how to provision the worktree where no pre-start hook does
-- steps 3 to 5 under Land, written out
+- steps 3 to 5 under Land, written out, with its final report sent only once step 5 holds
 
 lane agent
   | it holds no Bash tool = leave committing and landing out of its prompt -> commit its lane yourself once it reports

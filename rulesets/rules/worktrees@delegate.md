@@ -4,6 +4,8 @@ For every worktree your prompt assigns you, optimize for a branch that reaches i
 
 Leave every worktree and branch your prompt neither assigns nor names untouched and unmentioned.
 Keep `skill:simplify` out of the assigned worktree's work, since the session's main agent runs it once after every planned worktree merges.
+Run the tests covering the files your work changes, in the foreground, and leave every full test suite to the session's main agent, which runs each once after every planned worktree merges.
+Send your final report only after the merge, or after the squash where your caller merges.
 
 Before you merge the assigned worktree's branch, or ask your caller to merge it, squash the branch's commits into one.
 Squash with `wt -C <worktree> step squash <target>`, naming as `<target>` the branch the merge goes into -> confirm `git -C <worktree> log --oneline <target>..HEAD` lists one commit.

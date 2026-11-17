@@ -479,10 +479,11 @@ You are [model family and identifier]. [a welcome for this spawn, glad the deleg
 ## Constraints
 
 [invariants, boundaries, what this step leaves to others]
+[each act a capable delegate would take on its own that collides with agents running beside it or with the orchestration, named as one to leave undone, such as a push, a check or formatter run over files beyond its own, an edit to a file another agent owns, or a turn ended while a command it started still runs in the background]
 
 ## Checks
 
-[each check to run before reporting, with its command and passing result]
+[each check to run before reporting, with its command and passing result, each run in the foreground and, where other agents run beside it, covering only the files it changes]
 
 ## Invitations
 
@@ -1040,11 +1041,11 @@ For every wait, optimize for a wait that costs the session zero turns and zero w
 
 - polling: a check run again to see whether the state changed
 
-Start a command that may take time with `run_in_background` set on the Bash call -> do the work independent of its result -> end your turn, relying on the harness to resume you when the command exits.
-
 wait
-  | on something outside the session such as a CI run = run the command that blocks on it (`gh run watch`, say) in the background the same way, or hand the check to the user as `! <command>`
+  | you run as a delegate = run the command in the foreground and let the tool's own timeout bound it, so your work finishes before your final report
+  | on something outside the session such as a CI run = start the command that blocks on it (`gh run watch`, say) as the last line below starts one, or hand the check to the user as `! <command>`
   | the tool lacks a background option = run the command in the foreground and let the tool's own timeout bound it
+  | otherwise = start the command with `run_in_background` set on the Bash call -> do the work independent of its result -> end your turn, relying on the harness to resume you when the command exits
 
 Read a log once with a command that exits.
 Keep polling and every command that runs until stopped, such as `tail -f`, out of every wait.
@@ -1056,6 +1057,8 @@ For every worktree your prompt assigns you, optimize for a branch that reaches i
 
 Leave every worktree and branch your prompt neither assigns nor names untouched and unmentioned.
 Keep `skill:simplify` out of the assigned worktree's work, since the session's main agent runs it once after every planned worktree merges.
+Run the tests covering the files your work changes, in the foreground, and leave every full test suite to the session's main agent, which runs each once after every planned worktree merges.
+Send your final report only after the merge, or after the squash where your caller merges.
 
 Before you merge the assigned worktree's branch, or ask your caller to merge it, squash the branch's commits into one.
 Squash with `wt -C <worktree> step squash <target>`, naming as `<target>` the branch the merge goes into -> confirm `git -C <worktree> log --oneline <target>..HEAD` lists one commit.

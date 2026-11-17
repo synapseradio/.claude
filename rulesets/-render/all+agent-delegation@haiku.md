@@ -390,10 +390,11 @@ You are [model family and identifier]. [a welcome for this spawn, glad the deleg
 ## Constraints
 
 [invariants, boundaries, what this step leaves to others]
+[each act a capable delegate would take on its own that collides with agents running beside it or with the orchestration, named as one to leave undone, such as a push, a check or formatter run over files beyond its own, an edit to a file another agent owns, or a turn ended while a command it started still runs in the background]
 
 ## Checks
 
-[each check to run before reporting, with its command and passing result]
+[each check to run before reporting, with its command and passing result, each run in the foreground and, where other agents run beside it, covering only the files it changes]
 
 ## Invitations
 
@@ -951,11 +952,11 @@ For every wait, optimize for a wait that costs the session zero turns and zero w
 
 - polling: a check run again to see whether the state changed
 
-Start a command that may take time with `run_in_background` set on the Bash call -> do the work independent of its result -> end your turn, relying on the harness to resume you when the command exits.
-
 wait
-  | on something outside the session such as a CI run = run the command that blocks on it (`gh run watch`, say) in the background the same way, or hand the check to the user as `! <command>`
+  | you run as a delegate = run the command in the foreground and let the tool's own timeout bound it, so your work finishes before your final report
+  | on something outside the session such as a CI run = start the command that blocks on it (`gh run watch`, say) as the last line below starts one, or hand the check to the user as `! <command>`
   | the tool lacks a background option = run the command in the foreground and let the tool's own timeout bound it
+  | otherwise = start the command with `run_in_background` set on the Bash call -> do the work independent of its result -> end your turn, relying on the harness to resume you when the command exits
 
 Read a log once with a command that exits.
 Keep polling and every command that runs until stopped, such as `tail -f`, out of every wait.
@@ -1009,9 +1010,10 @@ Name in each lane agent's prompt:
 
 - the worktree's absolute path and its branch
 - the files it may change
-- the checks to run before each commit
+- the checks to run before each commit: the tests covering the lane's own files, each run in the foreground, with every full suite left to Finish
+- the acts it leaves undone: a push, a check or formatter run over files outside its own, an edit to a file outside its own such as a README or a contract module another lane owns, and an end to its turn while a command it started still runs in the background
 - how to provision the worktree where no pre-start hook does
-- steps 3 to 5 under Land, written out
+- steps 3 to 5 under Land, written out, with its final report sent only once step 5 holds
 
 lane agent
   | it holds no Bash tool = leave committing and landing out of its prompt -> commit its lane yourself once it reports
