@@ -368,9 +368,11 @@ class TheLauncherReportsAnInstallThatCannotHappen(unittest.TestCase):
                 assert result.returncode == 0, result.stderr
                 output = json.loads(result.stdout)
                 assert "hookSpecificOutput" not in output, "it requires a hookEventName"
-                assert output["continue"] is False
-                text = output["stopReason"]
+                assert output["decision"] == "block"
+                text = output["reason"]
                 assert output["systemMessage"] == text
+                assert "continue" not in output
+                assert "stopReason" not in output
                 assert "the hook event could not be read" in text
                 assert "uv" in text
                 assert "3.14" in text

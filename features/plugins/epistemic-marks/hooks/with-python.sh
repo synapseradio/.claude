@@ -135,7 +135,8 @@ install_uv() {
 # Outputs:
 #   One JSON object on STDOUT, or nothing for a Stop or SubagentStop payload
 #   with stop_hook_active true, where a second block would loop. An event that
-#   is unreadable or unknown gets the universal fields alone.
+#   is unreadable or unknown gets a top-level block decision with the reason
+#   and the system message.
 #######################################
 report_failure_to_model() {
   local payload="$1"
@@ -164,7 +165,7 @@ report_failure_to_model() {
     fi
     ;;
   *)
-    printf '{"continue":false,"stopReason":"%s","systemMessage":"%s"}\n' \
+    printf '{"decision":"block","reason":"%s","systemMessage":"%s"}\n' \
       "${unreadable_text}" "${unreadable_text}"
     ;;
   esac
