@@ -80,6 +80,3 @@ settings.*.json
 *api-key*.sh
 *api_key*.sh
 !*api-key*.template.sh
-
-# Renders of the rules pool are local, rewritten by `just render`.
-rulesets/-render/
