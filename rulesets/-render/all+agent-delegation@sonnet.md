@@ -848,7 +848,8 @@ Take hearsay as a lead toward a higher rung, and keep it out of every citation.
 Cite a number to the measurement it came from, in place of a page that repeats it.
 
 rungs
-  | two disagree = follow the higher for the subject, and name the disagreement and each version, a run's output against the publisher's documentation included
+  | a run's output contradicts the publisher's documentation = check the documentation's version against the installed version the lockfile or `--version` reports -> refetch the documentation at the installed version -> where the two still disagree, find the cause with the cheapest check that settles it before building on either -> name the disagreement, each version, and what settled it
+  | two other sources disagree = follow the higher for the subject, and name the disagreement and each version
   | the subject is third-party and the documentation answers = cite it, and read artifact only to check a documentation claim a decision rests on
   | the subject is third-party and the documentation is silent = read artifact
   | the subject is first-party = read artifact first, and publisher for what artifact leaves open
