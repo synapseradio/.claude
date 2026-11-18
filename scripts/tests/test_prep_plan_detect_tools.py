@@ -23,7 +23,6 @@ import tempfile
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "features/plugins/prep/skills/prep-plan/scripts/detect-tools.py"
 REAL_GIT = shutil.which("git")
-GIT = {"tool": "git", "command": "git worktree", "evidence": ["git on PATH"]}
 
 
 def environment(home, bin_dir) -> dict:
@@ -126,13 +125,12 @@ def tools(findings) -> list:
     return [finding["tool"] for finding in findings]
 
 
-def test_a_machine_with_git_alone_gets_git_worktrees_and_nothing_else(tmp_path) -> None:
+def test_a_machine_with_git_alone_reports_no_tools_and_the_repository(tmp_path) -> None:
     machine = Machine(tmp_path)
 
     report, _ = machine.detect()
 
     assert report["jobs"] == {
-        "worktrees": [GIT],
         "commit_hooks": [],
         "task_runner": [],
         "tracker": [],
@@ -144,33 +142,6 @@ def test_a_machine_with_git_alone_gets_git_worktrees_and_nothing_else(tmp_path) 
         "trunk_source": "the primary checkout's branch",
         "remote_host": None,
     }
-
-
-def test_worktrunk_on_the_path_comes_ahead_of_git(tmp_path) -> None:
-    machine = Machine(tmp_path)
-    stand_in(machine.bin, "wt", "wt - Git worktree management\nDocs: https://worktrunk.dev")
-    (machine.repo / ".config").mkdir()
-    (machine.repo / ".config/wt.toml").write_text('[[pre-start]]\nsetup = "true"\n')
-
-    report, _ = machine.detect()
-
-    assert report["jobs"]["worktrees"] == [
-        {
-            "tool": "worktrunk",
-            "command": "wt",
-            "evidence": ["wt on PATH, its help names worktrunk", ".config/wt.toml"],
-        },
-        GIT,
-    ]
-
-
-def test_another_program_named_wt_is_not_taken_for_worktrunk(tmp_path) -> None:
-    machine = Machine(tmp_path)
-    stand_in(machine.bin, "wt", "Windows Terminal")
-
-    report, _ = machine.detect()
-
-    assert report["jobs"]["worktrees"] == [GIT]
 
 
 def test_a_linked_worktree_reports_the_original_checkout_as_primary(tmp_path) -> None:
@@ -287,7 +258,9 @@ def test_an_ssh_remote_shows_its_host(tmp_path) -> None:
     assert report["repository"]["remote_host"] == "gitlab.example.org"
 
 
-def test_outside_a_repository_there_is_no_worktree_tool(tmp_path) -> None:
+def test_outside_a_repository_there_is_no_repository_and_task_runners_are_still_found(
+    tmp_path,
+) -> None:
     machine = Machine(tmp_path)
     plain = tmp_path / "plain"
     plain.mkdir()
@@ -296,13 +269,11 @@ def test_outside_a_repository_there_is_no_worktree_tool(tmp_path) -> None:
     report, _ = machine.detect(plain)
 
     assert report["repository"] is None
-    assert report["jobs"]["worktrees"] == []
     assert tools(report["jobs"]["task_runner"]) == ["make"]
 
 
 def test_a_run_writes_nothing_into_the_home_or_the_repository(tmp_path) -> None:
     machine = Machine(tmp_path)
-    stand_in(machine.bin, "wt", "worktrunk")
     before = sorted(path.name for path in machine.repo.iterdir())
 
     machine.detect()
