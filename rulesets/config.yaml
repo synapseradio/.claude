@@ -106,6 +106,8 @@ agent general-purpose:
   include: reasoning.* lookup.* prose.* git.* resolving-input comments bash-commands
   not model haiku:
     include: code.* dialogue.* writing-tests
+  model sonnet:
+    include: delegate-prompt
   model opus fable:
     include: orchestration.*
 
