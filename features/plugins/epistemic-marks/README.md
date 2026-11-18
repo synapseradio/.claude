@@ -2,7 +2,7 @@
 
 epistemic-marks stops Claude Code from ending a reply on a claim nobody has checked, and from handing on a guess as if it were a finding.
 
-The plugin adds rule text, a section of instructions, to every session. It teaches Claude to end each unverified clause with a mark, a short token such as `[?]`. When a reply ends with a mark still in it, a hook sends the reply back once. When it ends with a guess written in words, the hook sends it back until the guess is marked or gone. Claude then replaces each mark with a source, narrows the claim to what the source backs, or removes the claim.
+The plugin adds rule text, a section of instructions, to every session. It teaches Claude to end each unverified clause with a mark, a short token such as `[?]`. When a reply ends with a mark or a guess written in words still in it, a hook sends the reply back. Claude then replaces each mark with a source, narrows the claim to what the source backs, or removes the claim. A mark Claude cannot resolve may stay at the top of the reply.
 
 Wording does not count as a mark. A sentence that says "my guess", "probably" or "I haven't checked this, but" is sent back the same way, to be checked or to be stated plainly with the mark.
 
@@ -53,8 +53,9 @@ If the first command fails to clone over SSH, set `CLAUDE_CODE_PLUGIN_PREFER_HTT
 The plugin ships its rule text and its hooks together, so it works with nothing else installed.
 
 - At every session start and subagent start, it adds the rule text to the context. A subagent is an agent that another agent starts.
-- When a reply ends with a mark or a guess in words in it, the Stop hook blocks the reply and lists each line with the step that resolves it. A mark left after the rewrite is shown to you, and the reply ends. A guess in words left after the rewrite blocks the reply again, each time, and is shown to you each time.
+- When a reply ends with a mark or a guess in words in it, the Stop hook blocks the reply and lists each line with the step that resolves it. The rewrite passes once every guess in words is marked or gone and every mark left from the first draft opens the reply, ahead of every unmarked line. A new mark, a guess in words, or a leftover mark under unmarked text blocks the reply again.
 - When a fetch for a source is denied by a permission check, such as the auto mode classifier, and a mark follows in the reply with no other fetch tried after the denial, the Stop and SubagentStop hooks block the reply on every pass until another route is tried. The block asks Claude to reach the same source by another fetch tool or command form, and, where every route fails, to name beside the mark each route it tried and how it failed. A person's refusal of a tool call never triggers it.
+- The Stop and SubagentStop hooks block a turn at most five times. After the fifth block they show their findings to Claude and to you without blocking, which keeps them under Claude Code's override after eight consecutive continuations. Where they cannot write their record, they block once.
 - When a subagent finishes, the SubagentStop hook checks its report the same way. It leaves the caller's mark and the standing question in place, and asks the subagent to carry them in its report to the agent that started it.
 - After each batch of tool calls, the PostToolBatch hook shows Claude any marked line or guess in words written since your last message, and tells it to check the claim before the next step. It never blocks, and it shows each line once per session.
 - When Claude starts a subagent, the PreToolUse hook reads the prompt it wrote. If the prompt hands the subagent a guess in words, the hook denies the call and Claude rewrites the prompt. A marked claim in a prompt passes, because the mark tells the subagent the claim is unverified.
