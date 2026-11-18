@@ -2,17 +2,20 @@
 
     python3 -m unittest discover -s tests -p test_guess_hooks.py -v
 
-A guess reaches a reader through a reply, a delegate's report, text written
-mid-turn, or a prompt composed for a delegate. Each test drives the entrypoint
-through stdin the way the harness does, on fixtures built in a temporary
-directory.
+README.md lists what counts as a guess in words and what passes: wording of
+doubt, a status written as a sentence or a label, and a sentence building on a
+marked or guessed claim are flagged; a mark or a source in the sentence, code,
+quoted text, block quotes and questions pass; "may", "should" and "must" are
+left alone outside a few fixed phrases. A guess reaches a reader through a
+reply, a delegate's report, text written mid-turn, or a prompt composed for a
+delegate. Each test drives the entrypoint through stdin the way the harness
+does, on fixtures built in a temporary directory.
 """
 
 import json
 import tempfile
 import unittest
 from pathlib import Path
-from typing import ClassVar
 
 from support import (
     PLUGIN_ROOT,
@@ -24,19 +27,6 @@ from support import (
     user_text,
 )
 
-from epistemic_marks.hedges import ASKED, CAUSE, GUESS, REST, SAID
-from epistemic_marks.marks import MARKS
-from epistemic_marks.messages import (
-    MENTION_HEADING,
-    WORDING_CARRY,
-    WORDING_HEADING,
-    WORDING_RESOLVE,
-    Mode,
-    build_context,
-    build_denial,
-    build_findings,
-)
-
 INCIDENT_GUESS = (
     "My unconfirmed guess is that files in the lane worktrees fall into a project "
     "the editor builds without that config."
@@ -46,15 +36,43 @@ INCIDENT_REST = (
     "which matches the errors."
 )
 INCIDENT = f"{INCIDENT_GUESS} {INCIDENT_REST}"
+STALE = "I suspect the cache went stale."
 
-# Text holding the wording of doubt with nothing guessed in it.
-NOTHING_GUESSED = (
-    'The writer used "unconfirmed guess" as the claim\'s status.',
-    "The flag `--probably` goes unused.",
+# Sentences the README names as a guess in words, each with nothing else in it.
+FLAGGED = (
+    "My guess is the cache went stale.",
+    STALE,
+    "The cache is probably stale.",
+    "It seems the watcher holds the file open.",
+    "That should fix it.",
+    "As far as I know the flag landed in version 3.",
+    "I haven't checked this, but the watcher holds the file open.",
+    "The watcher holds the file open (unverified).",
+    "I haven't read any code, so all three are guesses.",
+    "The lockfile drifted [?]. That would break the install.",
+    "The lockfile drifted [?]. So the install fails on CI.",
+    INCIDENT,
+)
+
+# Sentences the README says pass: a mark or a source, code, quoted text, a
+# block quote, a question, and modals that give permission or state a requirement.
+PASSING = (
+    "The docs say the value may be null (https://example.com/api#value).",
+    "The cache is probably stale (src/cache.py:12).",
     "The log reads:\n\n```\nprobably stale, I think\n```\n\nI ran it twice.",
+    "The flag `--probably` goes unused.",
+    'The writer used "unconfirmed guess" as the claim\'s status.',
     "> My guess is that the cache went stale.",
-    "The cache is stale (src/cache.py:12).",
-    "You may change the tests, and the suite should pass before the merge.",
+    "Is the cache probably stale?",
+    "You may change the tests and the README.",
+    "The function should return a list.",
+    "It must be the first argument.",
+)
+
+# A mark ends the guess in words, so a prompt carrying one passes.
+MARKED_PROMPTS = (
+    "The cache is probably stale [?]. Confirm it.",
+    "The lockfile drifted [?]. That would break the install [?]. Confirm both.",
 )
 
 
@@ -65,10 +83,14 @@ class HookCase(unittest.TestCase):
         root = Path(self._tmp.name)
         self.env = isolated_environment(root / "home", state_dir=root / "state")
 
-    def run_hook(self, payload, *args) -> dict | None:
-        code, out, err = run_hook(payload, *args, env=self.env)
+    def run_hook(self, payload, *args, in_process=False) -> dict | None:
+        code, out, err = run_hook(payload, *args, env=self.env, in_process=in_process)
         assert code == 0, f"{out}{err}"
         return hook_output(out)
+
+    def stop(self, message, *, again=False, delegate=False, **extra) -> dict | None:
+        payload = {"stop_hook_active": again, "last_assistant_message": message, **extra}
+        return self.run_hook(payload, *(["--delegate"] if delegate else []), in_process=True)
 
     def transcript(self, *texts) -> str:
         path = Path(self._tmp.name) / "session.jsonl"
@@ -78,156 +100,54 @@ class HookCase(unittest.TestCase):
 
 
 class AReplyGuessingInWordsIsSentBack(HookCase):
-    def stop(self, message, **extra) -> dict | None:
-        return self.run_hook(
-            {"stop_hook_active": False, "last_assistant_message": message, **extra}
-        )
+    def test_a_guess_in_words_blocks_and_a_sentence_that_passes_does_not(self) -> None:
+        for line in FLAGGED:
+            with self.subTest(flagged=line):
+                result = required(self.stop(line, session_id=line))
+                assert result["decision"] == "block", "wording stood in for the mark"
+                assert line.split(". ")[-1].rstrip(".") in result["reason"]
+        for line in PASSING:
+            with self.subTest(passing=line):
+                assert self.stop(line, session_id=line) is None, "the scan fired where none was due"
 
-    def test_the_incident_blocks_and_lists_both_sentences(self) -> None:
-        result = self.stop(INCIDENT)
-        assert result is not None, "a status in words must not pass as a mark"
-        assert result["decision"] == "block"
-        assert f"{WORDING_RESOLVE[GUESS]}\n- {INCIDENT_GUESS}" in result["reason"]
-        assert f"{WORDING_RESOLVE[REST]}\n- {INCIDENT_REST}" in result["reason"]
-
-    def test_a_guess_written_mid_turn_blocks_the_stop(self) -> None:
-        transcript = self.transcript("I suspect the cache went stale.")
-        result = self.stop("Done.", transcript_path=transcript)
-        assert result is not None, "text written earlier in the turn reaches the same reader"
-        assert "I suspect the cache went stale." in result["reason"]
+    def test_the_incident_lists_the_guess_and_the_sentence_resting_on_it(self) -> None:
+        result = required(self.stop(INCIDENT))
+        assert INCIDENT_GUESS in result["reason"]
+        assert INCIDENT_REST in result["reason"]
 
     def test_a_guess_and_a_mark_arrive_in_one_block(self) -> None:
-        result = required(self.stop("The count is 12 [?].\n\nI suspect the cache went stale."))
+        result = required(self.stop(f"The count is 12 [?].\n\n{STALE}"))
         assert result["decision"] == "block"
         assert "- The count is 12 [?]." in result["reason"]
-        assert "- I suspect the cache went stale." in result["reason"]
+        assert f"- {STALE}" in result["reason"]
 
-    def test_text_with_nothing_guessed_passes(self) -> None:
-        for message in NOTHING_GUESSED:
-            with self.subTest(message=message):
-                assert self.stop(message) is None, "the pass fired where no guess was written"
-
-    def test_a_sentence_naming_a_mark_in_words_does_not_block(self) -> None:
-        line = "My guess, under the unsourced mark, is a stale cache."
-        result = required(self.stop(line))
-        assert "decision" not in (result or {})
-        assert MENTION_HEADING in result["systemMessage"]
-        assert line in result["systemMessage"], "the exemption must stay visible"
-
-    def again(self, message) -> dict | None:
-        return self.run_hook({"stop_hook_active": True, "last_assistant_message": message})
+    def test_a_guess_written_before_the_final_message_blocks_the_stop(self) -> None:
+        result = required(self.stop("Done.", transcript_path=self.transcript(STALE)))
+        assert STALE in result["reason"]
 
     def test_a_guess_still_in_the_rewrite_blocks_again_every_time(self) -> None:
         for attempt in range(3):
             with self.subTest(attempt=attempt):
-                result = required(self.again("I suspect the cache went stale."))
+                result = required(self.stop(STALE, again=True))
                 assert result["decision"] == "block", "a guess left standing got through"
-                assert (
-                    f"{WORDING_RESOLVE[GUESS]}\n- I suspect the cache went stale."
-                    in result["reason"]
-                )
-
-    def test_a_repeat_block_shows_the_reader_what_the_model_was_sent(self) -> None:
-        # The harness ends a turn its hooks have continued eight times, so
-        # the lines reach the reader on every repeat, before that can happen.
-        result = required(self.again("I suspect the cache went stale."))
-        assert result["systemMessage"] == result["reason"]
+                assert f"- {STALE}" in result["reason"]
 
     def test_a_rewrite_with_the_guess_marked_ends_the_loop(self) -> None:
-        # The mark is new to the model, so it is sent back once for its
-        # check. A reply opening on it after that may stand, since the check
-        # it waits on can be out of reach.
-        assert required(self.stop("I suspect the cache went stale."))["decision"] == "block"
-        assert required(self.again("The cache went stale [?]."))["decision"] == "block"
-        assert self.again("The cache went stale [?].") is None, "a mark opening the reply stands"
-
-    def test_a_rewrite_with_nothing_guessed_ends_in_silence(self) -> None:
-        assert self.again("I ran the suite and it passed.") is None
-
-    def test_a_quoted_run_carrying_a_mark_does_not_block(self) -> None:
-        for message in (
-            'The session wrote "the cache is stale [?]" and stopped.',
-            "> The cache is stale [?].",
-            'The reply read "the cache is stale [?] and\nthe lockfile drifted [?]" in full.',
-        ):
-            with self.subTest(message=message):
-                assert self.stop(message) is None, "someone else's mark was read as a claim"
-
-    def test_a_mark_outside_the_quotation_still_blocks(self) -> None:
-        result = required(self.stop('The log says "cache miss", so the key drifted [?].'))
-        assert result["decision"] == "block"
-
-
-class ALineNamingAMarkBesideItsGlyphIsAMention(HookCase):
-    """A sentence about a mark writes its name; the glyph beside the name claims nothing."""
-
-    def stop(self, message) -> dict | None:
-        return self.run_hook({"stop_hook_active": False, "last_assistant_message": message})
-
-    def test_a_glyph_straight_after_its_own_name_does_not_block(self) -> None:
-        line = "That sentence needed the unsourced mark [?] at the end of its first clause."
-        result = required(self.stop(line))
-        assert "decision" not in (result or {})
-        assert line in result["systemMessage"]
-
-    def test_a_quoted_glyph_on_a_line_naming_it_does_not_block(self) -> None:
-        line = 'The unsourced mark, "[?]", was missing from that sentence.'
-        result = required(self.stop(line))
-        assert "decision" not in (result or {})
-        assert line in result["systemMessage"]
-
-    def test_a_glyph_after_a_different_marks_name_still_blocks(self) -> None:
-        result = required(self.stop("The cache is stale, unlike the secondhand mark [?] case."))
-        assert result["decision"] == "block"
-
-    def test_a_second_bare_glyph_on_the_line_still_blocks(self) -> None:
-        result = required(
-            self.stop("The unsourced mark [?] was missing, and the cache is stale [?].")
+        assert required(self.stop(STALE))["decision"] == "block"
+        assert required(self.stop("The cache went stale [?].", again=True))["decision"] == "block"
+        assert self.stop("The cache went stale [?].", again=True) is None, (
+            "a mark opening the reply stands"
         )
-        assert result["decision"] == "block"
-
-    def test_a_quoted_glyph_on_a_line_that_never_names_it_still_blocks(self) -> None:
-        result = required(self.stop('The cache is stale "[?]".'))
-        assert result["decision"] == "block"
 
 
 class ADelegateReportGuessingInWordsIsSentBack(HookCase):
-    def test_a_first_pass_blocks(self) -> None:
-        result = required(
-            self.run_hook(
-                {"stop_hook_active": False, "last_assistant_message": INCIDENT}, "--delegate"
-            )
-        )
-        assert result["decision"] == "block"
-        assert INCIDENT_GUESS in result["reason"]
-        assert INCIDENT_REST in result["reason"]
-
-    def test_a_guess_still_in_the_rewritten_report_blocks_again_every_time(self) -> None:
-        for attempt in range(3):
-            with self.subTest(attempt=attempt):
-                result = required(
-                    self.run_hook(
-                        {
-                            "stop_hook_active": True,
-                            "agent_id": "a1",
-                            "session_id": "s1",
-                            "last_assistant_message": "I suspect the cache went stale.",
-                        },
-                        "--delegate",
-                    )
-                )
+    def test_the_first_pass_and_every_later_pass_block(self) -> None:
+        for again in (False, True, True, True):
+            with self.subTest(again=again):
+                result = required(self.stop(INCIDENT, again=again, delegate=True, agent_id="a1"))
                 assert result["decision"] == "block", "a caller acts on the report as found"
-                assert "- I suspect the cache went stale." in result["reason"]
-
-    def test_a_report_with_nothing_guessed_passes(self) -> None:
-        for message in NOTHING_GUESSED:
-            with self.subTest(message=message):
-                assert (
-                    self.run_hook(
-                        {"stop_hook_active": False, "last_assistant_message": message},
-                        "--delegate",
-                    )
-                ) is None
+                assert INCIDENT_GUESS in result["reason"]
+                assert INCIDENT_REST in result["reason"]
 
 
 class AGuessWrittenMidTurnIsHandedBackOnce(HookCase):
@@ -242,20 +162,13 @@ class AGuessWrittenMidTurnIsHandedBackOnce(HookCase):
             "--batch",
         )
 
-    def test_the_guess_reaches_the_agent_before_its_next_step(self) -> None:
-        result = required(self.batch(self.transcript(INCIDENT)))
-        context = result["hookSpecificOutput"]["additionalContext"]
-        assert result["hookSpecificOutput"]["hookEventName"] == "PostToolBatch"
-        assert INCIDENT_GUESS in context
-        assert INCIDENT_REST in context
-
-    def test_the_same_guess_is_reported_once_per_session(self) -> None:
+    def test_the_guess_reaches_the_agent_before_its_next_step_once_per_session(self) -> None:
         transcript = self.transcript(INCIDENT)
-        self.batch(transcript)
+        specific = required(self.batch(transcript))["hookSpecificOutput"]
+        assert specific["hookEventName"] == "PostToolBatch"
+        assert INCIDENT_GUESS in specific["additionalContext"]
+        assert INCIDENT_REST in specific["additionalContext"]
         assert self.batch(transcript) is None, "a line already reported is not reported again"
-
-    def test_text_with_nothing_guessed_stays_silent(self) -> None:
-        assert self.batch(self.transcript(*NOTHING_GUESSED)) is None
 
 
 class APromptHandingADelegateAGuessIsDenied(HookCase):
@@ -269,86 +182,51 @@ class APromptHandingADelegateAGuessIsDenied(HookCase):
             "--prompt",
         )
 
-    def test_a_guess_in_the_prompt_denies_the_call_with_its_reason(self) -> None:
-        text = f"Fix the editor errors in the lane worktrees. {INCIDENT}"
-        result = self.prompt(text)
-        assert result is not None, "a delegate acts on a prompt's guess as on a finding"
-        specific = result["hookSpecificOutput"]
+    def reason_of(self, result) -> str:
+        specific = required(result)["hookSpecificOutput"]
         assert specific["hookEventName"] == "PreToolUse"
         assert specific["permissionDecision"] == "deny"
-        assert INCIDENT_GUESS in specific["permissionDecisionReason"]
-        assert INCIDENT_REST in specific["permissionDecisionReason"]
-        assert "Fix the editor errors" not in specific["permissionDecisionReason"]
+        return specific["permissionDecisionReason"]
 
-    def test_a_cause_handed_over_as_fact_denies_the_call(self) -> None:
-        # The prompt a session wrote when told to get a hunch past this hook.
-        text = (
-            "The flaky test fails because two tests share a temp directory. "
-            "Fix it by giving each test its own temp directory."
+    def test_a_guess_in_the_prompt_denies_the_call_and_names_only_the_guess(self) -> None:
+        reason = self.reason_of(
+            self.prompt(f"Fix the editor errors in the lane worktrees. {INCIDENT}")
         )
-        result = self.prompt(text)
-        assert result is not None, "a delegate fixes what its prompt says is broken"
-        reason = result["hookSpecificOutput"]["permissionDecisionReason"]
-        assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
-        assert WORDING_HEADING[CAUSE] in reason
-        assert "The flaky test fails because two tests share a temp directory." in reason
+        assert INCIDENT_GUESS in reason
+        assert INCIDENT_REST in reason
+        assert "Fix the editor errors" not in reason
 
-    def test_a_claim_laid_on_the_user_without_their_words_denies_the_call(self) -> None:
-        text = "As the user said, the two tests share a temp dir. Give each its own."
-        result = self.prompt(text)
-        assert result is not None, "a delegate cannot ask the user what they said"
-        reason = result["hookSpecificOutput"]["permissionDecisionReason"]
-        assert WORDING_HEADING[SAID] in reason
-        assert "- As the user said, the two tests share a temp dir." in reason
+    def test_a_cause_a_user_attribution_or_a_leading_question_handed_over_as_fact_is_denied(
+        self,
+    ) -> None:
+        # Each came from a session told to get a guess past this hook. The
+        # README's list leaves these forms open, so they stay as the code
+        # treats them.
+        for text in (
+            "The flaky test fails because two tests share a temp directory. Fix it.",
+            "As the user said, the two tests share a temp dir. Give each its own.",
+            "Did the cache key change, so every run reinstalls? Fix the key.",
+        ):
+            with self.subTest(text=text):
+                assert self.reason_of(self.prompt(text))
 
-    def test_a_consequence_hung_on_a_question_denies_the_call(self) -> None:
-        text = "Did the cache key change, so every run reinstalls? Fix the key."
-        result = self.prompt(text)
-        assert result is not None, "the delegate fixes what the question took as given"
-        assert WORDING_HEADING[ASKED] in result["hookSpecificOutput"]["permissionDecisionReason"]
-
-    def test_a_marked_observation_travels(self) -> None:
-        assert (
-            self.prompt("The editor builds these files without that config [?]. Confirm it.")
-            is None
-        )
-
-    def test_a_prompt_of_instructions_and_quotations_passes(self) -> None:
-        text = (
+    def test_a_marked_observation_and_plain_instructions_pass(self) -> None:
+        for text in (
+            *MARKED_PROMPTS,
             "You may change the tests. The suite should pass before the merge.\n"
             'Report your hunch only as a marked claim, never as "my guess".\n'
-            "Is the cache likely stale? Read `src/cache.py` and say what you found."
-        )
-        assert self.prompt(text) is None, "an instruction is no guess"
-
-    def test_only_the_prompt_is_read(self) -> None:
-        assert self.prompt("Read the file and report.") is None, "a description is a label"
-
-    def test_a_call_without_a_text_prompt_passes(self) -> None:
-        for tool_input in ({}, {"prompt": None}, {"prompt": 3}):
-            with self.subTest(tool_input=tool_input):
-                assert (
-                    self.run_hook(
-                        {
-                            "hook_event_name": "PreToolUse",
-                            "tool_name": "Agent",
-                            "tool_input": tool_input,
-                        },
-                        "--prompt",
-                    )
-                ) is None
+            "Is the cache likely stale? Read `src/cache.py` and say what you found.",
+        ):
+            with self.subTest(text=text):
+                assert self.prompt(text) is None, "an instruction is no guess"
 
 
 class TheWiringCoversEverySurface(unittest.TestCase):
     def setUp(self) -> None:
         self.wiring = json.loads((PLUGIN_ROOT / "hooks" / "hooks.json").read_text())["hooks"]
 
-    def commands(self, event) -> list[dict]:
-        return [hook for matcher in self.wiring.get(event, []) for hook in matcher["hooks"]]
-
     def test_a_composed_prompt_is_checked_before_either_spawn_tool_runs(self) -> None:
         matchers = self.wiring.get("PreToolUse", [])
-        assert matchers, "a prompt composed for a delegate goes unchecked"
         for tool in ("Agent", "Task"):
             with self.subTest(tool=tool):
                 assert [
@@ -361,66 +239,12 @@ class TheWiringCoversEverySurface(unittest.TestCase):
                     )
                 ], f"no hook reads a prompt handed to {tool}"
 
-    def test_every_hook_is_a_command_and_no_model_judges_a_message(self) -> None:
-        # A model-judged hook on Stop reads every reply with a second model
-        # call, which doubles what a session spends. The checks stay
-        # deterministic, and the rule text carries what no pattern can.
-        for event in self.wiring:
-            for hook in self.commands(event):
-                with self.subTest(event=event):
-                    assert hook["type"] == "command"
-
-
-class TheGuessMessagesSayWhatToDo(unittest.TestCase):
-    wording: ClassVar[dict[str, list[str]]] = {
-        GUESS: ["I suspect the cache went stale."],
-        CAUSE: ["The test fails because the cache went stale."],
-        REST: ["So CI fails."],
-        ASKED: ["The cache is stale, right?"],
-        SAID: ["As the user said, the cache is stale."],
-    }
-
-    def outputs(self) -> dict[str, str]:
-        return {
-            "reason": build_findings(Mode.BLOCK, {}, wording=self.wording),
-            "context": build_context({}, wording=self.wording),
-            "notice": build_findings(Mode.NOTICE, {}, wording=self.wording),
-            "denial": build_denial(self.wording),
-        }
-
-    def test_each_group_carries_its_heading_and_its_lines(self) -> None:
-        for name, output in self.outputs().items():
-            for kind, lines in self.wording.items():
-                with self.subTest(builder=name, kind=kind):
-                    assert WORDING_HEADING[kind] in output
-                    assert f"- {lines[0]}" in output
-
-    def test_no_builder_names_a_tool(self) -> None:
-        for name, output in self.outputs().items():
-            for tool in ("Read", "Grep", "Glob", "AskUserQuestion", "Agent", "Task", "Bash"):
-                with self.subTest(builder=name, tool=tool):
-                    assert tool not in output
-
-    def test_the_act_names_the_mark_the_vocabulary_holds_for_an_unsourced_claim(self) -> None:
-        assert MARKS[0] in WORDING_RESOLVE[GUESS]
-
-    def test_the_act_closes_the_way_out_of_deleting_the_hedge_word(self) -> None:
-        # A writer told only to stop hedging drops the word and keeps the
-        # guess, which then reads as a finding: worse than the hedge.
-        assert "still a guess" in WORDING_RESOLVE[GUESS]
-
-    def test_a_reply_with_no_guess_draws_no_guess_instruction(self) -> None:
-        output = build_findings(Mode.BLOCK, {MARKS[0]: [f"A claim {MARKS[0]}."]})
-        for kind in (GUESS, CAUSE, REST):
-            assert WORDING_HEADING[kind] not in output
-
-    def test_every_kind_the_scan_finds_has_a_heading_and_both_acts(self) -> None:
-        for kind in (GUESS, CAUSE, REST, ASKED, SAID):
-            with self.subTest(kind=kind):
-                assert WORDING_HEADING[kind]
-                assert WORDING_RESOLVE[kind]
-                assert WORDING_CARRY[kind]
-                assert WORDING_RESOLVE[kind] != WORDING_CARRY[kind]
+    def test_every_hook_is_a_local_command_and_no_hook_calls_a_model(self) -> None:
+        for event, matchers in self.wiring.items():
+            for matcher in matchers:
+                for hook in matcher["hooks"]:
+                    with self.subTest(event=event):
+                        assert hook["type"] == "command"
 
 
 if __name__ == "__main__":

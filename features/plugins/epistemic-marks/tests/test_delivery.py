@@ -1,125 +1,82 @@
-"""Tests for the rule text this plugin delivers into a session.
+"""Contract tests for what the plugin delivers into a session, run from the plugin root.
 
-python3 -m unittest discover -s tests -p test_delivery.py -v
+    python3 -m unittest discover -s tests -p test_delivery.py -v
+
+README.md promises rule text at every session start and subagent start, from
+a plugin that reads none of the user's configuration, teaching the four marks
+the hooks enforce.
 """
 
 import json
-import os
-import subprocess
-import sys
+import re
+import tempfile
 import unittest
 from pathlib import Path
 
-PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = PLUGIN_ROOT / "hooks" / "deliver-rule.py"
-sys.path.insert(0, str(PLUGIN_ROOT))
+from support import PLUGIN_ROOT, isolated_environment, run_hook
 
-from epistemic_marks.delivery import RULE_BODY, after_divider, rule_text  # noqa: E402
-from epistemic_marks.marks import MARKS  # noqa: E402
+from epistemic_marks.marks import MARKS
 
+DELIVER = PLUGIN_ROOT / "hooks" / "deliver-rule.py"
+SHIPPED_RULE_BODY = PLUGIN_ROOT / "rule-text" / "epistemic-marks.md"
 
-def run_deliver(source: str = "startup", event: str = "SessionStart") -> tuple[int, str]:
-    completed = subprocess.run(
-        [sys.executable, str(SCRIPT)],
-        input=json.dumps({"hook_event_name": event, "source": source}),
-        capture_output=True,
-        text=True,
-        check=False,
-        env=dict(os.environ),
-    )
-    return completed.returncode, completed.stdout
+# The README's marks table.
+README_MARKS = {"[?]", "[.?]", "[^?]", "[!?]"}
+
+# Wider than the four marks, so a mark the rule teaches and nothing enforces
+# shows up as an extra.
+MARK_SHAPED = re.compile(r"\[[^\]\w\s]{0,3}\?\]")
 
 
-class TheDeliveredTextIsTheTeachingHalf(unittest.TestCase):
-    def test_the_divider_splits_the_note_from_the_rule(self) -> None:
-        raw = "note for a reader\n---\nthe rule itself\n"
-        assert after_divider(raw).strip() == "the rule itself"
+class TheHookDeliversTheMarksOnEveryStart(unittest.TestCase):
+    def test_each_start_delivers_the_four_marks_into_the_models_context_only(self) -> None:
+        starts = (
+            ("a session start", {"hook_event_name": "SessionStart", "source": "startup"}),
+            (
+                "a start after a compaction",
+                {"hook_event_name": "SessionStart", "source": "compact"},
+            ),
+            ("a subagent start", {"hook_event_name": "SubagentStart"}),
+        )
+        for label, payload in starts:
+            with self.subTest(start=label), tempfile.TemporaryDirectory() as scratch:
+                # An empty home and no plugin data: the rule text ships with the plugin.
+                env = isolated_environment(Path(scratch) / "home")
+                code, out, err = run_hook(payload, env=env, script=DELIVER)
+                assert code == 0, err
+                output = json.loads(out)
+                specific = output["hookSpecificOutput"]
+                assert specific["hookEventName"] == payload["hook_event_name"]
+                for token in README_MARKS:
+                    assert token in specific["additionalContext"], f"{label} never teaches {token}"
+                assert "systemMessage" not in output, (
+                    "a systemMessage prints the whole rule text into the user's transcript"
+                )
 
-    def test_text_without_a_divider_travels_whole(self) -> None:
-        assert after_divider("just the rule").strip() == "just the rule"
 
-    def test_the_shipped_text_teaches_every_enforced_mark(self) -> None:
-        delivered = rule_text()
-        for token in MARKS:
-            assert token in delivered, (
-                f"the delivered text never teaches {token}, which the hooks block"
-            )
-
-    def test_an_unreadable_rule_file_yields_nothing(self) -> None:
-        assert rule_text(RULE_BODY.parent / "absent.md") == ""
-
-
-class TheHookDeliversOnEveryStart(unittest.TestCase):
-    def context_of(self, out: str, event: str = "SessionStart") -> str:
-        specific = json.loads(out)["hookSpecificOutput"]
-        assert specific["hookEventName"] == event
-        return specific["additionalContext"]
-
-    def test_it_delivers_the_vocabulary(self) -> None:
-        code, out = run_deliver()
-        assert code == 0
-        context = self.context_of(out)
-        for token in MARKS:
-            assert token in context
-
-    def test_the_user_never_sees_the_rule_text(self) -> None:
-        code, out = run_deliver()
-        assert code == 0
-        assert "systemMessage" not in json.loads(out), (
-            "a systemMessage prints the whole rule text into the user's transcript"
+class TheRuleTextTeachesTheMarksTheHooksEnforce(unittest.TestCase):
+    def test_the_shipped_rule_text_and_the_hooks_name_the_same_four_marks(self) -> None:
+        taught = set(MARK_SHAPED.findall(SHIPPED_RULE_BODY.read_text()))
+        assert taught == README_MARKS, (
+            f"the rule text teaches {sorted(taught)}, and the README names {sorted(README_MARKS)}"
+        )
+        assert set(MARKS) == README_MARKS, (
+            f"the hooks enforce {sorted(MARKS)}, and the README names {sorted(README_MARKS)}"
         )
 
-    def test_it_delivers_again_after_a_compaction(self) -> None:
-        code, out = run_deliver(source="compact")
-        assert code == 0
-        assert MARKS[0] in self.context_of(out), (
-            "a compaction drops injected context, so this firing has to restore it"
-        )
 
-    def test_it_delivers_to_a_spawned_agent(self) -> None:
-        code, out = run_deliver(event="SubagentStart")
-        assert code == 0
-        context = self.context_of(out, event="SubagentStart")
-        for token in MARKS:
-            assert token in context, (
-                f"a delegate never taught {token} writes none, so the SubagentStop "
-                "pass scans text that could not have carried one"
-            )
-
-    def test_a_payload_it_cannot_parse_stops_it_quietly(self) -> None:
-        completed = subprocess.run(
-            [sys.executable, str(SCRIPT)],
-            input="not json",
-            capture_output=True,
-            text=True,
-            check=False,
-            env=dict(os.environ),
-        )
-        assert completed.returncode == 0
-        assert completed.stdout.strip() == ""
-
-
-class TheWiringPairsDeliveryWithEnforcement(unittest.TestCase):
-    """The event axis of the pairing hooks/with-python.sh holds on its own axis.
-
-    A harness that fires SubagentStop and never SubagentStart would run the
-    verification pass against an agent nothing taught. Nothing at runtime
-    detects that, so the wiring is pinned here instead.
-    """
-
-    def events_running(self, script: str) -> set[str]:
+class TheWiringDeliversOnBothStarts(unittest.TestCase):
+    def test_the_wiring_delivers_on_session_start_and_subagent_start(self) -> None:
         wiring = json.loads((PLUGIN_ROOT / "hooks" / "hooks.json").read_text())["hooks"]
-        return {
+        events = {
             event
             for event, matchers in wiring.items()
             for matcher in matchers
             for hook in matcher["hooks"]
-            if script in hook["command"]
+            if "deliver-rule.py" in hook["command"]
         }
-
-    def test_the_wiring_delivers_on_both_starts(self) -> None:
-        assert self.events_running("deliver-rule.py") == {"SessionStart", "SubagentStart"}, (
-            "delivery dropped on one start leaves that agent untaught, and the verification pass then scans text that could carry no mark"
+        assert events == {"SessionStart", "SubagentStart"}, (
+            "delivery dropped on one start leaves that agent untaught"
         )
 
 

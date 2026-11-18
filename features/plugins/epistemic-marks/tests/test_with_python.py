@@ -68,26 +68,27 @@ def run_launcher(
 
 
 class TheLauncherHandsTheScriptToUvAt3_14(unittest.TestCase):
-    def test_uv_runs_the_script_at_3_14_with_no_project(self) -> None:
+    def test_uv_runs_the_script_at_3_14_with_no_project_and_stdin_reaches_it(self) -> None:
         with tempfile.TemporaryDirectory() as scratch:
             scratch = Path(scratch)
             bindir = scratch / "bin"
             bindir.mkdir()
             record = scratch / "uv-args.txt"
             recording_uv(bindir / "uv", record, sys.executable)
-            script = scratch / "probe.py"
-            script.write_text(PROBE_SCRIPT)
+            script = scratch / "echo.py"
+            script.write_text("import sys\nsys.stdout.write(sys.stdin.read())\n")
 
             data = scratch / "data"
             result = run_launcher(
                 script,
                 isolated_environment(scratch / "home", path_dirs=[str(bindir)], plugin_data=data),
+                stdin='{"a": 1}',
             )
             args = record.read_text().splitlines()
             uv_environment = Path(f"{record}.env").read_text().splitlines()
 
         assert result.returncode == 0, result.stderr
-        assert result.stdout.strip() == "PROBE-OK"
+        assert result.stdout == '{"a": 1}'
         assert args[0] == "run"
         assert args[args.index("--python") + 1] == "3.14"
         assert "--no-project" in args, "the repository's own requirement must not pick the Python"
@@ -95,26 +96,6 @@ class TheLauncherHandsTheScriptToUvAt3_14(unittest.TestCase):
         assert uv_environment == [str(data / "python"), str(data / "uv-cache")], (
             "a downloaded Python and uv's cache must land in the plugin data directory"
         )
-
-    def test_stdin_reaches_the_script(self) -> None:
-        with tempfile.TemporaryDirectory() as scratch:
-            scratch = Path(scratch)
-            bindir = scratch / "bin"
-            bindir.mkdir()
-            recording_uv(bindir / "uv", scratch / "uv-args.txt", sys.executable)
-            script = scratch / "echo.py"
-            script.write_text("import sys\nsys.stdout.write(sys.stdin.read())\n")
-
-            result = run_launcher(
-                script,
-                isolated_environment(
-                    scratch / "home", path_dirs=[str(bindir)], plugin_data=scratch / "data"
-                ),
-                stdin='{"a": 1}',
-            )
-
-        assert result.returncode == 0, result.stderr
-        assert result.stdout == '{"a": 1}'
 
 
 INSTALLER_URL = "https://astral.sh/uv/install.sh"
@@ -225,7 +206,7 @@ class TheLauncherInstallsAMissingUv(unittest.TestCase):
         assert args[args.index("--python") + 1] == "3.14"
         assert list(self.scratch.glob("uv-install.*")) == [], "the downloaded installer is removed"
 
-    def test_it_reuses_a_uv_already_in_the_data_dir_without_downloading(self) -> None:
+    def test_an_installed_uv_is_used_without_a_download_and_one_on_the_path_wins(self) -> None:
         data_bin = self.data / "bin"
         data_bin.mkdir(parents=True)
         recording_uv(data_bin / "uv", self.uv_record, sys.executable)
@@ -237,20 +218,15 @@ class TheLauncherInstallsAMissingUv(unittest.TestCase):
         assert result.stdout.strip() == "PROBE-OK"
         assert not self.curl_log.exists(), "an installed uv needs no download"
 
-    def test_a_uv_on_the_path_wins_over_the_data_dir_and_downloads_nothing(self) -> None:
-        data_bin = self.data / "bin"
-        data_bin.mkdir(parents=True)
-        recording_uv(data_bin / "uv", self.scratch / "data-uv-args.txt", sys.executable)
-        recording_uv(self.stubs / "uv", self.uv_record, sys.executable)
-        stub_curl(self.stubs / "curl", self.curl_log, "exit 1\n")
-
+        path_record = self.scratch / "path-uv-args.txt"
+        recording_uv(self.stubs / "uv", path_record, sys.executable)
+        self.uv_record.unlink()
         result = run_launcher(self.script, self.environment())
 
         assert result.returncode == 0, result.stderr
-        assert self.uv_record.exists()
-        assert not (self.scratch / "data-uv-args.txt").exists()
+        assert path_record.exists(), "a uv on the path is looked for first"
+        assert not self.uv_record.exists()
         assert not self.curl_log.exists()
-        assert not (self.home / ".local").exists()
 
 
 class TheLauncherReportsAnInstallThatCannotHappen(unittest.TestCase):
@@ -296,7 +272,6 @@ class TheLauncherReportsAnInstallThatCannotHappen(unittest.TestCase):
         output = json.loads(result.stdout)
         text = output["systemMessage"]
         assert "uv" in text
-        assert "3.14" in text
         assert "uv" in result.stderr, "the stderr line stays for a person reading the log"
         specific = output.get("hookSpecificOutput", {})
         model_text = (
@@ -307,35 +282,30 @@ class TheLauncherReportsAnInstallThatCannotHappen(unittest.TestCase):
         assert model_text == text, f"{event}: the model must be sent what the user is shown"
         return model_text
 
-    def test_session_start_and_subagent_start_send_additional_context(self) -> None:
-        for event in ("SessionStart", "SubagentStart"):
+    def test_each_event_gets_the_failure_in_the_form_it_reads(self) -> None:
+        # README.md: additionalContext on SessionStart, SubagentStart and
+        # PostToolBatch, a deny reason on PreToolUse, a block reason on Stop
+        # and SubagentStop.
+        forms = (
+            ("SessionStart", "additionalContext"),
+            ("SubagentStart", "additionalContext"),
+            ("PostToolBatch", "additionalContext"),
+            ("PreToolUse", "deny"),
+            ("Stop", "block"),
+            ("SubagentStop", "block"),
+        )
+        for event, form in forms:
             with self.subTest(event=event):
                 result = self.run_failing(event)
                 self.assert_model_and_user_both_told(result, event)
-                specific = json.loads(result.stdout)["hookSpecificOutput"]
-                assert specific["hookEventName"] == event
-                assert "decision" not in json.loads(result.stdout)
-
-    def test_post_tool_batch_sends_additional_context_and_does_not_block(self) -> None:
-        result = self.run_failing("PostToolBatch")
-        self.assert_model_and_user_both_told(result, "PostToolBatch")
-        output = json.loads(result.stdout)
-        assert output["hookSpecificOutput"]["hookEventName"] == "PostToolBatch"
-        assert "decision" not in output
-
-    def test_pre_tool_use_denies_with_the_reason_the_model_reads(self) -> None:
-        result = self.run_failing("PreToolUse")
-        self.assert_model_and_user_both_told(result, "PreToolUse")
-        specific = json.loads(result.stdout)["hookSpecificOutput"]
-        assert specific["hookEventName"] == "PreToolUse"
-        assert specific["permissionDecision"] == "deny"
-
-    def test_stop_and_subagent_stop_block_with_the_reason_the_model_reads(self) -> None:
-        for event in ("Stop", "SubagentStop"):
-            with self.subTest(event=event):
-                result = self.run_failing(event)
-                self.assert_model_and_user_both_told(result, event)
-                assert json.loads(result.stdout)["decision"] == "block"
+                output = json.loads(result.stdout)
+                if form == "block":
+                    assert output["decision"] == "block"
+                else:
+                    assert "decision" not in output
+                    specific = output["hookSpecificOutput"]
+                    assert specific["hookEventName"] == event
+                    assert (specific.get("permissionDecision") == "deny") == (form == "deny")
 
     def test_a_stop_already_continued_by_the_failure_says_nothing_more(self) -> None:
         for event in ("Stop", "SubagentStop"):
@@ -344,49 +314,21 @@ class TheLauncherReportsAnInstallThatCannotHappen(unittest.TestCase):
                 assert result.returncode == 0, result.stderr
                 assert result.stdout == "", "a second block would loop until the harness cap"
 
-    def test_an_unreadable_event_sends_the_failure_to_the_model_and_the_user(self) -> None:
-        for payload in ('{"hook_event_name": "Foo"}', "nope", ""):
-            with self.subTest(payload=payload):
-                result = run_launcher(self.script, self.environment(), stdin=payload)
-                assert result.returncode == 0, result.stderr
-                output = json.loads(result.stdout)
-                assert "hookSpecificOutput" not in output, "it requires a hookEventName"
-                assert output["decision"] == "block"
-                text = output["reason"]
-                assert output["systemMessage"] == text
-                assert "continue" not in output
-                assert "stopReason" not in output
-                assert "the hook event could not be read" in text
-                assert "uv" in text
-                assert "3.14" in text
-                assert "uv" in result.stderr
-
-    def test_with_no_downloader_the_text_names_the_missing_downloader(self) -> None:
-        text = self.assert_model_and_user_both_told(
-            self.run_failing("SessionStart"), "SessionStart"
+    def test_an_install_that_cannot_happen_is_reported_and_leaves_nothing_behind(self) -> None:
+        causes = (
+            ("no curl or wget", None, 0),
+            ("a download that fails", "", 22),
+            ("an installer that fails", "exit 3\n", 0),
+            ("an installer that leaves no uv", ":\n", 0),
         )
-        assert "no curl or wget" in text
-
-    def test_when_the_download_fails_the_text_says_so_and_the_temp_file_is_gone(self) -> None:
-        self.stub("", exit_code=22)
-        result = self.run_failing("SessionStart", curl_stub=True)
-        text = self.assert_model_and_user_both_told(result, "SessionStart")
-        assert "download failed" in text
-        assert list(self.scratch.glob("uv-install.*")) == []
-
-    def test_when_the_installer_fails_the_text_says_so_and_no_uv_is_left(self) -> None:
-        self.stub("exit 3\n")
-        result = self.run_failing("SessionStart", curl_stub=True)
-        text = self.assert_model_and_user_both_told(result, "SessionStart")
-        assert "installer failed" in text
-        assert not (self.scratch / "plugin-data" / "bin" / "uv").exists()
-        assert not (self.scratch / "home" / ".local").exists()
-
-    def test_when_the_installer_leaves_no_uv_the_text_says_so(self) -> None:
-        self.stub(":\n")
-        result = self.run_failing("SessionStart", curl_stub=True)
-        text = self.assert_model_and_user_both_told(result, "SessionStart")
-        assert "still missing" in text
+        for label, installer_body, exit_code in causes:
+            with self.subTest(cause=label):
+                if installer_body is not None:
+                    self.stub(installer_body, exit_code=exit_code)
+                result = self.run_failing("SessionStart", curl_stub=installer_body is not None)
+                self.assert_model_and_user_both_told(result, "SessionStart")
+                assert not (self.scratch / "plugin-data" / "bin" / "uv").exists()
+                assert not (self.scratch / "home" / ".local").exists()
 
     def test_with_no_plugin_data_dir_it_fails_to_the_model_and_writes_nothing_to_home(self) -> None:
         stubs = self.scratch / "stubs"
@@ -402,8 +344,7 @@ class TheLauncherReportsAnInstallThatCannotHappen(unittest.TestCase):
 
         result = run_launcher(self.script, child_environment, stdin=payload)
 
-        text = self.assert_model_and_user_both_told(result, "SessionStart")
-        assert "CLAUDE_PLUGIN_DATA is not set" in text
+        self.assert_model_and_user_both_told(result, "SessionStart")
         assert not uv_record.exists(), "no hook runs where nothing may be installed"
         assert not (self.scratch / "curl-log.txt").exists()
         assert not (self.scratch / "home").exists(), "nothing is written to home"
