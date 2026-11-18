@@ -1,6 +1,6 @@
 # Example: a coordinated plan
 
-Three features that would each have edited one render file in turn. The size pass answered several units; fixing three contracts took every feature's logic out of the render file, which left one hotspot for one integrator. The plan runs as three waves: a contracts unit alone, three module lanes at once with a researcher beside them, then the integrator. The machine had git and no other worktree tool, a pre-commit hook that type-checks, and a `make` file. The session's agent list held `prep:work-coordinator`.
+Three features that would each have edited one render file in turn. The size pass answered several units; fixing three contracts took every feature's logic out of the render file, which left one hotspot for one integrator. The plan runs as three waves: a contracts unit alone, three module lanes at once with a researcher beside them, then the integrator. The machine had a pre-commit hook that type-checks and a `make` file. The session's agent list held `prep:work-coordinator`.
 
 The plan file holds what the coordinator acts on and what every agent shares. Each worker's material sits in the run book beside it, one file per reader. To stay short, this example writes one lane entry and one lane file in full and elides the others, and leaves out Tooling, Invitations, and Verification. A real plan writes every entry and every file whole.
 
@@ -17,7 +17,7 @@ Goal: the usage meter under the prompt shows every category in a colour of its o
 
 Run: the session's main agent starts `prep:work-coordinator` once, in the background, with this file's absolute path, then answers what the coordinator hands up and changes no file this plan covers. From the next line on, "you" is that coordinator.
 
-Shape: 5 units in 3 waves. You coordinate and implement nothing; 4 workers and 1 researcher work in lanes created with `git worktree`.
+Shape: 5 units in 3 waves. You coordinate and implement nothing; 4 workers and 1 researcher work in lanes, one worktree each.
 
 ## Glossary
 
@@ -129,7 +129,7 @@ Each agent's prompt holds a greeting naming its role, the Roster in a `<roster>`
 Wave 1: `contracts`
 
 1. before: `make test` passes on `main`.
-2. create: the `create` command of lane `meter-contracts`.
+2. create: the worktree of lane `meter-contracts`, by its lane entry.
 3. start: contracts-worker, in the background.
 4. while it runs: wait for its report.
 5. ends when: contracts-worker reports landed, and `git -C /work/term-app log --oneline -1 main` shows its commit.
@@ -137,7 +137,7 @@ Wave 1: `contracts`
 Wave 2: `palette`, `theme`, `categories`, and the researcher
 
 1. before: wave 1 ended.
-2. create: the `create` command of each of the three lanes, from `main` as it now stands.
+2. create: the worktree of each of the three lanes, by its lane entry, from `main` as it now stands.
 3. start: the three workers and label-researcher, all in one message, each in the background.
 4. while they run: wait for reports, and act only by the Messages table.
 5. ends when: all three workers report landed, the researcher reports its file written, and `make test` passes on `main`.
@@ -145,7 +145,7 @@ Wave 2: `palette`, `theme`, `categories`, and the researcher
 Wave 3: `render`
 
 1. before: wave 2 ended.
-2. create: the `create` command of lane `meter-render`, from `main` as it now stands.
+2. create: the worktree of lane `meter-render`, by its lane entry, from `main` as it now stands.
 3. start: render-worker, adding to its prompt the path the researcher reported.
 4. while it runs: wait for its report.
 5. ends when: render-worker reports landed. Then run the Finish block.
@@ -176,7 +176,7 @@ A worker's question inside its own paths, where its checks catch a wrong answer:
 - consumes: CategoryId
 - waits on: lane `meter-contracts`, for the declarations in `src/meter/contracts.ts`
 - early start: none
-- create: `git -C /work/term-app worktree add -b meter-palette /work/term-app-meter-palette main`; the path `/work/term-app-meter-palette` goes into the worker's prompt as `<worktree>`
+- base: `main`; create the worktree from `/work/term-app` on a new branch `meter-palette` as the `worktrees` skill directs, and put the absolute path it reports into the worker's prompt as `<worktree>`
 - run-book file: `/work/term-app-notes/usage-meter.runbook/lane-meter-palette.md`; hand it to the worker by path, unread
 
 [lane entries `meter-contracts`, `meter-theme`, `meter-categories`, and `meter-render` follow, each in the same form; elided in this example]
@@ -194,6 +194,7 @@ A worker's question inside its own paths, where its checks catch a wrong answer:
 - No lane changes a fixed contract. A worker that finds one wrong stops that part of its work and reports it.
 - Every commit goes through the pre-commit hook. A rejection is the next task.
 - Nothing is pushed.
+- You and every worker load the `worktrees` skill through the Skill tool before the first change, and create, provision, commit in, land, and remove each lane's worktree as it directs.
 ````
 
 The run-book file at `/work/term-app-notes/usage-meter.runbook/lane-meter-palette.md`:
@@ -209,15 +210,10 @@ The run-book file at `/work/term-app-notes/usage-meter.runbook/lane-meter-palett
 - provisioning: `make install`, run in `<worktree>` before its first commit
 - owns: `src/meter/palette.ts`, `tests/meter/palette.test.ts`; nothing outside them
 - checks: `make test-meter FILE=tests/meter/palette.test.ts` passes; leave unrun `make test`, other lanes' tests, and the formatter and `tsc`, which the pre-commit hook runs
-- skills: none
+- skills: `worktrees`, loaded through the Skill tool before the first change
 - delegates: none
 - early start: none
-- commit: through the hooks, with `git -C <worktree> add <paths>` naming your owns-line paths and every file a formatter or linter changed -> confirm `git -C <worktree> diff --cached --name-only` lists only them -> `git -C <worktree> commit -m '<message>'`, with no pathspec; `git -C <worktree> status --short` prints nothing after each commit
-- land, once the checks pass:
-  1. Squash into one commit: `git -C <worktree> reset --soft "$(git -C <worktree> merge-base main HEAD)"`, then `git -C <worktree> commit -m 'feat(meter): add light and dark palettes'`. Confirm `git -C <worktree> log --oneline main..HEAD` lists one commit.
-  2. `git -C <worktree> rebase main`, then `git -C /work/term-app merge --ff-only meter-palette`, then `git -C /work/term-app worktree remove <worktree>` and `git -C /work/term-app branch -d meter-palette`. A conflict stops the rebase ? resolve it keeping both lanes' changes, and run the checks again. `main` moved ? repeat this step, at most twice more.
-  3. Confirm `git -C /work/term-app log --oneline -1 main` shows the commit, and `git -C /work/term-app worktree list` no longer lists `<worktree>`.
-  You alone answer for `<worktree>`. A command you cannot run goes to the coordinator, whole, in a message.
+- commit and land: as the `worktrees` skill directs for an assigned worktree, with `<worktree>` as that worktree, `meter-palette` as its branch, `main` as the branch it lands on, and `/work/term-app` as the primary checkout; land once the checks pass. You alone answer for `<worktree>`. A command you cannot run goes to the coordinator, whole, in a message.
 - report: one final message to the coordinator, opening `landed <SHA> <subject>` or `blocked: <question>`. A contract found wrong is reported, never changed.
 
 ## Work

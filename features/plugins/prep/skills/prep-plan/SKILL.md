@@ -79,8 +79,7 @@ Act:
   ```
 
   The subject is a person who can be inconvenienced, never a system, a module, or an agent. The change serves several kinds of people, has no visible user, or its stories will shape units, boundaries, or the agents' flow ? read `references/writing-user-stories.md`.
-- Find the tools this machine offers for the plan's jobs. Run `uv run --python 3.14 --no-project "${CLAUDE_SKILL_DIR}/scripts/detect-tools.py" --repo [a path in the repository]` once and write a tool line per finding; where `uv` is not on PATH, install it with `curl -LsSf https://astral.sh/uv/install.sh | sh` first, then run the script through `uv`. Then read your own tool and skill lists for what no script can see: a memory store, a tracker, an asking skill, a simplify skill, and, in the agent list, a coordinator agent. A tool the session's rules or the repository's docs name for a job outranks a detected one. A commit hook, a task runner, a tracker, a memory store, or a session skill was found ? read that job's section of `references/tool-leverage.md`, and no other. A worktree tool matters only where the size pass selects lanes.
-
+- Find the tools this machine offers for the plan's jobs. Run `uv run --python 3.14 --no-project "${CLAUDE_SKILL_DIR}/scripts/detect-tools.py" --repo [a path in the repository]` once and write a tool line per finding; where `uv` is not on PATH, install it with `curl -LsSf https://astral.sh/uv/install.sh | sh` first, then run the script through `uv`. Then read your own tool and skill lists for what no script can see: a memory store, a tracker, an asking skill, a simplify skill, and, in the agent list, a coordinator agent. A tool the session's rules or the repository's docs name for a job outranks a detected one. A commit hook, a task runner, a tracker, a memory store, or a session skill was found ? read that job's section of `references/tool-leverage.md`, and no other.
 Ends: the readiness file holds the intent line, a story line per target outcome, and a tool line per job. Next: size.
 
 ### 2. Size
@@ -113,7 +112,7 @@ Act: answer each question in order and write a size line for it. Each takes its 
                  = the working tree and branch the plan names
              | workers change one repository at the same time, or a rule
                asks for a worktree
-                 = lanes -> references/lanes.md, references/worktree-tools.md
+                 = lanes -> references/lanes.md
 5 repos      | every changed file sits in one repository
                  = one repository
              | otherwise
@@ -261,8 +260,7 @@ hand over
 | [references/detail.md](references/detail.md) | which details the plan settles and which each worker settles, by the worker's model | the plan has several units |
 | [references/coordination.md](references/coordination.md) | roles, roster, prompts, waves, messages, escalation, and writing for a coordinator at medium effort | a wave holds two or more sizeable units |
 | [references/run-book.md](references/run-book.md) | sorting material between the plan and each worker's run-book file, the file header, and where the run book sits | the plan has a coordinator and workers |
-| [references/lanes.md](references/lanes.md) | turning units into worktree lanes that each land as one commit | workers share a repository, or a rule asks for worktrees |
-| [references/worktree-tools.md](references/worktree-tools.md) | choosing the worktree tool, and each tool's commands for a lane's steps | the plan has lanes |
+| [references/lanes.md](references/lanes.md) | turning units into lanes, each with its owned paths, base, and wave, and sending every worktree command to the `worktrees` skill | workers share a repository, or a rule asks for worktrees |
 | [references/tool-leverage.md](references/tool-leverage.md) | what a commit hook, task runner, tracker, memory store, or session skill changes in a plan | that job has a tool line |
 | [references/repos-and-sessions.md](references/repos-and-sessions.md) | contracts and landing order across repositories; handoffs between sessions | several repositories, or a handoff |
 | [assets/plan-lean.md](assets/plan-lean.md) | the plan form for one unit and one agent | writing a lean plan |
@@ -272,5 +270,5 @@ hand over
 | [assets/handoff-note.md](assets/handoff-note.md) | the note one session leaves the next | a handoff |
 | [references/example-lean-plan.md](references/example-lean-plan.md) | a request and the finished one-file fix plan it produced | unsure what a lean plan reads like |
 | [references/example-coordinated-plan.md](references/example-coordinated-plan.md) | a request and the finished plan and run-book file it produced, with a module map, contracts, waves, lanes, a researcher, and an integrator | unsure what a coordinated plan reads like |
-| `scripts/detect-tools.py` | prints, as JSON, the repository's trunk and primary checkout and the tools found for worktrees, commit hooks, task running, and tracking | frame, once per repository |
+| `scripts/detect-tools.py` | prints, as JSON, the repository's trunk and primary checkout and the tools found for commit hooks, task running, and tracking | frame, once per repository |
 | `scripts/plan-waves.py` | prints the waves the unit and contract lines allow, what each open contract holds back, hotspots, and problems | gather and verify, with several units |

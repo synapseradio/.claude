@@ -6,8 +6,7 @@ Looks at the commands on PATH and the files of the repository holding PATH
 (default: the current directory). For each job a plan has, it lists what it
 found, strongest first, as {"tool", "command", "evidence"}; "command" is null
 where the configuration exists and the command is missing from PATH. An empty
-list means the plan uses nothing for that job. Inside a git repository the
-worktrees list always ends with git itself.
+list means the plan uses nothing for that job.
 
 Reads only; contacts no network; prints a remote's host and never its URL.
 Runs on Python 3.14 and later with the standard library alone.
@@ -124,23 +123,6 @@ def repository(start: Path) -> dict | None:
     }
 
 
-def worktrees(root: Path) -> list[dict]:
-    found = []
-    evidence = []
-    if (
-        os.name != "nt"
-        and on_path("wt")
-        and "worktrunk" in (run(["wt", "--help"], root) or "").lower()
-    ):
-        evidence.append("wt on PATH, its help names worktrunk")
-    if evidence:
-        if (root / ".config/wt.toml").is_file():
-            evidence.append(".config/wt.toml")
-        found.append(finding("worktrunk", "wt", evidence))
-    found.append(finding("git", "git worktree", ["git on PATH"]))
-    return found
-
-
 def commit_hooks(root: Path) -> list[dict]:
     found = []
     for tool, names in HOOK_MANAGERS:
@@ -207,7 +189,6 @@ def main() -> int:
     report = {
         "repository": repo,
         "jobs": {
-            "worktrees": worktrees(root) if repo else [],
             "commit_hooks": commit_hooks(root) if repo else [],
             "task_runner": task_runner(root),
             "tracker": tracker(repo["remote_host"] if repo else None),

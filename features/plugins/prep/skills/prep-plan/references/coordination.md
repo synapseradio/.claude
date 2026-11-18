@@ -38,7 +38,7 @@ The coordinator composes no work. Each prompt it sends holds a greeting naming t
 One numbered block per wave, written as the coordinator's steps:
 
 1. the code the wave's units wait on, landed on the trunk, as a command that shows it exists
-2. what to create, with exact commands: worktrees, branches, directories
+2. what to create: each lane's worktree, by its lane entry, and each directory, with its exact command
 3. which agents to start, all in one message so they run at the same time, each in the background
 4. what to do while they run: wait for reports, and act only on the messages table
 5. what ends the wave: every worker reported landed; no check runs between waves unless the user asked for one
@@ -82,7 +82,7 @@ State what the coordinator does with a decision the plan does not hold, by kind:
 ## Writing for the coordinator
 
 - Give every step one actor and one end someone can observe.
-- Give exact commands and exact names. "Create the worktrees" becomes a command per worktree.
+- Give exact commands and exact names. "Create the worktrees" becomes a line per lane naming its branch and base.
 - Settle sizes, splits, and orders in the plan. A step that begins "decide whether" belongs in planning.
 - Say what to do on each kind of report: landed, blocked, contract conflict, failed check.
 - Say what to leave alone: no implementing, no polling, no edits inside a worker's files, no reading of run-book files.

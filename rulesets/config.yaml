@@ -18,6 +18,7 @@ skills:
   comments: comments
   writing-tests: tests
   delegate-prompt: delegate-prompt
+  worktrees: worktrees
 
 model sonnet:
   include: agent-delegation@sonnet

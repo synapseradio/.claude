@@ -2,7 +2,7 @@
 
 Read the section for each job that has a tool line in the readiness file, and skip the rest. A tool earns a place in the plan only where it changes what the plan says: a command the executor runs, a step the plan can drop, or a constraint on how units are cut. With no tool for a job, the plan uses the fallback and loses nothing it needs.
 
-Worktree tools have a reference of their own, `references/worktree-tools.md`.
+Worktrees have no tool line: the `worktrees` skill holds every worktree command, as `references/lanes.md` says.
 
 ## Commit hooks
 
