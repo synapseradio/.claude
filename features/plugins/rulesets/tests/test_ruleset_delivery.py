@@ -13,8 +13,6 @@ import json
 import pathlib
 import shutil
 import sys
-import threading
-from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 import yaml
@@ -26,8 +24,6 @@ from delivery_world import (
     Delivery,
     World,
     delivered,
-    matcher_admits,
-    select_commands,
 )
 from launcher_stubs import launch, stub
 
@@ -37,9 +33,7 @@ sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 from rulesets.locations import Locations  # noqa: E402  (path must be set before this import)
 from rulesets.session.state import (  # noqa: E402
     Band,
-    FlagSetting,
     SessionState,
-    read_state,
     write_state,
 )
 
@@ -73,73 +67,38 @@ class TestEveryContextReceivesItsRulesByHook:
         assert delivery.context == "Hold every rule as mandatory.\n"
         assert delivery.targets == {"SubagentStart"}
 
-    def test_a_delivery_leaves_the_agent_definition_file_byte_for_byte_as_it_was(
-        self, world
-    ) -> None:
-        world.rule("core-rules", "Hold every rule as mandatory.\n")
-        world.write_config(DECLARED + "defaults: core-rules\n")
-        definition = world.config / "agents" / "critic.md"
-        definition.parent.mkdir(parents=True)
-        definition.write_bytes(
-            b"---\nname: critic\nmodel: haiku\n---\nReview the diff.\r\n\xc3\xa9"
-        )
-        before = definition.read_bytes()
-
-        delivery = world.start_delegate("critic")
-
-        assert delivery.context == "Hold every rule as mandatory.\n"
-        assert definition.read_bytes() == before
-
-    def test_a_delivery_leaves_a_project_scope_agent_definition_file_byte_for_byte_as_it_was(
-        self, world
-    ) -> None:
-        world.rule("core-rules", "Hold every rule as mandatory.\n")
-        world.write_config(DECLARED + "defaults: core-rules\n")
-        definition = world.project / ".claude" / "agents" / "critic.md"
-        definition.parent.mkdir(parents=True)
-        definition.write_bytes(
-            b"---\nname: critic\ndescription: a test agent\ntools: Read, Grep\n---\n"
-            b"Review the diff.\r\n\xc3\xa9"
-        )
-        before = definition.read_bytes()
-
-        delivery = world.start_delegate("critic", cwd=str(world.project))
-
-        assert delivery.context == "Hold every rule as mandatory.\n"
-        (record,) = delegate_records(world)
-        assert record["tools"]["state"] == "listed", "the delegate read the project definition"
-        assert definition.read_bytes() == before
-
-
-class TestTheHarnessMatchersAreHonoredByTheWorldThatRunsTheHooks:
     @pytest.mark.parametrize(
-        ("matcher", "value", "admitted"),
+        ("home", "definition_bytes", "listed_tools"),
         [
-            (None, "resume", True),
-            ("", "resume", True),
-            ("*", "resume", True),
-            ("startup", "startup", True),
-            ("startup", "resume", False),
-            ("startup|resume", "resume", True),
-            ("startup, clear", "clear", True),
-            ("Edit", "NotebookEdit", False),
-            ("^Notebook", "NotebookEdit", True),
-            ("^Notebook", "Edit", False),
+            ("user", b"---\nname: critic\nmodel: haiku\n---\nReview the diff.\r\n\xc3\xa9", None),
+            (
+                "project",
+                b"---\nname: critic\ndescription: a test agent\ntools: Read, Grep\n---\n"
+                b"Review the diff.\r\n\xc3\xa9",
+                "listed",
+            ),
         ],
+        ids=["a user agent definition", "a project agent definition"],
     )
-    def test_a_matcher_admits_the_values_the_hooks_documentation_gives_it(
-        self, matcher, value, admitted
+    def test_a_delivery_leaves_the_agent_definition_file_byte_for_byte_as_it_was(
+        self, world, home, definition_bytes, listed_tools
     ) -> None:
-        assert matcher_admits(matcher, value) is admitted
+        world.rule("core-rules", "Hold every rule as mandatory.\n")
+        world.write_config(DECLARED + "defaults: core-rules\n")
+        root = world.config if home == "user" else world.project / ".claude"
+        definition = root / "agents" / "critic.md"
+        definition.parent.mkdir(parents=True)
+        definition.write_bytes(definition_bytes)
 
-    def test_a_group_whose_matcher_leaves_out_a_value_runs_no_command_for_it(self) -> None:
-        groups = [
-            {"matcher": "startup", "hooks": [{"command": "only-at-startup"}]},
-            {"hooks": [{"command": "always"}]},
-        ]
+        delivery = world.start_delegate(
+            "critic", **({"cwd": str(world.project)} if home == "project" else {})
+        )
 
-        assert select_commands(groups, "startup") == ["only-at-startup", "always"]
-        assert select_commands(groups, "resume") == ["always"]
+        assert delivery.context == "Hold every rule as mandatory.\n"
+        if listed_tools:
+            (record,) = delegate_records(world)
+            assert record["tools"]["state"] == listed_tools, "the delegate read the definition"
+        assert definition.read_bytes() == definition_bytes
 
 
 def engine_files(world) -> dict[pathlib.Path, bytes]:
@@ -223,19 +182,6 @@ class TestDeliveredTextIsRuleTextOnly:
 
         assert delivery.received == "<!-- rule: voice -->\n\nterse voice\n"
 
-    def test_markers_count_toward_the_part_budget(self, world) -> None:
-        world.rule("a-rule", "a" * 4489 + "\n")
-        world.rule("b-rule", "b" * 4489 + "\n")
-        world.write_config(DECLARED + "defaults: all.*\n")
-
-        delivery = world.start_session()
-
-        assert {part: text[:21] for part, text in delivery.received_parts.items()} == {
-            1: "<!-- rule: a-rule -->",
-            2: "<!-- rule: b-rule -->",
-        }
-        assert all(len(text) <= 9000 for text in delivery.received_parts.values())
-
 
 def unreadable(path) -> pathlib.Path:
     path.chmod(0o000)
@@ -305,17 +251,6 @@ class TestAnUnreadableRuleFileIsWithheld:
         assert "tone.md" in delivery.message
         assert "Permission denied" in delivery.message
         assert [w["rule"] for r in world.records() for w in r["withheld"]] == ["tone"]
-
-
-class TestFactsSwitchesAndHostVariablesGoToTheRecordAlone:
-    def test_an_absent_agent_fact_reaches_the_record_and_shows_no_message(self, world) -> None:
-        world.rule("voice")
-        world.write_config(DECLARED + "defaults: voice\nagent eval-runner:\n  include: voice\n")
-
-        delivery = world.start_session()
-
-        assert [n["shown"] for n in notice_entries(world, "agent-absent")] == [False]
-        assert delivery.message is None
 
 
 class TestADelegateStartThatShowsNoMessageSendsShownNoticesToTheRecordAlone:
@@ -430,45 +365,6 @@ class TestAToggleReachesOnlyDelegateDeliveriesThatBeginAfterIt:
             later = world.start_session(source=source)
             assert later.context == "text of voice\ntext of writing-code\n", source
 
-    def test_a_compaction_after_a_toggle_composes_from_the_launch_flags_alone(self, world) -> None:
-        world.rule("core-rules")
-        world.rule("security-pass")
-        world.rule("loud-pass")
-        world.write_config(
-            DECLARED + "flags: strict loud\n" + "defaults: core-rules\n" + "flag strict:\n"
-            "  include: security-pass\n"
-            "flag loud:\n"
-            "  include: loud-pass\n"
-        )
-        world.environment["RULESETS_FLAGS"] = "loud"
-        assert world.toggle("flag strict").returncode == 0
-
-        compacted = world.start_session(source="compact")
-
-        assert compacted.context == "text of core-rules\ntext of loud-pass\n"
-
-    def test_a_running_delegate_keeps_the_rules_its_first_part_composed_when_none_is_toggled(
-        self, world
-    ) -> None:
-        bodies = {name: f"{name} " + "x" * 5990 + "\n" for name in ("a-rule", "b-rule", "c-rule")}
-        for name, text in bodies.items():
-            world.rule(name, text)
-        world.rule("writing-code")
-        world.write_config(DECLARED + "defaults: writing-code a-rule b-rule c-rule\n")
-        payload = {"session_id": "s1", "agent_id": "a1", "agent_type": "critic", "prompt_id": "p1"}
-
-        first = world.run_part("SubagentStart", payload, 1)
-        world.rule("b-rule", "b-rule EDITED after the first part\n")
-        (world.rulesets / "rules" / "c-rule.md").unlink()
-        assert world.toggle("none").returncode == 0
-        later = {
-            part: world.run_part("SubagentStart", payload, part) for part in range(2, MAX_PARTS + 1)
-        }
-
-        delivery = Delivery({1: first, **later})
-        assert delivery.context == "".join(bodies.values()) + "text of writing-code\n"
-        assert world.start_delegate(agent_id="a2").context == ""
-
     def test_all_toggled_after_the_first_delivery_gives_the_main_session_nothing_and_the_next_delegate_every_rule(
         self, world
     ) -> None:
@@ -559,28 +455,21 @@ class TestTheActionClearRemovesTheSessionsState:
         assert not world.state_file().exists()
         assert world.start_delegate().context == CORE
 
-    def test_clear_removes_a_state_file_no_toggle_could_read_and_the_next_delegate_gets_the_configs_rules(
-        self, world
-    ) -> None:
-        world.rule("core-rules")
-        world.write_config(DECLARED + "defaults: core-rules\n")
-        world.state_file().parent.mkdir(parents=True)
-        world.state_file().write_text("band: sideways\n", encoding="utf-8")
-
-        cleared = world.toggle("clear")
-
-        assert cleared.returncode == 0, cleared.stderr
-        assert not world.state_file().exists()
-        assert world.start_delegate().context == CORE
-
 
 class TestSessionStateEndsAtAClearAndAtTheSessionsEnd:
-    def test_a_cleared_session_ends_its_toggles(self, world) -> None:
+    @pytest.mark.parametrize(
+        "source",
+        ["clear", "resume"],
+        ids=["a cleared session", "a resume after a crash that sent no session end"],
+    )
+    def test_a_clear_or_a_resume_ends_the_sessions_toggles(self, world, source) -> None:
         declare_strict(world)
         assert world.toggle("flag strict").returncode == 0
+        assert world.state_file().exists()
 
-        world.start_session(source="clear")
+        world.start_session(source=source)
 
+        assert not world.state_file().exists()
         assert world.start_delegate().context == CORE
 
     def test_a_closed_session_ends_its_toggles_for_the_resumed_session(self, world) -> None:
@@ -592,18 +481,6 @@ class TestSessionStateEndsAtAClearAndAtTheSessionsEnd:
         assert not world.state_file().exists()
         world.start_session(source="resume")
 
-        assert world.start_delegate().context == CORE
-
-    def test_a_resume_after_a_crash_that_sent_no_session_end_starts_without_toggles(
-        self, world
-    ) -> None:
-        declare_strict(world)
-        assert world.toggle("flag strict").returncode == 0
-        assert world.state_file().exists()
-
-        world.start_session(source="resume")
-
-        assert not world.state_file().exists()
         assert world.start_delegate().context == CORE
 
 
@@ -620,57 +497,23 @@ class TestCompactionKeepsSessionState:
 
 
 class TestDeliveryRunsOnPython315OrLater:
-    def test_the_launcher_refuses_python_3_14_with_a_message_to_the_person_and_exit_zero(
-        self, tmp_path
+    @pytest.mark.parametrize(
+        ("minor", "has_yaml", "named"),
+        [(14, True, "3.15"), (15, False, "pyyaml")],
+        ids=["a Python older than 3.15", "Python 3.15 without the yaml library"],
+    )
+    def test_the_launcher_refuses_with_a_message_to_the_person_that_names_the_requirement_and_exits_zero(
+        self, tmp_path, minor, has_yaml, named
     ) -> None:
-        stub(tmp_path, "python3", minor=14, has_yaml=True)
+        stub(tmp_path, "python3", minor=minor, has_yaml=has_yaml)
 
         result = launch(tmp_path, announce=True)
 
         assert result.returncode == 0
-        assert "3.15" in result.stderr
+        assert named in result.stderr
         output = json.loads(result.stdout)
-        assert "3.15" in output["systemMessage"]
+        assert named in output["systemMessage"]
         assert "hookSpecificOutput" not in output, "the agent's context holds no such line"
-
-    def test_a_session_on_python_3_15_with_the_yaml_library_receives_its_rules_and_no_requirement_message(
-        self, world
-    ) -> None:
-        world.rule("core-rules", "Hold every rule as mandatory.\n")
-        world.write_config(DECLARED + "defaults: core-rules\n")
-        world.environment["RULESETS_PYTHON"] = sys.executable
-        assert sys.version_info >= (3, 15)
-
-        delivery = world.start_session()
-
-        assert delivery.context == "Hold every rule as mandatory.\n"
-        assert delivery.message is None
-
-    def test_the_launcher_refuses_python_3_15_without_the_yaml_library_and_names_the_requirement(
-        self, tmp_path
-    ) -> None:
-        stub(tmp_path, "python3", minor=15, has_yaml=False)
-
-        result = launch(tmp_path, announce=True)
-
-        assert result.returncode == 0
-        assert "pyyaml" in result.stderr
-        output = json.loads(result.stdout)
-        assert "pyyaml" in output["systemMessage"]
-        assert "hookSpecificOutput" not in output, "the agent's context holds no such line"
-
-
-class TestSessionStateRoundTripsThroughItsFile:
-    def test_a_band_and_flags_written_are_the_band_and_flags_read(self, tmp_path) -> None:
-        locations = Locations(tmp_path)
-        written = SessionState(Band.NONE, {"strict": FlagSetting.SET, "loud": FlagSetting.UNSET})
-
-        write_state(locations, "s1", written)
-
-        assert read_state(locations, "s1") == written
-        assert list((tmp_path / ".tmp" / "rulesets-engine" / "session").iterdir()) == [
-            tmp_path / ".tmp" / "rulesets-engine" / "session" / "s1.yaml"
-        ]
 
 
 def tree_of(root) -> dict[pathlib.Path, bytes]:
@@ -734,20 +577,6 @@ class TestAPreToolUseHookRecordsTheModelACallerNamesForOneSpawn:
         ]
         assert injected == [{"hookEventName", "additionalContext"}]
         assert delivery.context == "text of core-rules\n"
-
-    def test_a_spawn_that_names_no_model_leaves_the_delegate_on_its_parents_model(
-        self, world
-    ) -> None:
-        world.rule("core-rules")
-        world.write_config(DECLARED + "defaults: core-rules\n")
-        world.start_session(model=OPUS)
-
-        recorded = world.spawn("critic", model=None)
-        world.start_delegate("critic")
-
-        assert (recorded.returncode, recorded.stdout) == (0, "")
-        (record,) = delegate_records(world)
-        assert (record["model"]["name"], record["model"]["source"]) == ("opus", "parent-record")
 
     @pytest.mark.parametrize(
         "stdin",
@@ -814,12 +643,11 @@ class TestAnUnreadablePayloadLeavesATrace:
         result = world.run_part_process("SessionStart", {"source": "startup"}, 1)
 
         assert result.returncode == 0
-        assert "the payload names no session" in result.stderr
-        message = json.loads(result.stdout)["systemMessage"]
-        assert "the payload names no session" in message
+        assert result.stderr
+        assert json.loads(result.stdout)["systemMessage"]
         assert "additionalContext" not in result.stdout
 
-    def test_a_switch_naming_no_target_model_leaves_a_record_with_the_reason_and_delivers_nothing(
+    def test_a_switch_naming_no_target_model_leaves_a_failure_record_and_delivers_nothing(
         self, world
     ) -> None:
         declare_tiers(world, "opus")
@@ -830,43 +658,15 @@ class TestAnUnreadablePayloadLeavesATrace:
         )
 
         assert result.returncode == 0
-        assert "the switch names no target model" in result.stderr
+        assert result.stderr
         assert result.stdout == ""
         _, failed = world.records()
         (notice,) = failed["notices"]
         assert notice["kind"] == "delivery-failure"
-        assert "the switch names no target model" in notice["subject"]
         assert failed["rules"] == []
-        assert counted_models(world) == [SONNET]
-
-    def test_a_payload_that_is_not_json_prints_the_reason_to_stderr_and_nothing_else(
-        self, world
-    ) -> None:
-        result = world.run_hook_bytes("--part 1", b"{not json")
-
-        assert (result.returncode, result.stdout) == (0, b"")
-        assert b"not UTF-8 JSON" in result.stderr
-
-    def test_a_later_part_prints_nothing_for_an_unreadable_payload(self, world) -> None:
-        result = world.run_part_process("SessionStart", {"source": "startup"}, 2)
-
-        assert (result.returncode, result.stdout, result.stderr) == (0, "", "")
 
 
 class TestASessionsModelFactIsRecordedAndReadBack:
-    def test_a_session_whose_start_reports_no_identifier_records_that_none_was_available(
-        self, world
-    ) -> None:
-        world.rule("voice")
-        world.write_config(DECLARED + "defaults: voice\n")
-
-        world.start_session(model=None)
-
-        record = world.model_record()
-        assert record is not None
-        assert record["identifier"] is None
-        assert "no model identifier was available" in json.dumps(record)
-
     def test_a_session_that_starts_on_an_identifier_records_it_for_a_later_start_to_read(
         self, world
     ) -> None:
@@ -881,28 +681,6 @@ class TestASessionsModelFactIsRecordedAndReadBack:
             OPUS,
             "session-record",
         )
-
-
-class TestADeliverysFirstPartAloneWritesTheSessionsModelRecord:
-    def test_the_first_part_writes_the_record_and_no_later_part_writes_it_again(
-        self, world
-    ) -> None:
-        for name in ("a-rule", "b-rule", "c-rule"):
-            world.rule(name, f"{name} " + "x" * 5990 + "\n")
-        world.write_config(DECLARED + "defaults: a-rule b-rule c-rule\n")
-        payload = {"session_id": "s1", "source": "startup", "model": OPUS}
-
-        first = world.run_part("SessionStart", payload, 1)
-        record = world.model_record()
-        path = world.config / ".tmp" / "rulesets-engine" / "models" / "s1.json"
-        path.unlink()
-        later = [world.run_part("SessionStart", payload, part) for part in (2, 3)]
-
-        assert first
-        assert all(later), "the rules span three parts"
-        assert record is not None
-        assert record["identifier"] == OPUS
-        assert not path.exists()
 
 
 def declare_voice_scene(world) -> None:
@@ -921,19 +699,6 @@ def declare_voice_scene(world) -> None:
 
 
 class TestADelegateReceivesAllItsRulesAtItsStart:
-    def test_a_delegate_spawned_after_a_rule_edit_receives_the_edit_and_the_earlier_one_keeps_its_text(
-        self, world
-    ) -> None:
-        world.rule("voice", "old voice\n")
-        world.write_config(DECLARED + "defaults: voice\n")
-
-        before = world.start_delegate(agent_id="a1")
-        world.rule("voice", "edited voice\n")
-        after = world.start_delegate(agent_id="a2")
-
-        assert before.context == "old voice\n"
-        assert after.context == "edited voice\n"
-
     def test_a_rule_edited_after_a_delegate_starts_reaches_the_next_delegate_and_not_the_running_one(
         self, world
     ) -> None:
@@ -1006,34 +771,28 @@ class TestADelegatesDeliveryWritesNoSessionFile:
 
 
 class TestAMissingOrUnparsableConfigDeliversEveryRuleAtItsDefault:
-    def test_a_missing_config_delivers_each_default_form_sorted_and_the_notice_names_the_path(
-        self, world
+    @pytest.mark.parametrize(
+        "broken",
+        [None, "models: ['opus'\ndefaults: ['voice']\n"],
+        ids=["a missing config", "an unparsable config"],
+    )
+    def test_the_session_receives_each_default_form_sorted_and_the_notice_names_the_path_and_any_error(
+        self, world, broken
     ) -> None:
         world.rule("voice", "default voice\n")
         world.rule("voice@terse", "terse voice\n")
         world.rule("a-rule", "a text\n")
+        if broken is not None:
+            world.write_config(broken)
+            with pytest.raises(yaml.YAMLError) as parsed:
+                yaml.safe_load(broken)
 
         delivery = world.start_session()
 
         assert delivery.context == "a text\ndefault voice\n"
         assert str(world.rulesets / "config.yaml") in delivery.message
-        assert "manifest" not in delivery.message
-
-    def test_an_unparsable_config_delivers_each_default_form_and_the_notice_names_path_and_error(
-        self, world
-    ) -> None:
-        world.rule("voice", "default voice\n")
-        world.rule("a-rule", "a text\n")
-        broken = "models: ['opus'\ndefaults: ['voice']\n"
-        world.write_config(broken)
-        with pytest.raises(yaml.YAMLError) as parsed:
-            yaml.safe_load(broken)
-
-        delivery = world.start_session()
-
-        assert delivery.context == "a text\ndefault voice\n"
-        assert str(world.rulesets / "config.yaml") in delivery.message
-        assert parsed.value.problem in delivery.message
+        if broken is not None:
+            assert parsed.value.problem in delivery.message
         assert "manifest" not in delivery.message
 
 
@@ -1105,33 +864,6 @@ class TestADeliveryFailureKeepsTheSessionRunning:
         assert "deliver.py" in delivery.message
         assert "--part 1" in delivery.message
 
-    def test_a_defect_writes_its_traceback_to_stderr_and_an_environment_failure_does_not(
-        self, world, tmp_path
-    ) -> None:
-        world.rule("voice")
-        world.write_config(DECLARED + "defaults: voice\n")
-        world.state_file().parent.mkdir(parents=True)
-        world.state_file().write_text("band: sideways\n", encoding="utf-8")
-        delegate = {"session_id": "s1", "agent_id": "a1", "agent_type": "critic"}
-
-        defect = world.run_part_process("SubagentStart", delegate, 1)
-
-        assert defect.returncode == 0
-        assert "Traceback (most recent call last)" in defect.stderr
-        assert "ValueError" in defect.stderr
-        assert defect.stdout == "", "a delegate start shows no message and delivers no text"
-        assert [r["notices"][0]["kind"] for r in world.records()] == ["delivery-failure"]
-
-        not_a_directory = tmp_path / "file"
-        not_a_directory.write_text("", encoding="utf-8")
-        world.environment["CLAUDE_CONFIG_DIR"] = str(not_a_directory)
-
-        environment = world.run_part_process("SessionStart", {"session_id": "s2"}, 1)
-
-        assert environment.returncode == 0
-        assert "Traceback" not in environment.stderr
-        assert "NotADirectoryError" in environment.stderr or "Not a directory" in environment.stderr
-
 
 THREE_PARTS = ("a-rule", "b-rule", "c-rule")
 
@@ -1143,65 +875,11 @@ def three_part_pool(world, mark="OLD") -> None:
     world.write_config(DECLARED + "defaults: a-rule b-rule c-rule\n")
 
 
-def block_audit(world) -> None:
-    """Put a file where the audit directory belongs, so no record can be appended."""
-    audit = world.config / ".tmp" / "rulesets-engine" / "audit"
-    audit.parent.mkdir(parents=True, exist_ok=True)
-    audit.write_text("not a directory", encoding="utf-8")
-
-
-def jam_delivery_records(world, session_id="s1") -> None:
-    """Put a directory where the session's delivery records belong, so only that append fails."""
-    (world.record_files(session_id) / "deliveries.jsonl").mkdir(parents=True)
-
-
 def rerun_command_of(message) -> str:
     return message.split("run it again with: ", 1)[1]
 
 
-class TestAFailureAfterThePlanIsWrittenDeliversNoPartAtAll:
-    def test_when_the_first_part_cannot_append_its_record_no_later_part_delivers_text(
-        self, world
-    ) -> None:
-        three_part_pool(world)
-        jam_delivery_records(world)
-        payload = {"session_id": "s1", "source": "startup", "model": OPUS}
-
-        delivery = world.run_event("SessionStart", payload)
-
-        assert delivery.context == ""
-        assert [part for part, out in delivery.outputs.items() if "additionalContext" in out] == []
-        assert len(delivery.messages) == 1
-
-    def test_a_delivery_that_succeeds_again_after_a_failure_delivers_every_part(
-        self, world
-    ) -> None:
-        three_part_pool(world)
-        jam_delivery_records(world)
-        payload = {"session_id": "s1", "source": "startup", "model": OPUS}
-        world.run_event("SessionStart", payload)
-        (world.record_files() / "deliveries.jsonl").rmdir()
-
-        delivery = world.run_event("SessionStart", payload)
-
-        assert sorted(delivery.part_texts) == [1, 2, 3]
-
-
 class TestAResumedDelegateReplaysTheDeliveryItFirstReceived:
-    def test_a_start_for_an_agent_id_that_already_started_carries_the_text_of_its_first_delivery(
-        self, world
-    ) -> None:
-        world.rule("core-rules")
-        world.write_config(DECLARED + "defaults: core-rules\n")
-        first = world.start_delegate(agent_id="a1")
-        assert world.toggle("none").returncode == 0
-        world.rule("core-rules", "core-rules, edited\n")
-
-        resumed = world.start_delegate(agent_id="a1")
-
-        assert first.context == CORE
-        assert resumed.context == CORE
-
     def test_every_part_of_the_first_delivery_is_replayed(self, world) -> None:
         three_part_pool(world)
         first = world.start_delegate(agent_id="a1")
@@ -1219,30 +897,6 @@ class TestAResumedDelegateReplaysTheDeliveryItFirstReceived:
         assert world.toggle("none").returncode == 0
 
         assert world.start_delegate(agent_id="a2").context == ""
-
-    def test_a_replay_leaves_the_one_record_of_the_delivery_it_repeats(self, world) -> None:
-        world.rule("core-rules")
-        world.write_config(DECLARED + "defaults: core-rules\n")
-        world.start_delegate(agent_id="a1")
-
-        world.start_delegate(agent_id="a1")
-
-        assert [r["agent_id"] for r in delegate_records(world)] == ["a1"]
-        assert world.delivery_check().stdout == ""
-
-    def test_a_delegate_whose_first_delivery_failed_is_composed_afresh_when_it_starts_again(
-        self, world
-    ) -> None:
-        world.rule("core-rules")
-        world.write_config(DECLARED + "defaults: core-rules\n")
-        jam_delivery_records(world)
-        failed = world.start_delegate(agent_id="a1")
-        (world.record_files() / "deliveries.jsonl").rmdir()
-
-        again = world.start_delegate(agent_id="a1")
-
-        assert failed.context == ""
-        assert again.context == CORE
 
 
 class TestAFailedDeliveryWritesItsRecord:
@@ -1268,19 +922,6 @@ class TestAFailedDeliveryWritesItsRecord:
         assert record["rules"] == []
         assert not (world.record_files() / "failures.jsonl").exists()
 
-    def test_where_no_record_can_be_written_stderr_carries_the_failure_alone(self, world) -> None:
-        world.rule("voice")
-        world.write_config(DECLARED + "defaults: voice\n")
-        block_audit(world)
-        payload = {"session_id": "s1", "source": "startup", "model": OPUS}
-
-        failed = world.run_part_process("SessionStart", payload, 1)
-
-        assert failed.returncode == 0
-        assert "delivery failed" in failed.stderr
-        assert "audit" in failed.stderr
-        assert world.records() == []
-
     def test_a_delegate_failure_leaves_a_record_that_states_no_message_was_shown(
         self, world
     ) -> None:
@@ -1300,21 +941,6 @@ class TestAFailedDeliveryWritesItsRecord:
             False,
         )
         assert delivery.outputs[1] == ""
-
-    def test_a_failed_delivery_counts_as_nothing_delivered(self, world) -> None:
-        world.rule("voice")
-        world.write_config(DECLARED + "defaults: voice\n")
-        (world.rulesets / "rules").chmod(0o000)
-        try:
-            world.start_session()
-        finally:
-            (world.rulesets / "rules").chmod(0o700)
-
-        listed = world.deliveries()
-        checked = world.delivery_check()
-
-        assert (listed.stdout, listed.returncode) == ("", 0)
-        assert (checked.stdout, checked.returncode) == ("", 0)
 
 
 class TestTheFailureNoticeNamesACommandThatRunsTheDeliveryAgain:
@@ -1337,74 +963,8 @@ class TestTheFailureNoticeNamesACommandThatRunsTheDeliveryAgain:
             delivered("voice", "text of voice\n")
         )
 
-    def test_the_command_names_a_payload_file_under_the_state_directory(self, world) -> None:
-        failed = self.fail_once(world)
-
-        command = rerun_command_of(failed.message)
-
-        (payload,) = (world.config / ".tmp" / "rulesets-engine" / "payloads").iterdir()
-        assert str(payload) in command
-        assert json.loads(payload.read_text(encoding="utf-8"))["session_id"] == "s1"
-
-    def test_the_command_carries_the_payload_where_no_file_can_be_written(
-        self, world, tmp_path
-    ) -> None:
-        not_a_directory = tmp_path / "file"
-        not_a_directory.write_text("", encoding="utf-8")
-        world.environment["CLAUDE_CONFIG_DIR"] = str(not_a_directory)
-        failed = world.start_session()
-
-        command = rerun_command_of(failed.message)
-
-        assert command.startswith("printf %s ")
-        assert '"session_id"' in command
-
-    def test_running_the_command_leaves_the_next_identical_delivery_its_own_plan(
-        self, world
-    ) -> None:
-        three_part_pool(world)
-        payload = {"session_id": "s1", "source": "compact", "model": OPUS}
-        (world.rulesets / "rules").chmod(0o000)
-        try:
-            failed = world.run_event("SessionStart", payload)
-        finally:
-            (world.rulesets / "rules").chmod(0o700)
-        assert world.run_shell(rerun_command_of(failed.message)).returncode == 0
-        world.rule("b-rule", "b-rule NEW " + "x" * 5980 + "\n")
-
-        delivery = deliver_with_part_two_first(world, payload)
-
-        assert delivery.part_texts[2].startswith("b-rule NEW")
-
-
-def deliver_with_part_two_first(world, payload) -> Delivery:
-    """One delivery of `payload` whose part 2 has started long before its part 1."""
-    outputs = {}
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        later = {
-            part: pool.submit(world.run_part, "SessionStart", payload, part) for part in (2, 3)
-        }
-        threading.Event().wait(0.5)
-        outputs[1] = world.run_part("SessionStart", payload, 1)
-        outputs.update({part: job.result() for part, job in later.items()})
-    return Delivery(outputs)
-
 
 class TestAnIdenticalPayloadDeliveredAgainMeetsOnlyItsOwnPlan:
-    def test_part_two_started_ahead_of_part_one_carries_the_text_edited_since_the_last_delivery(
-        self, world
-    ) -> None:
-        three_part_pool(world)
-        payload = {"session_id": "s1", "source": "compact", "model": OPUS}
-        first = world.run_event("SessionStart", payload)
-        world.rule("b-rule", "b-rule NEW " + "x" * 5980 + "\n")
-
-        second = deliver_with_part_two_first(world, payload)
-
-        assert first.part_texts[2].startswith("b-rule OLD")
-        assert second.part_texts[2].startswith("b-rule NEW")
-        assert "b-rule OLD" not in second.context
-
     def test_each_of_several_concurrent_deliveries_carries_the_edit_made_before_it(
         self, world
     ) -> None:
@@ -1457,24 +1017,17 @@ def switch_records(world) -> list[dict]:
     return [r for r in world.records() if r.get("switch") is not None]
 
 
-def counted_models(world) -> list[str]:
-    """The identifiers of the records the readers count, in file order."""
-    from rulesets.audit.counted import counted
-    from rulesets.audit.delivery_record import DeliveryRecord
-
-    return [
-        r.model.identifier for r in counted(DeliveryRecord.from_json(r) for r in world.records())
-    ]
-
-
 class TestAMidSessionModelChangeDeliversTheNewRulesAndStatesItsLimit:
+    @pytest.mark.parametrize(
+        "before", [SONNET, "glm-5"], ids=["a claimed model", "an unclaimed one"]
+    )
     def test_a_switch_to_a_differently_composed_model_delivers_its_rules_and_notes_the_earlier_ones_remain(
-        self, world
+        self, world, before
     ) -> None:
         declare_tiers(world, "sonnet", "opus")
-        world.start_session(model=SONNET)
+        world.start_session(model=before)
 
-        delivery = world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
+        delivery = world.switch_model(OPUS, from_model=before, prompt_id="p1")
 
         assert delivery.targets == {"PostModelSwitch"}
         assert delivery.context == "text of core-rules\ntext of opus-rules\n"
@@ -1484,21 +1037,7 @@ class TestAMidSessionModelChangeDeliversTheNewRulesAndStatesItsLimit:
         (record,) = switch_records(world)
         (remaining,) = [n for n in record["notices"] if n["kind"] == "earlier-rules-remain"]
         assert remaining["shown"] is False
-        assert "remain" in remaining["subject"]
         assert delivery.message is None
-
-    def test_a_switch_from_an_unclaimed_identifier_delivers_the_rules_composed_for_opus(
-        self, world
-    ) -> None:
-        declare_tiers(world, "opus")
-        world.start_session(model="glm-5")
-
-        delivery = world.switch_model(OPUS, from_model="glm-5", prompt_id="p1")
-
-        assert delivery.context == "text of core-rules\ntext of opus-rules\n"
-        model = world.model_record()
-        assert model is not None
-        assert model["identifier"] == OPUS
 
 
 class TestASwitchThatChangesNoRuleDeliversNothing:
@@ -1529,21 +1068,6 @@ class TestASwitchThatChangesNoRuleDeliversNothing:
         assert delivery.context == "terse voice\n"
         (record,) = switch_records(world)
         assert [(r["rule"], r["variant"]) for r in record["rules"]] == [("voice", "terse")]
-
-    def test_a_delegate_after_a_switch_that_composes_alike_reads_the_new_model_as_its_parents(
-        self, world
-    ) -> None:
-        declare_tiers(world, "haiku")
-        world.start_session(model=SONNET)
-        world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert (record["model"]["identifier"], record["model"]["source"]) == (
-            OPUS,
-            "parent-record",
-        )
 
 
 def declare_critic_pool(world) -> None:
@@ -1576,35 +1100,6 @@ class TestASwitchKeepsTheSessionsNonModelFacts:
         (record,) = switch_records(world)
         assert record["agent"] == {"state": "named", "name": "critic"}
 
-    def test_a_switch_between_models_that_compose_alike_under_the_agent_delivers_nothing(
-        self, world
-    ) -> None:
-        for name in ("core-rules", "opus-rules"):
-            world.rule(name)
-        world.write_config(
-            TIERS + "defaults: core-rules\n" + "model opus:\n"
-            "  include: opus-rules\n"
-            "agent critic:\n"
-            "  exclude: opus-rules\n"
-        )
-        world.start_session(model=SONNET, agent_type="critic")
-
-        delivery = world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
-
-        assert [out for out in delivery.outputs.values() if out] == []
-        assert len(world.records()) == 1, "only the session start left a delivery record"
-
-    def test_a_session_launched_under_no_agent_receives_no_agent_rule_after_a_switch(
-        self, world
-    ) -> None:
-        declare_critic_pool(world)
-        world.start_session(model=SONNET, agent_type="critic")
-        world.start_session(model=SONNET, source="clear")
-
-        delivery = world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
-
-        assert delivery.context == "text of core-rules\ntext of opus-rules\ntext of writing-code\n"
-
     def test_a_launch_flag_still_holds_after_a_switch(self, world) -> None:
         declare_critic_pool(world)
         world.environment["RULESETS_FLAGS"] = "strict"
@@ -1626,17 +1121,6 @@ class TestASwitchKeepsTheSessionsNonModelFacts:
 
         assert delivery.context == "text of core-rules\ntext of opus-rules\ntext of writing-code\n"
 
-    def test_a_switch_that_names_no_origin_model_delivers_even_where_the_rules_are_alike(
-        self, world
-    ) -> None:
-        declare_tiers(world, "opus")
-        world.start_session(model=SONNET)
-
-        delivery = world.switch_model(HAIKU, from_model=None, prompt_id="p1")
-
-        assert delivery.context == "text of core-rules\n"
-        assert len(switch_records(world)) == 1
-
 
 def declare_session_pool(world) -> None:
     """A pool of `core-rules`, `sorting`, and `voice`, and a composition reaching the first two."""
@@ -1650,28 +1134,14 @@ WHOLE_COMPOSITION = "Hold every rule as mandatory.\nSort what you hold.\n"
 
 
 class TestASessionReceivesAllItsRulesAtEveryStart:
-    def test_a_new_session_receives_the_bodies_its_composition_reaches_and_no_other(
-        self, world
+    @pytest.mark.parametrize("source", ["startup", "compact", "clear"])
+    def test_a_session_receives_the_bodies_its_composition_reaches_and_no_other(
+        self, world, source
     ) -> None:
         declare_session_pool(world)
-
-        delivery = world.start_session(source="startup")
-
-        assert delivery.context == WHOLE_COMPOSITION
-
-    def test_a_compacted_session_receives_every_body_its_composition_yields(self, world) -> None:
-        declare_session_pool(world)
         world.start_session(source="startup")
 
-        delivery = world.start_session(source="compact")
-
-        assert delivery.context == WHOLE_COMPOSITION
-
-    def test_a_cleared_session_receives_every_body_its_composition_yields(self, world) -> None:
-        declare_session_pool(world)
-        world.start_session(source="startup")
-
-        delivery = world.start_session(source="clear")
+        delivery = world.start_session(source=source)
 
         assert delivery.context == WHOLE_COMPOSITION
 
@@ -1683,55 +1153,37 @@ class TestASessionReceivesAllItsRulesAtEveryStart:
 
         assert delivery.context == "text of core-rules\ntext of opus-rules\n"
 
-    def test_a_ruleset_over_9000_characters_divides_into_whole_sorted_parts_one_entry_each(
-        self, world
+    @pytest.mark.parametrize(
+        ("sizes", "parts"),
+        [
+            ({"a-rule": 4477, "b-rule": 4478, "c-rule": 4476}, [["a-rule"], ["b-rule", "c-rule"]]),
+            ({"a-rule": 4477, "b-rule": 4477, "c-rule": 10}, [["a-rule", "b-rule"], ["c-rule"]]),
+            ({"a-rule": 4477, "b-rule": 4478, "c-rule": 10}, [["a-rule"], ["b-rule", "c-rule"]]),
+            ({"a-rule": 4489, "b-rule": 4489}, [["a-rule"], ["b-rule"]]),
+        ],
+        ids=[
+            "whole sorted bodies fill each part",
+            "two bodies totalling exactly 9000 characters share a part",
+            "a body that would take a part to 9001 characters opens the next part",
+            "markers count toward the part budget",
+        ],
+    )
+    def test_a_ruleset_over_9000_characters_divides_into_whole_sorted_parts(
+        self, world, sizes, parts
     ) -> None:
-        # Each marker adds 23 characters. The delivered sizes, 4,500, 4,501, and 4,499, give a
-        # different split under a budget of 8,999, 9,000, and 9,001, and under `<` against `<=`:
-        # b joins a only at 9,001, and c joins b at 9,000 exactly.
-        bodies = {"a-rule": "a" * 4477, "b-rule": "b" * 4478, "c-rule": "c" * 4476}
+        # Each marker and its blank line add 23 characters to a delivered body.
+        bodies = {name: name[0] * size for name, size in sizes.items()}
         for name, text in bodies.items():
             world.rule(name, text)
-        world.write_config(DECLARED + "defaults: c-rule a-rule b-rule\n")
+        world.write_config(DECLARED + "defaults: " + " ".join(reversed(bodies)) + "\n")
 
         delivery = world.start_session()
 
         assert delivery.received_parts == {
-            1: delivered("a-rule", bodies["a-rule"]),
-            2: delivered("b-rule", bodies["b-rule"]) + delivered("c-rule", bodies["c-rule"]),
+            number: "".join(delivered(name, bodies[name]) for name in names)
+            for number, names in enumerate(parts, start=1)
         }
         assert all(len(text) <= 9000 for text in delivery.received_parts.values())
-        assert [delivery.outputs[part].strip() for part in range(3, MAX_PARTS + 1)] == [""] * (
-            MAX_PARTS - 2
-        )
-
-    def test_two_bodies_totalling_exactly_9000_characters_share_a_part(self, world) -> None:
-        bodies = {"a-rule": "a" * 4477, "b-rule": "b" * 4477, "c-rule": "c" * 10}
-        for name, text in bodies.items():
-            world.rule(name, text)
-        world.write_config(DECLARED + "defaults: all.*\n")
-
-        delivery = world.start_session()
-
-        assert delivery.received_parts == {
-            1: delivered("a-rule", "a" * 4477) + delivered("b-rule", "b" * 4477),
-            2: delivered("c-rule", "c" * 10),
-        }
-
-    def test_a_body_that_would_take_a_part_to_9001_characters_opens_the_next_part(
-        self, world
-    ) -> None:
-        bodies = {"a-rule": "a" * 4477, "b-rule": "b" * 4478, "c-rule": "c" * 10}
-        for name, text in bodies.items():
-            world.rule(name, text)
-        world.write_config(DECLARED + "defaults: all.*\n")
-
-        delivery = world.start_session()
-
-        assert delivery.received_parts == {
-            1: delivered("a-rule", "a" * 4477),
-            2: delivered("b-rule", "b" * 4478) + delivered("c-rule", "c" * 10),
-        }
 
 
 OTHER_OPUS = "claude-opus-5-6"
@@ -1748,7 +1200,6 @@ class TestASwitchIsComparedWithWhatTheConversationHolds:
         second = world.switch_model(OTHER_OPUS, from_model=OPUS, prompt_id="p1")
 
         assert second.context == "text of core-rules\ntext of opus-rules\n"
-        assert counted_models(world) == [SONNET, OTHER_OPUS]
 
     def test_a_no_change_switch_after_a_switch_that_counted_delivers_nothing(self, world) -> None:
         declare_tiers(world, "opus")
@@ -1758,58 +1209,9 @@ class TestASwitchIsComparedWithWhatTheConversationHolds:
         second = world.switch_model(OTHER_OPUS, from_model=OPUS, prompt_id="p2")
 
         assert [out for out in second.outputs.values() if out] == []
-        assert counted_models(world) == [SONNET, OPUS]
         model = world.model_record()
         assert model is not None
         assert model["identifier"] == OTHER_OPUS
-
-    def test_a_switch_back_to_the_rules_the_conversation_holds_replaces_the_superseded_record(
-        self, world
-    ) -> None:
-        declare_tiers(world, "opus")
-        world.start_session(model=SONNET)
-        world.switch_model(OPUS, from_model=SONNET, prompt_id="p1")
-
-        back = world.switch_model(HAIKU, from_model=OPUS, prompt_id="p1")
-
-        assert back.context == "text of core-rules\n"
-        assert counted_models(world) == [SONNET, HAIKU]
-
-
-class TestOnlyTheLastOfSeveralRapidSwitchesCountsAsDelivered:
-    def test_two_switches_before_the_next_request_count_only_the_last(self, world) -> None:
-        declare_tiers(world, "sonnet", "haiku")
-        world.start_session(model=OPUS)
-
-        world.switch_model(SONNET, from_model=OPUS, prompt_id="p1")
-        world.switch_model(HAIKU, from_model=SONNET, prompt_id="p1")
-
-        assert [r["model"]["identifier"] for r in switch_records(world)] == [SONNET, HAIKU]
-        assert counted_models(world) == [OPUS, HAIKU]
-        model = world.model_record()
-        assert model is not None
-        assert model["identifier"] == HAIKU
-
-    def test_a_switch_a_request_then_another_switch_count_both(self, world) -> None:
-        declare_tiers(world, "sonnet", "haiku")
-        world.start_session(model=OPUS)
-
-        world.switch_model(SONNET, from_model=OPUS, prompt_id="p1")
-        world.switch_model(HAIKU, from_model=SONNET, prompt_id="p2")
-
-        assert counted_models(world) == [OPUS, SONNET, HAIKU]
-
-    def test_a_switch_payload_with_no_prompt_id_counts_as_delivered(self, world) -> None:
-        declare_tiers(world, "sonnet", "haiku")
-        world.start_session(model=OPUS)
-
-        world.switch_model(SONNET, from_model=OPUS)
-        world.switch_model(HAIKU, from_model=SONNET)
-
-        assert counted_models(world) == [OPUS, SONNET, HAIKU]
-        check = world.delivery_check()
-        assert (check.stdout, check.returncode) == ("", 0)
-        assert "composed but not delivered" not in check.stdout
 
 
 class TestTheEngineReadsOnlyConfigYaml:

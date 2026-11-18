@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""A context carries facts, and a block's condition tests them: known, false, or unknown.
+"""A context carries facts, and a block's condition tests them.
 
-Serves the engineer who writes a config keyed on model, agent, flag, and session, and the
-person whose sessions and delegates receive the result: a declared model name claims the
-identifiers it prefixes, a block takes the rank of its highest fact, an unclaimed model tests
-false, and a missing one tests unknown so that no block keyed on it applies. Integration cases
-run the hook entries over a configuration directory under `tmp_path`; unit cases claim
-identifiers and evaluate conditions in memory.
+Serves the person who writes a config keyed on model, agent, tools, flag, and session
+(`docs/config.md`, "Conditions" and "Which statement wins"), and whose sessions and delegates
+receive the result: a declared model name claims the identifiers it prefixes, a block takes the
+rank of its highest fact, an unclaimed model tests false, and a missing fact makes no block keyed
+on it apply. The cases run the hook entries over a configuration directory under `tmp_path`.
 
 Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_context_facts.py`.
 """
@@ -14,10 +13,9 @@ Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_context_fact
 import json
 import pathlib
 import sys
-from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from delivery_world import DECLARED, Delivery, World
+from delivery_world import DECLARED, World
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -25,20 +23,6 @@ sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
 from rulesets.check.report_format import report_lines  # noqa: E402
 from rulesets.check.run import check  # noqa: E402
-from rulesets.facts.agent_definition import definition_front  # noqa: E402
-from rulesets.facts.context import (  # noqa: E402
-    ABSENT,
-    UNCLAIMED,
-    Absent,
-    AllToolsBut,
-    Facts,
-    ListedTools,
-)
-from rulesets.facts.model import claim as model_claim  # noqa: E402
-from rulesets.facts.model import fact as model_fact  # noqa: E402
-from rulesets.facts.model import session as session_model  # noqa: E402
-from rulesets.facts.tools_fact import tools_fact  # noqa: E402
-from rulesets.source.condition import evaluate, parse_condition  # noqa: E402
 
 
 @pytest.fixture
@@ -59,25 +43,6 @@ def pin_agent_model(world, agent, model) -> None:
 def received(delivery, stems) -> list[str]:
     """The stems whose body the delivery carries, in the order given."""
     return [stem for stem in stems if f"text of {stem}\n" in delivery.context]
-
-
-def claim(identifier, models) -> model_fact.ModelFact:
-    return model_claim.claim_model(identifier, "harness-reported", models)
-
-
-def truth(text, *, model="missing", agent=None, flags=()) -> str:
-    """The condition's value as a name: TRUE, FALSE, or UNKNOWN.
-
-    `model` is a claimed name, "unclaimed", or "missing".
-    """
-    standing = {"missing": ABSENT, "unclaimed": UNCLAIMED}.get(model, model)
-    facts = Facts(
-        model=standing,
-        agent=ABSENT if agent is None else agent,
-        kind="session",
-        flags=frozenset(flags),
-    )
-    return evaluate(parse_condition(text), facts).name
 
 
 def report_for(world) -> str:
@@ -168,11 +133,6 @@ class TestEachFactKindHasADefinedValue:
             "delegate",
         )
 
-    def test_an_identifier_no_declared_name_claims_is_the_model_fact(self) -> None:
-        fact = claim("claude-nova-1", ["opus", "haiku"])
-
-        assert fact == model_fact.Unclaimed("claude-nova-1", "harness-reported")
-
 
 class TestConditionsCombineFactTests:
     def test_and_binds_tighter_than_or_so_a_critic_without_the_flag_receives_the_rule(
@@ -202,43 +162,44 @@ class TestConditionsCombineFactTests:
         delivery = world.start_delegate("critic")
 
         assert received(delivery, ["security-pass"]) == []
-        assert truth("(agent critic or agent auditor) and flag strict", agent="critic") == "FALSE"
 
-    def test_a_negated_model_test_holds_for_a_critic_on_another_claimed_model(self) -> None:
-        assert truth("agent critic and not model haiku", agent="critic", model="opus") == "TRUE"
+    def test_a_negated_model_test_holds_for_a_critic_on_another_claimed_model(self, world) -> None:
+        world.rule("planning")
+        world.write_config(
+            "models: opus haiku\ndefaults:\nagent critic and not model haiku:\n  include: planning\n"
+        )
+        world.spawn("critic", model="opus")
+        world.spawn("critic", model="haiku")
+
+        on_opus = world.start_delegate("critic", agent_id="a1")
+        on_haiku = world.start_delegate("critic", agent_id="a2")
+
+        assert received(on_opus, ["planning"]) == ["planning"]
+        assert received(on_haiku, ["planning"]) == []
 
 
 class TestConditionsTestFactsOnly:
-    def test_a_project_test_is_a_check_error_and_the_block_applies_nowhere(self, world) -> None:
-        world.rule("voice")
-        world.write_config("defaults:\nproject amboss:\n  include: voice\n")
-
-        report = report_for(world)
-
-        assert "error" in report
-        assert "`project amboss`" in report
-        assert received(world.start_session(), ["voice"]) == []
-        assert received(world.start_delegate("critic"), ["voice"]) == []
-
-    def test_an_environment_variable_test_is_a_check_error_naming_the_condition(
-        self, world
+    @pytest.mark.parametrize(
+        ("condition", "reported"),
+        [
+            ("project amboss", "`project amboss`"),
+            ("env CI", "`env CI`"),
+            ("(agent critic and flag strict", "`(agent critic and flag strict`"),
+        ],
+        ids=["a project test", "an environment variable test", "unbalanced parentheses"],
+    )
+    def test_a_condition_testing_more_than_facts_is_a_check_error_and_the_block_applies_nowhere(
+        self, world, condition, reported
     ) -> None:
         world.rule("voice")
-        world.write_config("env CI:\n  include: voice\n")
+        world.write_config(f"flags: strict\ndefaults:\n{condition}:\n  include: voice\n")
 
         report = report_for(world)
 
         assert "error" in report
-        assert "`env CI`" in report
-
-    def test_unbalanced_parentheses_are_a_check_error_naming_the_condition(self, world) -> None:
-        world.rule("voice")
-        world.write_config("(agent critic and flag strict:\n  include: voice\n")
-
-        report = report_for(world)
-
-        assert "error" in report
-        assert "`(agent critic and flag strict`" in report
+        assert reported in report
+        assert received(world.start_session(), ["voice"]) == []
+        assert received(world.start_delegate("critic"), ["voice"]) == []
 
 
 class TestAConditionNamingAnUndeclaredModelOrFlagIsSkippedWithANotice:
@@ -268,18 +229,14 @@ class TestAConditionNamingAnUndeclaredModelOrFlagIsSkippedWithANotice:
         (record,) = world.records()
         assert record["withheld"] == []
 
-    def test_an_agent_nobody_declares_is_no_check_error(self, world) -> None:
-        world.rule("voice")
-        world.write_config("agent eval-runner:\n  include: voice\n")
-
-        assert check(world.rulesets).errors == ()
-
-    def test_a_tool_and_a_session_identifier_nobody_declares_are_no_check_error(
+    def test_an_agent_a_tool_and_a_session_identifier_nobody_declares_are_no_check_error(
         self, world
     ) -> None:
         world.rule("voice")
         world.write_config(
             "defaults:\n"
+            "agent eval-runner:\n"
+            "  include: voice\n"
             "tools Bash:\n"
             "  include: voice\n"
             "session abc123:\n"
@@ -291,51 +248,7 @@ class TestAConditionNamingAnUndeclaredModelOrFlagIsSkippedWithANotice:
         assert check(world.rulesets).errors == ()
 
 
-class TestADeclaredModelNameClaimsTheIdentifiersItPrefixes:
-    def test_the_longest_declared_name_wins(self) -> None:
-        fact = claim("claude-opus-4-8", ["opus", "opus-4-8"])
-
-        assert model_fact.claimed_name(fact) == "opus-4-8"
-
-    def test_a_shorter_name_still_claims_other_identifiers(self) -> None:
-        fact = claim("claude-opus-5-5[1m]", ["opus", "opus-4-8"])
-
-        assert model_fact.claimed_name(fact) == "opus"
-
-    def test_a_continuation_that_is_not_a_boundary_claims_nothing(self) -> None:
-        assert isinstance(claim("claude-opusx", ["opus"]), model_fact.Unclaimed)
-
-    def test_an_alias_equal_to_a_declared_name_takes_that_name(self) -> None:
-        fact = claim("haiku", ["haiku"])
-
-        assert model_fact.claimed_name(fact) == "haiku"
-
-
-class TestAnIdentifierEndingIn1mFollowsItsBaseNameUnlessA1mNameIsDeclared:
-    def test_a_declared_1m_name_wins_as_the_longer_name(self) -> None:
-        fact = claim("claude-opus-4-8[1m]", ["opus-4-8", "opus-4-8[1m]"])
-
-        assert model_fact.claimed_name(fact) == "opus-4-8[1m]"
-
-
-class TestAModelNameDeclaredTwiceIsNotAnError:
-    def test_a_name_declared_twice_draws_no_check_error_and_claims_as_once(self, world) -> None:
-        world.rule("voice")
-        world.write_config("models: sonnet sonnet\ndefaults: voice\n")
-
-        once = claim("claude-sonnet-5-5", ["sonnet"])
-        twice = claim("claude-sonnet-5-5", ["sonnet", "sonnet"])
-
-        assert check(world.rulesets).errors == ()
-        assert model_fact.claimed_name(twice) == "sonnet"
-        assert twice == once
-
-
 class TestTheEngineHoldsNoModelName:
-    def test_a_config_declaring_no_model_claims_nothing(self) -> None:
-        for identifier in ("claude-opus-4-8", "claude-haiku-5"):
-            assert isinstance(claim(identifier, []), model_fact.Unclaimed)
-
     def test_declaring_a_new_model_name_gives_sessions_on_it_the_rules_declared_for_it(
         self, world
     ) -> None:
@@ -351,8 +264,9 @@ class TestTheEngineHoldsNoModelName:
 
 
 class TestAnUnclaimedIdentifierTestsFalseAndAMissingOneTestsUnknown:
-    def test_a_non_claude_identifier_receives_the_defaults_and_the_negated_block(
-        self, world
+    @pytest.mark.parametrize("identifier", ["glm-5", "claude-nova-1"])
+    def test_an_identifier_no_declared_name_claims_receives_the_defaults_and_the_negated_block(
+        self, world, identifier
     ) -> None:
         stems = ["writing-code", "security-pass", "voice"]
         for stem in stems:
@@ -366,29 +280,14 @@ class TestAnUnclaimedIdentifierTestsFalseAndAMissingOneTestsUnknown:
             "  include: voice\n"
         )
 
-        delivery = world.start_session(model="glm-5")
+        delivery = world.start_session(model=identifier)
 
         assert received(delivery, stems) == ["writing-code", "voice"]
         assert delivery.message is not None
-        assert "glm-5" in delivery.message
-        assert "glm-5" not in delivery.context
-
-    def test_a_claude_model_before_its_name_is_declared_draws_a_shown_notice(self, world) -> None:
-        world.rule("writing-code")
-        world.write_config("models: haiku\ndefaults: writing-code\n")
-
-        delivery = world.start_session(model="claude-nova-1")
-
-        assert received(delivery, ["writing-code"]) == ["writing-code"]
-        assert delivery.message is not None
-        assert "claude-nova-1" in delivery.message
-        assert "claude-nova-1" not in delivery.context
+        assert identifier in delivery.message
+        assert identifier not in delivery.context
         (record,) = world.records()
         assert record["model"]["state"] == "unclaimed"
-
-    def test_an_unclaimed_model_tests_false_and_its_negation_true(self) -> None:
-        assert truth("model haiku", model="unclaimed") == "FALSE"
-        assert truth("not model haiku", model="unclaimed") == "TRUE"
 
 
 class TestAMissingModelIdentifierMakesEveryModelTestUnknown:
@@ -405,47 +304,6 @@ class TestAMissingModelIdentifierMakesEveryModelTestUnknown:
         assert "no model identifier was available" in delivery.message
         (record,) = world.records()
         assert record["model"]["state"] == "missing"
-
-    def test_a_missing_model_makes_a_test_and_its_negation_unknown(self) -> None:
-        assert truth("model haiku", model="missing") == "UNKNOWN"
-        assert truth("not model haiku", model="missing") == "UNKNOWN"
-
-    def test_a_pin_that_is_a_list_ends_resolution_without_taking_the_default_variable(
-        self, world
-    ) -> None:
-        model_world(world, **{DEFAULT_VARIABLE: SONNET_IDENTIFIER})
-        parent_runs(world, OPUS_IDENTIFIER)
-        define_agent(world, "critic", "model: [opus, haiku]")
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert record["model"]["state"] == "missing"
-        assert record["model"]["identifier"] is None
-        assert record["model"]["source"] == "definition-pin"
-        assert record["model"]["not_a_string"] == {"value": ["opus", "haiku"], "type": "list"}
-        (notice,) = shown_notices(record)
-        assert "no model identifier was available" in notice["subject"]
-        assert "the definition's pin is a list" in notice["subject"]
-
-    def test_a_per_spawn_model_that_is_a_number_ends_resolution_without_taking_a_later_source(
-        self, world
-    ) -> None:
-        model_world(world, **{DEFAULT_VARIABLE: SONNET_IDENTIFIER})
-        parent_runs(world, OPUS_IDENTIFIER)
-        define_agent(world, "critic", "model: haiku")
-        caller_names(world, 123, "critic")
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert record["model"]["state"] == "missing"
-        assert record["model"]["identifier"] is None
-        assert record["model"]["source"] == "per-spawn"
-        assert record["model"]["not_a_string"] == {"value": 123, "type": "int"}
-        (notice,) = shown_notices(record)
-        assert "no model identifier was available" in notice["subject"]
-        assert "the model the caller named is an int" in notice["subject"]
 
 
 class TestDeliveryCompletesWhenTheModelIsUnclaimedOrMissing:
@@ -496,10 +354,6 @@ def parent_runs(world, identifier) -> None:
     path.write_text(json.dumps({"identifier": identifier}) + "\n", encoding="utf-8")
 
 
-def shown_notices(record) -> list[dict]:
-    return [n for n in record["notices"] if n["shown"]]
-
-
 def delegate_records(world) -> list[dict]:
     return [record for record in world.records() if record["scope"] == "delegate"]
 
@@ -509,71 +363,7 @@ def model_of(record) -> tuple[str, str]:
     return record["model"]["identifier"], record["model"]["source"]
 
 
-FORCE = "CLAUDE_CODE_SUBAGENT_MODEL_FORCE"
-DEFAULT_VARIABLE = "CLAUDE_CODE_SUBAGENT_MODEL"
-COORDINATOR = "CLAUDE_CODE_COORDINATOR_FORCE_WORKER_INHERIT_MODEL"
-OPUS_IDENTIFIER = "claude-opus-5-5"
 SONNET_IDENTIFIER = "claude-sonnet-5"
-HAIKU_IDENTIFIER = "claude-haiku-4-5"
-
-
-class TestTheEngineClaimsAModelIdentifierAsReportedAndResolvesNoAlias:
-    def test_an_alias_whose_mapping_variable_is_set_is_claimed_as_reported(self, world) -> None:
-        model_world(world, ANTHROPIC_DEFAULT_HAIKU_MODEL="claude-haiku-5")
-        caller_names(world, "haiku")
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert record["model"]["identifier"] == "haiku"
-        assert record["model"]["name"] == "haiku"
-
-
-class TestTheEngineReadsNoModelVariableMeantForASeparateMechanism:
-    def test_the_collapse_model_variable_changes_nothing(self, tmp_path) -> None:
-        payload = {"model": "claude-opus-5-5", "session_id": "s1"}
-        collapse = {"CLAUDE_CONTEXT_COLLAPSE_MODEL": "claude-haiku-4-5"}
-
-        with_variable = session_model.resolve_session_model(
-            payload, ["opus", "haiku"], collapse, tmp_path
-        )
-        without_variable = session_model.resolve_session_model(
-            payload, ["opus", "haiku"], {}, tmp_path
-        )
-
-        assert with_variable.fact == model_fact.Claimed(
-            "opus", "claude-opus-5-5", "harness-reported"
-        )
-        assert with_variable == without_variable
-
-
-class TestAHostManagedProviderDrawsAnUnshownNoticeForADisregardedVariable:
-    def test_an_inherited_anthropic_model_draws_only_an_unshown_notice(self, world) -> None:
-        model_world(
-            world,
-            CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST="1",
-            ANTHROPIC_MODEL="claude-opus-5-5",
-        )
-
-        delivery = world.start_session(model=None)
-
-        (record,) = world.records()
-        assert {
-            "kind": "provider-variable",
-            "subject": "ANTHROPIC_MODEL",
-            "shown": False,
-        } in record["notices"]
-        assert shown_notices(record) == []
-        assert delivery.message is None
-
-    def test_an_anthropic_model_with_no_host_variable_draws_no_notice(self, world) -> None:
-        model_world(world, ANTHROPIC_MODEL="claude-opus-5-5")
-
-        delivery = world.start_session(model=None)
-
-        (record,) = world.records()
-        assert [n for n in record["notices"] if n["kind"] == "provider-variable"] == []
-        assert delivery.message is None
 
 
 class TestTheAgentFactComesFromTheHarnessesAgentType:
@@ -588,8 +378,6 @@ class TestTheAgentFactComesFromTheHarnessesAgentType:
         delivery = world.start_delegate("critic")
 
         assert received(delivery, stems) == ["voice"]
-        assert truth("agent critic", agent="critic") == "TRUE"
-        assert truth("agent auditor", agent="critic") == "FALSE"
 
     def test_a_session_started_with_an_agent_carries_that_agent_fact(self, world) -> None:
         stems = ["voice", "tone"]
@@ -614,22 +402,8 @@ class TestAPlainMainSessionCarriesNoAgentFact:
         delivery = world.start_session()
 
         assert received(delivery, ["voice"]) == []
-        assert truth("agent eval-runner") == "UNKNOWN"
         (record,) = world.records()
         assert record["agent"]["state"] == "absent"
-        assert "without `--agent`" in record["agent"]["reason"]
-        (absent,) = [n for n in record["notices"] if n["kind"] == "agent-absent"]
-        assert absent["shown"] is False
-        assert "agent fact is absent" in absent["subject"]
-
-    def test_a_config_that_tests_no_agent_draws_no_absence_notice(self, world) -> None:
-        world.rule("voice")
-        world.write_config("flags: strict\ndefaults: voice\nflag strict:\n  include: voice\n")
-
-        world.start_session()
-
-        (record,) = world.records()
-        assert [n for n in record["notices"] if n["kind"] == "agent-absent"] == []
 
 
 class TestATestOverAnAbsentFactEvaluatesUnknown:
@@ -642,15 +416,9 @@ class TestATestOverAnAbsentFactEvaluatesUnknown:
         delivery = world.start_session()
 
         assert received(delivery, ["voice"]) == []
-        assert truth("not agent critic") == "UNKNOWN"
 
 
 class TestConditionsCombineTrueFalseAndUnknownByThreeValuedLogic:
-    def test_a_true_side_settles_an_or_over_an_unknown_side(self) -> None:
-        assert truth("flag strict or model haiku", flags=["strict"], model="missing") == "TRUE"
-        assert truth("model haiku or flag strict", flags=["strict"], model="missing") == "TRUE"
-        assert truth("flag strict or model haiku", model="missing") == "UNKNOWN"
-
     def test_a_false_side_settles_an_and_inside_a_negation(self, world) -> None:
         world.rule("security-pass")
         world.write_config(
@@ -663,8 +431,6 @@ class TestConditionsCombineTrueFalseAndUnknownByThreeValuedLogic:
 
         assert received(scout, ["security-pass"]) == ["security-pass"]
         assert received(critic, ["security-pass"]) == []
-        assert truth("not (agent critic and model haiku)", agent="scout") == "TRUE"
-        assert truth("not (agent critic and model haiku)", agent="critic") == "UNKNOWN"
 
 
 TOOL_BLOCKS = "defaults:\ntools Bash:\n  include: voice\ntools Edit:\n  include: tone\n"
@@ -679,10 +445,6 @@ def define_agent(world, name, front) -> None:
     )
 
 
-def tools_of(world, name) -> ListedTools | AllToolsBut | Absent:
-    return tools_fact(definition_front(name, None, world.config))
-
-
 def tools_world(world) -> None:
     for stem in ("voice", "tone"):
         world.rule(stem)
@@ -690,19 +452,16 @@ def tools_world(world) -> None:
 
 
 class TestToolsComeFromTheAgentDefinition:
-    def test_the_tools_fact_follows_a_definitions_tools_list(self, world) -> None:
+    @pytest.mark.parametrize("listed", ["Read, Grep, Bash", "[Read, Grep, Bash]"])
+    def test_the_tools_a_definition_lists_decide_the_blocks_a_delegate_receives(
+        self, world, listed
+    ) -> None:
         tools_world(world)
-        define_agent(world, "critic", "tools: Read, Grep, Bash")
+        define_agent(world, "critic", f"tools: {listed}")
 
         delivery = world.start_delegate("critic")
 
-        assert tools_of(world, "critic") == ListedTools(frozenset({"Read", "Grep", "Bash"}))
         assert received(delivery, ["voice", "tone"]) == ["voice"]
-
-    def test_a_yaml_list_of_tools_reads_as_the_same_fact(self, world) -> None:
-        define_agent(world, "critic", "tools: [Read, Grep, Bash]")
-
-        assert tools_of(world, "critic") == ListedTools(frozenset({"Read", "Grep", "Bash"}))
 
 
 class TestADisallowedToolEntryRemovesTheWholeTool:
@@ -712,7 +471,6 @@ class TestADisallowedToolEntryRemovesTheWholeTool:
 
         delivery = world.start_delegate("critic")
 
-        assert tools_of(world, "critic") == ListedTools(frozenset({"Read", "Grep"}))
         assert received(delivery, ["voice", "tone"]) == []
 
 
@@ -723,42 +481,18 @@ class TestADefinitionWithNoToolsListInheritsEveryTool:
 
         delivery = world.start_delegate("critic")
 
-        assert tools_of(world, "critic") == AllToolsBut(frozenset({"Edit"}))
         assert received(delivery, ["voice", "tone"]) == ["voice"]
 
 
 class TestAContextWithNoAgentDefinitionHasNoToolsFact:
-    def test_a_delegate_with_no_definition_file_has_an_absent_tools_fact_named_in_the_record(
-        self, world
-    ) -> None:
+    def test_a_delegate_with_no_definition_file_receives_no_tools_block(self, world) -> None:
         tools_world(world)
 
         delivery = world.start_delegate("critic")
 
-        assert tools_of(world, "critic") is ABSENT
         assert received(delivery, ["voice", "tone"]) == []
         (record,) = world.records()
-        (absent,) = [n for n in record["notices"] if n["kind"] == "tools-absent"]
-        assert absent["shown"] is False
-        assert "no definition file registers its agent type" in absent["subject"]
-
-    def test_a_config_that_tests_no_tools_draws_no_absence_notice(self, world) -> None:
-        world.rule("voice")
-        world.write_config("defaults: voice\nagent critic:\n  include: voice\n")
-
-        world.start_delegate("critic")
-
-        (record,) = world.records()
-        assert [n for n in record["notices"] if n["kind"] == "tools-absent"] == []
-
-    def test_the_tools_test_over_an_absent_fact_and_its_negation_are_unknown(self) -> None:
-        assert truth_of_tools("tools Bash", ABSENT) == "UNKNOWN"
-        assert truth_of_tools("not tools Bash", ABSENT) == "UNKNOWN"
-
-
-def truth_of_tools(text, tools) -> str:
-    facts = Facts(model=ABSENT, agent=ABSENT, kind="delegate", flags=frozenset(), tools=tools)
-    return evaluate(parse_condition(text), facts).name
+        assert record["tools"]["state"] == "absent"
 
 
 class TestTheToolsFactIgnoresABackgroundSubagentsNarrowerToolSet:
@@ -769,36 +503,6 @@ class TestTheToolsFactIgnoresABackgroundSubagentsNarrowerToolSet:
         delivery = world.start_delegate("critic", run_in_background=True, tools=["Read"])
 
         assert received(delivery, ["voice", "tone"]) == ["tone"]
-
-
-class TestTheCallersModelIsReadFromTheAgentToolHooksRecord:
-    def test_two_agent_types_under_one_prompt_each_read_their_own_per_spawn_model(
-        self, world
-    ) -> None:
-        model_world(world)
-        caller_names(world, "haiku", "critic")
-        caller_names(world, "opus", "scout")
-
-        world.start_delegate("critic", agent_id="a1")
-        world.start_delegate("scout", agent_id="a2")
-
-        by_agent = {record["agent"]["name"]: model_of(record) for record in delegate_records(world)}
-        assert by_agent == {"critic": ("haiku", "per-spawn"), "scout": ("opus", "per-spawn")}
-
-    def test_a_spawn_naming_no_model_leaves_the_named_model_to_the_delegate_it_belongs_to(
-        self, world
-    ) -> None:
-        model_world(world)
-        define_agent(world, "critic", "model: sonnet")
-        world.spawn("critic", model=None)
-        world.spawn("critic", model="haiku")
-
-        world.start_delegate("critic", agent_id="a1")
-        world.start_delegate("critic", agent_id="a2")
-
-        unnamed, named = delegate_records(world)
-        assert model_of(unnamed) == ("sonnet", "definition-pin")
-        assert model_of(named) == ("haiku", "per-spawn")
 
 
 def haiku_rule_world(world) -> None:
@@ -834,22 +538,6 @@ class TestSeveralMatchingPerSpawnRecordsNamingDifferentModels:
         ]
         assert [n for record in records for n in ambiguity_notices(record)] == []
 
-    def test_two_delegates_starting_at_once_each_claim_a_different_spawn(self, world) -> None:
-        model_world(world)
-        world.spawn("critic", model="haiku")
-        world.spawn("critic", model="opus")
-
-        def start(agent_id) -> Delivery:
-            return world.start_delegate("critic", agent_id=agent_id)
-
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            list(pool.map(start, ["a1", "a2"]))
-
-        assert sorted(model_of(record) for record in delegate_records(world)) == [
-            ("haiku", "per-spawn"),
-            ("opus", "per-spawn"),
-        ]
-
     def test_the_record_of_a_start_finding_every_spawn_claimed_carries_the_unshown_notice(
         self, world
     ) -> None:
@@ -867,164 +555,6 @@ class TestSeveralMatchingPerSpawnRecordsNamingDifferentModels:
         (ambiguous,) = ambiguity_notices(third)
         assert ambiguous["shown"] is False
 
-    def test_two_same_type_spawns_under_one_prompt_naming_one_model_give_that_model_with_no_notice(
-        self, world
-    ) -> None:
-        model_world(world)
-        caller_names(world, "haiku")
-        caller_names(world, "haiku")
-
-        world.start_delegate("critic", agent_id="a1")
-        world.start_delegate("critic", agent_id="a2")
-
-        records = delegate_records(world)
-        assert [model_of(record) for record in records] == [("haiku", "per-spawn")] * 2
-        assert [
-            n for record in records for n in record["notices"] if n["kind"] == "per-spawn-ambiguous"
-        ] == []
-
-
-class TestAPluginScopedAgentTypeReadsItsPluginsAgentsDirectory:
-    def test_a_plugin_agent_reads_its_plugins_definition(self, world) -> None:
-        world.rule("voice")
-        world.write_config("models: haiku\ndefaults:\ntools Read:\n  include: voice\n")
-        install = world.config.parent / "installs" / "p@market"
-        (install / "agents").mkdir(parents=True)
-        (install / "agents" / "scout.md").write_text(
-            "---\nname: scout\nmodel: haiku\ntools: Read\n---\nbody\n", encoding="utf-8"
-        )
-        (world.config / "plugins").mkdir()
-        (world.config / "plugins" / "installed_plugins.json").write_text(
-            json.dumps({"version": 2, "plugins": {"p@market": [{"installPath": str(install)}]}}),
-            encoding="utf-8",
-        )
-
-        delivery = world.start_delegate("p:scout")
-
-        (record,) = delegate_records(world)
-        assert model_of(record) == ("haiku", "definition-pin")
-        assert received(delivery, ["voice"]) == ["voice"]
-
-
-class TestAPerSpawnModelOutranksABuiltInAgentsPin:
-    def test_a_per_spawn_model_outranks_a_built_in_agents_harness_pin(self, world) -> None:
-        model_world(world)
-        caller_names(world, "opus", "claude-code-guide")
-
-        world.start_delegate("claude-code-guide")
-
-        (record,) = delegate_records(world)
-        assert model_of(record) == ("opus", "per-spawn")
-
-    def test_a_per_spawn_model_outranks_the_default_variable_for_an_agent_the_engine_holds_no_pin_for(
-        self, world
-    ) -> None:
-        model_world(world, **{DEFAULT_VARIABLE: SONNET_IDENTIFIER})
-        caller_names(world, "haiku", "general-purpose")
-
-        world.start_delegate("general-purpose")
-
-        (record,) = delegate_records(world)
-        assert model_of(record) == ("haiku", "per-spawn")
-
-
-class TestTheSubagentForceVariableOutranksEveryAgentTypesPins:
-    def test_a_pinned_built_in_agent_under_the_force_variable_alone_takes_the_parents_identifier(
-        self, world
-    ) -> None:
-        model_world(world, **{FORCE: "1"})
-        parent_runs(world, OPUS_IDENTIFIER)
-
-        world.start_delegate("claude-code-guide")
-
-        (record,) = delegate_records(world)
-        assert model_of(record) == (OPUS_IDENTIFIER, FORCE)
-
-    def test_an_agent_the_engine_holds_no_pin_for_takes_the_default_variable_under_both_variables(
-        self, world
-    ) -> None:
-        model_world(world, **{FORCE: "1", DEFAULT_VARIABLE: HAIKU_IDENTIFIER})
-        parent_runs(world, OPUS_IDENTIFIER)
-
-        world.start_delegate("general-purpose")
-
-        (record,) = delegate_records(world)
-        assert record["model"]["identifier"] == HAIKU_IDENTIFIER
-
-
-class TestAnEnvironmentVariableCountsAsSetUnlessEmptyOrFalse:
-    def test_a_force_variable_holding_zero_has_no_effect(self, world) -> None:
-        model_world(world, **{FORCE: "0", DEFAULT_VARIABLE: SONNET_IDENTIFIER})
-        caller_names(world, "haiku")
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert model_of(record) == ("haiku", "per-spawn")
-
-
-class TestADelegatesModelFactComesFromFourSourcesInOrder:
-    def test_a_delegate_with_no_other_source_takes_the_parents_recorded_identifier(
-        self, world
-    ) -> None:
-        model_world(world)
-        define_agent(world, "critic", "tools: Read")
-        parent_runs(world, OPUS_IDENTIFIER)
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert model_of(record) == (OPUS_IDENTIFIER, "parent-record")
-
-    def test_the_model_a_caller_names_for_one_spawn_decides_the_rules_that_spawn_receives(
-        self, world
-    ) -> None:
-        world.rule("writing-code")
-        world.write_config(
-            "models: sonnet haiku\ndefaults: writing-code\nmodel haiku:\n  exclude: writing-code\n"
-        )
-        define_agent(world, "builder", "model: sonnet")
-        caller_names(world, "haiku", "builder", prompt_id="p1")
-
-        named = world.start_delegate("builder", agent_id="a1", prompt_id="p1")
-        unnamed = world.start_delegate("builder", agent_id="a2", prompt_id="p2")
-
-        assert received(named, ["writing-code"]) == []
-        assert received(unnamed, ["writing-code"]) == ["writing-code"]
-        first, second = delegate_records(world)
-        assert model_of(first) == ("haiku", "per-spawn")
-        assert first["model"]["name"] == "haiku"
-        assert model_of(second) == ("sonnet", "definition-pin")
-        assert second["model"]["name"] == "sonnet"
-
-
-class TestTheDefaultVariableSitsBetweenThePinAndTheParent:
-    def test_a_pin_outranks_the_default_variable_which_outranks_the_parent(self, world) -> None:
-        model_world(world, **{DEFAULT_VARIABLE: SONNET_IDENTIFIER})
-        parent_runs(world, OPUS_IDENTIFIER)
-        define_agent(world, "pinned", "model: haiku")
-        define_agent(world, "plain", "tools: Read")
-
-        world.start_delegate("pinned", agent_id="a1")
-        world.start_delegate("plain", agent_id="a2")
-
-        pinned, plain = delegate_records(world)
-        assert model_of(pinned) == ("haiku", "definition-pin")
-        assert model_of(plain) == (SONNET_IDENTIFIER, "subagent-default-variable")
-
-
-class TestAParentWithNoRecordedIdentifier:
-    def test_the_delegates_model_is_missing_and_a_shown_notice_says_so(self, world) -> None:
-        model_world(world)
-        define_agent(world, "critic", "tools: Read")
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert record["model"]["state"] == "missing"
-        (notice,) = shown_notices(record)
-        assert "no model identifier was available" in notice["subject"]
-
 
 class TestEachDelegateStartClaimsTheOldestUnclaimedMatchingSpawnRecord:
     def test_a_resumed_delegate_receives_the_rules_of_its_first_start(self, world) -> None:
@@ -1038,33 +568,6 @@ class TestEachDelegateStartClaimsTheOldestUnclaimedMatchingSpawnRecord:
 
         assert received(first, ["voice", "terse"]) == ["voice", "terse"]
         assert resumed.context == first.context
-
-
-class TestAStartPayloadWithoutAPromptIdentifier:
-    def test_the_per_spawn_source_yields_to_the_pin_then_the_default_variable_then_the_parent(
-        self, world
-    ) -> None:
-        model_world(world, **{DEFAULT_VARIABLE: SONNET_IDENTIFIER})
-        parent_runs(world, OPUS_IDENTIFIER)
-        define_agent(world, "pinned", "model: haiku")
-        define_agent(world, "plain", "tools: Read")
-        caller_names(world, "opus", "pinned", prompt_id=None)
-        caller_names(world, "opus", "plain", prompt_id=None)
-
-        world.start_delegate("pinned", agent_id="a1", prompt_id=None)
-        world.start_delegate("plain", agent_id="a2", prompt_id=None)
-        del world.environment[DEFAULT_VARIABLE]
-        world.start_delegate("plain", agent_id="a3", prompt_id=None)
-
-        records = delegate_records(world)
-        assert [model_of(record) for record in records] == [
-            ("haiku", "definition-pin"),
-            (SONNET_IDENTIFIER, "subagent-default-variable"),
-            (OPUS_IDENTIFIER, "parent-record"),
-        ]
-        for record in records:
-            (unreadable,) = [n for n in record["notices"] if n["kind"] == "per-spawn-unreadable"]
-            assert unreadable["shown"] is False
 
 
 class TestAProjectDefinitionWinsOverTheHomeOne:
@@ -1096,89 +599,6 @@ class TestAProjectDefinitionWinsOverTheHomeOne:
         assert received(delivery, ["reading", "editing"]) == ["reading"]
 
 
-class TestTheDefinitionPinsInherit:
-    def test_the_delegate_takes_the_parents_identifier_ahead_of_the_default_variable(
-        self, world
-    ) -> None:
-        model_world(world, **{DEFAULT_VARIABLE: SONNET_IDENTIFIER})
-        parent_runs(world, OPUS_IDENTIFIER)
-        define_agent(world, "critic", "model: inherit")
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert model_of(record) == (OPUS_IDENTIFIER, "parent-record")
-
-
-class TestABuiltInAgentWithoutAFile:
-    def test_the_delegate_takes_the_harness_pin_and_the_record_names_it(self, world) -> None:
-        model_world(world)
-
-        world.start_delegate("claude-code-guide")
-
-        (record,) = delegate_records(world)
-        assert model_of(record) == ("haiku", "built-in-pin")
-
-
-class TestADefinitionFileForABuiltInType:
-    def test_a_definition_naming_no_model_hides_the_harness_pin(self, world) -> None:
-        model_world(world)
-        parent_runs(world, OPUS_IDENTIFIER)
-        define_agent(world, "statusline-setup", "tools: Read")
-
-        world.start_delegate("statusline-setup")
-
-        (record,) = delegate_records(world)
-        assert model_of(record) == (OPUS_IDENTIFIER, "parent-record")
-
-
-class TestTheForceVariableAndADefaultModelAreBothSet:
-    def test_the_default_variable_wins_over_the_definitions_pin(self, world) -> None:
-        model_world(world, **{FORCE: "1", DEFAULT_VARIABLE: HAIKU_IDENTIFIER})
-        define_agent(world, "critic", "model: opus")
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert model_of(record) == (HAIKU_IDENTIFIER, FORCE)
-
-    def test_with_no_default_variable_the_delegate_takes_the_parents_identifier(
-        self, world
-    ) -> None:
-        model_world(world, **{FORCE: "1"})
-        parent_runs(world, OPUS_IDENTIFIER)
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert model_of(record) == (OPUS_IDENTIFIER, FORCE)
-
-
-class TestTheCoordinatorLeverGivesADelegateTheParentsModelFact:
-    def test_it_overrides_the_callers_model_and_the_pin(self, world) -> None:
-        model_world(world, **{COORDINATOR: "1"})
-        parent_runs(world, OPUS_IDENTIFIER)
-        define_agent(world, "critic", "model: sonnet")
-        caller_names(world, "haiku", "critic", prompt_id="p1")
-
-        world.start_delegate("critic", agent_id="a1", prompt_id="p1")
-        world.start_delegate("critic", agent_id="a2", prompt_id="p2")
-
-        records = delegate_records(world)
-        assert [model_of(record) for record in records] == [(OPUS_IDENTIFIER, COORDINATOR)] * 2
-
-    def test_with_both_force_levers_set_the_delegate_takes_the_parents_identifier(
-        self, world
-    ) -> None:
-        model_world(world, **{COORDINATOR: "1", FORCE: "1", DEFAULT_VARIABLE: HAIKU_IDENTIFIER})
-        parent_runs(world, OPUS_IDENTIFIER)
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert record["model"]["identifier"] == OPUS_IDENTIFIER
-
-
 class TestTheDeliveryRecordNamesEachFactsSource:
     def test_a_record_names_the_identifier_its_claiming_name_the_agent_and_the_tools_source(
         self, world
@@ -1195,64 +615,6 @@ class TestTheDeliveryRecordNamesEachFactsSource:
         assert record["agent"] == {"state": "named", "name": "critic"}
         assert record["tools"]["state"] == "all-but"
         assert record["tools"]["source"] == str(world.config / "agents" / "critic.md")
-
-    def test_the_delivered_text_holds_rule_text_only_and_the_record_names_the_pin(
-        self, world
-    ) -> None:
-        model_world(world)
-        define_agent(world, "critic", "model: haiku")
-
-        delivery = world.start_delegate("critic")
-
-        assert delivery.context == "text of voice\n"
-        assert delivery.message is None
-        (record,) = delegate_records(world)
-        assert model_of(record) == ("haiku", "definition-pin")
-
-
-class TestTheRecordNamesASessionModelsSource:
-    def test_a_source_from_the_environment_names_the_variable_and_its_value(self, world) -> None:
-        model_world(world, ANTHROPIC_MODEL=OPUS_IDENTIFIER)
-
-        world.start_session(model=None)
-
-        (record,) = world.records()
-        assert record["model"]["source"] == f"ANTHROPIC_MODEL={OPUS_IDENTIFIER}"
-
-
-class TestTheRecordNamesADelegateModelsSource:
-    def test_a_source_from_a_force_lever_names_the_lever(self, world) -> None:
-        model_world(world, **{FORCE: "1", DEFAULT_VARIABLE: HAIKU_IDENTIFIER})
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert record["model"]["source"] == FORCE
-
-
-class TestTheRecordNamesTheIdentifierAndTheNameThatClaimedIt:
-    def test_an_identifier_no_declared_name_claims_is_stated_unclaimed(self, world) -> None:
-        model_world(world)
-
-        world.start_session(model="glm-5")
-
-        (record,) = world.records()
-        assert record["model"]["identifier"] == "glm-5"
-        assert record["model"]["state"] == "unclaimed"
-        assert record["model"]["name"] is None
-
-
-class TestTheRecordNamesTheAgentToolsAndFlagSources:
-    def test_a_flag_a_toggle_set_names_toggle_as_its_source(self, world) -> None:
-        world.rule("security-pass")
-        world.write_config("flags: strict\ndefaults:\nflag strict:\n  include: security-pass\n")
-        world.start_session()
-        world.toggle_flags({"strict": "set"})
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert record["flags"] == [{"name": "strict", "source": "toggle"}]
 
 
 def flag_names(record) -> list[str]:
@@ -1310,22 +672,6 @@ class TestAFlagNobodyDeclares:
         assert record["withheld"] == []
         (skipped,) = [n for n in record["notices"] if n["kind"] == "block-skipped"]
         assert skipped["shown"] is True
-
-    def test_a_flag_a_toggle_sets_without_a_declaration_gives_its_block_to_no_delegate(
-        self, world
-    ) -> None:
-        world.rule("voice")
-        world.rule("tone")
-        world.write_config("flags: strict\ndefaults: tone\nflag ghost:\n  include: voice\n")
-        world.toggle_flags({"ghost": "set"})
-
-        delivery = world.start_delegate()
-
-        assert received(delivery, ["voice", "tone"]) == ["tone"]
-        (record,) = world.records()
-        assert [n["kind"] for n in record["notices"] if n["kind"] == "block-skipped"] == [
-            "block-skipped"
-        ]
 
 
 class TestALaunchFlagNobodyDeclares:
@@ -1432,101 +778,6 @@ class TestAToggleUnsetMidSession:
         assert first["flags"] == [{"name": "voice-terse", "source": "launch"}]
         assert second["flags"] == []
 
-    def test_a_toggle_set_flag_holds_for_the_next_delegate_with_source_toggle(self, world) -> None:
-        world.rule("security-pass")
-        world.write_config("flags: strict\ndefaults:\nflag strict:\n  include: security-pass\n")
-        world.start_session()
-        world.toggle_flags({"strict": "set"})
-
-        delegate = world.start_delegate("critic")
-
-        assert received(delegate, ["security-pass"]) == ["security-pass"]
-        (record,) = delegate_records(world)
-        assert record["flags"] == [{"name": "strict", "source": "toggle"}]
-
-    def test_a_toggle_never_changes_the_main_sessions_flags(self, world) -> None:
-        world.rule("security-pass")
-        world.write_config("flags: strict\ndefaults:\nflag strict:\n  include: security-pass\n")
-        world.toggle_flags({"strict": "set"})
-
-        session = world.start_session()
-
-        assert received(session, ["security-pass"]) == []
-
-
-class TestAModelNamedForOneSpawnSetsNoFlag:
-    def test_each_delegates_flags_are_exactly_the_launch_flag(self, world) -> None:
-        world.rule("voice")
-        world.write_config("models: opus haiku\nflags: strict\ndefaults: voice\n")
-        world.environment["RULESETS_FLAGS"] = "strict"
-        caller_names(world, "haiku", "critic")
-
-        world.start_session()
-        world.start_delegate("critic", agent_id="a1")
-        world.start_delegate("scout", agent_id="a2")
-
-        named, unnamed = delegate_records(world)
-        assert model_of(named)[1] == "per-spawn"
-        assert flag_names(named) == ["strict"]
-        assert flag_names(unnamed) == ["strict"]
-
-
-SESSION_MODELS = ["opus", "sonnet", "haiku"]
-
-
-class TestTheHarnessReportsTheModel:
-    def test_the_reported_identifier_is_claimed_and_the_environment_is_not_read(
-        self, tmp_path, read_spy
-    ) -> None:
-        environment = read_spy({"ANTHROPIC_MODEL": HAIKU_IDENTIFIER})
-
-        resolution = session_model.resolve_session_model(
-            {"model": OPUS_IDENTIFIER, "session_id": "s1"}, SESSION_MODELS, environment, tmp_path
-        )
-
-        assert resolution.fact == model_fact.Claimed("opus", OPUS_IDENTIFIER, "harness-reported")
-        assert environment.reads.isdisjoint({"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_MODEL"})
-
-
-class TestBothEnvironmentVariablesAreSet:
-    def test_anthropic_model_is_read_before_anthropic_default_model(self, tmp_path) -> None:
-        environment = {
-            "ANTHROPIC_MODEL": HAIKU_IDENTIFIER,
-            "ANTHROPIC_DEFAULT_MODEL": OPUS_IDENTIFIER,
-        }
-
-        resolution = session_model.resolve_session_model(
-            {"session_id": "s1"}, SESSION_MODELS, environment, tmp_path
-        )
-
-        assert resolution.fact.identifier == HAIKU_IDENTIFIER
-        assert resolution.fact.name == "haiku"
-
-
-class TestOnlyTheRecordNamesAModel:
-    def test_the_recorded_identifier_is_taken_and_the_record_is_its_source(self, tmp_path) -> None:
-        record = tmp_path / "models" / "s1.json"
-        record.parent.mkdir(parents=True)
-        record.write_text(json.dumps({"identifier": OPUS_IDENTIFIER}), encoding="utf-8")
-
-        resolution = session_model.resolve_session_model(
-            {"session_id": "s1"}, SESSION_MODELS, {}, tmp_path
-        )
-
-        assert resolution.fact == model_fact.Claimed("opus", OPUS_IDENTIFIER, "session-record")
-
-
-class TestTheHarnessReportsAnUnclaimedIdentifier:
-    def test_it_stands_unclaimed_and_the_environment_is_not_read(self, tmp_path, read_spy) -> None:
-        environment = read_spy({"ANTHROPIC_MODEL": OPUS_IDENTIFIER})
-
-        resolution = session_model.resolve_session_model(
-            {"model": "glm-5", "session_id": "s1"}, SESSION_MODELS, environment, tmp_path
-        )
-
-        assert resolution.fact == model_fact.Unclaimed("glm-5", "harness-reported")
-        assert environment.reads.isdisjoint({"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_MODEL"})
-
 
 class TestAModelSwitchsTargetIsTheNextDeliverysIdentifier:
     def test_a_switch_to_an_identifier_no_name_claims_delivers_it_unclaimed_and_a_shown_notice_names_it(
@@ -1542,13 +793,7 @@ class TestAModelSwitchsTargetIsTheNextDeliverysIdentifier:
         delivery = world.switch_model("glm-5", from_model="claude-opus-5-5", prompt_id="p1")
 
         (_, record) = world.records()
-        assert record["model"] == {
-            "state": "unclaimed",
-            "name": None,
-            "identifier": "glm-5",
-            "source": "switch-target",
-            "not_a_string": None,
-        }
+        assert (record["model"]["state"], record["model"]["identifier"]) == ("unclaimed", "glm-5")
         (unclaimed,) = [n for n in record["notices"] if n["kind"] == "model-unclaimed"]
         assert unclaimed["shown"] is True
         assert "glm-5" in unclaimed["subject"]

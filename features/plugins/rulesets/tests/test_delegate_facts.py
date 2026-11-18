@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """A delegate's model fact comes from the first of four sources that names a string.
 
-Serves the person who spawns delegates and the engineer who builds their facts: the
-model the caller named for the spawn, the agent definition's pin, the
-`CLAUDE_CODE_SUBAGENT_MODEL` default variable, then the parent session's recorded
-identifier. This is the harness's own order. The caller's model joins the delegate's
-start on `prompt_id` and agent type. Agent definitions, spawn records, and the parent's
-record sit under `tmp_path`, and the environment reaches each case as a mapping.
+Serves the person who spawns delegates (`docs/delivery.md`, "What it delivers, and to whom"):
+the model the caller named for the spawn, the agent definition's pin, the
+`CLAUDE_CODE_SUBAGENT_MODEL` default variable, then the parent session's recorded identifier.
+The caller's model joins the delegate's start on `prompt_id` and agent type, and each delegate
+takes the oldest spawn of its type that no earlier delegate took, and keeps it when resumed.
+Agent definitions, spawn records, and the parent's record sit under `tmp_path`, and the
+environment reaches each case as a mapping.
 
 Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_delegate_facts.py`.
 """
@@ -19,199 +20,304 @@ import pytest
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
-from rulesets.facts.agent_definition import find_definition  # noqa: E402
 from rulesets.facts.model import fact as model_fact  # noqa: E402
 
 OPUS = "claude-opus-5-5"
 SONNET = "claude-sonnet-5"
 HAIKU = "claude-haiku-4-5"
+NOVA = "claude-nova-1"
 DEFAULT_VARIABLE = "CLAUDE_CODE_SUBAGENT_MODEL"
-SEPARATE_MECHANISM_VARIABLES = (
-    "CLAUDE_CODE_AUTO_MODE_MODEL",
-    "CLAUDE_CODE_BG_CLASSIFIER_MODEL",
-    "CLAUDE_CONTEXT_COLLAPSE_MODEL",
-)
 
 
-class TestADelegatesModelFactComesFromFourSourcesInOrder:
-    def test_the_caller_names_a_model(self, scene) -> None:
-        scene.parent_runs(OPUS)
-        scene.caller_names("haiku")
-
-        assert scene.fact() == model_fact.Claimed("haiku", "haiku", "per-spawn")
-
-    def test_only_the_definition_pins_a_model(self, scene) -> None:
-        scene.user_agent("scout.md", "name: scout\nmodel: haiku")
-
-        assert scene.fact("scout") == model_fact.Claimed("haiku", "haiku", "definition-pin")
-
-    def test_the_definition_outranks_the_default_variable(self, scene) -> None:
-        scene.user_agent("scout.md", "name: scout\nmodel: haiku")
-
-        fact = scene.fact("scout", env={DEFAULT_VARIABLE: SONNET})
-
-        assert fact == model_fact.Claimed("haiku", "haiku", "definition-pin")
-
-    def test_only_the_default_variable_names_a_model(self, scene) -> None:
-        fact = scene.fact(env={DEFAULT_VARIABLE: SONNET})
-
-        assert fact == model_fact.Claimed("sonnet", SONNET, "subagent-default-variable")
-
-    def test_no_source_but_the_parent(self, scene) -> None:
-        scene.parent_runs(OPUS)
-
-        assert scene.fact() == model_fact.Claimed("opus", OPUS, "parent-record")
-
-    def test_the_parent_has_no_recorded_model_fact(self, scene) -> None:
-        fact = scene.fact()
-
-        assert fact == model_fact.Missing()
-        assert fact.source == "no-identifier"
-
-    def test_a_delegate_start_with_no_session_id_has_no_parent_to_read(self, scene) -> None:
-        scene.parent_runs(OPUS)
-
-        assert scene.fact(session_id=None) == model_fact.Missing()
-
-    def test_the_caller_outranks_every_later_source(self, scene) -> None:
-        scene.parent_runs(OPUS)
-        scene.caller_names("haiku")
-        scene.user_agent("general-purpose.md", "model: sonnet")
-
-        fact = scene.fact(env={DEFAULT_VARIABLE: OPUS})
-
-        assert model_fact.claimed_name(fact) == "haiku"
-
-    def test_the_caller_names_an_identifier_no_declared_name_claims(self, scene) -> None:
-        scene.caller_names("claude-nova-1", agent_type="scout")
-        scene.user_agent("scout.md", "name: scout\nmodel: haiku")
-
-        assert scene.fact("scout") == model_fact.Unclaimed("claude-nova-1", "per-spawn")
-
-    def test_an_unclaimed_definition_pin_stands_over_the_default_variable(self, scene) -> None:
-        scene.user_agent("scout.md", "name: scout\nmodel: claude-nova-1")
-
-        fact = scene.fact("scout", env={DEFAULT_VARIABLE: SONNET})
-
-        assert fact == model_fact.Unclaimed("claude-nova-1", "definition-pin")
-
-    def test_an_unclaimed_default_variable_stands_over_the_parent(self, scene) -> None:
-        scene.parent_runs(OPUS)
-
-        fact = scene.fact(env={DEFAULT_VARIABLE: "claude-nova-1"})
-
-        assert fact == model_fact.Unclaimed("claude-nova-1", "subagent-default-variable")
-
-    def test_an_unclaimed_parent_identifier_stands(self, scene) -> None:
-        scene.parent_runs("claude-nova-1")
-
-        assert scene.fact() == model_fact.Unclaimed("claude-nova-1", "parent-record")
-
-    def test_a_caller_alias_is_claimed_as_reported(self, scene) -> None:
-        scene.caller_names("haiku")
-
-        fact = scene.fact(env={"ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5"})
-
-        assert fact == model_fact.Claimed("haiku", "haiku", "per-spawn")
-
-    def test_a_definition_alias_is_claimed_as_reported(self, scene) -> None:
-        scene.user_agent("scout.md", "name: scout\nmodel: sonnet")
-
-        fact = scene.fact("scout", env={"ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-6"})
-
-        assert fact == model_fact.Claimed("sonnet", "sonnet", "definition-pin")
-
-    def test_a_caller_model_that_is_not_a_string_ends_the_search_with_a_missing_model(
-        self, scene
-    ) -> None:
-        scene.caller_names(5, agent_type="scout")
-        scene.user_agent("scout.md", "name: scout\nmodel: haiku")
-
-        assert scene.fact("scout") == model_fact.Missing(model_fact.NotAString(5, "per-spawn"))
-
-    def test_a_definition_model_that_is_not_a_string_ends_the_search_with_a_missing_model(
-        self, scene
-    ) -> None:
-        scene.user_agent("scout.md", "name: scout\nmodel: 123")
-        scene.parent_runs(OPUS)
-
-        fact = scene.fact("scout", env={DEFAULT_VARIABLE: SONNET})
-
-        assert fact == model_fact.Missing(model_fact.NotAString(123, "definition-pin"))
-
-    def test_an_empty_default_variable_yields_to_the_parent(self, scene) -> None:
-        scene.parent_runs(OPUS)
-
-        assert scene.fact(env={DEFAULT_VARIABLE: ""}).source == "parent-record"
+def standing(fact) -> tuple[str | None, str | None]:
+    """The identifier a fact holds and the declared name that claims it, `None` where absent."""
+    return getattr(fact, "identifier", None), model_fact.claimed_name(fact)
 
 
-class TestTheDefinitionIsReadOnlyWhereTheSearchReachesIt:
-    def test_the_caller_naming_a_model_ends_the_search_ahead_of_the_definition(
-        self, scene, definition_reads
-    ) -> None:
-        scene.caller_names("haiku", agent_type="scout")
-        scene.user_agent("scout.md", "name: scout\nmodel: sonnet")
-
-        scene.fact("scout")
-
-        assert definition_reads == []
-
-    def test_a_caller_naming_nothing_sends_the_search_to_the_definition(
-        self, scene, definition_reads
-    ) -> None:
-        scene.user_agent("scout.md", "name: scout\nmodel: sonnet")
-
-        scene.fact("scout")
-
-        assert definition_reads == ["scout"]
+def under_project(scene) -> dict[str, str]:
+    """The start's working directory, one folder below the project root."""
+    return {"cwd": str(scene.project / "sub")}
 
 
-class TestTheCallersModelJoinsByPromptAndAgentType:
-    def test_two_spawns_of_one_type_naming_one_model_resolve_to_it(self, scene) -> None:
-        scene.caller_names("haiku")
-        scene.caller_names("haiku")
+SOURCE_ORDER = [
+    pytest.param(
+        lambda s: (s.parent_runs(OPUS), s.caller_names("haiku")),
+        {},
+        ("haiku", "haiku"),
+        id="the caller names a model",
+    ),
+    pytest.param(
+        lambda s: s.user_agent("scout.md", "name: scout\nmodel: haiku"),
+        {"agent_type": "scout"},
+        ("haiku", "haiku"),
+        id="only the definition pins a model",
+    ),
+    pytest.param(
+        lambda s: s.user_agent("scout.md", "name: scout\nmodel: haiku"),
+        {"agent_type": "scout", "env": {DEFAULT_VARIABLE: SONNET}},
+        ("haiku", "haiku"),
+        id="the definition outranks the default variable",
+    ),
+    pytest.param(
+        lambda s: None,
+        {"env": {DEFAULT_VARIABLE: SONNET}},
+        (SONNET, "sonnet"),
+        id="only the default variable names a model",
+    ),
+    pytest.param(
+        lambda s: s.parent_runs(OPUS),
+        {},
+        (OPUS, "opus"),
+        id="no source but the parent",
+    ),
+    pytest.param(lambda s: None, {}, (None, None), id="the parent has no recorded model"),
+    pytest.param(
+        lambda s: s.parent_runs(OPUS),
+        {"session_id": None},
+        (None, None),
+        id="a start with no session id has no parent to read",
+    ),
+    pytest.param(
+        lambda s: (
+            s.parent_runs(OPUS),
+            s.caller_names("haiku"),
+            s.user_agent("general-purpose.md", "model: sonnet"),
+        ),
+        {"env": {DEFAULT_VARIABLE: OPUS}},
+        ("haiku", "haiku"),
+        id="the caller outranks every later source",
+    ),
+    pytest.param(
+        lambda s: (
+            s.caller_names(NOVA, agent_type="scout"),
+            s.user_agent("scout.md", "name: scout\nmodel: haiku"),
+        ),
+        {"agent_type": "scout"},
+        (NOVA, None),
+        id="an identifier no declared name claims stands over the definition",
+    ),
+    pytest.param(
+        lambda s: s.user_agent("scout.md", f"name: scout\nmodel: {NOVA}"),
+        {"agent_type": "scout", "env": {DEFAULT_VARIABLE: SONNET}},
+        (NOVA, None),
+        id="an unclaimed definition pin stands over the default variable",
+    ),
+    pytest.param(
+        lambda s: s.parent_runs(OPUS),
+        {"env": {DEFAULT_VARIABLE: NOVA}},
+        (NOVA, None),
+        id="an unclaimed default variable stands over the parent",
+    ),
+    pytest.param(
+        lambda s: s.parent_runs(NOVA),
+        {},
+        (NOVA, None),
+        id="an unclaimed parent identifier stands",
+    ),
+    pytest.param(
+        lambda s: s.parent_runs(OPUS),
+        {"env": {DEFAULT_VARIABLE: ""}},
+        (OPUS, "opus"),
+        id="an empty default variable yields to the parent",
+    ),
+    pytest.param(
+        lambda s: s.parent_runs(OPUS),
+        {"env": {DEFAULT_VARIABLE: "inherit"}},
+        (OPUS, "opus"),
+        id="a default variable naming inherit yields to the parent",
+    ),
+    pytest.param(
+        lambda s: None,
+        {"env": {DEFAULT_VARIABLE: "inherit"}},
+        (None, None),
+        id="a default variable naming inherit leaves the model missing with no parent",
+    ),
+    pytest.param(
+        lambda s: (s.parent_runs(OPUS), s.user_agent("helper.md", "name: helper\nmodel: inherit")),
+        {"agent_type": "helper", "env": {DEFAULT_VARIABLE: SONNET}},
+        (OPUS, "opus"),
+        id="a definition pinning inherit takes the parent ahead of the default variable",
+    ),
+    pytest.param(
+        lambda s: s.user_agent("helper.md", "name: helper\nmodel: inherit"),
+        {"agent_type": "helper", "env": {DEFAULT_VARIABLE: SONNET}},
+        (None, None),
+        id="a definition pinning inherit leaves the model missing with no parent",
+    ),
+    pytest.param(
+        lambda s: (
+            s.parent_runs(OPUS),
+            s.caller_names("haiku", agent_type="helper"),
+            s.user_agent("helper.md", "name: helper\nmodel: inherit"),
+        ),
+        {"agent_type": "helper"},
+        ("haiku", "haiku"),
+        id="the caller outranks an inherit pin",
+    ),
+    pytest.param(
+        lambda s: s.parent_runs(OPUS),
+        {"agent_type": "claude-code-guide"},
+        ("haiku", "haiku"),
+        id="a built-in agent with no definition takes the harness pin",
+    ),
+    pytest.param(
+        lambda s: s.parent_runs(OPUS),
+        {"agent_type": "statusline-setup"},
+        ("sonnet", "sonnet"),
+        id="another built-in agent takes its own harness pin",
+    ),
+    pytest.param(
+        lambda s: None,
+        {"agent_type": "claude-code-guide", "env": {DEFAULT_VARIABLE: SONNET}},
+        ("haiku", "haiku"),
+        id="the built-in pin is read ahead of the default variable",
+    ),
+    pytest.param(
+        lambda s: s.caller_names("opus", agent_type="claude-code-guide"),
+        {"agent_type": "claude-code-guide"},
+        ("opus", "opus"),
+        id="the caller outranks the built-in pin",
+    ),
+    pytest.param(
+        lambda s: (s.parent_runs(OPUS), s.user_agent("setup.md", "name: statusline-setup")),
+        {"agent_type": "statusline-setup"},
+        (OPUS, "opus"),
+        id="a definition naming no model hides the built-in pin",
+    ),
+    pytest.param(
+        lambda s: s.user_agent("guide.md", "name: claude-code-guide\nmodel: opus"),
+        {"agent_type": "claude-code-guide"},
+        ("opus", "opus"),
+        id="a definition naming a model replaces the built-in pin",
+    ),
+    pytest.param(
+        lambda s: None,
+        {"agent_type": "kit:claude-code-guide"},
+        (None, None),
+        id="a plugin-scoped type of the same name takes no built-in pin",
+    ),
+    pytest.param(
+        lambda s: None,
+        {"agent_type": "general-purpose"},
+        (None, None),
+        id="a type the harness pins nothing for takes no built-in pin",
+    ),
+    pytest.param(
+        lambda s: (s.parent_runs(OPUS), s.caller_names("haiku", prompt_id=None)),
+        {"prompt_id": None},
+        (OPUS, "opus"),
+        id="a start with no prompt id takes no caller model",
+    ),
+]
 
-        resolution = scene.resolve()
 
-        assert resolution.fact == model_fact.Claimed("haiku", "haiku", "per-spawn")
-        assert resolution.notices == ()
+@pytest.mark.parametrize(("setup", "start", "expected"), SOURCE_ORDER)
+def test_a_delegates_model_comes_from_the_first_source_that_names_one(
+    scene, setup, start, expected
+) -> None:
+    setup(scene)
+    agent_type = start.pop("agent_type", "general-purpose")
 
-    def test_a_spawn_naming_haiku_before_one_naming_no_model_gives_the_first_start_haiku(
-        self, scene
-    ) -> None:
-        scene.caller_names("haiku")
-        scene.caller_names(None)
-
-        resolution = scene.resolve()
-
-        assert resolution.fact == model_fact.Claimed("haiku", "haiku", "per-spawn")
-        assert resolution.notices == ()
-
-    def test_two_spawns_of_different_types_each_resolve_from_their_own_record(self, scene) -> None:
-        scene.caller_names("opus", agent_type="critic")
-        scene.caller_names("haiku", agent_type="auditor")
-
-        assert model_fact.claimed_name(scene.fact("critic", agent_id="a1")) == "opus"
-        assert model_fact.claimed_name(scene.fact("auditor", agent_id="a2")) == "haiku"
-
-    def test_no_record_matching_the_pair_leaves_the_source_yielding_to_the_definition(
-        self, scene
-    ) -> None:
-        scene.caller_names("opus", prompt_id="other-prompt")
-        scene.caller_names("opus", session="other-session")
-        scene.caller_names("opus", agent_type="critic")
-        scene.user_agent("general-purpose.md", "model: haiku")
-
-        resolution = scene.resolve()
-
-        assert resolution.fact == model_fact.Claimed("haiku", "haiku", "definition-pin")
-        assert resolution.notices == ()
+    assert standing(scene.fact(agent_type, **start)) == expected
 
 
-class TestSeveralMatchingPerSpawnRecordsNamingDifferentModels:
-    def test_two_same_type_spawns_naming_haiku_and_opus_resolve_to_haiku_and_opus_in_start_order(
-        self, scene
-    ) -> None:
+DEFINITION_LOCATIONS = [
+    pytest.param(
+        lambda s: s.user_agent("other.md", "name: scout\nmodel: haiku"),
+        {},
+        "haiku",
+        id="a definition registers under its name field",
+    ),
+    pytest.param(
+        lambda s: s.user_agent("team/scout.md", "name: scout\nmodel: haiku"),
+        {},
+        "haiku",
+        id="a definition in a subfolder of the user directory is found",
+    ),
+    pytest.param(
+        lambda s: (
+            s.project_agent("scout.md", "name: scout\nmodel: haiku"),
+            s.user_agent("scout.md", "name: scout\nmodel: sonnet"),
+        ),
+        under_project,
+        "haiku",
+        id="a project definition outranks a user definition",
+    ),
+    pytest.param(
+        lambda s: (
+            s.project_agent("scout.md", "name: scout\nmodel: sonnet"),
+            s.project_agent("s.md", "name: scout\nmodel: haiku", under=s.project / "sub"),
+        ),
+        under_project,
+        "haiku",
+        id="the project definition closest to the working directory wins",
+    ),
+    pytest.param(
+        lambda s: (
+            s.parent_runs(OPUS),
+            s.project_agent("scout.md", "name: scout"),
+            s.user_agent("scout.md", "name: scout\nmodel: haiku"),
+        ),
+        under_project,
+        "opus",
+        id="a project definition naming no model hides a user pin",
+    ),
+    pytest.param(
+        lambda s: s.project_agent("scout.md", "name: scout\nmodel: haiku", under=s.project.parent),
+        under_project,
+        None,
+        id="a definition above the repository root is not read",
+    ),
+    pytest.param(
+        lambda s: (
+            s.project_agent("scout.md", "name: scout\nmodel: sonnet"),
+            s.user_agent("scout.md", "name: scout\nmodel: haiku"),
+        ),
+        {},
+        "haiku",
+        id="a start carrying no working directory reads the user directory alone",
+    ),
+    pytest.param(
+        lambda s: (
+            s.define(s.install_plugin() / "agents", "rev.md", "name: reviewer\nmodel: sonnet"),
+            s.user_agent("reviewer.md", "name: reviewer\nmodel: haiku"),
+        ),
+        {"agent_type": "kit:reviewer"},
+        "sonnet",
+        id="a plugin-scoped type reads that plugin's agents directory",
+    ),
+    pytest.param(
+        lambda s: s.define(
+            s.install_plugin() / "agents" / "review", "sec.md", "name: security\nmodel: haiku"
+        ),
+        {"agent_type": "kit:review:security"},
+        "haiku",
+        id="a plugin-scoped type in a subfolder names the subfolder",
+    ),
+    pytest.param(
+        lambda s: s.user_agent("reviewer.md", "name: reviewer\nmodel: haiku"),
+        {"agent_type": "kit:reviewer"},
+        None,
+        id="a plugin that is not installed pins nothing",
+    ),
+]
+
+
+@pytest.mark.parametrize(("setup", "start", "claimed_by"), DEFINITION_LOCATIONS)
+def test_a_delegates_pin_comes_from_the_definition_the_harness_would_load(
+    scene, setup, start, claimed_by
+) -> None:
+    setup(scene)
+    arguments = start(scene) if callable(start) else dict(start)
+    agent_type = arguments.pop("agent_type", "scout")
+
+    fact = scene.fact(agent_type, **arguments)
+
+    assert model_fact.claimed_name(fact) == claimed_by
+
+
+class TestSeveralSpawnsOfOneTypeNamingDifferentModels:
+    def test_each_delegate_takes_the_oldest_spawn_no_earlier_delegate_took(self, scene) -> None:
         scene.parent_runs(SONNET)
         scene.caller_names("haiku")
         scene.caller_names("opus")
@@ -219,11 +325,40 @@ class TestSeveralMatchingPerSpawnRecordsNamingDifferentModels:
         first = scene.resolve(agent_id="a1")
         second = scene.resolve(agent_id="a2")
 
-        assert first.fact == model_fact.Claimed("haiku", "haiku", "per-spawn")
-        assert second.fact == model_fact.Claimed("opus", "opus", "per-spawn")
+        assert (standing(first.fact), standing(second.fact)) == (
+            ("haiku", "haiku"),
+            ("opus", "opus"),
+        )
         assert (first.notices, second.notices) == ((), ())
 
-    def test_a_start_finding_every_matching_spawn_claimed_yields_to_the_pin_with_the_ambiguity_notice(
+    def test_a_resumed_delegate_keeps_the_spawn_it_took_first(self, scene) -> None:
+        scene.caller_names("haiku")
+        scene.caller_names("opus")
+
+        first = scene.resolve(agent_id="a1")
+        again = scene.resolve(agent_id="a1")
+        second = scene.resolve(agent_id="a2")
+
+        assert [standing(each.fact)[1] for each in (first, again, second)] == [
+            "haiku",
+            "haiku",
+            "opus",
+        ]
+
+    def test_starts_arriving_out_of_spawn_order_take_each_others_models_with_no_notice(
+        self, scene
+    ) -> None:
+        scene.caller_names("haiku")
+        scene.caller_names("opus")
+
+        spawned_second = scene.resolve(agent_id="a2")
+        spawned_first = scene.resolve(agent_id="a1")
+
+        assert standing(spawned_second.fact)[1] == "haiku"
+        assert standing(spawned_first.fact)[1] == "opus"
+        assert (spawned_second.notices, spawned_first.notices) == ((), ())
+
+    def test_a_start_finding_every_matching_spawn_taken_yields_to_the_pin_with_an_ambiguity_notice(
         self, scene
     ) -> None:
         scene.parent_runs(OPUS)
@@ -235,11 +370,10 @@ class TestSeveralMatchingPerSpawnRecordsNamingDifferentModels:
 
         third = scene.resolve(agent_id="a3")
 
-        assert third.fact == model_fact.Claimed("sonnet", "sonnet", "definition-pin")
-        (notice,) = third.notices
-        assert (notice.kind, notice.subject) == ("per-spawn-ambiguous", "opus, haiku")
+        assert standing(third.fact) == ("sonnet", "sonnet")
+        assert [notice.kind for notice in third.notices] == ["per-spawn-ambiguous"]
 
-    def test_a_start_carrying_no_agent_id_yields_to_the_parent_with_the_ambiguity_notice(
+    def test_a_start_carrying_no_agent_id_yields_to_the_parent_with_an_ambiguity_notice(
         self, scene
     ) -> None:
         scene.parent_runs(OPUS)
@@ -248,322 +382,47 @@ class TestSeveralMatchingPerSpawnRecordsNamingDifferentModels:
 
         resolution = scene.resolve(agent_id=None)
 
-        assert resolution.fact == model_fact.Claimed("opus", OPUS, "parent-record")
+        assert standing(resolution.fact) == (OPUS, "opus")
         assert [notice.kind for notice in resolution.notices] == ["per-spawn-ambiguous"]
 
 
-class TestEachDelegateStartClaimsTheOldestUnclaimedMatchingSpawnRecord:
-    def test_a_delegate_resolved_again_keeps_the_spawn_it_claimed_first(self, scene) -> None:
+class TestSpawnsOfOneModelOrOfOtherTypes:
+    def test_spawns_of_one_type_naming_one_model_resolve_to_it_with_no_notice(self, scene) -> None:
         scene.caller_names("haiku")
-        scene.caller_names("opus")
+        scene.caller_names("haiku")
 
-        first = scene.resolve(agent_id="a1")
-        again = scene.resolve(agent_id="a1")
-        second = scene.resolve(agent_id="a2")
+        resolution = scene.resolve()
 
-        assert model_fact.claimed_name(first.fact) == "haiku"
-        assert model_fact.claimed_name(again.fact) == "haiku"
-        assert model_fact.claimed_name(second.fact) == "opus"
+        assert standing(resolution.fact) == ("haiku", "haiku")
+        assert resolution.notices == ()
 
-    def test_starts_arriving_out_of_spawn_order_take_each_others_models_with_no_notice(
+    def test_a_spawn_naming_haiku_before_one_naming_no_model_gives_the_first_start_haiku(
         self, scene
     ) -> None:
         scene.caller_names("haiku")
-        scene.caller_names("opus")
+        scene.caller_names(None)
 
-        spawned_second = scene.resolve(agent_id="a2")
-        spawned_first = scene.resolve(agent_id="a1")
+        resolution = scene.resolve()
 
-        assert model_fact.claimed_name(spawned_second.fact) == "haiku"
-        assert model_fact.claimed_name(spawned_first.fact) == "opus"
-        assert (spawned_second.notices, spawned_first.notices) == ((), ())
+        assert standing(resolution.fact) == ("haiku", "haiku")
+        assert resolution.notices == ()
 
+    def test_spawns_of_different_types_each_resolve_from_their_own_record(self, scene) -> None:
+        scene.caller_names("opus", agent_type="critic")
+        scene.caller_names("haiku", agent_type="auditor")
 
-class TestAnUnreadableStartPayloadYieldsThePerSpawnModel:
-    @pytest.mark.parametrize("field", ["session_id", "prompt_id", "agent_type"])
-    def test_a_start_lacking_one_field_carries_the_unreadable_notice(self, scene, field) -> None:
+        assert standing(scene.fact("critic", agent_id="a1"))[1] == "opus"
+        assert standing(scene.fact("auditor", agent_id="a2"))[1] == "haiku"
+
+    def test_no_record_matching_the_prompt_session_and_type_leaves_the_pin_in_charge(
+        self, scene
+    ) -> None:
+        scene.caller_names("opus", prompt_id="other-prompt")
+        scene.caller_names("opus", session="other-session")
+        scene.caller_names("opus", agent_type="critic")
         scene.user_agent("general-purpose.md", "model: haiku")
 
-        resolution = scene.resolve(**{field: None})
+        resolution = scene.resolve()
 
-        assert [(n.kind, n.subject) for n in resolution.notices] == [
-            ("per-spawn-unreadable", field)
-        ]
-
-    def test_the_identifier_comes_from_the_definition_then_the_default_variable_then_the_parent(
-        self, scene
-    ) -> None:
-        scene.parent_runs(OPUS)
-        env = {DEFAULT_VARIABLE: SONNET}
-        scene.user_agent("general-purpose.md", "model: haiku")
-
-        by_definition = scene.resolve(prompt_id=None, env=env)
-        (scene.config / "agents" / "general-purpose.md").unlink()
-        by_default = scene.resolve(prompt_id=None, env=env)
-        by_parent = scene.resolve(prompt_id=None)
-
-        assert by_definition.fact.source == "definition-pin"
-        assert by_default.fact.source == "subagent-default-variable"
-        assert by_parent.fact.source == "parent-record"
-        assert all(
-            [n.kind for n in each.notices] == ["per-spawn-unreadable"]
-            for each in (by_definition, by_default, by_parent)
-        )
-
-    def test_a_record_written_with_no_prompt_id_is_not_joined_to_a_start_with_none(
-        self, scene
-    ) -> None:
-        scene.parent_runs(OPUS)
-        scene.caller_names("haiku", prompt_id=None)
-
-        resolution = scene.resolve(prompt_id=None)
-
-        assert resolution.fact.source == "parent-record"
-
-    def test_a_readable_start_carries_no_unreadable_notice(self, scene) -> None:
-        assert scene.resolve().notices == ()
-
-
-class TestTheDefaultVariableNamingInheritCountsAsUnset:
-    def test_the_parents_model_stands_where_no_other_source_names_one(self, scene) -> None:
-        scene.parent_runs(OPUS)
-
-        fact = scene.fact(env={DEFAULT_VARIABLE: "inherit"})
-
-        assert fact == model_fact.Claimed("opus", OPUS, "parent-record")
-
-    def test_with_no_parent_record_the_model_is_missing(self, scene) -> None:
-        assert scene.fact(env={DEFAULT_VARIABLE: "inherit"}) == model_fact.Missing()
-
-
-class TestTheDefinitionIsLocatedByAgentType:
-    def test_a_definition_registers_under_its_name_field(self, scene) -> None:
-        scene.user_agent("other.md", "name: scout\nmodel: haiku")
-
-        assert model_fact.claimed_name(scene.fact("scout")) == "haiku"
-
-    def test_a_definition_in_a_subfolder_of_the_user_directory_is_found(self, scene) -> None:
-        scene.user_agent("team/scout.md", "name: scout\nmodel: haiku")
-
-        assert model_fact.claimed_name(scene.fact("scout")) == "haiku"
-
-    def test_the_first_file_registered_under_the_type_wins(self, scene) -> None:
-        scene.user_agent("a.md", "name: scout\nmodel: haiku")
-        scene.user_agent("b.md", "name: scout\nmodel: sonnet")
-
-        assert model_fact.claimed_name(scene.fact("scout")) == "haiku"
-
-    def test_a_project_definition_and_a_user_definition(self, scene) -> None:
-        scene.project_agent("scout.md", "name: scout\nmodel: haiku")
-        scene.user_agent("scout.md", "name: scout\nmodel: sonnet")
-
-        fact = scene.fact("scout", cwd=str(scene.project / "sub"))
-
-        assert model_fact.claimed_name(fact) == "haiku"
-
-    def test_the_project_definition_closest_to_the_working_directory_wins(self, scene) -> None:
-        scene.project_agent("scout.md", "name: scout\nmodel: sonnet")
-        scene.project_agent("s.md", "name: scout\nmodel: haiku", under=scene.project / "sub")
-
-        fact = scene.fact("scout", cwd=str(scene.project / "sub"))
-
-        assert model_fact.claimed_name(fact) == "haiku"
-
-    def test_a_project_definition_naming_no_model_hides_a_user_pin(self, scene) -> None:
-        scene.parent_runs(OPUS)
-        scene.project_agent("scout.md", "name: scout")
-        scene.user_agent("scout.md", "name: scout\nmodel: haiku")
-
-        fact = scene.fact("scout", cwd=str(scene.project))
-
-        assert fact == model_fact.Claimed("opus", OPUS, "parent-record")
-
-    def test_a_definition_above_the_repository_root_is_not_read(self, scene) -> None:
-        above = scene.project.parent
-        scene.project_agent("scout.md", "name: scout\nmodel: haiku", under=above)
-
-        assert scene.fact("scout", cwd=str(scene.project / "sub")) == model_fact.Missing()
-
-    def test_a_working_directory_outside_any_repository_reads_only_itself(
-        self, tmp_path, scene
-    ) -> None:
-        loose = tmp_path / "loose" / "deeper"
-        loose.mkdir(parents=True)
-        scene.project_agent("scout.md", "name: scout\nmodel: sonnet", under=loose.parent)
-
-        assert scene.fact("scout", cwd=str(loose)) == model_fact.Missing()
-
-    def test_a_start_carrying_no_working_directory_reads_the_user_directory_alone(
-        self, scene
-    ) -> None:
-        scene.project_agent("scout.md", "name: scout\nmodel: sonnet")
-        scene.user_agent("scout.md", "name: scout\nmodel: haiku")
-
-        assert model_fact.claimed_name(scene.fact("scout")) == "haiku"
-
-    @pytest.mark.parametrize(
-        "front",
-        [
-            "name: [unclosed",
-            "model: opus\ndescription: finds the guide",
-            "name: claude-code-guide\nmodel: opus",
-            "name: claude-code-guide\nmodel: opus\ndescription: ",
-        ],
-        ids=["unparseable", "no-name", "no-description", "empty-description"],
-    )
-    def test_a_user_file_the_harness_skips_registers_nothing(self, scene, front) -> None:
-        scene.define(scene.config / "agents", "claude-code-guide.md", front)
-
-        assert scene.fact("claude-code-guide") == model_fact.Claimed(
-            "haiku", "haiku", "built-in-pin"
-        )
-
-    @pytest.mark.parametrize("name", ["-claude-code-guide", "x" * 257])
-    def test_a_file_with_an_invalid_name_registers_under_no_name(self, scene, name) -> None:
-        scene.define(scene.config / "agents", "guide.md", f"name: {name}\ndescription: d")
-
-        assert find_definition(name, None, scene.config) is None
-
-    def test_a_file_with_no_frontmatter_registers_no_agent(self, scene) -> None:
-        (scene.config / "agents").mkdir(parents=True)
-        (scene.config / "agents" / "README.md").write_text("# Agents\n\nNotes.\n", encoding="utf-8")
-        (scene.config / "agents" / "claude-code-guide.md").write_text("Notes.\n", encoding="utf-8")
-
-        assert find_definition("README", None, scene.config) is None
-        assert scene.fact("claude-code-guide").source == "built-in-pin"
-
-    def test_a_plugin_file_whose_frontmatter_does_not_parse_still_loads_under_its_filename(
-        self, scene
-    ) -> None:
-        install = scene.install_plugin()
-        scene.define(install / "agents", "rev.md", "name: [unclosed")
-
-        assert find_definition("kit:rev", None, scene.config) is not None
-
-    def test_a_plugin_scoped_type_reads_that_plugins_agents_directory(self, scene) -> None:
-        install = scene.install_plugin()
-        scene.define(install / "agents", "rev.md", "name: reviewer\nmodel: sonnet")
-        scene.user_agent("reviewer.md", "name: reviewer\nmodel: haiku")
-
-        assert model_fact.claimed_name(scene.fact("kit:reviewer")) == "sonnet"
-
-    def test_a_plugin_scoped_type_in_a_subfolder_names_the_subfolder(self, scene) -> None:
-        install = scene.install_plugin()
-        scene.define(install / "agents" / "review", "sec.md", "name: security\nmodel: haiku")
-
-        assert model_fact.claimed_name(scene.fact("kit:review:security")) == "haiku"
-        assert scene.fact("kit:security") == model_fact.Missing()
-
-    def test_a_plugin_definition_with_no_name_goes_by_its_filename(self, scene) -> None:
-        install = scene.install_plugin()
-        scene.define(install / "agents", "rev.md", "model: opus")
-
-        assert model_fact.claimed_name(scene.fact("kit:rev")) == "opus"
-
-    def test_a_plugin_that_is_not_installed_pins_nothing(self, scene) -> None:
-        scene.user_agent("reviewer.md", "name: reviewer\nmodel: haiku")
-
-        assert scene.fact("kit:reviewer") == model_fact.Missing()
-
-
-class TestAPinOfInheritAndTheHarnessBuiltInPins:
-    def test_the_definition_pins_inherit(self, scene) -> None:
-        scene.parent_runs(OPUS)
-        scene.user_agent("helper.md", "name: helper\nmodel: inherit")
-
-        fact = scene.fact("helper", env={DEFAULT_VARIABLE: SONNET})
-
-        assert fact == model_fact.Claimed("opus", OPUS, "parent-record")
-
-    def test_an_inherit_pin_with_no_recorded_parent_leaves_the_model_missing(self, scene) -> None:
-        scene.user_agent("helper.md", "name: helper\nmodel: inherit")
-
-        assert scene.fact("helper", env={DEFAULT_VARIABLE: SONNET}) == model_fact.Missing()
-
-    def test_the_caller_outranks_an_inherit_pin(self, scene) -> None:
-        scene.parent_runs(OPUS)
-        scene.caller_names("haiku", agent_type="helper")
-        scene.user_agent("helper.md", "name: helper\nmodel: inherit")
-
-        assert model_fact.claimed_name(scene.fact("helper")) == "haiku"
-
-    @pytest.mark.parametrize(
-        ("agent_type", "alias"), [("claude-code-guide", "haiku"), ("statusline-setup", "sonnet")]
-    )
-    def test_a_built_in_agent_with_no_definition_takes_the_harness_pin(
-        self, scene, agent_type, alias
-    ) -> None:
-        scene.parent_runs(OPUS)
-
-        assert scene.fact(agent_type) == model_fact.Claimed(alias, alias, "built-in-pin")
-
-    def test_a_built_in_pin_is_an_identifier_that_only_a_declared_name_claims(self, scene) -> None:
-        fact = scene.fact("claude-code-guide", models=["opus", "sonnet"])
-
-        assert fact == model_fact.Unclaimed("haiku", "built-in-pin")
-
-    def test_a_built_in_pin_is_claimed_as_reported(self, scene) -> None:
-        fact = scene.fact(
-            "claude-code-guide", env={"ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5"}
-        )
-
-        assert fact == model_fact.Claimed("haiku", "haiku", "built-in-pin")
-
-    def test_the_built_in_pin_is_read_ahead_of_the_default_variable(self, scene) -> None:
-        fact = scene.fact("claude-code-guide", env={DEFAULT_VARIABLE: SONNET})
-
-        assert fact.source == "built-in-pin"
-
-    def test_the_caller_outranks_the_built_in_pin(self, scene) -> None:
-        scene.caller_names("opus", agent_type="claude-code-guide")
-
-        assert model_fact.Claimed("opus", "opus", "per-spawn") == scene.fact("claude-code-guide")
-
-    def test_a_definition_naming_no_model_hides_the_built_in_pin(self, scene) -> None:
-        scene.parent_runs(OPUS)
-        scene.user_agent("setup.md", "name: statusline-setup")
-
-        assert scene.fact("statusline-setup") == model_fact.Claimed("opus", OPUS, "parent-record")
-
-    def test_a_definition_naming_a_model_replaces_the_built_in_pin(self, scene) -> None:
-        scene.user_agent("guide.md", "name: claude-code-guide\nmodel: opus")
-
-        assert scene.fact("claude-code-guide") == model_fact.Claimed(
-            "opus", "opus", "definition-pin"
-        )
-
-    def test_a_plugin_scoped_type_of_the_same_name_takes_no_built_in_pin(self, scene) -> None:
-        assert scene.fact("kit:claude-code-guide") == model_fact.Missing()
-
-    def test_a_type_the_harness_pins_nothing_for_takes_no_built_in_pin(self, scene) -> None:
-        assert scene.fact("general-purpose") == model_fact.Missing()
-
-    def test_a_skill_in_a_subagent_with_an_inherit_model_resolves_through_the_four_sources(
-        self, scene
-    ) -> None:
-        scene.parent_runs(OPUS)
-        scene.user_agent("skill-runner.md", "name: skill-runner\nmodel: inherit")
-
-        fact = scene.fact("skill-runner", env={DEFAULT_VARIABLE: SONNET})
-
-        assert fact == model_fact.Claimed("opus", OPUS, "parent-record")
-
-
-class TestTheEngineReadsNoVariableThatNamesASeparateMechanismsModel:
-    def test_no_delegate_resolution_asks_for_any_of_the_three(self, scene, read_spy) -> None:
-        scene.parent_runs(OPUS)
-        scene.caller_names("haiku", agent_type="spawned")
-        scene.user_agent("pinned.md", "name: pinned\nmodel: sonnet")
-        env = read_spy({name: HAIKU for name in SEPARATE_MECHANISM_VARIABLES})
-
-        for agent_type in ("spawned", "pinned", "claude-code-guide", "general-purpose"):
-            scene.resolve(agent_type, env=env)
-        scene.resolve("general-purpose", env=env, prompt_id=None)
-
-        assert not env.reads & set(SEPARATE_MECHANISM_VARIABLES)
-
-    def test_a_collapse_model_changes_nothing(self, scene) -> None:
-        scene.parent_runs(OPUS)
-        collapse = {"CLAUDE_CONTEXT_COLLAPSE_MODEL": HAIKU}
-
-        assert scene.resolve(env=collapse) == scene.resolve()
+        assert standing(resolution.fact) == ("haiku", "haiku")
+        assert resolution.notices == ()

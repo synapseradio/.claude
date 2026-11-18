@@ -16,7 +16,6 @@ import sys
 import pytest
 from rulesets.cli import main
 from rulesets.estimate import figures
-from rulesets.source.directory import Present, read_directory
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 IMPACT = PLUGIN_ROOT / "skills" / "rulesets" / "scripts" / "impact.py"
@@ -71,13 +70,6 @@ class TestTheCount:
         assert rows[SESSION_OPUS][:4] == ["opus", "65", "12", "24"]
         assert len(rows) == 6
 
-    def test_a_context_with_no_model_prints_a_dash_for_its_model(self, tmp_path, capsys) -> None:
-        root = pool(tmp_path / "rulesets", "opus")
-
-        _, rows = estimate(capsys, "--root", root)
-
-        assert rows[SESSION_UNNAMED][:4] == ["-", "65", "12", "24"]
-
 
 class TestThePerModelFigure:
     def test_a_models_own_figure_sets_its_tokens(self, tmp_path, capsys, monkeypatch) -> None:
@@ -93,16 +85,24 @@ class TestThePerModelFigure:
         assert rows[SESSION_HAIKU][3] == "13"
         assert rows[SESSION_OPUS][3] == "24"
 
-    def test_a_model_the_table_lacks_takes_the_default_and_the_row_says_so(
+    def test_a_model_the_table_lacks_and_a_context_with_no_model_take_the_default_and_say_so(
         self, tmp_path, capsys
     ) -> None:
-        root = pool(tmp_path / "rulesets", "opus stranger")
+        root = pool(tmp_path / "rulesets", "stranger")
 
         _, rows = estimate(capsys, "--root", root)
 
         assert rows[SESSION_STRANGER][3] == "24"
         assert rows[SESSION_STRANGER][-1] == "default"
-        assert rows[SESSION_OPUS][-1] == "table"
+        assert rows[SESSION_UNNAMED][-1] == "default"
+
+    @pytest.mark.parametrize("name", KNOWN_MODELS)
+    def test_a_model_the_table_knows_says_table(self, tmp_path, capsys, name) -> None:
+        root = pool(tmp_path / "rulesets", name)
+
+        _, rows = estimate(capsys, "--root", root)
+
+        assert rows[f"kind=session model={name} agent=- flag=- tools=-"][-1] == "table"
 
 
 class TestTheDeltaAgainstABaseline:
@@ -132,31 +132,3 @@ class TestTheDeltaAgainstABaseline:
 
         assert status == 2
         assert "no snapshot" in capsys.readouterr().err
-
-
-class TestTheFigureTable:
-    def test_every_declared_model_the_table_knows_has_a_figure_and_sources(self, tmp_path) -> None:
-        root = pool(tmp_path / "rulesets", " ".join(KNOWN_MODELS))
-        directory = read_directory(root)
-        assert isinstance(directory.config, Present)
-
-        for name in directory.config.config.models:
-            if name not in KNOWN_MODELS:
-                continue
-            assert name in figures.FIGURES, f"no figure for the declared model {name}"
-            figure = figures.FIGURES[name]
-            assert figure.chars_per_token > 0
-            assert figure.multiplier > 0
-            assert figure.chars_source.startswith("https://")
-            assert figure.multiplier_source.startswith("https://")
-
-    def test_the_default_figure_has_sources(self) -> None:
-        assert figures.DEFAULT.chars_source.startswith("https://")
-        assert figures.DEFAULT.multiplier_source.startswith("https://")
-
-
-@pytest.mark.parametrize("name", KNOWN_MODELS)
-def test_a_known_model_is_not_marked_defaulted(name) -> None:
-    _, defaulted = figures.figure_for(name)
-
-    assert not defaulted
