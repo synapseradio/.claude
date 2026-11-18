@@ -1,64 +1,66 @@
 # epistemic-marks
 
-epistemic-marks stops Claude Code from ending a reply on a claim nobody has checked, and from handing on a guess as if it were a finding.
+epistemic-marks gives you replies from Claude Code where you can see what Claude checked and what it is still guessing. Each statement Claude has not checked carries a small mark, and before a reply reaches you, Claude checks the statement, cuts it, or moves it to the top where you meet it first.
 
-The plugin adds rule text, a section of instructions, to every session. It teaches Claude to end each unverified clause with a mark, a short token such as `[?]`. When a reply ends with a mark or a guess written in words still in it, a hook sends the reply back. Claude then replaces each mark with a source, narrows the claim to what the source backs, or removes the claim. A mark Claude cannot resolve may stay at the top of the reply.
-
-Wording does not count as a mark. A sentence that says "my guess", "probably" or "I haven't checked this, but" is sent back the same way, to be checked or to be stated plainly with the mark.
+It suits anyone who acts on what Claude tells them: a diagnosis, an answer from research, a review of a change.
 
 > **An AI agent installing this plugin for someone?** Follow [SETUP.md](SETUP.md). It gives each command with its expected output, and names the steps to hand to the person.
 
-## Marks
+## What you get
 
-| Mark | Name | Resolved by |
+- **Sources beside findings.** A statement Claude checked comes with where it found the answer, such as the file and line it read.
+- **Guesses in plain sight.** A statement Claude has not confirmed carries a mark, so you can tell a guess from a finding.
+- **Open questions up front.** Whatever Claude could not settle sits at the top of the reply, ahead of everything else.
+- **Your decisions stay yours.** A choice only you can make comes to you as a question.
+- **Helpers held to the same standard.** Claude can hand part of a task to a helper agent, a second Claude it starts. Each helper gets the same instructions, and its report is checked before it comes back. Instructions to a helper that pass on a guess in words go back to Claude for a rewrite first.
+- **Another route before giving up.** Where a permission check stops Claude from opening a web page, Claude tries another way to reach it before marking the statement. Where you refuse a tool yourself, Claude asks you before trying another way.
+
+## What a reply looks like
+
+| | The same lines |
+| --- | --- |
+| Without the plugin | My guess is the editor builds these files without that config. That would drop the Node types, which matches the errors. |
+| With the plugin, before checking | The editor builds these files without that config [?]. That drops the Node types [?], which matches the errors [?]. |
+
+Claude then works through the marks. A statement it confirms gets its source beside it. A statement it cannot confirm is narrowed to what it found, or cut.
+
+## The marks
+
+| Mark | What it tells you | What happens to it |
 | --- | --- | --- |
-| `[?]` | the unsourced mark | finding a source for the claim |
-| `[.?]` | the secondhand mark | checking what another agent, a tool, or a person reported |
-| `[^?]` | the caller's mark | a decision from the agent that started this one |
-| `[!?]` | the standing question | a decision only a person can make |
+| `[?]` | Claude has no source for this statement. | Claude looks for one. |
+| `[.?]` | Claude got this from someone else, such as a tool, a person, or a helper agent, without a source. | Claude checks it. |
+| `[^?]` | This is a decision for whoever handed Claude the task. | Claude asks you, or a helper agent passes it to the Claude that started it. |
+| `[!?]` | Only a person can make this decision. | It reaches you as a question. |
 
-A mark inside a fenced code block, or inside a longer code span, does not count. Nor does a mark on a line that names it, where the mark sits alone in a code span, alone in quotes, or straight after its name, as in "the unsourced mark, `[?]`". That line talks about the mark rather than claiming under it.
+## How it works
 
-## A guess in words
+Claude receives a short set of instructions at the start of every session and every helper agent. Before a reply reaches you, the plugin reads it. While the reply still holds a mark, or a guess in words such as "probably" or "my guess is", it goes back to Claude with each line to fix. A mark Claude cannot clear may stay, at the top of the reply. Between steps of a task, Claude is reminded of each unchecked statement before it builds on one.
 
-The hooks also read for a guess written in words with no mark and no source in the same sentence. They flag three things:
+The checks run on your computer, read the session's conversation there, and call no AI model. To show each line only once, the plugin keeps a fingerprint of each line it has shown, never the text. [CONFIGURATION.md](CONFIGURATION.md) says where that record lives.
 
-- wording of doubt, such as "my guess", "I suspect", "probably", "it seems", "that should fix it", or "as far as I know";
-- a status written as a sentence or a label, such as "I haven't checked this, but", "(unverified)", or "these are guesses";
-- a sentence that builds on a marked or guessed claim without a mark of its own, such as one that starts "That would" or "So" straight after it.
+## Good to know
 
-A sentence passes when it ends a clause with a mark, or when it gives a source, a path with a line number or a URL. Fenced code, code spans, quoted text, block quotes and questions are not read. A sentence that names a mark in words is not flagged. You see it in a notice instead.
-
-This check is a word list, and a word list has limits. It leaves "may", "should" and "must" alone outside a few fixed phrases, because the same words also give permission or state a requirement. It cannot see a guess stated as plain fact. The rule text covers both: it tells Claude to mark every claim it did not see evidence for in the session, whatever the wording.
-
-## Requirements
-
-The plugin runs on Claude Code 2.1.268 or later, the oldest version tested, and on Python 3.14 or later, provisioned by [uv](https://docs.astral.sh/uv/).
-
-The hooks run through `uv run --python 3.14 --no-project`, so a 3.14 interpreter runs them even where the system `python3` is older. The launcher looks for uv on the path, then at `bin/uv` in the plugin's data directory (`CLAUDE_PLUGIN_DATA`, which survives plugin updates). If it finds none, it installs uv with [Astral's standalone installer](https://docs.astral.sh/uv/getting-started/installation/) into that `bin`, without editing any shell profile, and uses that copy. A Python 3.14 that uv downloads and uv's cache go in the same data directory, so nothing is installed in your home directory. Where `CLAUDE_PLUGIN_DATA` is unset, the launcher takes the failure path below. If the installer cannot run or fails, the session runs with no rule text and no checks, and each hook says so to the model and the user alike: it prints a JSON output naming uv on stdout and exits 0, in the form the event reads (`additionalContext` on SessionStart, SubagentStart and PostToolBatch, a deny reason on PreToolUse, a block reason on Stop and SubagentStop), with the same text as `systemMessage`. A Stop or SubagentStop already continued by that failure says nothing more. The launcher never falls back to the system Python.
+- **Checking takes extra time.** A reply can go back up to five times in a turn, and each rewrite is one more response from Claude. After the fifth, the plugin shows its findings to you and to Claude without sending the reply back.
+- **The check reads words.** It sends back a "probably" written for a good reason, and it cannot see a guess written as plain fact; the instructions ask Claude to mark that case too. A source Claude names is not checked against what it says.
+- **First use downloads Python.** Where your computer lacks them, the plugin downloads uv, a tool that installs Python, and Python 3.14 into its own data folder, which needs an internet connection once. If that fails, the plugin runs without instructions or checks and tells you so.
 
 ## Install
+
+The plugin needs Claude Code 2.1.268 or later.
 
 ```sh
 claude plugin marketplace add synapseradio/.claude
 claude plugin install epistemic-marks@claude-root
 ```
 
-The first command adds this repository as a plugin marketplace named `claude-root`. The second installs the plugin from it. To load the plugin, run `/reload-plugins` in an open session or restart Claude Code.
+The first command adds this repository as a source of plugins, called a marketplace, named `claude-root`. The second installs the plugin from it. Then run `/reload-plugins` in an open session, or restart Claude Code.
 
-If the first command fails to clone over SSH, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and run it again.
+If the first command fails with an SSH error, run it again as:
 
-## What it does
-
-The plugin ships its rule text and its hooks together, so it works with nothing else installed.
-
-- At every session start and subagent start, it adds the rule text to the context. A subagent is an agent that another agent starts.
-- When a reply ends with a mark or a guess in words in it, the Stop hook blocks the reply and lists each line with the step that resolves it. The rewrite passes once every guess in words is marked or gone and every mark left from the first draft opens the reply, ahead of every unmarked line. A new mark, a guess in words, or a leftover mark under unmarked text blocks the reply again.
-- When a fetch for a source is denied by a permission check, such as the auto mode classifier, and a mark follows in the reply with no other fetch tried after the denial, the Stop and SubagentStop hooks block the reply on every pass until another route is tried. The block asks Claude to reach the same source by another fetch tool or command form, and, where every route fails, to name beside the mark each route it tried and how it failed. A person's refusal of a tool call never triggers it.
-- The Stop and SubagentStop hooks block a turn at most five times. After the fifth block they show their findings to Claude and to you without blocking, which keeps them under Claude Code's override after eight consecutive continuations. Where they cannot write their record, they block once.
-- When a subagent finishes, the SubagentStop hook checks its report the same way. It leaves the caller's mark and the standing question in place, and asks the subagent to carry them in its report to the agent that started it.
-- After each batch of tool calls, the PostToolBatch hook shows Claude any marked line or guess in words written since your last message, and tells it to check the claim before the next step. It never blocks, and it shows each line once per session.
-- When Claude starts a subagent, the PreToolUse hook reads the prompt it wrote. If the prompt hands the subagent a guess in words, the hook denies the call and Claude rewrites the prompt. A marked claim in a prompt passes, because the mark tells the subagent the claim is unverified.
+```sh
+CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1 claude plugin marketplace add synapseradio/.claude
+```
 
 ## Turn it off
 
@@ -68,14 +70,8 @@ claude plugin disable epistemic-marks@claude-root
 
 Then reload, as after installing. `claude plugin enable epistemic-marks@claude-root` turns the plugin back on, and `claude plugin uninstall epistemic-marks@claude-root` removes it.
 
-## State and configuration
+## More detail
 
-To show each marked line only once, the hooks keep a record of the lines they have shown. The record holds a SHA-256 fingerprint of each line and never its text, and entries older than a day are removed.
-
-These environment variables configure the plugin, and nothing else does.
-
-- `VERIFY_MARKS_STATE_DIR` names the directory for the record. Without it, the record goes to `verify-marks` under `CLAUDE_PLUGIN_DATA`, or else to `epistemic-marks-verify-marks` in the system temporary directory.
-
-The plugin delivers its rule text as shipped, from `rule-text/epistemic-marks.md`, and no setting points it at another file. An update replaces that file, so a local edit to it is lost.
-
-The plugin reads none of your configuration and no other plugin. The hooks that check replies read the session transcript, at the path Claude Code passes them. Every check is a local Python script. No hook calls a model.
+- [DESIGN.md](DESIGN.md): how each check works, why it works that way, and its measured limits.
+- [CONFIGURATION.md](CONFIGURATION.md): where the plugin keeps its record, and the setting that moves it.
+- [rule-text/epistemic-marks.md](rule-text/epistemic-marks.md): the instructions Claude receives, word for word.
