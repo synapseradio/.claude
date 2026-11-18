@@ -52,6 +52,7 @@ FLAGGED = (
     "The lockfile drifted [?]. That would break the install.",
     "The lockfile drifted [?]. So the install fails on CI.",
     INCIDENT,
+    'The message read "the cache\nis stale" and I suspect it is right.',
 )
 
 # Sentences the README says pass: a mark or a source, code, quoted text, a
@@ -67,6 +68,7 @@ PASSING = (
     "You may change the tests and the README.",
     "The function should return a list.",
     "It must be the first argument.",
+    'The message read "My guess is the cache is\nprobably stale. That would explain it." and no more.',
 )
 
 # A mark ends the guess in words, so a prompt carrying one passes.
@@ -105,7 +107,7 @@ class AReplyGuessingInWordsIsSentBack(HookCase):
             with self.subTest(flagged=line):
                 result = required(self.stop(line, session_id=line))
                 assert result["decision"] == "block", "wording stood in for the mark"
-                assert line.split(". ")[-1].rstrip(".") in result["reason"]
+                assert line.split(". ")[-1].rstrip(".").split("\n")[-1] in result["reason"]
         for line in PASSING:
             with self.subTest(passing=line):
                 assert self.stop(line, session_id=line) is None, "the scan fired where none was due"
