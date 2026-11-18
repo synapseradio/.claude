@@ -46,7 +46,6 @@ Keep the default `--min-age` (1d) on `wt prune`: a worktree just created from th
 
 - `wt land <target>` = `wt merge <target>`: squash, rebase, fast-forward the target, and remove the worktree. Exits 1 without a target.
 - `wt remove-keep-branch` = `wt remove --no-delete-branch`.
-- `wt sync-preview` = `wt sync --dry-run`.
 - `wt s` / `ls` / `h` / `rm` = `switch` / `list` / `hook` / `remove`.
 
 `wt <alias> --help` prints only an alias notice; use `wt <alias> -- --help` for the target's help.
