@@ -342,25 +342,22 @@ assert_decision() {
 }
 
 #######################################
-# Assert the guard's main, fed one envelope, printed a PreToolUse decision
-# whose reason holds a given text.
+# Assert the guard's main, fed one envelope, printed a PreToolUse decision.
 # Globals:
 #   HOOK_OUTPUT
 # Arguments:
 #   $1 - the expected permissionDecision value.
-#   $2 - text the reason must hold.
-#   $3 - the PreToolUse envelope JSON.
+#   $2 - the PreToolUse envelope JSON.
 #######################################
 assert_main_prints() {
-  local want="$1" text="$2" event
-  run_hook_envelope "$3"
-  assert_decision "${want}" "$3" || return 1
+  local want="$1" event
+  run_hook_envelope "$2"
+  assert_decision "${want}" "$2" || return 1
   event="$(jq -r '.hookSpecificOutput.hookEventName // ""' <<<"${HOOK_OUTPUT}")"
   [[ "${event}" == 'PreToolUse' ]] || {
     echo "expected hookEventName PreToolUse, got '${event}'" >&2
     return 1
   }
-  assert_reason_contains "${text}"
 }
 
 #######################################

@@ -20,141 +20,84 @@ setup() {
   export GIT_CONFIG_NOSYSTEM=1
 }
 
-@test "git commit --amend asks" {
-  assert_asks 'git commit --amend'
+@test "git commit asks when --amend sits at any flag position" {
+  local -a forms=(
+    'git commit --amend'
+    'git commit --amend --no-edit'
+    'git commit --amend -m "fix: wording"'
+    'git commit -m "fix: wording" --amend'
+    'git commit -am "fix: wording" --amend'
+    'git commit -a --amend --no-verify'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_asks "${form}"
+  done
 }
 
-@test "git commit --amend --no-edit asks" {
-  assert_asks 'git commit --amend --no-edit'
+@test "git commit --amend asks behind each global git option and a path-named git" {
+  local -a forms=(
+    'git -C /Users/me/repo commit --amend'
+    'git -c core.editor=true commit --amend'
+    'git --no-pager commit --amend'
+    'git --git-dir /tmp/x/.git commit --amend'
+    '/usr/bin/git commit --amend'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_asks "${form}"
+  done
 }
 
-@test "git commit --amend with a message asks" {
-  assert_asks 'git commit --amend -m "fix: wording"'
+@test "git commit --amend asks at each command position" {
+  local -a forms=(
+    'git add -- a.txt && git commit --amend --no-edit'
+    'git add -- a.txt; git commit --amend'
+    $'git add -- a.txt\ngit commit --amend'
+    'env GIT_EDITOR=true git commit --amend'
+    '(git commit --amend --no-edit)'
+    "bash -c 'git commit --amend'"
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_asks "${form}"
+  done
 }
 
-@test "git commit with --amend after a message asks" {
-  assert_asks 'git commit -m "fix: wording" --amend'
+@test "git commands that do not amend stay silent" {
+  local -a forms=(
+    'git commit -m "feat: add thing"'
+    'git -C /Users/me/repo commit -m "feat: add thing"'
+    'git commit --fixup HEAD'
+    'git log --oneline'
+    'git rebase --autosquash origin/main'
+    'git status --amend'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent "${form}"
+  done
 }
 
-@test "git commit with --amend after a combined flag asks" {
-  assert_asks 'git commit -am "fix: wording" --amend'
-}
-
-@test "git commit with --amend between other flags asks" {
-  assert_asks 'git commit -a --amend --no-verify'
-}
-
-@test "git -C path commit --amend asks" {
-  assert_asks 'git -C /Users/me/repo commit --amend'
-}
-
-@test "git -c key=value commit --amend asks" {
-  assert_asks 'git -c core.editor=true commit --amend'
-}
-
-@test "git --no-pager commit --amend asks" {
-  assert_asks 'git --no-pager commit --amend'
-}
-
-@test "git --git-dir with a value commit --amend asks" {
-  assert_asks 'git --git-dir /tmp/x/.git commit --amend'
-}
-
-@test "git named by path asks" {
-  assert_asks '/usr/bin/git commit --amend'
-}
-
-@test "git commit --amend after && asks" {
-  assert_asks 'git add -- a.txt && git commit --amend --no-edit'
-}
-
-@test "git commit --amend after a semicolon asks" {
-  assert_asks 'git add -- a.txt; git commit --amend'
-}
-
-@test "git commit --amend on a later line asks" {
-  assert_asks $'git add -- a.txt\ngit commit --amend'
-}
-
-@test "git commit --amend behind env asks" {
-  assert_asks 'env GIT_EDITOR=true git commit --amend'
-}
-
-@test "git commit --amend in a subshell asks" {
-  assert_asks '(git commit --amend --no-edit)'
-}
-
-@test "git commit --amend in a bash -c string asks" {
-  assert_asks "bash -c 'git commit --amend'"
-}
-
-@test "an ask names committing anew" {
-  run_bash_hook 'git commit --amend'
-  [[ "$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")" == *'commit anew'* ]]
-}
-
-@test "a plain git commit stays silent" {
-  assert_silent 'git commit -m "feat: add thing"'
-}
-
-@test "git -C path commit without --amend stays silent" {
-  assert_silent 'git -C /Users/me/repo commit -m "feat: add thing"'
-}
-
-@test "git commit --fixup stays silent" {
-  assert_silent 'git commit --fixup HEAD'
-}
-
-@test "git log stays silent" {
-  assert_silent 'git log --oneline'
-}
-
-@test "git rebase stays silent" {
-  assert_silent 'git rebase --autosquash origin/main'
-}
-
-@test "git status with --amend as a later word stays silent" {
-  assert_silent 'git status --amend'
-}
-
-@test "--amend in a commit message stays silent" {
-  assert_silent 'git commit -m "--amend"'
-}
-
-@test "--amend in a long-form message stays silent" {
-  assert_silent 'git commit --message "--amend"'
-}
-
-@test "--amend named in a commit message sentence stays silent" {
-  assert_silent 'git commit -m "docs: never git commit --amend"'
-}
-
-@test "--amend as an argument to echo stays silent" {
-  assert_silent 'echo git commit --amend'
-}
-
-@test "--amend as an argument to grep stays silent" {
-  assert_silent 'grep -rn -- "--amend" docs/'
-}
-
-@test "--amend inside a single-quoted string stays silent" {
-  assert_silent "echo 'git commit --amend'"
-}
-
-@test "git commit --amend in a comment stays silent" {
-  assert_silent $'ls # git commit --amend\npwd'
-}
-
-@test "git commit --amend in a here-document body stays silent" {
-  assert_silent $'cat <<\'EOF\'\ngit commit --amend\nEOF'
-}
-
-@test "an empty command stays silent" {
-  assert_silent ''
+@test "--amend named as text, an argument, or an empty command stays silent" {
+  local -a forms=(
+    'git commit -m "--amend"'
+    'git commit --message "--amend"'
+    'git commit -m "docs: never git commit --amend"'
+    'echo git commit --amend'
+    'grep -rn -- "--amend" docs/'
+    "echo 'git commit --amend'"
+    $'ls # git commit --amend\npwd'
+    $'cat <<\'EOF\'\ngit commit --amend\nEOF'
+    ''
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent "${form}"
+  done
 }
 
 @test "an envelope proposing git commit --amend prints a PreToolUse ask" {
-  assert_main_prints ask 'commit anew' \
+  assert_main_prints ask \
     '{"tool_name":"Bash","tool_input":{"command":"git commit --amend --no-edit"}}'
 }

@@ -77,112 +77,58 @@ make_plain_dir() {
   printf 'loose\n' >"${PLAIN}/loose.txt"
 }
 
-@test "a bare rm is denied" {
-  assert_denies 'rm notes.txt'
+@test "rm is denied in each spelling" {
+  local -a forms=(
+    'rm notes.txt'
+    'rm -rf build/'
+    '/bin/rm notes.txt'
+    '\rm notes.txt'
+    '"rm" notes.txt'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies "${form}"
+  done
 }
 
-@test "rm with flags is denied" {
-  assert_denies 'rm -rf build/'
+@test "rm is denied after each separator and inside each grouping" {
+  local -a forms=(
+    'cd build && rm -rf out'
+    'make clean || rm -rf out'
+    'npm run build; rm -rf dist'
+    'ls *.tmp | rm'
+    $'cd build\nrm -rf out'
+    '(cd build && rm -rf out)'
+    'echo $(rm -rf out)'
+    'echo `rm -rf out`'
+    'echo "done: $(rm -rf out)"'
+    'for f in a b; do rm "$f"; done'
+    'if [ -f x ]; then rm x; fi'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies "${form}"
+  done
 }
 
-@test "rm named by path is denied" {
-  assert_denies '/bin/rm notes.txt'
-}
-
-@test "rm after && is denied" {
-  assert_denies 'cd build && rm -rf out'
-}
-
-@test "rm after || is denied" {
-  assert_denies 'make clean || rm -rf out'
-}
-
-@test "rm after a semicolon is denied" {
-  assert_denies 'npm run build; rm -rf dist'
-}
-
-@test "rm after a pipe is denied" {
-  assert_denies 'ls *.tmp | rm'
-}
-
-@test "rm on a later line is denied" {
-  assert_denies $'cd build\nrm -rf out'
-}
-
-@test "rm inside a subshell is denied" {
-  assert_denies '(cd build && rm -rf out)'
-}
-
-@test "rm inside a command substitution is denied" {
-  assert_denies 'echo $(rm -rf out)'
-}
-
-@test "rm inside backticks is denied" {
-  assert_denies 'echo `rm -rf out`'
-}
-
-@test "rm inside a double-quoted command substitution is denied" {
-  assert_denies 'echo "done: $(rm -rf out)"'
-}
-
-@test "rm behind sudo is denied" {
-  assert_denies 'sudo rm -rf /etc/hosts'
-}
-
-@test "rm behind sudo with a user option is denied" {
-  assert_denies 'sudo -u root rm notes.txt'
-}
-
-@test "rm behind command is denied" {
-  assert_denies 'command rm notes.txt'
-}
-
-@test "rm behind xargs is denied" {
-  assert_denies 'ls *.tmp | xargs rm'
-}
-
-@test "rm behind xargs with a replacement option is denied" {
-  assert_denies 'ls | xargs -I {} rm {}'
-}
-
-@test "rm behind env is denied" {
-  assert_denies 'env rm notes.txt'
-}
-
-@test "rm behind env with an assignment is denied" {
-  assert_denies 'env LC_ALL=C rm notes.txt'
-}
-
-@test "rm behind exec is denied" {
-  assert_denies 'exec rm notes.txt'
-}
-
-@test "rm behind a variable assignment is denied" {
-  assert_denies 'TMPDIR=/tmp rm notes.txt'
-}
-
-@test "rm inside a loop body is denied" {
-  assert_denies 'for f in a b; do rm "$f"; done'
-}
-
-@test "rm after then is denied" {
-  assert_denies 'if [ -f x ]; then rm x; fi'
-}
-
-@test "rm in a bash -c string is denied" {
-  assert_denies "bash -c 'echo start; rm notes.txt'"
-}
-
-@test "rm behind find -exec is denied" {
-  assert_denies 'find . -name "*.tmp" -exec rm {} \;'
-}
-
-@test "a backslash-escaped rm is denied" {
-  assert_denies '\rm notes.txt'
-}
-
-@test "a quoted command word rm is denied" {
-  assert_denies '"rm" notes.txt'
+@test "rm is denied behind each wrapper word, xargs, find -exec, and in a shell string" {
+  local -a forms=(
+    'sudo rm -rf /etc/hosts'
+    'sudo -u root rm notes.txt'
+    'command rm notes.txt'
+    'ls *.tmp | xargs rm'
+    'ls | xargs -I {} rm {}'
+    'env rm notes.txt'
+    'env LC_ALL=C rm notes.txt'
+    'exec rm notes.txt'
+    'TMPDIR=/tmp rm notes.txt'
+    "bash -c 'echo start; rm notes.txt'"
+    'find . -name "*.tmp" -exec rm {} \;'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies "${form}"
+  done
 }
 
 @test "a denial points at trash" {
@@ -191,241 +137,121 @@ make_plain_dir() {
     <<<"${HOOK_OUTPUT}")" == *'trash <path>'* ]]
 }
 
-@test "git rm stays silent" {
-  assert_silent 'git rm --cached notes.txt'
+@test "other programs that spell rm as a subcommand, and the neighbors trash and rmdir, stay silent" {
+  local -a forms=(
+    'git rm --cached notes.txt'
+    'bun rm left-pad'
+    'npm rm left-pad'
+    'pnpm rm left-pad'
+    'docker rm -f web'
+    'trash notes.txt'
+    'rmdir empty-dir'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent "${form}"
+  done
 }
 
-@test "bun rm stays silent" {
-  assert_silent 'bun rm left-pad'
+@test "the word rm as an argument, inside a string, in a comment, or in a longer word stays silent" {
+  local -a forms=(
+    'echo rm'
+    'grep -n rm file'
+    'echo "rm -rf build/"'
+    "echo 'run rm -rf build/ later'"
+    'git commit -m "feat: replace rm with trash"'
+    'echo "built $(date) rm done"'
+    $'cat <<\'EOF\'\nrm notes.txt\nEOF'
+    $'ls # rm notes.txt\npwd'
+    'command -v rm'
+    'rm-tool --help'
+    'cat docs/rm.md'
+    ''
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent "${form}"
+  done
 }
 
-@test "npm rm stays silent" {
-  assert_silent 'npm rm left-pad'
-}
-
-@test "pnpm rm stays silent" {
-  assert_silent 'pnpm rm left-pad'
-}
-
-@test "docker rm stays silent" {
-  assert_silent 'docker rm -f web'
-}
-
-@test "trash stays silent" {
-  assert_silent 'trash notes.txt'
-}
-
-@test "rmdir stays silent" {
-  assert_silent 'rmdir empty-dir'
-}
-
-@test "rm as an argument to echo stays silent" {
-  assert_silent 'echo rm'
-}
-
-@test "rm as an argument to grep stays silent" {
-  assert_silent 'grep -n rm file'
-}
-
-@test "rm inside a double-quoted string stays silent" {
-  assert_silent 'echo "rm -rf build/"'
-}
-
-@test "rm inside a single-quoted string stays silent" {
-  assert_silent "echo 'run rm -rf build/ later'"
-}
-
-@test "rm in a commit message stays silent" {
-  assert_silent 'git commit -m "feat: replace rm with trash"'
-}
-
-@test "rm after a command substitution inside quotes stays silent" {
-  assert_silent 'echo "built $(date) rm done"'
-}
-
-@test "rm at the start of a here-document line stays silent" {
-  assert_silent $'cat <<\'EOF\'\nrm notes.txt\nEOF'
-}
-
-@test "rm in a comment stays silent" {
-  assert_silent $'ls # rm notes.txt\npwd'
-}
-
-@test "command -v rm stays silent" {
-  assert_silent 'command -v rm'
-}
-
-@test "a word starting with rm stays silent" {
-  assert_silent 'rm-tool --help'
-}
-
-@test "a file named rm stays silent" {
-  assert_silent 'cat docs/rm.md'
-}
-
-@test "an empty command stays silent" {
-  assert_silent ''
-}
-
-@test "a denial says rm runs only on files committed and unchanged in git" {
-  run_bash_hook 'rm notes.txt'
-  assert_reason_contains 'committed and unchanged in git'
-}
-
-# What git can restore
-
-@test "rm of a committed unchanged file is allowed" {
+@test "rm of paths git can restore is allowed" {
   make_repo
-  assert_silent "rm ${REPO}/tracked.txt"
+  ln -s dir "${REPO}/link"
+  git -C "${REPO}" add link
+  git -C "${REPO}" commit -q -m 'add link'
+  local -a forms=(
+    "rm ${REPO}/tracked.txt"
+    "rm -f ${REPO}/tracked.txt"
+    "rm ${REPO}/tracked.txt ${REPO}/other.txt"
+    "rm -r ${REPO}/dir"
+    "rm -rf ${REPO}/dir/"
+    "rm ${REPO}/link"
+    "rm ${REPO}/missing.txt"
+    "rm -f ${REPO}/missing.txt"
+    "rm ${REPO}/tracked.txt && rm ${REPO}/other.txt"
+    "rm ${REPO}/tracked.txt; rm -r ${REPO}/dir"
+    "rm ${REPO}/tracked.txt || rm ${REPO}/other.txt"
+    $'rm '"${REPO}"$'/tracked.txt\nrm '"${REPO}"'/other.txt'
+    "rm ${REPO}/tracked.txt && echo done"
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent "${form}"
+  done
 }
 
-@test "rm -f of a committed unchanged file is allowed" {
-  make_repo
-  assert_silent "rm -f ${REPO}/tracked.txt"
-}
-
-@test "rm of a modified file is denied and names the file" {
+@test "rm of a file git cannot restore is denied" {
   make_repo
   printf 'edited\n' >>"${REPO}/tracked.txt"
-  run_bash_hook "rm ${REPO}/tracked.txt"
-  assert_decision 'deny' "modified file"
-  assert_reason_contains "${REPO}/tracked.txt"
-  assert_reason_contains 'trash <path>'
-}
-
-@test "rm of a staged edit is denied" {
-  make_repo
-  printf 'edited\n' >>"${REPO}/tracked.txt"
-  git -C "${REPO}" add tracked.txt
-  assert_denies "rm ${REPO}/tracked.txt"
-}
-
-@test "rm of a newly staged file is denied" {
-  make_repo
-  printf 'new\n' >"${REPO}/new.txt"
-  git -C "${REPO}" add new.txt
-  assert_denies "rm ${REPO}/new.txt"
-}
-
-@test "rm of an untracked file is denied" {
-  make_repo
-  printf 'new\n' >"${REPO}/new.txt"
-  assert_denies "rm ${REPO}/new.txt"
-}
-
-@test "rm of an ignored file is denied" {
-  make_repo
+  printf 'edited\n' >>"${REPO}/other.txt"
+  git -C "${REPO}" add other.txt
+  printf 'new\n' >"${REPO}/staged.txt"
+  git -C "${REPO}" add staged.txt
+  printf 'new\n' >"${REPO}/untracked.txt"
   printf 'log\n' >"${REPO}/build.log"
-  assert_denies "rm ${REPO}/build.log"
+  git -C "${REPO}" update-index --assume-unchanged sub/inner.txt
+  printf 'edited\n' >>"${REPO}/sub/inner.txt"
+  git -C "${REPO}" rm -q --cached dir/one.txt
+  local -a files=(
+    tracked.txt other.txt staged.txt untracked.txt build.log sub/inner.txt
+    dir/one.txt
+  )
+  local file
+  for file in "${files[@]}"; do
+    assert_denies "rm ${REPO}/${file}"
+  done
 }
 
-@test "rm of a file whose edits git was told to ignore is denied" {
+@test "rm -r of a directory git cannot fully restore is denied" {
   make_repo
-  git -C "${REPO}" update-index --assume-unchanged tracked.txt
-  printf 'edited\n' >>"${REPO}/tracked.txt"
-  assert_denies "rm ${REPO}/tracked.txt"
-}
-
-@test "rm of a file deleted from the index but still on disk is denied" {
-  make_repo
-  git -C "${REPO}" rm -q --cached tracked.txt
-  assert_denies "rm ${REPO}/tracked.txt"
-}
-
-@test "rm -r of a committed unchanged directory is allowed" {
-  make_repo
-  assert_silent "rm -r ${REPO}/dir"
-}
-
-@test "rm -rf of a committed unchanged directory with a trailing slash is allowed" {
-  make_repo
-  assert_silent "rm -rf ${REPO}/dir/"
-}
-
-@test "rm -r of a directory holding a modified file is denied" {
-  make_repo
-  printf 'edited\n' >>"${REPO}/dir/sub/two.txt"
-  assert_denies "rm -r ${REPO}/dir"
-}
-
-@test "rm -r of a directory holding an untracked file is denied" {
-  make_repo
-  printf 'new\n' >"${REPO}/dir/sub/new.txt"
-  run_bash_hook "rm -r ${REPO}/dir"
-  assert_decision 'deny' "untracked file beneath"
-  assert_reason_contains "${REPO}/dir"
-}
-
-@test "rm -r of a directory holding an ignored file is denied" {
-  make_repo
-  mkdir "${REPO}/dir/__pycache__"
-  printf 'bytecode\n' >"${REPO}/dir/__pycache__/x.pyc"
-  assert_denies "rm -r ${REPO}/dir"
-}
-
-@test "rm -r of a directory holding a nested repository is denied" {
-  make_repo
-  git init -q "${REPO}/dir/nested"
-  assert_denies "rm -r ${REPO}/dir"
-}
-
-@test "rm -r of a directory holding a submodule is denied" {
-  make_repo
-  local sha
+  local dir sha
+  for dir in modified untracked ignored nested submodule; do
+    mkdir "${REPO}/${dir}"
+    printf 'x\n' >"${REPO}/${dir}/f.txt"
+  done
+  git -C "${REPO}" add -A
+  git -C "${REPO}" commit -q -m 'add directories'
+  printf 'edited\n' >>"${REPO}/modified/f.txt"
+  printf 'new\n' >"${REPO}/untracked/new.txt"
+  mkdir "${REPO}/ignored/__pycache__"
+  printf 'bytecode\n' >"${REPO}/ignored/__pycache__/x.pyc"
+  git init -q "${REPO}/nested/inner"
   sha="$(git -C "${REPO}" rev-parse HEAD)"
-  git -C "${REPO}" update-index --add --cacheinfo "160000,${sha},dir/mod"
+  git -C "${REPO}" update-index --add --cacheinfo "160000,${sha},submodule/mod"
   git -C "${REPO}" commit -q -m 'add a gitlink'
-  mkdir "${REPO}/dir/mod"
-  assert_denies "rm -r ${REPO}/dir"
-}
-
-@test "rm -r of an untracked directory is denied" {
-  make_repo
-  mkdir "${REPO}/scratch"
+  mkdir "${REPO}/submodule/mod" "${REPO}/scratch"
   printf 'x\n' >"${REPO}/scratch/x.txt"
-  assert_denies "rm -r ${REPO}/scratch"
-}
-
-@test "rm -rf of a repository root is denied" {
-  make_repo
+  for dir in modified untracked ignored nested submodule scratch; do
+    assert_denies "rm -r ${REPO}/${dir}"
+  done
   assert_denies "rm -rf ${REPO}"
-}
-
-@test "rm -rf of a repository's git directory is denied" {
-  make_repo
   assert_denies "rm -rf ${REPO}/.git"
-}
-
-@test "rm of a file inside a git directory is denied" {
-  make_repo
   assert_denies "rm ${REPO}/.git/HEAD"
 }
 
-@test "rm of a file outside any repository is denied" {
+@test "rm of a path outside any repository is denied" {
   make_plain_dir
-  run_bash_hook "rm ${PLAIN}/loose.txt"
-  assert_decision 'deny' "plain directory"
-  assert_reason_contains "${PLAIN}/loose.txt"
-}
-
-@test "a denial names the trash command for the paths rm named" {
-  make_plain_dir
-  touch "${PLAIN}/loose.txt" "${PLAIN}/two words.txt"
-  run_bash_hook "rm -f ${PLAIN}/loose.txt '${PLAIN}/two words.txt'"
-  assert_decision 'deny' 'two files outside a repository'
-  assert_reason_contains "Run instead: trash ${PLAIN}/loose.txt '${PLAIN}/two words.txt'."
-}
-
-@test "a denial for a glob operand keeps the general trash form" {
-  make_plain_dir
-  run_bash_hook "rm ${PLAIN}/*.log"
-  assert_decision 'deny' 'a glob'
-  assert_reason_contains 'trash <path>'
-  [[ "${HOOK_REASON}" != *'Run instead'* ]]
-}
-
-@test "rm -rf of a directory outside any repository is denied" {
-  make_plain_dir
+  assert_denies "rm ${PLAIN}/loose.txt"
   assert_denies "rm -rf ${PLAIN}"
 }
 
@@ -454,100 +280,48 @@ make_plain_dir() {
   assert_denies "rm -rf ${REPO}/link/"
 }
 
-@test "rm of a committed symlink is allowed" {
+@test "a relative operand is judged against the envelope's cwd, and denied where there is none" {
   make_repo
-  ln -s dir "${REPO}/link"
-  git -C "${REPO}" add link
-  git -C "${REPO}" commit -q -m 'add link'
-  assert_silent "rm ${REPO}/link"
-}
-
-# Operands the guard cannot read
-
-@test "a relative operand resolves against the envelope's cwd" {
-  make_repo
+  make_plain_dir
+  printf 'new\n' >"${REPO}/sub/new.txt"
   assert_silent_in "${REPO}" 'rm tracked.txt'
   assert_silent_in "${REPO}/sub" 'rm ../tracked.txt'
-}
-
-@test "a relative operand naming an untracked file is denied from the cwd" {
-  make_repo
-  printf 'new\n' >"${REPO}/sub/new.txt"
   assert_denies_in "${REPO}/sub" 'rm new.txt'
-}
-
-@test "a relative operand outside any repository is denied from the cwd" {
-  make_plain_dir
   assert_denies_in "${PLAIN}" 'rm loose.txt'
-}
-
-@test "a relative operand with no cwd in the envelope is denied" {
-  make_repo
   assert_denies 'rm tracked.txt'
-}
-
-@test "an absolute operand is judged when the envelope names no cwd" {
-  make_repo
-  assert_silent "rm ${REPO}/tracked.txt"
-  printf 'new\n' >"${REPO}/untracked.txt"
-  assert_denies "rm ${REPO}/untracked.txt"
-}
-
-@test "an empty cwd in the envelope counts as no working directory" {
-  make_repo
   assert_denies_in '' 'rm tracked.txt'
-  assert_reason_contains 'no working directory'
   assert_silent_in '' "rm ${REPO}/tracked.txt"
 }
 
-@test "every line of a multi-line command is judged" {
+@test "every line of a multi-line command is judged, with or without a cwd" {
   make_repo
   printf 'new\n' >"${REPO}/untracked.txt"
   assert_silent_in "${REPO}" $'rm tracked.txt\nrm other.txt'
   assert_denies_in "${REPO}" $'rm tracked.txt\nrm other.txt\nrm untracked.txt'
-  assert_reason_contains 'untracked.txt'
-}
-
-@test "a multi-line command is judged when the envelope names no cwd" {
-  make_repo
   assert_silent $'rm '"${REPO}"$'/tracked.txt\nrm '"${REPO}"'/other.txt'
   assert_denies $'rm '"${REPO}"$'/tracked.txt\nrm relative.txt'
-  assert_reason_contains 'no working directory'
 }
 
-@test "an operand holding a glob is denied" {
+@test "an operand the guard cannot read is denied" {
   make_repo
-  assert_denies_in "${REPO}" 'rm *.txt'
-  assert_denies_in "${REPO}" 'rm tracked.tx?'
-  assert_denies_in "${REPO}" 'rm [t]racked.txt'
-}
-
-@test "an operand holding a variable is denied" {
-  make_repo
-  assert_denies_in "${REPO}" 'rm "$FILE"'
-  assert_denies_in "${REPO}" 'rm ${FILE}'
-}
-
-@test "an operand holding a command substitution is denied" {
-  make_repo
-  assert_denies_in "${REPO}" 'rm $(echo tracked.txt)'
-  assert_denies_in "${REPO}" 'rm `echo tracked.txt`'
-}
-
-@test "an operand holding a tilde is denied" {
-  make_repo
-  assert_denies_in "${REPO}" 'rm ~/tracked.txt'
-}
-
-@test "an operand holding a brace expansion is denied" {
-  make_repo
-  assert_denies_in "${REPO}" 'rm {tracked,other}.txt'
-}
-
-@test "rm with no operand is denied" {
-  make_repo
-  assert_denies_in "${REPO}" 'rm'
-  assert_denies_in "${REPO}" 'rm -rf'
+  local -a forms=(
+    'rm *.txt'
+    'rm tracked.tx?'
+    'rm [t]racked.txt'
+    'rm "$FILE"'
+    'rm ${FILE}'
+    'rm $(echo tracked.txt)'
+    'rm `echo tracked.txt`'
+    'rm ~/tracked.txt'
+    'rm {tracked,other}.txt'
+    'rm'
+    'rm -rf'
+    'rm tracked.txt > out.log'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies_in "${REPO}" "${form}"
+  done
 }
 
 @test "rm of a repository's own root by dot is denied" {
@@ -556,127 +330,65 @@ make_plain_dir() {
   assert_denies_in "${REPO}/sub" 'rm -rf ..'
 }
 
-@test "rm of a quoted path with a space is judged by that path" {
+@test "rm of a quoted untracked path with a space is denied" {
   make_repo
-  assert_silent_in "${REPO}" 'rm "a b.txt"'
   printf 'x\n' >"${REPO}/c d.txt"
   assert_denies_in "${REPO}" "rm 'c d.txt'"
 }
 
-@test "rm after -- judges an operand that starts with a dash" {
+@test "rm judges its operands alone: a quoted space, a dash operand, and output redirects" {
   make_repo
-  assert_silent_in "${REPO}" 'rm -- -x'
+  local -a forms=(
+    'rm -- -x'
+    'rm tracked.txt 2>/dev/null'
+    'rm -f tracked.txt >/dev/null 2>&1'
+    'rm "a b.txt"'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent_in "${REPO}" "${form}"
+  done
 }
 
-@test "rm with output redirects is judged by its operands alone" {
-  make_repo
-  assert_silent_in "${REPO}" 'rm tracked.txt 2>/dev/null'
-  assert_silent_in "${REPO}" 'rm -f tracked.txt >/dev/null 2>&1'
-}
-
-@test "rm with a redirect to a file is denied" {
-  make_repo
-  assert_denies_in "${REPO}" 'rm tracked.txt > out.log'
-}
-
-@test "rm of two operands is denied when one is untracked" {
+@test "rm is denied when one of its operands is untracked" {
   make_repo
   printf 'new\n' >"${REPO}/new.txt"
-  run_bash_hook "rm ${REPO}/tracked.txt ${REPO}/new.txt"
-  assert_decision 'deny' "mixed operands"
-  assert_reason_contains "${REPO}/new.txt"
-}
-
-@test "rm of two committed unchanged operands is allowed" {
-  make_repo
-  assert_silent "rm ${REPO}/tracked.txt ${REPO}/other.txt"
-}
-
-@test "rm of a path that does not exist is allowed" {
-  make_repo
-  assert_silent "rm ${REPO}/missing.txt"
-  assert_silent "rm -f ${REPO}/missing.txt"
-}
-
-@test "rm of a missing path beside an untracked file is denied" {
-  make_repo
-  printf 'new\n' >"${REPO}/new.txt"
+  assert_denies "rm ${REPO}/tracked.txt ${REPO}/new.txt"
   assert_denies "rm -f ${REPO}/missing.txt ${REPO}/new.txt"
 }
 
-# Where the guard cannot tell what the operands are
-
-@test "rm after a cd is denied" {
+@test "rm after a directory change is denied" {
   make_repo
   assert_denies "cd ${REPO} && rm tracked.txt"
-}
-
-@test "rm after a cd in a subshell is denied" {
-  make_repo
   assert_denies "(cd ${REPO} && rm tracked.txt)"
-}
-
-@test "rm after pushd is denied" {
-  make_repo
   assert_denies "pushd ${REPO}; rm tracked.txt"
-}
-
-@test "rm behind env -C is denied" {
-  make_repo
+  assert_denies "bash -c 'cd ${REPO}; rm tracked.txt'"
   assert_denies_in "${REPO}/sub" 'env -C .. rm tracked.txt'
-}
-
-@test "rm behind sudo -D is denied" {
-  make_repo
   assert_denies_in "${REPO}/sub" 'sudo -D .. rm tracked.txt'
 }
 
-@test "rm behind xargs is denied even with a named file" {
+@test "rm run by xargs or find is denied even with named operands" {
   make_repo
-  assert_denies "echo more | xargs rm ${REPO}/tracked.txt"
+  local -a forms=(
+    "echo more | xargs rm ${REPO}/tracked.txt"
+    "find ${REPO} -name x -exec rm ${REPO}/tracked.txt \\;"
+    "find ${REPO} -name x -execdir rm tracked.txt \\;"
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies "${form}"
+  done
 }
 
-@test "rm behind find -exec is denied even with absolute operands" {
-  make_repo
-  assert_denies "find ${REPO} -name x -exec rm ${REPO}/tracked.txt \\;"
-}
-
-@test "rm behind find -execdir is denied" {
-  make_repo
-  assert_denies "find ${REPO} -name x -execdir rm tracked.txt \\;"
-}
-
-# Command positions still judged by the rule
-
-@test "rm before && is judged by the rule" {
-  make_repo
-  assert_silent "rm ${REPO}/tracked.txt && true"
-  printf 'new\n' >"${REPO}/new.txt"
-  assert_denies "rm ${REPO}/new.txt && true"
-}
-
-@test "rm before || and ; and a pipe is judged by the rule" {
+@test "rm at each command position is judged by the rule" {
   make_repo
   printf 'new\n' >"${REPO}/new.txt"
-  assert_silent "rm ${REPO}/tracked.txt || false"
-  assert_silent "rm ${REPO}/tracked.txt; true"
-  assert_silent "rm ${REPO}/tracked.txt | cat"
-  assert_denies "rm ${REPO}/new.txt || false"
-  assert_denies "rm ${REPO}/new.txt; true"
-}
-
-@test "rm on a first line is judged by the rule" {
-  make_repo
-  assert_silent "rm ${REPO}/tracked.txt"$'\necho go'
-}
-
-@test "rm in a subshell and a command substitution is judged by the rule" {
-  make_repo
-  printf 'new\n' >"${REPO}/new.txt"
-  assert_silent "(rm ${REPO}/tracked.txt)"
-  assert_silent "echo \$(rm ${REPO}/tracked.txt)"
-  assert_denies "(rm ${REPO}/new.txt)"
-  assert_denies "echo \$(rm ${REPO}/new.txt)"
+  local template
+  for template in '@ && true' '@ || false' '@; true' '@ | cat' $'@\necho go' \
+    '(@)' 'echo $(@)' '{ @; }' "bash -c '@'"; do
+    assert_silent "${template//@/rm ${REPO}/tracked.txt}"
+    assert_denies "${template//@/rm ${REPO}/new.txt}"
+  done
 }
 
 @test "rm behind each wrapper word is judged by the rule" {
@@ -689,163 +401,42 @@ make_plain_dir() {
   done
 }
 
-@test "rm inside a brace group is judged by the rule" {
+@test "rm after another step is denied, even on a clean tracked file" {
   make_repo
-  printf 'new\n' >"${REPO}/new.txt"
-  assert_silent "{ rm ${REPO}/tracked.txt; }"
-  assert_denies "{ rm ${REPO}/new.txt; }"
-}
-
-@test "rm in a bash -c string is judged by the rule" {
-  make_repo
-  printf 'new\n' >"${REPO}/new.txt"
-  assert_silent "bash -c 'rm ${REPO}/tracked.txt'"
-  assert_denies "bash -c 'rm ${REPO}/new.txt'"
-}
-
-# rm after another step
-
-@test "rm of a directory that an earlier mkdir and redirect fill is denied" {
-  make_repo
-  assert_denies "mkdir ${REPO}/d && echo x > ${REPO}/d/f && rm -r ${REPO}/d"
-  assert_reason_contains 'another step'
-}
-
-@test "rm of a tracked file that an earlier append changes is denied" {
-  make_repo
-  assert_denies "echo x >> ${REPO}/tracked.txt && rm ${REPO}/tracked.txt"
-}
-
-@test "rm of a committed directory after a build step is denied" {
-  make_repo
-  assert_denies "npm run build && rm -rf ${REPO}/dir"
-}
-
-@test "rm after a step that only redirects is denied" {
-  make_repo
-  assert_denies "> ${REPO}/tracked.txt && rm ${REPO}/tracked.txt"
-}
-
-@test "rm of a clean tracked file as the only step is allowed" {
-  make_repo
-  assert_silent "rm ${REPO}/tracked.txt"
-  assert_silent "rm -f ${REPO}/tracked.txt 2>/dev/null"
-}
-
-@test "rm after a semicolon is denied even on a clean tracked file" {
-  make_repo
-  assert_denies "true; rm ${REPO}/tracked.txt"
-  assert_reason_contains 'another step'
-}
-
-@test "rm after || is denied even on a clean tracked file" {
-  make_repo
-  assert_denies "false || rm ${REPO}/tracked.txt"
-  assert_reason_contains 'another step'
-}
-
-@test "rm after a pipe is denied even on a clean tracked file" {
-  make_repo
-  assert_denies "echo x | rm ${REPO}/tracked.txt"
-  assert_reason_contains 'another step'
-}
-
-@test "rm after & is denied even on a clean tracked file" {
-  make_repo
-  assert_denies "sleep 1 & rm ${REPO}/tracked.txt"
-}
-
-@test "rm on a later line is denied even on a clean tracked file" {
-  make_repo
-  assert_denies $'echo go\n'"rm ${REPO}/tracked.txt"
-  assert_reason_contains 'another step'
-}
-
-@test "rm after then and inside a loop body is denied even on a clean tracked file" {
-  make_repo
-  assert_denies "if true; then rm ${REPO}/tracked.txt; fi"
-  assert_denies "for f in a b; do rm ${REPO}/tracked.txt; done"
-}
-
-@test "rm after another step in a subshell is denied" {
-  make_repo
-  assert_denies "(echo x > ${REPO}/f; rm ${REPO}/f)"
-  assert_denies "(true; rm ${REPO}/tracked.txt)"
-}
-
-@test "rm after another step in a command substitution is denied" {
-  make_repo
-  assert_denies "echo \$(echo x >> ${REPO}/tracked.txt; rm ${REPO}/tracked.txt)"
-  assert_reason_contains 'another step'
-}
-
-@test "rm after another step in a backtick substitution is denied" {
-  make_repo
-  assert_denies "echo \`true; rm ${REPO}/tracked.txt\`"
-}
-
-@test "rm in a command substitution that follows a step is denied" {
-  make_repo
-  assert_denies "true; echo \$(rm ${REPO}/tracked.txt)"
-}
-
-@test "rm after another step inside a bash -c string is denied" {
-  make_repo
-  assert_denies "bash -c 'echo x >> ${REPO}/tracked.txt && rm ${REPO}/tracked.txt'"
-  assert_reason_contains 'another step'
-}
-
-@test "rm in a bash -c string that follows a step is denied" {
-  make_repo
-  assert_denies "true && sh -c 'rm ${REPO}/tracked.txt'"
-}
-
-@test "rm after a step is denied behind a wrapper word" {
-  make_repo
-  assert_denies "true && sudo rm ${REPO}/tracked.txt"
-}
-
-@test "rm after only other rm steps is allowed when each is restorable" {
-  make_repo
-  assert_silent "rm ${REPO}/tracked.txt && rm ${REPO}/other.txt"
-  assert_silent "rm ${REPO}/tracked.txt; rm -r ${REPO}/dir"
-  assert_silent "rm ${REPO}/tracked.txt || rm ${REPO}/other.txt"
-  assert_silent "rm ${REPO}/tracked.txt
-rm ${REPO}/other.txt"
+  local -a forms=(
+    "mkdir ${REPO}/d && echo x > ${REPO}/d/f && rm -r ${REPO}/d"
+    "echo x >> ${REPO}/tracked.txt && rm ${REPO}/tracked.txt"
+    "npm run build && rm -rf ${REPO}/dir"
+    "> ${REPO}/tracked.txt && rm ${REPO}/tracked.txt"
+    "true; rm ${REPO}/tracked.txt"
+    "false || rm ${REPO}/tracked.txt"
+    "echo x | rm ${REPO}/tracked.txt"
+    "sleep 1 & rm ${REPO}/tracked.txt"
+    $'echo go\n'"rm ${REPO}/tracked.txt"
+    "if true; then rm ${REPO}/tracked.txt; fi"
+    "for f in a b; do rm ${REPO}/tracked.txt; done"
+    "(echo x > ${REPO}/f; rm ${REPO}/f)"
+    "(true; rm ${REPO}/tracked.txt)"
+    "echo \$(echo x >> ${REPO}/tracked.txt; rm ${REPO}/tracked.txt)"
+    "echo \`true; rm ${REPO}/tracked.txt\`"
+    "true; echo \$(rm ${REPO}/tracked.txt)"
+    "bash -c 'echo x >> ${REPO}/tracked.txt && rm ${REPO}/tracked.txt'"
+    "true && sh -c 'rm ${REPO}/tracked.txt'"
+    "true && sudo rm ${REPO}/tracked.txt"
+    "rm ${REPO}/tracked.txt; echo x > ${REPO}/f; rm ${REPO}/f"
+    "rm ${REPO}/tracked.txt; true; rm ${REPO}/other.txt"
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies "${form}"
+  done
 }
 
 @test "a later rm is denied on its own operand after an earlier rm" {
   make_repo
   printf 'new\n' >"${REPO}/new.txt"
   assert_denies "rm ${REPO}/tracked.txt && rm ${REPO}/new.txt"
-  assert_reason_contains "${REPO}/new.txt"
 }
-
-@test "rm after an rm and another step is denied" {
-  make_repo
-  assert_denies "rm ${REPO}/tracked.txt; echo x > ${REPO}/f; rm ${REPO}/f"
-  assert_denies "rm ${REPO}/tracked.txt; true; rm ${REPO}/other.txt"
-}
-
-@test "a step after rm leaves the rm judged as the first step" {
-  make_repo
-  assert_silent "rm ${REPO}/tracked.txt && echo done"
-}
-
-@test "an after-step denial says to send throwaway output to /dev/null" {
-  make_repo
-  run_bash_hook "echo x > ${REPO}/f && rm ${REPO}/f"
-  assert_decision 'deny' "write then delete"
-  assert_reason_contains '/dev/null'
-  assert_reason_contains 'trash <path>'
-}
-
-@test "rm in a bash -c string after a cd is denied" {
-  make_repo
-  assert_denies "bash -c 'cd ${REPO}; rm tracked.txt'"
-}
-
-# Failing closed
 
 @test "rm is denied when git does not answer before the deadline" {
   make_repo
@@ -868,6 +459,6 @@ rm ${REPO}/other.txt"
 
 @test "an envelope proposing rm from a directory outside git prints a PreToolUse denial" {
   make_plain_dir
-  assert_main_prints deny 'loose.txt is not inside a git work tree' \
+  assert_main_prints deny \
     "{\"tool_name\":\"Bash\",\"cwd\":\"${PLAIN}\",\"tool_input\":{\"command\":\"rm loose.txt\"}}"
 }

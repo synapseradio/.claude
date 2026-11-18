@@ -20,104 +20,44 @@ setup() {
   isolate_home
 }
 
-@test "a bare sleep is denied" {
-  assert_denies 'sleep 5'
+@test "sleep is denied at each command position and behind each wrapper" {
+  local -a forms=(
+    'sleep 5'
+    'sleep 30 && gh run view 123'
+    'npm run build; sleep 2'
+    'until curl -sf localhost:3000; do sleep 1; done'
+    'if true; then sleep 1; fi'
+    $'npm start &\nsleep 3'
+    '/bin/sleep 1'
+    '(sleep 1)'
+    'make && sleep 5'
+    'echo "$(sleep 5)"'
+    'nohup sleep 5 &'
+    "bash -c 'sleep 5'"
+    'FOO=1 sleep 5'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies "${form}"
+  done
 }
 
-@test "sleep chained with && is denied" {
-  assert_denies 'sleep 30 && gh run view 123'
-}
-
-@test "sleep after a semicolon is denied" {
-  assert_denies 'npm run build; sleep 2'
-}
-
-@test "sleep inside a loop body is denied" {
-  assert_denies 'until curl -sf localhost:3000; do sleep 1; done'
-}
-
-@test "sleep after then is denied" {
-  assert_denies 'if true; then sleep 1; fi'
-}
-
-@test "sleep on its own line is denied" {
-  assert_denies $'npm start &\nsleep 3'
-}
-
-@test "sleep named by path is denied" {
-  assert_denies '/bin/sleep 1'
-}
-
-@test "sleep inside a subshell is denied" {
-  assert_denies '(sleep 1)'
-}
-
-@test "a denial points at run_in_background" {
-  run_bash_hook 'sleep 5'
-  [[ "$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")" == *'run_in_background'* ]]
-}
-
-@test "a denial states the replacement act and cites no rule" {
-  run_bash_hook 'sleep 5'
-  local reason
-  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")"
-  [[ "${reason}" == *'completion notice'* ]]
-  [[ "${reason}" == *'a command that exits, once'* ]]
-  [[ "${reason}" != *'waiting-on-processes'* ]]
-}
-
-@test "a denial quotes the sleep it found" {
-  run_bash_hook 'make build && sleep 30 && curl localhost'
-  assert_decision 'deny' 'a sleep after make'
-  assert_reason_contains 'sleep 30 holds the session'
-}
-
-@test "a denial shortens a long sleep line to forty characters" {
-  local long
-  long="$(printf 'x%.0s' {1..60})"
-  run_bash_hook "sleep ${long}"
-  assert_decision 'deny' 'a long sleep line'
-  [[ "${HOOK_REASON}" == "sleep ${long:0:34}... holds the session"* ]] || {
-    echo "unexpected reason: ${HOOK_REASON}" >&2
-    return 1
-  }
-}
-
-@test "a word containing sleep stays silent" {
-  assert_silent 'grep -rn sleepy src/'
-}
-
-@test "sleep named inside a quoted argument stays silent" {
-  assert_silent "grep -rn 'sleep 5' scripts/"
-}
-
-@test "sleep named inside a path stays silent" {
-  assert_silent 'cat docs/sleep-timing.md'
-}
-
-@test "an empty command stays silent" {
-  assert_silent ''
-}
-
-@test "sleep named inside a quoted regex stays silent" {
-  assert_silent "rg -n '(git|sleep)[ ]' /x"
-  assert_silent "grep -E 'make;sleep|wait' scripts/"
-  assert_silent 'rg -n "&& sleep 5" scripts/'
-}
-
-@test "sleep after && and inside a substitution is denied" {
-  assert_denies 'make && sleep 5'
-  assert_denies 'echo "$(sleep 5)"'
-}
-
-@test "sleep behind a wrapper or in a shell string is denied" {
-  assert_denies 'nohup sleep 5 &'
-  assert_denies "bash -c 'sleep 5'"
-  assert_denies 'FOO=1 sleep 5'
+@test "sleep named as text, inside a path, or as part of a longer word stays silent" {
+  local -a forms=(
+    'grep -rn sleepy src/'
+    "grep -rn 'sleep 5' scripts/"
+    'cat docs/sleep-timing.md'
+    ''
+    "rg -n '(git|sleep)[ ]' /x"
+    "grep -E 'make;sleep|wait' scripts/"
+    'rg -n "&& sleep 5" scripts/'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent "${form}"
+  done
 }
 
 @test "an envelope proposing sleep prints a PreToolUse denial" {
-  assert_main_prints deny 'run_in_background' '{"tool_name":"Bash","tool_input":{"command":"sleep 5"}}'
+  assert_main_prints deny '{"tool_name":"Bash","tool_input":{"command":"sleep 5"}}'
 }

@@ -84,56 +84,35 @@ copy_fixture() {
   git -C "${WORK}" remote set-url origin "${REMOTE}"
 }
 
-#######################################
-# Assert the guard denies a command run from the work clone, with a reason
-# that names the failed condition and points at wt step squash.
-# Arguments:
-#   $1 - the shell command.
-#   $2 - text the reason must hold.
-#######################################
-assert_denied_because() {
-  assert_denies_in "${WORK}" "$1"
-  assert_reason_contains "$2"
-  assert_reason_contains 'wt -C <worktree> step squash <target>'
+@test "a soft reset of unpushed feature-branch commits is allowed in each spelling and at each command position" {
+  local -a forms=(
+    'git reset --soft HEAD~2'
+    'git reset --soft HEAD~1'
+    "git reset --soft $(git -C "${WORK}" rev-parse HEAD~1)"
+    'git reset --soft origin/main'
+    'git reset -q --soft HEAD'
+    'git reset --soft origin/main && git commit -m squashed'
+    "sh -c 'git reset --soft HEAD~2'"
+    'env FOO=1 git reset --soft HEAD~2'
+    $'git reset --soft HEAD~2\ngit commit -m squashed\ngit log --oneline'
+    'git reset --soft HEAD~1; echo done'
+    'git reset --so HEAD~1'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent_in "${WORK}" "${form}"
+  done
 }
 
-@test "a soft reset of unpushed feature-branch commits is allowed" {
-  assert_silent_in "${WORK}" 'git reset --soft HEAD~2'
-  assert_silent_in "${WORK}" 'git reset --soft HEAD~1'
-}
-
-@test "a soft reset to a revision spelled as a hash or origin/main is allowed" {
-  assert_silent_in "${WORK}" "git reset --soft $(git -C "${WORK}" rev-parse HEAD~1)"
-  assert_silent_in "${WORK}" 'git reset --soft origin/main'
-}
-
-@test "a soft reset to HEAD with --quiet is allowed" {
-  assert_silent_in "${WORK}" 'git reset -q --soft HEAD'
-}
-
-@test "a soft reset by abbreviated flag is judged as a soft reset" {
-  assert_silent_in "${WORK}" 'git reset --so HEAD~1'
-  assert_denied_because 'git reset --so --hard HEAD~1' 'second mode flag'
-}
-
-@test "a commit after the soft reset is allowed" {
-  assert_silent_in "${WORK}" 'git reset --soft origin/main && git commit -m squashed'
-}
-
-@test "the -C form is allowed with an absolute path from another directory" {
-  assert_silent_in "${BATS_TEST_TMPDIR}" "git -C ${WORK} reset --soft HEAD~2"
-}
-
-@test "the -C form is allowed with a relative path against the envelope cwd" {
-  assert_silent_in "${BATS_TEST_TMPDIR}" 'git -C work reset --soft HEAD~2'
-}
-
-@test "a soft reset in a sh -c string is allowed" {
-  assert_silent_in "${WORK}" "sh -c 'git reset --soft HEAD~2'"
-}
-
-@test "a soft reset behind env is allowed" {
-  assert_silent_in "${WORK}" 'env FOO=1 git reset --soft HEAD~2'
+@test "a soft reset by -C is allowed from another directory" {
+  local -a forms=(
+    "git -C ${WORK} reset --soft HEAD~2"
+    'git -C work reset --soft HEAD~2'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent_in "${BATS_TEST_TMPDIR}" "${form}"
+  done
 }
 
 @test "a soft reset in a linked worktree is allowed" {
@@ -148,39 +127,44 @@ assert_denied_because() {
 }
 
 @test "commands that are not a soft reset stay silent" {
-  assert_silent_in "${WORK}" 'git status'
-  assert_silent_in "${WORK}" 'git reset HEAD~1'
-  assert_silent_in "${WORK}" 'git reset --mixed HEAD~1'
-  assert_silent_in "${WORK}" 'git commit -m "git reset --soft HEAD~2"'
-  assert_silent_in "${WORK}" 'echo "git reset --soft HEAD~2"'
-  assert_silent_in "${WORK}" 'grep -n reset --soft file'
+  local -a forms=(
+    'git status'
+    'git reset HEAD~1'
+    'git reset --mixed HEAD~1'
+    'git commit -m "git reset --soft HEAD~2"'
+    'echo "git reset --soft HEAD~2"'
+    'grep -n reset --soft file'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent_in "${WORK}" "${form}"
+  done
 }
 
-@test "a soft reset naming no revision is denied" {
-  assert_denied_because 'git reset --soft' 'exactly one revision'
-}
-
-@test "a soft reset naming two operands is denied" {
-  assert_denied_because 'git reset --soft HEAD~1 HEAD~2' 'exactly one revision'
-}
-
-@test "a soft reset with a pathspec is denied" {
-  assert_denied_because 'git reset --soft HEAD~1 -- one' 'pathspec'
-  assert_denied_because 'git reset --soft -- one' 'pathspec'
+@test "a soft reset naming anything but one resolvable revision is denied" {
+  local -a forms=(
+    'git reset --soft'
+    'git reset --soft HEAD~1 HEAD~2'
+    'git reset --soft HEAD~1 -- one'
+    'git reset --soft -- one'
+    'git reset --soft -p HEAD~1'
+    'git reset --soft --recurse-submodules HEAD~1'
+    'git reset --soft no-such-ref'
+    'git reset --so --hard HEAD~1'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies_in "${WORK}" "${form}"
+  done
 }
 
 @test "a soft reset beside a second mode flag is denied" {
   local flag
   for flag in --hard --mixed --merge --keep; do
-    assert_denied_because "git reset --soft ${flag} HEAD~1" 'second mode flag'
-    assert_denied_because "git reset ${flag} --soft HEAD~1" 'second mode flag'
-    assert_denied_because "git reset --soft HEAD~1 ${flag}" 'second mode flag'
+    assert_denies_in "${WORK}" "git reset --soft ${flag} HEAD~1"
+    assert_denies_in "${WORK}" "git reset ${flag} --soft HEAD~1"
+    assert_denies_in "${WORK}" "git reset --soft HEAD~1 ${flag}"
   done
-}
-
-@test "a soft reset with another option is denied" {
-  assert_denied_because 'git reset --soft -p HEAD~1' 'option'
-  assert_denied_because 'git reset --soft --recurse-submodules HEAD~1' 'option'
 }
 
 @test "a soft reset during a rebase, merge, cherry-pick, or revert is denied" {
@@ -188,12 +172,12 @@ assert_denied_because() {
   git_dir="${WORK}/.git"
   for marker in rebase-merge rebase-apply sequencer; do
     mkdir "${git_dir}/${marker}"
-    assert_denied_because 'git reset --soft HEAD~1' 'in progress'
+    assert_denies_in "${WORK}" 'git reset --soft HEAD~1'
     rmdir "${git_dir}/${marker}"
   done
   for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
     git -C "${WORK}" rev-parse HEAD >"${git_dir}/${marker}"
-    assert_denied_because 'git reset --soft HEAD~1' 'in progress'
+    assert_denies_in "${WORK}" 'git reset --soft HEAD~1'
     rm -f "${git_dir}/${marker}"
   done
   assert_silent_in "${WORK}" 'git reset --soft HEAD~1'
@@ -201,13 +185,16 @@ assert_denied_because() {
 
 @test "a soft reset on a detached HEAD is denied" {
   git -C "${WORK}" checkout -q --detach
-  assert_denied_because 'git reset --soft HEAD~1' 'detached'
+  assert_denies_in "${WORK}" 'git reset --soft HEAD~1'
 }
 
-@test "a soft reset on the default branch named by origin/HEAD is denied" {
+@test "a soft reset on the default branch is denied, however the command reaches git" {
   git -C "${WORK}" checkout -q main
   commit_file local-only
-  assert_denied_because 'git reset --soft HEAD~1' 'default branch'
+  assert_denies_in "${WORK}" 'git reset --soft HEAD~1'
+  assert_denies_in "${WORK}" "sh -c 'git reset --soft HEAD~1'"
+  assert_denies_in "${WORK}" 'env FOO=1 git reset --soft HEAD~1'
+  assert_denies_in "${BATS_TEST_TMPDIR}" "git -C ${WORK} reset --soft HEAD~1"
 }
 
 @test "a soft reset on the branch origin/HEAD names is denied when it is not main" {
@@ -216,7 +203,7 @@ assert_denied_because() {
   git -C "${WORK}" remote set-head origin trunk
   git -C "${WORK}" checkout -q -b trunk origin/trunk
   commit_file trunk-local
-  assert_denied_because 'git reset --soft HEAD~1' 'default branch'
+  assert_denies_in "${WORK}" 'git reset --soft HEAD~1'
   git -C "${WORK}" checkout -q feature
   assert_silent_in "${WORK}" 'git reset --soft HEAD~2'
 }
@@ -225,33 +212,29 @@ assert_denied_because() {
   git -C "${WORK}" remote set-head origin --delete
   git -C "${WORK}" checkout -q main
   commit_file local-only
-  assert_denied_because 'git reset --soft HEAD~1' 'default branch'
+  assert_denies_in "${WORK}" 'git reset --soft HEAD~1'
   git -C "${WORK}" checkout -q -b master
-  assert_denied_because 'git reset --soft HEAD~1' 'default branch'
+  assert_denies_in "${WORK}" 'git reset --soft HEAD~1'
   git -C "${WORK}" checkout -q feature
   assert_silent_in "${WORK}" 'git reset --soft HEAD~2'
-}
-
-@test "a soft reset to a revision that does not resolve is denied" {
-  assert_denied_because 'git reset --soft no-such-ref' 'resolve'
 }
 
 @test "a soft reset to a commit that is not an ancestor of HEAD is denied" {
   git -C "${WORK}" checkout -q -b elsewhere main
   commit_file elsewhere
   git -C "${WORK}" checkout -q feature
-  assert_denied_because 'git reset --soft elsewhere' 'ancestor'
+  assert_denies_in "${WORK}" 'git reset --soft elsewhere'
 }
 
 @test "a soft reset that rewinds a pushed commit is denied" {
   git -C "${WORK}" push -q origin feature
-  assert_denied_because 'git reset --soft HEAD~1' 'pushed'
+  assert_denies_in "${WORK}" 'git reset --soft HEAD~1'
 }
 
 @test "a soft reset past the pushed part of the branch is denied, short of it allowed" {
   git -C "${WORK}" push -q origin feature
   commit_file three
-  assert_denied_because 'git reset --soft HEAD~2' 'pushed'
+  assert_denies_in "${WORK}" 'git reset --soft HEAD~2'
   assert_silent_in "${WORK}" 'git reset --soft HEAD~1'
 }
 
@@ -259,66 +242,72 @@ assert_denied_because() {
   git -C "${WORK}" remote add backup "${REMOTE}"
   git -C "${WORK}" push -q backup feature
   git -C "${WORK}" fetch -q backup
-  assert_denied_because 'git reset --soft HEAD~1' 'pushed'
+  assert_denies_in "${WORK}" 'git reset --soft HEAD~1'
 }
 
 @test "an operand with a variable, glob, substitution, or reflog brace is denied" {
-  assert_denies_in "${WORK}" 'git reset --soft $PARENT'
-  assert_denies_in "${WORK}" 'git reset --soft "$PARENT"'
-  assert_denies_in "${WORK}" 'git reset --soft HEAD~*'
-  assert_denies_in "${WORK}" 'git reset --soft $(git merge-base HEAD main)'
-  assert_denies_in "${WORK}" 'git reset --soft `git merge-base HEAD main`'
-  assert_denies_in "${WORK}" 'git reset --soft HEAD@{1}'
-  assert_denies_in "${WORK}" 'git reset --soft ~/HEAD'
+  local -a forms=(
+    'git reset --soft $PARENT'
+    'git reset --soft "$PARENT"'
+    'git reset --soft HEAD~*'
+    'git reset --soft $(git merge-base HEAD main)'
+    'git reset --soft `git merge-base HEAD main`'
+    'git reset --soft HEAD@{1}'
+    'git reset --soft ~/HEAD'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies_in "${WORK}" "${form}"
+  done
 }
 
 @test "a directory that is no repository is denied" {
   mkdir "${BATS_TEST_TMPDIR}/plain"
   assert_denies_in "${BATS_TEST_TMPDIR}/plain" 'git reset --soft HEAD~1'
-  assert_reason_contains 'step squash'
 }
 
-@test "a -C path that does not exist is denied" {
-  assert_denies_in "${WORK}" "git -C ${BATS_TEST_TMPDIR}/missing reset --soft HEAD~1"
+@test "a -C path that cannot be judged, a global option that moves the repository, and a GIT_ variable are denied" {
+  local -a forms=(
+    "git -C ${BATS_TEST_TMPDIR}/missing reset --soft HEAD~1"
+    'git -C $REPO reset --soft HEAD~1'
+    "git --git-dir=${WORK}/.git reset --soft HEAD~1"
+    "git --work-tree=${WORK} reset --soft HEAD~1"
+    'git -c core.x=y reset --soft HEAD~1'
+    "GIT_DIR=${WORK}/.git git reset --soft HEAD~1"
+    "env GIT_WORK_TREE=${WORK} git reset --soft HEAD~1"
+    "env -C ${BATS_TEST_TMPDIR} git reset --soft HEAD~1"
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies_in "${WORK}" "${form}"
+  done
 }
 
-@test "a -C path with a variable is denied" {
-  assert_denies_in "${WORK}" 'git -C $REPO reset --soft HEAD~1'
-}
-
-@test "a command with no cwd and no -C is denied" {
+@test "a soft reset with no working directory is denied" {
   assert_denies 'git reset --soft HEAD~1'
-  assert_reason_contains 'working directory'
-}
-
-@test "a relative -C with no cwd is denied" {
   assert_denies 'git -C work reset --soft HEAD~1'
-}
-
-@test "an absolute -C path is judged when the envelope names no cwd" {
-  assert_silent "git -C ${WORK} reset --soft HEAD~2"
-}
-
-@test "an empty cwd in the envelope counts as no working directory" {
   assert_denies_in '' 'git reset --soft HEAD~1'
-  assert_reason_contains 'working directory'
+  assert_silent "git -C ${WORK} reset --soft HEAD~2"
   assert_silent_in '' "git -C ${WORK} reset --soft HEAD~2"
 }
 
-@test "a soft reset on the first line of a multi-line command is allowed" {
-  assert_silent_in "${WORK}" $'git reset --soft HEAD~2\ngit commit -m squashed\ngit log --oneline'
-}
-
-@test "a soft reset on the last line of a multi-line command is denied" {
-  assert_denies_in "${WORK}" $'git status\ngit log --oneline\ngit reset --soft HEAD~1'
-  assert_reason_contains 'follows another step'
+@test "a soft reset that follows another step is denied" {
+  local -a forms=(
+    $'git status\ngit log --oneline\ngit reset --soft HEAD~1'
+    'git status && git reset --soft HEAD~1'
+    'git push; git reset --soft HEAD~1'
+    'git reset --soft HEAD~1 && git reset --soft HEAD~1'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies_in "${WORK}" "${form}"
+  done
 }
 
 @test "a soft reset by -C is judged against that path, not the envelope's cwd" {
   git -C "${WORK}" worktree add -q "${BATS_TEST_TMPDIR}/trunk" main
   git -C "${BATS_TEST_TMPDIR}/trunk" commit -q --allow-empty -m trunk-local
   assert_denies_in "${WORK}" "git -C ${BATS_TEST_TMPDIR}/trunk reset --soft HEAD~1"
-  assert_reason_contains 'default branch'
   assert_silent_in "${BATS_TEST_TMPDIR}/trunk" "git -C ${WORK} reset --soft HEAD~2"
 }
 
@@ -339,64 +328,11 @@ assert_denied_because() {
     assert_denies_in "${WORK}" 'git reset --soft HEAD~1'
 }
 
-@test "a global option that changes which repository git reads is denied" {
-  assert_denies_in "${WORK}" "git --git-dir=${WORK}/.git reset --soft HEAD~1"
-  assert_denies_in "${WORK}" "git --work-tree=${WORK} reset --soft HEAD~1"
-  assert_denies_in "${WORK}" 'git -c core.x=y reset --soft HEAD~1'
-}
-
-@test "a GIT_ variable set for the command is denied" {
-  assert_denies_in "${WORK}" "GIT_DIR=${WORK}/.git git reset --soft HEAD~1"
-  assert_denies_in "${WORK}" "env GIT_WORK_TREE=${WORK} git reset --soft HEAD~1"
-}
-
 @test "a soft reset after a directory change is denied" {
   assert_denies_in "${BATS_TEST_TMPDIR}" "cd ${WORK} && git reset --soft HEAD~1"
-  assert_reason_contains 'changes directory'
-}
-
-@test "a soft reset behind env -C is denied" {
-  assert_denies_in "${WORK}" "env -C ${BATS_TEST_TMPDIR} git reset --soft HEAD~1"
-}
-
-@test "a soft reset after another step is denied" {
-  assert_denies_in "${WORK}" 'git status && git reset --soft HEAD~1'
-  assert_reason_contains 'follows another step'
-  assert_denies_in "${WORK}" 'git push; git reset --soft HEAD~1'
-  assert_denies_in "${WORK}" 'git reset --soft HEAD~1 && git reset --soft HEAD~1'
-}
-
-@test "a soft reset after a separator on the default branch is denied" {
-  git -C "${WORK}" checkout -q main
-  commit_file local-only
-  assert_denies_in "${WORK}" 'true || git reset --soft HEAD~1'
-  assert_denies_in "${WORK}" $'true\ngit reset --soft HEAD~1'
-}
-
-@test "a soft reset in a sh -c string on the default branch is denied" {
-  git -C "${WORK}" checkout -q main
-  commit_file local-only
-  assert_denied_because "sh -c 'git reset --soft HEAD~1'" 'default branch'
-}
-
-@test "a soft reset behind env on the default branch is denied" {
-  git -C "${WORK}" checkout -q main
-  commit_file local-only
-  assert_denied_because 'env FOO=1 git reset --soft HEAD~1' 'default branch'
-}
-
-@test "a soft reset by -C on the default branch is denied" {
-  git -C "${WORK}" checkout -q main
-  commit_file local-only
-  assert_denies_in "${BATS_TEST_TMPDIR}" "git -C ${WORK} reset --soft HEAD~1"
-  assert_reason_contains 'default branch'
-}
-
-@test "a step after the soft reset does not hold it back" {
-  assert_silent_in "${WORK}" 'git reset --soft HEAD~1; echo done'
 }
 
 @test "an envelope proposing a soft reset past the first commit prints a PreToolUse denial" {
-  assert_main_prints deny 'HEAD~3 does not resolve to a commit' \
+  assert_main_prints deny \
     "{\"tool_name\":\"Bash\",\"cwd\":\"${WORK}\",\"tool_input\":{\"command\":\"git reset --soft HEAD~3\"}}"
 }

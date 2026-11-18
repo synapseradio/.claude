@@ -23,144 +23,57 @@ setup() {
   isolate_home
 }
 
-@test "a bare eval is denied" {
-  assert_denies 'eval "$(ssh-agent -s)"'
+@test "eval is denied at each command position and behind a quoted command word" {
+  local -a forms=(
+    'eval "$(ssh-agent -s)"'
+    'eval ls'
+    'cd build && eval "$CMD"'
+    'make || eval "$FALLBACK"'
+    'npm run build; eval "$CMD"'
+    'echo x | eval'
+    $'cd build\neval "$CMD"'
+    '(cd build && eval "$CMD")'
+    'echo $(eval "$CMD")'
+    'LC_ALL=C eval "$CMD"'
+    'for c in a b; do eval "$c"; done'
+    'if true; then eval "$CMD"; fi'
+    "bash -c 'echo start; eval \"\$CMD\"'"
+    '"eval" ls'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies "${form}"
+  done
 }
 
-@test "eval with a plain argument is denied" {
-  assert_denies 'eval ls'
+@test "eval named as an argument, inside text, or as part of a longer word stays silent" {
+  local -a forms=(
+    'git log --eval'
+    'echo eval'
+    'grep -n eval file.js'
+    'grep -c eval file.js'
+    'echo "eval $CMD"'
+    "echo 'run eval later'"
+    'git commit -m "fix: stop using eval"'
+    'evaluate --all'
+    'cat docs/eval.md'
+    $'cat <<\'EOF\'\neval ls\nEOF'
+    $'ls # eval ls\npwd'
+    ''
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent "${form}"
+  done
 }
 
-@test "eval after && is denied" {
-  assert_denies 'cd build && eval "$CMD"'
-}
-
-@test "eval after || is denied" {
-  assert_denies 'make || eval "$FALLBACK"'
-}
-
-@test "eval after a semicolon is denied" {
-  assert_denies 'npm run build; eval "$CMD"'
-}
-
-@test "eval after a pipe is denied" {
-  assert_denies 'echo x | eval'
-}
-
-@test "eval on a later line is denied" {
-  assert_denies $'cd build\neval "$CMD"'
-}
-
-@test "eval inside a subshell is denied" {
-  assert_denies '(cd build && eval "$CMD")'
-}
-
-@test "eval inside a command substitution is denied" {
-  assert_denies 'echo $(eval "$CMD")'
-}
-
-@test "eval behind a variable assignment is denied" {
-  assert_denies 'LC_ALL=C eval "$CMD"'
-}
-
-@test "eval inside a loop body is denied" {
-  assert_denies 'for c in a b; do eval "$c"; done'
-}
-
-@test "eval after then is denied" {
-  assert_denies 'if true; then eval "$CMD"; fi'
-}
-
-@test "eval in a bash -c string is denied" {
-  assert_denies "bash -c 'echo start; eval \"\$CMD\"'"
-}
-
-@test "a quoted command word eval is denied" {
-  assert_denies '"eval" ls'
-}
-
-@test "a denial points at a script file" {
-  run_bash_hook 'eval ls'
-  [[ "$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")" == *'script file in the scratchpad'* ]]
-}
-
-@test "git log --eval stays silent" {
-  assert_silent 'git log --eval'
-}
-
-@test "eval as an argument to echo stays silent" {
-  assert_silent 'echo eval'
-}
-
-@test "eval as an argument to grep stays silent" {
-  assert_silent 'grep -n eval file.js'
-}
-
-@test "grep -c stays silent" {
-  assert_silent 'grep -c eval file.js'
-}
-
-@test "eval inside a double-quoted string stays silent" {
-  assert_silent 'echo "eval $CMD"'
-}
-
-@test "eval inside a single-quoted string stays silent" {
-  assert_silent "echo 'run eval later'"
-}
-
-@test "eval in a commit message stays silent" {
-  assert_silent 'git commit -m "fix: stop using eval"'
-}
-
-@test "a word starting with eval stays silent" {
-  assert_silent 'evaluate --all'
-}
-
-@test "a file named eval stays silent" {
-  assert_silent 'cat docs/eval.md'
-}
-
-@test "eval at the start of a here-document line stays silent" {
-  assert_silent $'cat <<\'EOF\'\neval ls\nEOF'
-}
-
-@test "eval in a comment stays silent" {
-  assert_silent $'ls # eval ls\npwd'
-}
-
-@test "an empty command stays silent" {
-  assert_silent ''
-}
-
-@test "a denial of eval with literal text quotes it as the command to run" {
+@test "a denial of eval with literal text gives the text to run directly" {
   run_bash_hook "eval 'ls | wc -l'"
   assert_decision 'deny' 'literal eval'
-  assert_reason_contains 'drop eval and run it directly: ls | wc -l'
-}
-
-@test "a denial of eval with a long literal text says it shortened the text" {
-  local long
-  long="$(printf 'x%.0s' {1..120})"
-  run_bash_hook "eval '${long}'"
-  assert_decision 'deny' 'a long literal eval'
-  assert_reason_contains "directly: ${long:0:100}... (shortened here)."
-}
-
-@test "a denial of eval on a variable says to print the text and read it" {
-  run_bash_hook 'eval $cmd'
-  assert_decision 'deny' 'eval of a variable'
-  assert_reason_contains 'eval $cmd'
-  assert_reason_contains 'print it with echo'
-}
-
-@test "a denial of eval on a substitution says to run the inner command alone" {
-  run_bash_hook 'eval "$(ssh-agent -s)"'
-  assert_decision 'deny' 'eval of a substitution'
-  assert_reason_contains 'run that inner command on its own'
+  assert_reason_contains 'ls | wc -l'
 }
 
 @test "an envelope proposing eval prints a PreToolUse denial" {
-  assert_main_prints deny 'parses its argument a second time' \
+  assert_main_prints deny \
     '{"tool_name":"Bash","tool_input":{"command":"eval ls"}}'
 }

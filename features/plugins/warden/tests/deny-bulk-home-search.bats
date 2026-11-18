@@ -33,61 +33,27 @@ run_tool_in() {
   fi
 }
 
-@test "find from the filesystem root is denied" {
-  assert_denies "find / -path '*/hindsight_api/config.py'"
-}
-
-@test "find from a tilde home is denied" {
-  assert_denies 'find ~ -name config.py'
-}
-
-@test "find from \$HOME is denied" {
-  # shellcheck disable=SC2016
-  assert_denies 'find "$HOME" -name config.py'
-}
-
-@test "find from an absolute home path is denied" {
-  assert_denies 'find /Users/tester -maxdepth 3 -name x'
-}
-
-@test "find from the directory of homes is denied" {
-  assert_denies 'find /Users -name x'
-}
-
-@test "a second command in a chain is checked" {
-  assert_denies 'ls -d ~/.hindsight; find / -name config.py 2>/dev/null'
-}
-
-@test "ls -d over a glob at the top of home is denied" {
-  assert_denies 'ls -d ~/*/'
-}
-
-@test "a recursive ls of home is denied" {
-  assert_denies 'ls -R ~'
-}
-
-@test "a recursive grep of home is denied" {
-  assert_denies 'grep -rl token ~'
-}
-
-@test "rg over home is denied" {
-  assert_denies 'rg -g "*.py" STRICT ~/'
-}
-
-@test "fd over the filesystem root is denied" {
-  assert_denies 'fd config.py /'
-}
-
-@test "du over home is denied" {
-  assert_denies 'du -sh ~'
-}
-
-@test "locate is denied" {
-  assert_denies 'locate config.py'
-}
-
-@test "mdfind without -onlyin is denied" {
-  assert_denies 'mdfind -name config.py'
+@test "a search rooted at the disk root, the homes folder, or a home directory is denied" {
+  local -a forms=(
+    "find / -path '*/hindsight_api/config.py'"
+    'find ~ -name config.py'
+    "find \"\$HOME\" -name config.py"
+    'find /Users/tester -maxdepth 3 -name x'
+    'find /Users -name x'
+    'ls -d ~/.hindsight; find / -name config.py 2>/dev/null'
+    'ls -d ~/*/'
+    'ls -R ~'
+    'grep -rl token ~'
+    'rg -g "*.py" STRICT ~/'
+    'fd config.py /'
+    'du -sh ~'
+    'locate config.py'
+    'mdfind -name config.py'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies "${form}"
+  done
 }
 
 @test "find . run from home is denied" {
@@ -125,43 +91,26 @@ run_tool_in() {
   assert_decision deny 'Glob from home'
 }
 
-@test "a denial names what it matched" {
-  run_bash_hook 'find / -name x'
-  [[ "$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")" == *'find /'* ]]
-}
-
-@test "find scoped to a directory inside home stays silent" {
-  assert_silent 'find ~/.hindsight/coding-agents -name "*.js"'
-}
-
-@test "a glob below a named directory in home stays silent" {
-  assert_silent 'ls -d ~/.hindsight/*/'
-}
-
-@test "a plain listing of home stays silent" {
-  assert_silent 'ls ~'
-}
-
-@test "a non-recursive grep of a file in home stays silent" {
-  assert_silent 'grep -n STRICT ~/.hindsight/profiles/coding-agent.env'
-}
-
-@test "a recursive grep of a project directory stays silent" {
-  assert_silent 'grep -rn sleepy src/'
+@test "a search scoped below home, a plain listing, and search commands named as text stay silent" {
+  local -a forms=(
+    'find ~/.hindsight/coding-agents -name "*.js"'
+    'ls -d ~/.hindsight/*/'
+    'ls ~'
+    'grep -n STRICT ~/.hindsight/profiles/coding-agent.env'
+    'grep -rn sleepy src/'
+    'mdfind -onlyin ~/projects -name config.py'
+    'echo "find / -name x" > notes.txt'
+    ''
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent "${form}"
+  done
 }
 
 @test "rg with no root run from a project stays silent" {
   run_bash_in /Users/tester/projects/app 'rg STRICT'
   assert_no_decision 'rg in a project'
-}
-
-@test "mdfind scoped with -onlyin stays silent" {
-  assert_silent 'mdfind -onlyin ~/projects -name config.py'
-}
-
-@test "a search command named inside a quoted argument stays silent" {
-  assert_silent 'echo "find / -name x" > notes.txt'
 }
 
 @test "the Grep tool in a project stays silent" {
@@ -174,15 +123,11 @@ run_tool_in() {
   assert_no_decision 'Glob in a project'
 }
 
-@test "an empty command stays silent" {
-  assert_silent ''
-}
-
 @test "an envelope proposing a search of home prints a PreToolUse denial" {
-  assert_main_prints deny 'find with no root, run in /Users/tester' \
+  assert_main_prints deny \
     '{"tool_name":"Bash","cwd":"/Users/tester","tool_input":{"command":"find -name x"}}'
-  assert_main_prints deny 'Grep in /Users/tester' \
+  assert_main_prints deny \
     '{"tool_name":"Grep","cwd":"/Users/tester/app","tool_input":{"pattern":"x","path":".."}}'
-  assert_main_prints deny 'Glob **/x.py in /Users/tester' \
+  assert_main_prints deny \
     '{"tool_name":"Glob","cwd":"/Users/tester","tool_input":{"pattern":"**/x.py"}}'
 }

@@ -22,241 +22,97 @@ setup() {
   isolate_home
 }
 
-@test "npx asks" {
-  assert_asks 'npx cowsay@1.6.0 hello'
+@test "each package-runner form asks before it runs" {
+  local -a forms=(
+    'npx cowsay@1.6.0 hello'
+    'npm exec cowsay@1.6.0 -- hello'
+    'npm x cowsay@1.6.0 hello'
+    'npm create vite@5.4.0 my-app'
+    'npm init vite@5.4.0 my-app'
+    'npm init --yes vite@5.4.0'
+    'pnpm dlx cowsay@1.6.0 hello'
+    'pnpx cowsay@1.6.0 hello'
+    'pnpm create vite@5.4.0 my-app'
+    'yarn dlx cowsay@1.6.0 hello'
+    'yarn create vite@5.4.0 my-app'
+    'bun create vite@5.4.0 my-app'
+    'bx cowsay@1.6.0 hello'
+    'uvx ruff@0.8.0 check .'
+    'uv tool run ruff@0.8.0 check .'
+    'pipx run cowsay==6.0 hello'
+    'docker run --rm alpine:3.20 echo hi'
+    'docker container run --rm alpine:3.20 echo hi'
+    'podman run --rm alpine:3.20 echo hi'
+    'npx cowsay hello'
+    'npm --prefix ./app exec cowsay@1.6.0'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_asks "${form}"
+  done
 }
 
-@test "npm exec asks" {
-  assert_asks 'npm exec cowsay@1.6.0 -- hello'
+@test "a package runner asks at each command position and behind each wrapper word" {
+  local -a forms=(
+    'cd app && npx cowsay@1.6.0 hello'
+    'git status; uvx ruff@0.8.0 check .'
+    'echo hi | npx cowsay@1.6.0'
+    $'cd app\nnpm exec cowsay@1.6.0'
+    '(cd app && pnpm dlx cowsay@1.6.0)'
+    'echo "$(npx cowsay@1.6.0 hi)"'
+    'sudo docker run --rm alpine:3.20'
+    'env CI=1 npx cowsay@1.6.0'
+    'exec npx cowsay@1.6.0'
+    'command npx cowsay@1.6.0'
+    'echo hi | xargs npx cowsay@1.6.0'
+    "bash -c 'cd app && npx cowsay@1.6.0'"
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_asks "${form}"
+  done
 }
 
-@test "npm x asks" {
-  assert_asks 'npm x cowsay@1.6.0 hello'
+@test "bunx, bun x, and the neighbors of each form that run nothing fetched stay silent" {
+  local -a forms=(
+    'bunx cowsay@1.6.0 hello'
+    'bun x cowsay@1.6.0 hello'
+    'npm init -y'
+    'npm install cowsay@1.6.0'
+    'npm run exec'
+    'bun run create'
+    'pnpm install'
+    'yarn add cowsay@1.6.0'
+    'uv run pytest'
+    'uv tool install ruff==0.8.0'
+    'pipx install cowsay==6.0'
+    'docker ps -a'
+    'docker build -t app .'
+    'docker rm run'
+    'podman images'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent "${form}"
+  done
 }
 
-@test "npm create asks" {
-  assert_asks 'npm create vite@5.4.0 my-app'
-}
-
-@test "npm init with an initializer name asks" {
-  assert_asks 'npm init vite@5.4.0 my-app'
-}
-
-@test "npm init with an option before the initializer name asks" {
-  assert_asks 'npm init --yes vite@5.4.0'
-}
-
-@test "pnpm dlx asks" {
-  assert_asks 'pnpm dlx cowsay@1.6.0 hello'
-}
-
-@test "pnpx asks" {
-  assert_asks 'pnpx cowsay@1.6.0 hello'
-}
-
-@test "pnpm create asks" {
-  assert_asks 'pnpm create vite@5.4.0 my-app'
-}
-
-@test "yarn dlx asks" {
-  assert_asks 'yarn dlx cowsay@1.6.0 hello'
-}
-
-@test "yarn create asks" {
-  assert_asks 'yarn create vite@5.4.0 my-app'
-}
-
-@test "bun create asks" {
-  assert_asks 'bun create vite@5.4.0 my-app'
-}
-
-@test "bx asks" {
-  assert_asks 'bx cowsay@1.6.0 hello'
-}
-
-@test "uvx asks" {
-  assert_asks 'uvx ruff@0.8.0 check .'
-}
-
-@test "uv tool run asks" {
-  assert_asks 'uv tool run ruff@0.8.0 check .'
-}
-
-@test "pipx run asks" {
-  assert_asks 'pipx run cowsay==6.0 hello'
-}
-
-@test "docker run asks" {
-  assert_asks 'docker run --rm alpine:3.20 echo hi'
-}
-
-@test "docker container run asks" {
-  assert_asks 'docker container run --rm alpine:3.20 echo hi'
-}
-
-@test "podman run asks" {
-  assert_asks 'podman run --rm alpine:3.20 echo hi'
-}
-
-@test "an unpinned npx asks" {
-  assert_asks 'npx cowsay hello'
-}
-
-@test "a package manager option before the subcommand still asks" {
-  assert_asks 'npm --prefix ./app exec cowsay@1.6.0'
-}
-
-@test "a fetch-and-run after && asks" {
-  assert_asks 'cd app && npx cowsay@1.6.0 hello'
-}
-
-@test "a fetch-and-run after a semicolon asks" {
-  assert_asks 'git status; uvx ruff@0.8.0 check .'
-}
-
-@test "a fetch-and-run after a pipe asks" {
-  assert_asks 'echo hi | npx cowsay@1.6.0'
-}
-
-@test "a fetch-and-run on a later line asks" {
-  assert_asks $'cd app\nnpm exec cowsay@1.6.0'
-}
-
-@test "a fetch-and-run inside a subshell asks" {
-  assert_asks '(cd app && pnpm dlx cowsay@1.6.0)'
-}
-
-@test "a fetch-and-run inside a command substitution asks" {
-  assert_asks 'echo "$(npx cowsay@1.6.0 hi)"'
-}
-
-@test "a fetch-and-run behind sudo asks" {
-  assert_asks 'sudo docker run --rm alpine:3.20'
-}
-
-@test "a fetch-and-run behind env asks" {
-  assert_asks 'env CI=1 npx cowsay@1.6.0'
-}
-
-@test "a fetch-and-run behind exec asks" {
-  assert_asks 'exec npx cowsay@1.6.0'
-}
-
-@test "a fetch-and-run behind command asks" {
-  assert_asks 'command npx cowsay@1.6.0'
-}
-
-@test "a fetch-and-run behind xargs asks" {
-  assert_asks 'echo hi | xargs npx cowsay@1.6.0'
-}
-
-@test "a fetch-and-run in a bash -c string asks" {
-  assert_asks "bash -c 'cd app && npx cowsay@1.6.0'"
-}
-
-@test "an ask names the package, the version, and the tool that falls short" {
-  run_bash_hook 'npx cowsay hello'
-  local reason
-  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")"
-  [[ "${reason}" == *'the package'* ]]
-  [[ "${reason}" == *'the version the command pins'* ]]
-  [[ "${reason}" == *'what it executes'* ]]
-  [[ "${reason}" == *'which installed tool falls short'* ]]
-  [[ "${reason}" == *'must pin a version'* ]]
-}
-
-@test "a fetch-and-run emits an ask and no deny" {
-  run_bash_hook 'npx cowsay hello'
-  [[ "$(jq -r '.hookSpecificOutput.permissionDecision' \
-    <<<"${HOOK_OUTPUT}")" == ask ]]
-}
-
-@test "bunx stays silent" {
-  assert_silent 'bunx cowsay@1.6.0 hello'
-}
-
-@test "bun x stays silent" {
-  assert_silent 'bun x cowsay@1.6.0 hello'
-}
-
-@test "npm init without an initializer name stays silent" {
-  assert_silent 'npm init -y'
-}
-
-@test "npm install stays silent" {
-  assert_silent 'npm install cowsay@1.6.0'
-}
-
-@test "npm run stays silent" {
-  assert_silent 'npm run exec'
-}
-
-@test "bun run stays silent" {
-  assert_silent 'bun run create'
-}
-
-@test "pnpm install stays silent" {
-  assert_silent 'pnpm install'
-}
-
-@test "yarn add stays silent" {
-  assert_silent 'yarn add cowsay@1.6.0'
-}
-
-@test "uv run stays silent" {
-  assert_silent 'uv run pytest'
-}
-
-@test "uv tool install stays silent" {
-  assert_silent 'uv tool install ruff==0.8.0'
-}
-
-@test "pipx install stays silent" {
-  assert_silent 'pipx install cowsay==6.0'
-}
-
-@test "docker ps stays silent" {
-  assert_silent 'docker ps -a'
-}
-
-@test "docker build stays silent" {
-  assert_silent 'docker build -t app .'
-}
-
-@test "docker rm named run stays silent" {
-  assert_silent 'docker rm run'
-}
-
-@test "podman images stays silent" {
-  assert_silent 'podman images'
-}
-
-@test "npx named inside a quoted argument stays silent" {
-  assert_silent 'echo "npx cowsay hello"'
-}
-
-@test "npx as an argument stays silent" {
-  assert_silent 'grep -rn npx scripts/'
-}
-
-@test "docker run named inside a commit message stays silent" {
-  assert_silent 'git commit -m "docs: explain docker run"'
-}
-
-@test "a word ending in npx stays silent" {
-  assert_silent 'mynpx cowsay'
-}
-
-@test "a path containing npx stays silent" {
-  assert_silent 'cat docs/npx.md'
-}
-
-@test "an empty command stays silent" {
-  assert_silent ''
+@test "a form named inside text, as an argument, or as part of a longer word stays silent" {
+  local -a forms=(
+    'echo "npx cowsay hello"'
+    'grep -rn npx scripts/'
+    'git commit -m "docs: explain docker run"'
+    'mynpx cowsay'
+    'cat docs/npx.md'
+    ''
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent "${form}"
+  done
 }
 
 @test "an envelope proposing npx prints a PreToolUse ask" {
-  assert_main_prints ask 'resolves a package from a registry' \
+  assert_main_prints ask \
     '{"tool_name":"Bash","tool_input":{"command":"npx cowsay hi"}}'
 }

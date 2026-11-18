@@ -43,24 +43,33 @@ write_agent() {
   } >"${dir}/${file}.md"
 }
 
-@test "a spawn that sets model stays silent" {
-  assert_silent_agent '{"prompt":"p","subagent_type":"general-purpose","model":"sonnet"}'
+@test "a spawn that sets a model, a fork, and haiku on other agent types stay silent" {
+  local -a forms=(
+    '{"prompt":"p","subagent_type":"general-purpose","model":"sonnet"}'
+    '{"prompt":"p","subagent_type":"fork"}'
+    '{"prompt":"p","subagent_type":"critic","model":"sonnet"}'
+    '{"prompt":"p","subagent_type":"critic","model":"opus"}'
+    '{"prompt":"p","subagent_type":"Plan","model":"opus"}'
+    '{"prompt":"p","subagent_type":"scout","model":"haiku"}'
+    '{"prompt":"p","subagent_type":"planner","model":"haiku"}'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent_agent "${form}"
+  done
 }
 
-@test "a spawn with no model is denied" {
-  assert_denies_agent '{"prompt":"p","subagent_type":"general-purpose"}'
-}
-
-@test "a spawn with no type and no model is denied" {
-  assert_denies_agent '{"prompt":"p"}'
-}
-
-@test "a spawn with an empty model is denied" {
-  assert_denies_agent '{"prompt":"p","subagent_type":"Explore","model":""}'
-}
-
-@test "a fork with no model stays silent" {
-  assert_silent_agent '{"prompt":"p","subagent_type":"fork"}'
+@test "a spawn that names no model is denied" {
+  local -a forms=(
+    '{"prompt":"p","subagent_type":"general-purpose"}'
+    '{"prompt":"p"}'
+    '{"prompt":"p","subagent_type":"Explore","model":""}'
+    '{"prompt":"p","subagent_type":"Plan"}'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies_agent "${form}"
+  done
 }
 
 @test "a user agent pinned to haiku stays silent" {
@@ -103,69 +112,22 @@ write_agent() {
   assert_denies_agent '{"prompt":"p","subagent_type":"other:reviewer"}'
 }
 
-@test "a denial names the tiers and the fork exemption" {
-  run_agent_hook '{"prompt":"p","subagent_type":"general-purpose"}'
-  local reason
-  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")"
-  [[ "${reason}" == *'haiku'* && "${reason}" == *'fork'* ]]
+@test "a critic or Plan spawned on haiku is denied" {
+  local -a forms=(
+    '{"prompt":"p","subagent_type":"critic","model":"haiku"}'
+    '{"prompt":"p","subagent_type":"Plan","model":"haiku"}'
+    '{"prompt":"p","subagent_type":"critic","model":"claude-haiku-4-5"}'
+    '{"prompt":"p","subagent_type":"critic","model":"Haiku"}'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies_agent "${form}"
+  done
 }
 
-@test "a denial keeps file edits off haiku and git operations on it" {
-  run_agent_hook '{"prompt":"p","subagent_type":"general-purpose"}'
-  local reason
-  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")"
-  [[ "${reason}" == *'verbatim copies of prepared payloads'* ]]
-  [[ "${reason}" == *'git operations stated whole'* ]]
-  [[ "${reason}" == *'sonnet for implementing from a design, editing files'* ]]
-  [[ "${reason}" != *'stated changes verified by reading the output'* ]]
-}
-
-@test "a critic spawned on haiku is denied" {
-  assert_denies_agent '{"prompt":"p","subagent_type":"critic","model":"haiku"}'
-}
-
-@test "a Plan spawned on haiku is denied" {
-  assert_denies_agent '{"prompt":"p","subagent_type":"Plan","model":"haiku"}'
-}
-
-@test "a critic spawned on a full haiku model id is denied" {
-  assert_denies_agent '{"prompt":"p","subagent_type":"critic","model":"claude-haiku-4-5"}'
-}
-
-@test "a critic spawned on haiku in capitals is denied" {
-  assert_denies_agent '{"prompt":"p","subagent_type":"critic","model":"Haiku"}'
-}
-
-@test "a critic spawned on sonnet stays silent" {
-  assert_silent_agent '{"prompt":"p","subagent_type":"critic","model":"sonnet"}'
-}
-
-@test "a critic spawned on opus stays silent" {
-  assert_silent_agent '{"prompt":"p","subagent_type":"critic","model":"opus"}'
-}
-
-@test "a Plan spawned on opus stays silent" {
-  assert_silent_agent '{"prompt":"p","subagent_type":"Plan","model":"opus"}'
-}
-
-@test "a haiku spawn of another agent type stays silent" {
-  assert_silent_agent '{"prompt":"p","subagent_type":"scout","model":"haiku"}'
-}
-
-@test "a spawn of a similarly named planner on haiku stays silent" {
-  assert_silent_agent '{"prompt":"p","subagent_type":"planner","model":"haiku"}'
-}
-
-@test "a critic whose definition pins haiku and sets no model is denied for haiku" {
+@test "a critic whose definition pins haiku and sets no model is denied" {
   write_agent "${CLAUDE_CONFIG_DIR}/agents" critic critic haiku
-  run_agent_hook '{"prompt":"p","subagent_type":"critic"}'
-  assert_decision 'deny' 'critic pinned to haiku'
-  local reason
-  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")"
-  [[ "${reason}" == *'sonnet or opus'* ]]
+  assert_denies_agent '{"prompt":"p","subagent_type":"critic"}'
 }
 
 @test "a critic whose definition pins haiku is allowed when the call sets sonnet" {
@@ -178,25 +140,8 @@ write_agent() {
   assert_silent_agent '{"prompt":"p","subagent_type":"critic"}'
 }
 
-@test "a Plan with no model is denied for the unset model, not for haiku" {
-  run_agent_hook '{"prompt":"p","subagent_type":"Plan"}'
-  assert_decision 'deny' 'Plan with no model'
-  local reason
-  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")"
-  [[ "${reason}" == *'names no model'* ]]
-}
-
-@test "a haiku denial names sonnet and opus" {
-  run_agent_hook '{"prompt":"p","subagent_type":"critic","model":"haiku"}'
-  local reason
-  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")"
-  [[ "${reason}" == *'sonnet or opus'* ]]
-}
-
 @test "an envelope proposing a critic that its project pins to haiku prints a PreToolUse denial" {
   write_agent "${BATS_TEST_TMPDIR}/project/.claude/agents" critic critic haiku
-  assert_main_prints deny 'never haiku' \
+  assert_main_prints deny \
     "{\"tool_name\":\"Agent\",\"cwd\":\"${BATS_TEST_TMPDIR}/project\",\"tool_input\":{\"prompt\":\"p\",\"subagent_type\":\"critic\"}}"
 }

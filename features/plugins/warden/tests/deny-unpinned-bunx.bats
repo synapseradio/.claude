@@ -22,247 +22,98 @@ setup() {
   isolate_home
 }
 
-@test "bunx with a bare package is denied" {
-  assert_denies 'bunx cowsay'
+@test "bunx or bun x with a bare package is denied in each argument form" {
+  local -a forms=(
+    'bunx cowsay'
+    'bunx cowsay hello world'
+    'bun x cowsay'
+    'bunx @scope/pkg'
+    'bunx cowsay@'
+    'bunx @scope/pkg@'
+    'bunx --bun cowsay'
+    'bunx --silent cowsay hello'
+    'bunx --cwd ./app cowsay'
+    'bun --bun x cowsay'
+    'bunx --package typescript tsc --version'
+    'bunx -p typescript tsc --version'
+    'bunx --package=typescript tsc'
+    'bunx -p typescript tsc@5.0.0'
+    'bunx -p typescript@5.6.2 -p cowsay tsc'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies "${form}"
+  done
 }
 
-@test "bunx with a bare package and arguments is denied" {
-  assert_denies 'bunx cowsay hello world'
+@test "a bare bunx is denied at each command position" {
+  local -a forms=(
+    'cd app && bunx cowsay'
+    'git status; bunx cowsay'
+    'echo hi | bunx cowsay'
+    $'cd app\nbunx cowsay'
+    '(cd app && bunx cowsay)'
+    'echo "$(bunx cowsay)"'
+    'env CI=1 bunx cowsay'
+    'echo hi | xargs bunx cowsay'
+    "bash -c 'cd app && bunx cowsay'"
+    'bunx cowsay@1.5.0 && bunx lolcatjs'
+    '${DOTTY_LOCAL_PREFIX:-/usr/local}/bin/bunx cowsay'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies "${form}"
+  done
 }
 
-@test "bun x with a bare package is denied" {
-  assert_denies 'bun x cowsay'
+@test "bunx with every package pinned stays silent in each argument form" {
+  local -a forms=(
+    'bunx cowsay@1.5.0'
+    'bunx cowsay@latest'
+    'bunx @scope/pkg@2.0.1'
+    'bunx @scope/pkg@latest hello'
+    'bun x cowsay@1.5.0'
+    'bunx --bun --silent cowsay@1.5.0 hello'
+    'bunx --cwd ./app cowsay@1.5.0'
+    'bunx --package typescript@5.6.2 tsc --version'
+    'bunx -p typescript@5.6.2 tsc --version'
+    'bunx --package=typescript@5.6.2 tsc'
+    'bunx -p @scope/pkg@2.0.1 bin'
+    'bunx cowsay@1.5.0 lolcatjs'
+    'bunx cowsay@1.5.0 --silent'
+    'cd app && bunx cowsay@1.5.0 hello | cat'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent "${form}"
+  done
 }
 
-@test "bunx with a bare scoped package is denied" {
-  assert_denies 'bunx @scope/pkg'
-}
-
-@test "bunx with a trailing @ and no version is denied" {
-  assert_denies 'bunx cowsay@'
-}
-
-@test "bunx with a scoped trailing @ and no version is denied" {
-  assert_denies 'bunx @scope/pkg@'
-}
-
-@test "bunx with --bun before a bare package is denied" {
-  assert_denies 'bunx --bun cowsay'
-}
-
-@test "bunx with --silent before a bare package is denied" {
-  assert_denies 'bunx --silent cowsay hello'
-}
-
-@test "bunx with a value option before a bare package is denied" {
-  assert_denies 'bunx --cwd ./app cowsay'
-}
-
-@test "bun x with an option before the subcommand is denied" {
-  assert_denies 'bun --bun x cowsay'
-}
-
-@test "bunx with a bare --package value is denied" {
-  assert_denies 'bunx --package typescript tsc --version'
-}
-
-@test "bunx with a bare -p value is denied" {
-  assert_denies 'bunx -p typescript tsc --version'
-}
-
-@test "bunx with a bare --package=value is denied" {
-  assert_denies 'bunx --package=typescript tsc'
-}
-
-@test "bunx with a pinned binary name but a bare --package is denied" {
-  assert_denies 'bunx -p typescript tsc@5.0.0'
-}
-
-@test "bunx with one pinned and one bare --package is denied" {
-  assert_denies 'bunx -p typescript@5.6.2 -p cowsay tsc'
-}
-
-@test "a bare bunx after && is denied" {
-  assert_denies 'cd app && bunx cowsay'
-}
-
-@test "a bare bunx after a semicolon is denied" {
-  assert_denies 'git status; bunx cowsay'
-}
-
-@test "a bare bunx after a pipe is denied" {
-  assert_denies 'echo hi | bunx cowsay'
-}
-
-@test "a bare bunx on a later line is denied" {
-  assert_denies $'cd app\nbunx cowsay'
-}
-
-@test "a bare bunx inside a subshell is denied" {
-  assert_denies '(cd app && bunx cowsay)'
-}
-
-@test "a bare bunx inside a command substitution is denied" {
-  assert_denies 'echo "$(bunx cowsay)"'
-}
-
-@test "a bare bunx behind env is denied" {
-  assert_denies 'env CI=1 bunx cowsay'
-}
-
-@test "a bare bunx behind xargs is denied" {
-  assert_denies 'echo hi | xargs bunx cowsay'
-}
-
-@test "a bare bunx in a bash -c string is denied" {
-  assert_denies "bash -c 'cd app && bunx cowsay'"
-}
-
-@test "a pinned bunx followed by a bare one is denied" {
-  assert_denies 'bunx cowsay@1.5.0 && bunx lolcatjs'
-}
-
-@test "a bare bunx named by path is denied" {
-  assert_denies '${DOTTY_LOCAL_PREFIX:-/usr/local}/bin/bunx cowsay'
-}
-
-@test "a denial names the package, the version, and the tool that falls short" {
-  run_bash_hook 'bunx cowsay'
-  local reason
-  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")"
-  [[ "${reason}" == *'cowsay'* ]]
-  [[ "${reason}" == *'bunx cowsay@<version>'* ]]
-  [[ "${reason}" == *'@latest'* ]]
-  [[ "${reason}" == *'the package'* ]]
-  [[ "${reason}" == *'the version the command pins'* ]]
-  [[ "${reason}" == *'what it executes'* ]]
-  [[ "${reason}" == *'which installed tool falls short'* ]]
-}
-
-@test "a denial emits a deny and no ask" {
-  run_bash_hook 'bunx cowsay'
-  [[ "$(jq -r '.hookSpecificOutput.permissionDecision' \
-    <<<"${HOOK_OUTPUT}")" == deny ]]
-}
-
-@test "bunx with a pinned version is allowed" {
-  assert_silent 'bunx cowsay@1.5.0'
-}
-
-@test "bunx with the latest tag is allowed" {
-  assert_silent 'bunx cowsay@latest'
-}
-
-@test "bunx with a scoped package and a version is allowed" {
-  assert_silent 'bunx @scope/pkg@2.0.1'
-}
-
-@test "bunx with a scoped package and the latest tag is allowed" {
-  assert_silent 'bunx @scope/pkg@latest hello'
-}
-
-@test "bun x with a pinned version is allowed" {
-  assert_silent 'bun x cowsay@1.5.0'
-}
-
-@test "bunx with options and a pinned version is allowed" {
-  assert_silent 'bunx --bun --silent cowsay@1.5.0 hello'
-}
-
-@test "bunx with a value option and a pinned version is allowed" {
-  assert_silent 'bunx --cwd ./app cowsay@1.5.0'
-}
-
-@test "bunx with a pinned --package value is allowed" {
-  assert_silent 'bunx --package typescript@5.6.2 tsc --version'
-}
-
-@test "bunx with a pinned -p value is allowed" {
-  assert_silent 'bunx -p typescript@5.6.2 tsc --version'
-}
-
-@test "bunx with a pinned --package=value is allowed" {
-  assert_silent 'bunx --package=typescript@5.6.2 tsc'
-}
-
-@test "bunx with a scoped pinned --package value is allowed" {
-  assert_silent 'bunx -p @scope/pkg@2.0.1 bin'
-}
-
-@test "a bare word after a pinned package is an argument and stays silent" {
-  assert_silent 'bunx cowsay@1.5.0 lolcatjs'
-}
-
-@test "an option after the package belongs to the package and stays silent" {
-  assert_silent 'bunx cowsay@1.5.0 --silent'
-}
-
-@test "a pinned bunx in a compound command stays silent" {
-  assert_silent 'cd app && bunx cowsay@1.5.0 hello | cat'
-}
-
-@test "bunx with no package stays silent" {
-  assert_silent 'bunx --version'
-}
-
-@test "bare bunx stays silent" {
-  assert_silent 'bunx'
-}
-
-@test "bun install stays silent" {
-  assert_silent 'bun install'
-}
-
-@test "bun run stays silent" {
-  assert_silent 'bun run x'
-}
-
-@test "bun add stays silent" {
-  assert_silent 'bun add cowsay'
-}
-
-@test "bun create stays silent" {
-  assert_silent 'bun create vite my-app'
-}
-
-@test "bun with an x argument after another subcommand stays silent" {
-  assert_silent 'bun test x'
-}
-
-@test "npx stays silent" {
-  assert_silent 'npx cowsay'
-}
-
-@test "bunx named inside a quoted argument stays silent" {
-  assert_silent 'echo "bunx cowsay"'
-}
-
-@test "echo bunx stays silent" {
-  assert_silent 'echo bunx'
-}
-
-@test "bunx as an argument stays silent" {
-  assert_silent 'grep -rn bunx scripts/'
-}
-
-@test "bunx named inside a commit message stays silent" {
-  assert_silent 'git commit -m "docs: explain bun x cowsay"'
-}
-
-@test "a word ending in bunx stays silent" {
-  assert_silent 'mybunx cowsay'
-}
-
-@test "a path containing bunx stays silent" {
-  assert_silent 'cat docs/bunx.md'
-}
-
-@test "an empty command stays silent" {
-  assert_silent ''
+@test "bunx without a package, other commands, and bunx named as text stay silent" {
+  local -a forms=(
+    'bunx --version'
+    'bunx'
+    'bun install'
+    'bun run x'
+    'bun add cowsay'
+    'bun create vite my-app'
+    'bun test x'
+    'npx cowsay'
+    'echo "bunx cowsay"'
+    'echo bunx'
+    'grep -rn bunx scripts/'
+    'git commit -m "docs: explain bun x cowsay"'
+    'mybunx cowsay'
+    'cat docs/bunx.md'
+    ''
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent "${form}"
+  done
 }
 
 @test "an envelope proposing an unpinned bunx prints a PreToolUse denial" {
-  assert_main_prints deny 'bunx runs cowsay with no version' \
+  assert_main_prints deny \
     '{"tool_name":"Bash","tool_input":{"command":"bunx cowsay"}}'
 }

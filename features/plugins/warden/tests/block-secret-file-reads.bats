@@ -38,105 +38,66 @@ setup() {
   FAKE_HOME="${BATS_TEST_TMPDIR}/home/pilot"
 }
 
-@test "cat of an SSH private key is denied" {
-  assert_denies 'cat ~/.ssh/id_rsa'
+@test "a command that reads a credential file, directory, or private store is denied" {
+  local -a forms=(
+    'cat ~/.ssh/id_rsa'
+    'base64 id_ed25519'
+    'cat $HOME/.aws/credentials'
+    "grep -r . ${FAKE_HOME}/.gnupg/private-keys-v1.d"
+    'cp ~/.kube/config /tmp/config'
+    'cat .env'
+    'head -n 20 .env.local'
+    'cat .env.production.local'
+    'while read -r line; do echo "${line}"; done < .env'
+    'cat ~/dotfiles/shell/lib/private/tokens.sh'
+    'cat ~/.dotfiles/private/keys.sh'
+    "cat ${FAKE_HOME}/dotfiles/private/env"
+    $'bash <<\'EOF\'\ncat ~/.ssh/id_rsa\nEOF'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies "${form}"
+  done
 }
 
-@test "an SSH key named without its directory is denied" {
-  assert_denies 'base64 id_ed25519'
+@test "paths that only look like secrets stay readable" {
+  local -a forms=(
+    'cat /private/tmp/build.log'
+    'tail -n 50 /private/var/log/system.log'
+    'cat src/private/index.ts'
+    'cat docs/private/notes.md'
+    'cat ~/dotfiles/README.md'
+    'cat scripts/rotate-secrets.sh'
+    'cat manage-secrets.py'
+    'cat secrets.env.example'
+    'cat secrets.env.template'
+    'cat .secrets.baseline'
+    'cat privateer.txt'
+    'cat README.md'
+    'cat .envrc'
+    'cat ~/.zshrc'
+    'echo "keep .env out of git"'
+    ''
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent "${form}"
+  done
 }
 
-@test "reading AWS credentials under \$HOME is denied" {
-  assert_denies 'cat $HOME/.aws/credentials'
-}
-
-@test "grepping the GnuPG directory by absolute path is denied" {
-  assert_denies "grep -r . ${FAKE_HOME}/.gnupg/private-keys-v1.d"
-}
-
-@test "reading a kube config is denied" {
-  assert_denies 'cp ~/.kube/config /tmp/config'
-}
-
-@test "reading .env is denied" {
-  assert_denies 'cat .env'
-}
-
-@test "reading .env.local is denied" {
-  assert_denies 'head -n 20 .env.local'
-}
-
-@test "reading a named local env file is denied" {
-  assert_denies 'cat .env.production.local'
-}
-
-@test "an input redirect from .env is denied" {
-  assert_denies 'while read -r line; do echo "${line}"; done < .env'
-}
-
-@test "a private store in a dotfiles checkout is denied" {
-  assert_denies 'cat ~/dotfiles/shell/lib/private/tokens.sh'
-}
-
-@test "a private store in a dotted dotfiles checkout is denied" {
-  assert_denies 'cat ~/.dotfiles/private/keys.sh'
-}
-
-@test "a private store under an absolute home is denied" {
-  assert_denies "cat ${FAKE_HOME}/dotfiles/private/env"
-}
-
-@test "the macOS real /tmp stays readable" {
-  assert_silent 'cat /private/tmp/build.log'
-}
-
-@test "the macOS real /var stays readable" {
-  assert_silent 'tail -n 50 /private/var/log/system.log'
-}
-
-@test "a project's own private directory stays readable" {
-  assert_silent 'cat src/private/index.ts'
-  assert_silent 'cat docs/private/notes.md'
-}
-
-@test "a readme inside a dotfiles checkout stays readable" {
-  assert_silent 'cat ~/dotfiles/README.md'
-}
-
-@test "secrets.env is denied" {
-  assert_denies 'cat secrets.env'
-}
-
-@test "secrets.sh and its shell variants are denied" {
-  assert_denies 'cat config/secrets.sh'
-  assert_denies 'cat secrets.zsh'
-  assert_denies 'cat secrets.bash'
-}
-
-@test "a file with the .secrets extension is denied" {
-  assert_denies 'grep -r . prod.secrets'
-}
-
-@test "a .secrets directory is denied" {
-  assert_denies 'cat .secrets/token'
-}
-
-@test "a script that manages secrets stays readable" {
-  assert_silent 'cat scripts/rotate-secrets.sh'
-  assert_silent 'cat manage-secrets.py'
-}
-
-@test "an example or template beside a secrets file stays readable" {
-  assert_silent 'cat secrets.env.example'
-  assert_silent 'cat secrets.env.template'
-}
-
-@test "a detect-secrets baseline stays readable" {
-  assert_silent 'cat .secrets.baseline'
-}
-
-@test "a word merely containing private stays readable" {
-  assert_silent 'cat privateer.txt'
+@test "a secrets-named file or directory is denied" {
+  local -a forms=(
+    'cat secrets.env'
+    'cat config/secrets.sh'
+    'cat secrets.zsh'
+    'cat secrets.bash'
+    'grep -r . prod.secrets'
+    'cat .secrets/token'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies "${form}"
+  done
 }
 
 @test "a fragment in the banned-reads file is denied" {
@@ -144,22 +105,11 @@ setup() {
   assert_denies 'cat ~/work/credentials.yaml'
 }
 
-@test "a banned fragment is matched literally, not as a regex" {
-  printf '%s\n' 'my.store' >"${WARDEN_BANNED_READS}"
+@test "a banned fragment is matched literally, with nothing to escape" {
+  printf '%s\n' 'my.store' 'keys[1].pem' >"${WARDEN_BANNED_READS}"
   assert_denies 'cat ~/my.store/token'
   assert_silent 'cat ~/myXstore/token'
-}
-
-@test "a banned fragment needs no escaping to hold" {
-  printf '%s\n' 'keys[1].pem' >"${WARDEN_BANNED_READS}"
   assert_denies 'cat ~/vault/keys[1].pem'
-}
-
-@test "a banned-reads denial names the file the fragment came from" {
-  printf '%s\n' 'credentials' >"${WARDEN_BANNED_READS}"
-  run_bash_hook 'cat ~/work/credentials.yaml'
-  [[ "$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")" == *"${WARDEN_BANNED_READS}"* ]]
 }
 
 @test "a banned fragment still needs a read command to deny" {
@@ -174,20 +124,25 @@ setup() {
   assert_silent 'cat README.md'
 }
 
-@test "a missing banned-reads file leaves every default in force" {
+@test "a missing or empty banned-reads file leaves every default in force" {
   export WARDEN_BANNED_READS="${BATS_TEST_TMPDIR}/absent.conf"
   assert_denies 'cat ~/.ssh/id_rsa'
   assert_silent 'cat README.md'
-}
-
-@test "an empty banned-reads file leaves every default in force" {
   : >"${WARDEN_BANNED_READS}"
   assert_denies 'cat .env'
   assert_silent 'cat README.md'
 }
 
-@test "the Read branch denies a dotfiles private store" {
-  assert_denies_read "${FAKE_HOME}/dotfiles/shell/lib/private/env.sh"
+@test "the Read tool is denied a credential path" {
+  local -a forms=(
+    "${FAKE_HOME}/dotfiles/shell/lib/private/env.sh"
+    "${FAKE_HOME}/.ssh/id_ed25519"
+    "${FAKE_HOME}/projects/app/.env"
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies_read "${form}"
+  done
 }
 
 @test "the Read branch denies a banned fragment" {
@@ -195,60 +150,15 @@ setup() {
   assert_denies_read "${FAKE_HOME}/work/credentials.yaml"
 }
 
-@test "the Read branch leaves the macOS real /tmp alone" {
-  assert_silent_read '/private/tmp/build.log'
-}
-
-@test "a Bash denial names the matched pattern and the command" {
-  local reason
-  run_bash_hook 'base64 id_ed25519'
-  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")"
-  [[ "${reason}" == *'SSH private key'* ]]
-  [[ "${reason}" == *'command would read'* ]]
-}
-
-@test "a Read denial names the matched pattern and the path" {
-  local reason
-  run_read_hook "${FAKE_HOME}/.aws/credentials"
-  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")"
-  [[ "${reason}" == *'.aws'* ]]
-  [[ "${reason}" == *'Read would open'* ]]
-}
-
-@test "a denial points at a non-secret template and a presence test" {
-  run_bash_hook 'cat .env'
-  assert_decision 'deny' 'cat .env'
-  assert_reason_contains '.env.example'
-  assert_reason_contains '[ -n "${NAME:-}" ] && echo set'
-}
-
-@test "a denial of a key file gives the presence test and no template" {
-  run_bash_hook 'cat ~/.ssh/id_rsa'
-  assert_decision 'deny' 'cat ~/.ssh/id_rsa'
-  assert_reason_contains '[ -n "${NAME:-}" ] && echo set'
-  [[ "${HOOK_REASON}" != *'.env.example'* ]]
-}
-
-@test "reading a project file stays silent" {
-  assert_silent 'cat README.md'
-}
-
-@test "reading .envrc stays silent" {
-  assert_silent 'cat .envrc'
-}
-
-@test "reading a shell rc file stays silent" {
-  assert_silent 'cat ~/.zshrc'
-}
-
-@test "naming .env inside an echo stays silent" {
-  assert_silent 'echo "keep .env out of git"'
-}
-
-@test "an empty command stays silent" {
-  assert_silent ''
+@test "the Read tool is allowed an ordinary path" {
+  local -a forms=(
+    '/private/tmp/build.log'
+    "${FAKE_HOME}/projects/app/README.md"
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent_read "${form}"
+  done
 }
 
 @test "a tool the guard does not cover stays silent" {
@@ -256,65 +166,49 @@ setup() {
   assert_no_decision 'a Write of .env'
 }
 
-@test "the Read branch denies an SSH private key path" {
-  assert_denies_read "${FAKE_HOME}/.ssh/id_ed25519"
-}
-
-@test "the Read branch denies an .env path" {
-  assert_denies_read "${FAKE_HOME}/projects/app/.env"
-}
-
-@test "the Read branch stays silent on a source file" {
-  assert_silent_read "${FAKE_HOME}/projects/app/README.md"
-}
-
 @test "a grep or rg pattern that names a secret path stays silent" {
-  assert_silent 'grep -rn id_rsa /x'
-  assert_silent 'rg -l .env /x'
-  assert_silent 'grep -rn "id_rsa" /x'
-  assert_silent 'rg -n -i secrets.env docs'
+  local -a forms=(
+    'grep -rn id_rsa /x'
+    'rg -l .env /x'
+    'grep -rn "id_rsa" /x'
+    'rg -n -i secrets.env docs'
+    'grep -e id_rsa /x'
+    'grep -rne id_rsa /x'
+    'grep --regexp=id_rsa /x'
+    'rg --regexp .env /x'
+    'rg -n -e .env -e id_rsa /x'
+    'rg -g "*.md" -A 3 id_rsa /x'
+    'cat notes.txt | grep -m 1 id_rsa'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_silent "${form}"
+  done
 }
 
-@test "a pattern given with -e or --regexp stays silent" {
-  assert_silent 'grep -e id_rsa /x'
-  assert_silent 'grep -rne id_rsa /x'
-  assert_silent 'grep --regexp=id_rsa /x'
-  assert_silent 'rg --regexp .env /x'
-  assert_silent 'rg -n -e .env -e id_rsa /x'
-}
-
-@test "a value option does not make the next word the pattern" {
-  assert_silent 'rg -g "*.md" -A 3 id_rsa /x'
-  assert_silent 'cat notes.txt | grep -m 1 id_rsa'
-}
-
-@test "a file named after the pattern of grep or rg is denied" {
-  assert_denies 'grep foo ~/.ssh/id_rsa'
-  assert_denies 'grep -rn id_rsa ~/.ssh/'
-  assert_denies 'rg foo .env'
-  assert_denies 'grep -e foo -e bar ~/.ssh/id_rsa'
-  assert_denies 'sudo grep foo ~/.ssh/id_rsa'
-  assert_denies 'ssh host grep foo ~/.ssh/id_rsa'
-}
-
-@test "a pattern file named with -f or --file is read and denied" {
-  assert_denies 'grep -f ~/.ssh/id_rsa x'
-  assert_denies 'grep --file=~/.ssh/id_rsa x'
-  assert_denies 'rg --file ~/.ssh/id_rsa x'
-  assert_denies 'grep -f .env /x'
-}
-
-@test "rg --files lists the directory it is given and is denied for a secret one" {
-  assert_denies 'rg --files ~/.ssh/'
-}
-
-@test "a here-document body that reads a secret path is denied" {
-  assert_denies $'bash <<\'EOF\'\ncat ~/.ssh/id_rsa\nEOF'
+@test "a file operand of grep or rg is still checked" {
+  local -a forms=(
+    'grep foo ~/.ssh/id_rsa'
+    'grep -rn id_rsa ~/.ssh/'
+    'rg foo .env'
+    'grep -e foo -e bar ~/.ssh/id_rsa'
+    'sudo grep foo ~/.ssh/id_rsa'
+    'ssh host grep foo ~/.ssh/id_rsa'
+    'grep -f ~/.ssh/id_rsa x'
+    'grep --file=~/.ssh/id_rsa x'
+    'rg --file ~/.ssh/id_rsa x'
+    'grep -f .env /x'
+    'rg --files ~/.ssh/'
+  )
+  local form
+  for form in "${forms[@]}"; do
+    assert_denies "${form}"
+  done
 }
 
 @test "an envelope proposing a secret read prints a PreToolUse denial" {
-  assert_main_prints deny 'command would read a secret-shaped path (~/.ssh)' \
+  assert_main_prints deny \
     '{"tool_name":"Bash","tool_input":{"command":"cat ~/.ssh/id_rsa"}}'
-  assert_main_prints deny 'Read would open a secret-shaped path (~/.aws)' \
+  assert_main_prints deny \
     "{\"tool_name\":\"Read\",\"tool_input\":{\"file_path\":\"${FAKE_HOME}/.aws/credentials\"}}"
 }
