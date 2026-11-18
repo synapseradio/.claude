@@ -30,6 +30,19 @@ QUOTED = re.compile(
 )
 NOT_A_LINE_END = re.compile(r"[^\n]")
 
+# The list markers a line opens on. A notice lists each flagged line as an
+# item, so a line copied from it arrives with one more of these than it had.
+LEADING_MARKERS = re.compile(r"^(?:[-*+]\s+)+")
+
+
+def claim_text(line) -> str:
+    """The line trimmed, without the list markers it opens on.
+
+    A flagged line is identified by this text, so the bullet the notice quotes
+    it under, copied back ahead of the line's own, names the same line.
+    """
+    return LEADING_MARKERS.sub("", line.strip())
+
 
 def text_blocks(message) -> list[str]:
     content = message.get("content")
@@ -285,7 +298,7 @@ def marked_lines(blocks) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
     found = {mark: [] for mark in MARKS}
     named = {mark: [] for mark in MARKS}
     for line, (prose, mentioned) in zip(lines, claim_lines(lines), strict=True):
-        stripped = line.strip()
+        stripped = claim_text(line)
         for mark in MARKS:
             if mark in prose and stripped not in found[mark]:
                 found[mark].append(stripped)

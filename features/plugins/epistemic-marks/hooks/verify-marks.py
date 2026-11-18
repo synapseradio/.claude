@@ -57,7 +57,13 @@ from epistemic_marks.marks import RELAY_MARKS
 from epistemic_marks.messages import Mode, build_context, build_denial, build_findings
 from epistemic_marks.output import block, context, deny
 from epistemic_marks.routes import denied_routes
-from epistemic_marks.scan import batch_transcript, last_turn_entries, last_turn_text, text_blocks
+from epistemic_marks.scan import (
+    batch_transcript,
+    claim_text,
+    last_turn_entries,
+    last_turn_text,
+    text_blocks,
+)
 
 # The most blocks one turn draws from this hook. The harness overrides the
 # next block after eight consecutive continuations, per
@@ -92,7 +98,7 @@ def opens_on(reply, standing_lines, marked) -> bool:
     for raw in reply.splitlines():
         if not wanted:
             break
-        line = raw.strip()
+        line = claim_text(raw)
         if not line or line.startswith("#") or line.rstrip("*_ ").endswith(":"):
             continue
         if line not in marked:

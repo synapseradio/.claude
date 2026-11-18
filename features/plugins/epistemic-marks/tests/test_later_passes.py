@@ -188,6 +188,28 @@ class ATopLevelLaterPass(HookCase):
             with self.subTest(opening=opening):
                 assert self.stop(opening, again=True) is None, "the model holds this already"
 
+    def test_a_bulleted_mark_copied_from_the_notice_ends_the_loop(self) -> None:
+        # The notice quotes each line as a list item, so an agent copying a
+        # bulleted claim from it writes the quote's bullet ahead of its own.
+        bulleted = "- **Request matched description:** the spec says so [?]"
+        first = required(self.stop(bulleted, again=False))
+        quoted = next(line for line in first["reason"].splitlines() if "Request matched" in line)
+        assert quoted.startswith("- "), "the notice lists each line as an item"
+        copied = quoted
+        for attempt in range(3):
+            with self.subTest(attempt=attempt):
+                assert self.stop(copied, again=True) is None, "the copy adds only a bullet"
+                copied = f"- {copied}"
+
+    def test_a_new_bulleted_mark_still_blocks_beside_a_copied_one(self) -> None:
+        bulleted = "- **Request matched description:** the spec says so [?]"
+        self.stop(bulleted, again=False)
+        fresh = "- **Scope covers staging:** the ticket names it [?]"
+        result = required(self.stop(f"- {bulleted}\n{fresh}", again=True))
+        assert result.get("decision") == "block"
+        assert "Scope covers staging" in result["reason"]
+        assert "- - **Request matched" not in result["reason"], "the copy counts as already sent"
+
     def test_a_mention_reaches_the_model_once(self) -> None:
         result = required(self.stop(MENTION, again=False))
         assert "decision" not in result, "a mention claims nothing, so it never blocks"
