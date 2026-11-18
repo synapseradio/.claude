@@ -37,8 +37,8 @@ Without wt binds every role, and only where `wt` is not on PATH.
 ## Every worktree
 
 List with `wt list`.
-Remove a worktree only through `wt prune` or `wt merge`, or through `wt remove` in the superseded case below, or through the remove row under Without wt where `wt` is not on PATH.
-Keep `git worktree prune` and `rm` off every worktree path, and keep `git worktree remove` off every worktree path except in the remove row under Without wt, where `wt` is not on PATH.
+Remove a worktree only through `wt prune` or `wt merge`, or through `wt remove` in the superseded case below, or through the remove row of `references/without-wt.md` where `wt` is not on PATH.
+Keep `git worktree prune` and `rm` off every worktree path, and keep `git worktree remove` off every worktree path except in the remove row of `references/without-wt.md`, where `wt` is not on PATH.
 Answer a question about wt from its config file and docs.
 Address files in a worktree by the absolute path wt prints.
 Leave every worktree and branch the current work neither created nor names untouched and unmentioned.
@@ -158,26 +158,13 @@ counts
   | otherwise = merge, by the steps your prompt writes out, or by steps 3 to 5 under Land with `<target>` as `$trunk` where your prompt writes none
 
 After the merge, run `wt -C <primary checkout> prune`, with the primary checkout your prompt names.
-Remove a worktree only through `wt prune` or `wt merge`, or through `wt remove` in the superseded case under Every worktree, or through the remove row under Without wt where `wt` is not on PATH, with the primary checkout your prompt names.
+Remove a worktree only through `wt prune` or `wt merge`, or through `wt remove` in the superseded case under Every worktree, or through the remove row of `references/without-wt.md` where `wt` is not on PATH, with the primary checkout your prompt names.
 
 ## Without wt
 
-This section binds only when `command -v wt` prints nothing in the shell that runs your commands.
-Where `wt` is on PATH, use no row of the table below and no `git worktree remove`, whatever stops a wt command, a hook awaiting approval included, since only wt runs the repository's worktree hooks and config.
+This section binds every role, and only where `wt` is not on PATH.
+Run `bash <skill directory>/scripts/which-tool.sh` once, with `<skill directory>` the directory holding this file (the base directory the harness prints when it loads the skill, or `~/.claude/skills/worktrees`).
 
-Each row below replaces one wt step from the section named in its last column. Every other step, the fetch and divergence check in Land step 2 and the stopped-merge block included, runs as written, with `git -C <worktree> rebase $trunk` as the rebase.
-`$base` is the branch Create's `--base` names, `$trunk` unless the lane is stacked.
-
-| Step | Command | Replaces |
-| --- | --- | --- |
-| create | `git -C <primary checkout> worktree add -b $branch <worktree> $base`, with `<worktree>` a new directory beside the primary checkout, named after the branch | Create's `wt --yes switch --create` |
-| provision | the lane's own provisioning commands, run in `<worktree>` before its first commit, since no hook runs at creation | Create's pre-start hook |
-| squash | `git -C <worktree> reset --soft "$(git -C <worktree> merge-base $trunk HEAD)"` -> `git -C <worktree> commit -m '<message>'`, so the repository's commit hooks run | Land step 1 and the squash under Assigned worktree |
-| land | `git -C <worktree> rebase $trunk` -> with the primary checkout on the trunk, `git -C <primary checkout> merge --ff-only $branch`; with it on another branch, `git -C <primary checkout> fetch . $branch:$trunk` | Land step 3 |
-| remove | `git -C <primary checkout> worktree remove <worktree>` -> `git -C <primary checkout> branch -d $branch` | Land step 3's removal and the `wt prune` of Land step 5 |
-
-With the primary checkout on a branch other than the trunk, `git branch -d` refuses a branch the trunk already holds. Confirm the landing with `git -C <primary checkout> merge-base --is-ancestor $branch $trunk`, which exits 0, then delete the branch with `git -C <primary checkout> branch -D $branch`.
-
-another tool
-  | the session's rules or the repository's docs name a worktree tool other than wt, and it is on PATH = read its help for the five steps in the table -> fill each row with its command -> for a step it lacks, use the git command in the table -> run no command of its that you have not seen in its own help output
-  | otherwise = use the git commands in the table
+tool
+  | it prints `wt` = use the wt steps above, and use no command from `references/without-wt.md` and no `git worktree remove`, whatever stops a wt command, a hook awaiting approval included, since only wt runs the repository's worktree hooks and config
+  | it prints `git` = read `<skill directory>/references/without-wt.md` in full -> follow it in place of the wt steps it names
