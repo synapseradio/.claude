@@ -74,7 +74,7 @@ def _read_skill(directory: pathlib.Path) -> Skill:
         return Skill(name, directory, (*reserved, "frontmatter-unparsable"))
     if not isinstance(fields, dict):
         return Skill(name, directory, (*reserved, "frontmatter-unparsable"))
-    faults = list(reserved)
+    faults: list[SkillFault] = list(reserved)
     description = fields.get("description")
     if not isinstance(description, str) or not description.strip():
         faults.append("no-description")
