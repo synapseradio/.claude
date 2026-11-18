@@ -19,7 +19,7 @@ import re
 from collections.abc import Iterator
 
 from .marks import MARK_NAMES, MARKS
-from .scan import BLANK, claim_lines, marked_lines
+from .scan import BLANK, claim_lines, claim_text, marked_lines
 
 GUESS = "guess"
 CAUSE = "cause"
@@ -236,7 +236,7 @@ def _sentences(line: str, masked: str) -> Iterator[tuple[str, str]]:
     for boundary in [*BOUNDARY.finditer(masked), None]:
         end = boundary.start() if boundary else len(line)
         if line[start:end].strip():
-            yield line[start:end].strip(), masked[start:end]
+            yield claim_text(line[start:end]), masked[start:end]
         start = boundary.end() if boundary else end
 
 

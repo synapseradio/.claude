@@ -69,7 +69,7 @@ GUESSES = (
     "The hook almost certainly runs twice.",
     "Chances are the hook runs twice.",
     "It could be that the hook runs twice.",
-    "- **Cause:** probably the stale cache.",
+    "**Cause:** probably the stale cache.",
     # A source with its name filed off.
     "Some say the watcher holds the file open.",
     "Many believe the flag landed in version 3.",
@@ -303,7 +303,7 @@ class ASentenceRestingOnAGuessIsFound(unittest.TestCase):
 
     def test_a_resting_sentence_on_the_next_list_line_is_found(self) -> None:
         text = "- The lockfile drifted [?].\n- That would break the install."
-        assert found(text) == {REST: ["- That would break the install."]}
+        assert found(text) == {REST: ["That would break the install."]}
 
     def test_a_resting_sentence_with_its_own_mark_passes(self) -> None:
         assert found("The lockfile drifted [?]. That would break the install [?].") == {}
@@ -437,8 +437,8 @@ class AQuotationWrappedAcrossLinesStaysQuoted(unittest.TestCase):
     def test_a_list_item_opens_a_sentence_whatever_the_item_above_ends_on(self) -> None:
         text = "- I suspect the lockfile drifted\n- That would break the install"
         assert found(text) == {
-            GUESS: ["- I suspect the lockfile drifted"],
-            REST: ["- That would break the install"],
+            GUESS: ["I suspect the lockfile drifted"],
+            REST: ["That would break the install"],
         }
 
     def test_a_line_after_a_finished_sentence_still_opens_one(self) -> None:

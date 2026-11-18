@@ -103,7 +103,8 @@ SURVIVING_HEADING = "Still marked after the verification pass:"
 STANDING_HEADING = (
     "Still marked after the verification pass. Open your {verb} on these lines: "
     "put each one ahead of every line that carries no mark, with at most a "
-    "heading or a label ending in a colon above them."
+    "heading or a label ending in a colon above them. Copy each line without "
+    'the leading "- " this notice adds to list it.'
 )
 
 # The heading a pass carries its findings under once the turn's blocks are
