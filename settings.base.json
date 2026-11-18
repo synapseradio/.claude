@@ -97,7 +97,6 @@
 			"Bash(git add:*)",
 			"Bash(git mv:*)",
 			"Bash(git reset --soft *)",
-			"Bash(git -C * reset --soft *)",
 			"Bash(shfmt:*)",
 			"Bash(bats:*)",
 			"Bash(npx tsc:*)",
