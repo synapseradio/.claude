@@ -49,7 +49,8 @@
 	"autoMode": {
 		"allow": [
 			"$defaults",
-			"Documentation Fetch: a `curl -sfL`, `tvly extract`, or `tvly search` GET of a public documentation site's llms.txt, llms-full.txt, or doc pages, printed to stdout, piped into read-only filters (head, grep, jq), or saved under /tmp or ~/.scratchpad, is a read-only lookup the user's instructions require before using a third-party tool. It is not Undermining Oversight, Exfil Scouting, or Auto-Mode Bypass. Does not cover a request carrying a body, upload, form, or non-GET method."
+			"Documentation Fetch: a `curl -sfL`, `tvly extract`, or `tvly search` GET of a public documentation site's llms.txt, llms-full.txt, or doc pages, printed to stdout, piped into read-only filters (head, grep, jq), or saved under /tmp or ~/.scratchpad, is a read-only lookup the user's instructions require before using a third-party tool. It is not Undermining Oversight, Exfil Scouting, or Auto-Mode Bypass. Does not cover a request carrying a body, upload, form, or non-GET method.",
+			"Directory Change: a `cd` into a local directory, alone or as one part of a compound command (`cd <dir> && ...`, `cd <dir>; ...`, or `cd \"$W\"` with W set earlier in the same command), is routine navigation. The `cd` adds no risk and is not Undermining Oversight or Auto-Mode Bypass; judge each other part of the command on its own merits."
 		]
 	},
 	"permissions": {
