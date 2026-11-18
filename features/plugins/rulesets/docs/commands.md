@@ -1,5 +1,10 @@
 # Commands
 
+This page is reference: each command of the plugin's command line, in the order the table below
+lists them, with what it prints and when it exits non-zero. Claude runs these for you through the
+`rulesets` skill when you ask in words, so read this page to learn what stands behind an answer,
+or to script a command yourself.
+
 Each command runs through the plugin's `cli.py`. In the examples, `$CLI` stands for
 `python3.15 <plugin directory>/lib/rulesets/cli.py`, and `--root` names the rulesets directory.
 Where a command accepts `--root` and you omit it, the command reads `~/.claude/rulesets`; `check`
@@ -31,19 +36,36 @@ optional. A fact you leave out is absent, except flags, which are unset.
 $CLI check --root ~/.claude/rulesets
 ```
 
-Reports every error and every warning in one run, each with its file and line. Errors include a
-variant with no default form, a cycle among sets, a reference to a name nothing declares, a condition
-that tests anything but a fact, a rule file longer than 9,000 characters with its marker, frontmatter
-that carries a condition, conflicting variants set by blocks that can both apply, a condition written twice as a key at one
-level, a config written in an older layout, and a config file YAML cannot read, each with the form
-to write instead. A directory that holds an older config file and no `config.yaml` is an error
-naming `config.yaml`. Every message quotes a reference as the config writes it, as
-`code.resolving-input` or `all.*`. Warnings include a rule that no add includes, a rule whose text names another rule
-(by its name in backticks, its file name, a link to its file, or the phrase "rule name" or "the name
-rule"; a bare word is no mention), a stray directory, a file path a rule cites that the directory
-does not hold (a path with a `<placeholder>` segment is no citation), a context whose rules need
-more parts than a delivery carries, and a rule file that opens on a marker for another rule or
-another form of its own. A warning never fails the run. A clean directory prints nothing.
+Reports every error and every warning in one run, each with its file and line. Every message
+quotes a reference as the config writes it, as `code.resolving-input` or `all.*`. A warning never
+fails the run. A clean directory prints nothing.
+
+Errors include these, each with the form to write instead:
+
+| Error | Where |
+| --- | --- |
+| a variant with no default form | the pool |
+| a rule file longer than 9,000 characters with its marker | the pool |
+| frontmatter that carries a condition | a rule file |
+| a cycle among sets | the config |
+| a reference to a name nothing declares | the config |
+| a condition that tests anything but a fact | the config |
+| conflicting variants set by blocks that can both apply | the config |
+| a condition written twice as a key at one level | the config |
+| a config written in an older layout | the config |
+| a config file YAML cannot read | the config |
+| an older config file and no `config.yaml`, named in the message | the directory |
+
+Warnings include these:
+
+- a rule that no add includes
+- a rule whose text names another rule, by its name in backticks, its file name, a link to its
+  file, or the phrase "rule name" or "the name rule"; a bare word is no mention
+- a stray directory
+- a file path a rule cites that the directory does not hold; a path with a `<placeholder>` segment
+  is no citation
+- a context whose rules need more parts than a delivery carries
+- a rule file that opens on a marker for another rule or another form of its own
 
 For skills, errors include a skill folder with no `SKILL.md`, a `SKILL.md` whose frontmatter is
 missing, unparsable, or without a `description`, a frontmatter `name` other than the folder's, a
@@ -156,7 +178,9 @@ Maps a folder of rule files, or a tier corpus, into a new rulesets directory at 
 `config.yaml` in the layout above the blocks it maps. It removes
 a source file's opening marker line for its own rule, and the blank line after it, because delivery
 writes both. It leaves the source as it was and refuses, with exit
-2, an output directory that is the source, lies inside it, or already holds files. It then compares
+2, an output directory that is the source, lies inside it, or already holds files.
+
+It then compares
 what the source delivers with what the new directory delivers, for each context in a matrix, and
 exits 1 where any context differs. `--expect <identifier>` names a model identifier whose
 differences are expected; give it once for each such identifier. It also adds that identifier to the

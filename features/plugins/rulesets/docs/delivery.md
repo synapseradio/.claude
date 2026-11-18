@@ -1,5 +1,9 @@
 # Delivery
 
+This page is reference: which session and delegate receives rules, when, in how many parts,
+how a delegate's model is decided, and what the plugin leaves alone. A delegate is an agent a
+session starts. Read it to look up why a delivery happened as it did.
+
 ## What it delivers, and to whom
 
 | Context | When it receives rules | Hook |
@@ -14,11 +18,15 @@ line, so a rule file carries no marker line of its own. A rule at a variant arri
 marker, with the variant's text and the variant left unnamed. The same composition always yields the
 same bytes.
 
+### Parts of a delivery
+
 A delivery splits into parts. One hook entry carries one part, and a part holds whole rule bodies up
 to 9,000 characters, counting each rule's marker and blank line. A rule never splits across parts.
 A delivery carries at most `MAX_PARTS` parts, the constant in `lib/rulesets/delivery/parts.py`; a
 rule that would need a part past that count is left out, and `check` warns about the context. A rule whose body and marker pass 9,000 characters on their own is
 a `check` error, and delivery withholds it.
+
+### The model a delegate composes for
 
 A delegate composes from its own facts: its model, its agent type, and the flags that hold. The
 delegate's model comes from the first of these that names one: the model the caller named for the
@@ -34,10 +42,14 @@ starts out of order takes another delegate's model, and no notice reports the sw
 finds every such spawn taken takes the model they all name, or, where they name different models,
 the next source above, with a notice of ambiguity in its delivery record.
 
+### Delivery after a model switch
+
 After a model switch, the plugin composes again for the new model. Where the new model composes the
 same rules at the same variants as the rules last delivered, it delivers nothing. Where it composes
 different rules, it delivers them, and the earlier rules remain in the conversation above them; the
 plugin cannot retract text it already delivered.
+
+### Skill links at session start
 
 A session start also links each skill of the rulesets directory into `~/.claude/skills/`, the
 folder Claude Code reads personal skills from, so each loads by name, as `/<name>` and through
@@ -46,9 +58,13 @@ running session. The step creates each missing link and removes each link into `
 skill is gone. Where another file, folder, or link already stands at a skill's name, it leaves
 that entry, links nothing there, and shows you a message naming it.
 
+### Hooks that record
+
 Three further hooks deliver nothing. A `PreToolUse` hook on the `Agent` tool records each spawn and
 the model its caller names, if any. An `InstructionsLoaded` hook records each instruction file the harness
 loaded. A `SessionEnd` hook ends the session's toggles. The records feed the checks in [Commands](commands.md).
+
+### Notices a delivery raises
 
 A delivery can skip a reference, withhold a rule, leave a rule out, or reach no rule, and each
 draws a notice. At session start, the plugin shows the notices to you as a message and never puts

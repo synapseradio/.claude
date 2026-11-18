@@ -1,24 +1,31 @@
 # The rulesets directory and config
 
+This page is reference: every file in a rulesets directory and every key, list form, reference,
+and condition `config.yaml` takes, with the order that decides which statement wins. Read it to
+look up a form Claude wrote for you, or to write one by hand.
+
+The tutorials listed in the [rulesets README](../README.md) teach the same ground one use case at
+a time.
+
 ## Words used here
 
-- A **rule** is one named text.
-- A **variant** is a named alternative text of one rule. A rule's **default form** is its text
-  under no variant.
-- The **pool** is the `rules/` folder that holds every rule file.
-- A **set** is a named list of references, declared under `sets`. Check and explain messages call
-  it a ruleset.
-- A **reference** names a rule, a rule at a variant, or every entry of a set. It sits under
-  `include` or `exclude`.
-- A **block** is a condition paired with one list of references. It applies in each context where
-  the condition holds.
-- A **flag** is a declared name that a launch or a toggle sets.
-- A **skill** is a Claude Code skill kept in the rulesets directory, at `skills/<name>/SKILL.md`.
-  A **pairing** makes a rule the short pointer to a skill that holds its body.
-- A **model** is a declared Claude model name, such as `opus`.
-- A **context** is the main session or one delegate, at one delivery.
-- A **delivery** is one context receiving its rules. A **part** is one group of whole rule bodies
-  that one hook entry carries.
+| Word | Meaning |
+| --- | --- |
+| rule | one named text |
+| variant | a named alternative text of one rule; the tutorials call it a version |
+| default form | a rule's text under no variant |
+| pool | the `rules/` folder that holds every rule file |
+| set | a named list of references, declared under `sets`; check and explain messages call it a ruleset |
+| reference | a name for a rule, a rule at a variant, or every entry of a set, written under `include` or `exclude` |
+| block | a condition paired with one list of references, applying in each context where the condition holds |
+| flag | a declared name that a launch or a toggle sets |
+| skill | a Claude Code skill kept in the rulesets directory, at `skills/<name>/SKILL.md` |
+| pairing | a config entry that makes a rule the short pointer to a skill that holds its body |
+| model | a declared Claude model name, such as `opus` |
+| context | the main session or one delegate, at one delivery |
+| delegate | an agent a session starts |
+| delivery | one context receiving its rules |
+| part | one group of whole rule bodies that one hook entry carries |
 
 ## The rulesets directory
 
@@ -72,7 +79,8 @@ agent critic thinkies:
 - `models` declares the model names a condition may test. A declared name `n` claims the identifier
   `claude-n` and every identifier that continues it with `-` or `[`, so `opus` claims
   `claude-opus-4-8` and `claude-opus-5-5[1m]`. Where two declared names claim one identifier, the
-  longer wins. A model that no declared name claims tests false in every `model` condition.
+  longer wins. A model that no declared name claims tests false in every `model` condition, and a
+  session on it opens on a notice naming its identifier.
 - `flags` declares the flag names. A launch sets flags through the `RULESETS_FLAGS` environment
   variable, a comma-separated list, as in `RULESETS_FLAGS=strict claude`. A flag the config does
   not declare is dropped, with a notice.

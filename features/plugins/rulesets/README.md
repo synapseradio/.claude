@@ -46,58 +46,52 @@ agent critic:
 
 Asked "why did critic get review-checklist?", the plugin names line 3 of `config.yaml`.
 
-## Trying two versions of a rule
-
-Put the alternative wording beside the rule, with the version's name after an `@`:
-
-```text
-rules/
-  voice.md         Answer in plain words, point first.
-  voice@terse.md   Answer in one sentence.
-```
-
-Declare a flag and let it pick the version:
-
-```yaml
-flags: terse
-defaults: voice
-flag terse:
-  include: voice@terse
-```
-
-| Start Claude Code with | Every session and agent receives |
-| --- | --- |
-| `claude` | `voice` |
-| `RULESETS_FLAGS=terse claude` | `voice@terse` |
-
-Inside a running session, ask "turn on terse for my delegates", and the agents it starts from then
-on receive `voice@terse`, while the main session keeps what it already received. Each session's record names the version it
-received and where its flags came from, so every run stays tied to its version.
-
-## More you can ask for
-
-| You want to | Ask Claude, for example |
-| --- | --- |
-| run one kind of agent on several models at once, each with the rules for its own model | "spawn three critics, on haiku, sonnet and opus" |
-| give a rule to every agent that can run shell commands | "send the shell rule to every agent with Bash" |
-| see what a rule change adds to each agent's context before keeping it | "how many tokens does each agent carry now, compared with before?" |
-| edit everything one agent receives as a single document | "show me everything the critic receives so I can edit it in one place" |
-| make sure a session got what your config says it should | "did this session receive what my rules say?" |
-| catch an instruction arriving twice after a move | "is any of my rules still loading from my old rules folder?" |
-
 ## Get started
 
-[Installing rulesets](INSTALL.md) walks through the install and the first session, which creates
-an empty `~/.claude/rulesets` for you to fill.
+[Installing rulesets](docs/install.md) takes you through the install and the first session, which
+creates an empty `~/.claude/rulesets` for you to fill.
 
-From then on, the `rulesets` skill does the work from inside a session: type `/rulesets:rulesets`,
-or ask in words, such as "add a rule for my delegates" or "why did this delegate get that rule".
+From then on you ask Claude in words, such as "add a rule for my agents" or "why did this agent
+get that rule", and the plugin's `rulesets` skill does the work. Typing `/rulesets:rulesets` loads
+the skill by name.
+
+## Tutorials
+
+Each tutorial is one use case, a few steps long, and every step is something you ask Claude.
+
+### Write and aim rules
+
+| Page | Read it when |
+| --- | --- |
+| [Write your first rule](docs/write-your-first-rule.md) | you want one instruction that every session and agent receives |
+| [Send a rule to one agent](docs/send-a-rule-to-one-agent.md) | one kind of agent, model or tool needs an instruction of its own |
+| [Keep a rule away from one model](docs/keep-a-rule-from-a-model.md) | an instruction helps most agents and misleads some |
+| [Run one kind of agent on several models](docs/run-agents-on-several-models.md) | you start the same agent on small and large models and want rules sized for each |
+
+### Compare and inspect
+
+| Page | Read it when |
+| --- | --- |
+| [Try two versions of a rule](docs/try-two-versions-of-a-rule.md) | you want to run one task under two wordings and compare |
+| [Switch rules for the agents you start next](docs/switch-rules-mid-session.md) | you want to try a change mid-session, without a restart |
+| [See what an agent received, and why](docs/see-what-an-agent-received.md) | an agent behaved in a way you did not expect |
+| [Check your rules before they are delivered](docs/check-your-rules.md) | you edited rules or config and want every mistake found in one pass |
+
+### Edit, measure and move
+
+| Page | Read it when |
+| --- | --- |
+| [Edit everything one agent receives in one document](docs/edit-one-agents-rules-in-one-document.md) | you want to read and edit an agent's instructions top to bottom |
+| [Measure what your rules cost](docs/measure-what-rules-cost.md) | you want the tokens a rule adds to each agent before you keep it |
+| [Load long guidance on demand](docs/load-long-guidance-on-demand.md) | a rule is long and only some work needs its full text |
+| [Bring your existing rules in](docs/bring-your-rules-in.md) | you already keep rules in a folder and want the plugin to deliver them |
+| [Leave rulesets with plain rule files](docs/leave-rulesets.md) | you want your rules back as plain files |
 
 ## Reference pages
 
 | Page | Read it when |
 | --- | --- |
 | [Delivery](docs/delivery.md) | you want to know which context receives rules, when, in how many parts, and what the plugin leaves alone |
-| [The rulesets directory and config](docs/config.md) | you write a rule, a variant, a set, a flag, a condition block, or a skill and its pairing, or need to know which statement wins |
+| [The rulesets directory and config](docs/config.md) | you want to look up a rule file, a variant, a set, a flag, a condition block, or a skill and its pairing, or which statement wins |
 | [Commands](docs/commands.md) | you want to know what each command the skill runs on your behalf does |
 | [Where records live](docs/records.md) | you want to know where the plugin keeps what each session received |

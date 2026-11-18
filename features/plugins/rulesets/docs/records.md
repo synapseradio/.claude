@@ -1,5 +1,8 @@
 # Where records live
 
+This page is reference: each file the plugin writes about a session, by path, with what it holds.
+Claude reads these for you when you ask what a session or an agent received.
+
 Records and state sit under `.tmp/rulesets-engine/` in the configuration directory, which is
 `~/.claude` unless `CLAUDE_CONFIG_DIR` is set.
 
