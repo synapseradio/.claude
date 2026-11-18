@@ -83,7 +83,8 @@ VOCABULARY = (
             "options you would offer. Replace the mark with the answer."
         ),
         carry=(
-            "Leave each line below exactly as it stands. Open your report on the "
+            "Leave each line below exactly as it stands, copying it without the "
+            'leading "- " this notice adds to list it. Open your report on the '
             "question it carries, with the options you would have offered."
         ),
     ),
@@ -98,7 +99,8 @@ VOCABULARY = (
         ),
         carry=(
             "Leave each line below exactly as it stands, since only a person "
-            "answers it. Open your report on the question it carries, with the "
+            'answers it. Copy it without the leading "- " this notice adds to '
+            "list it. Open your report on the question it carries, with the "
             "context a person needs to decide it."
         ),
     ),

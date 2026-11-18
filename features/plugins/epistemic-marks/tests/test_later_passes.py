@@ -257,6 +257,16 @@ class ADelegateLaterPass(HookCase):
         self.assert_blocks_on(result, FIRST)
         assert STANDING_HEADING.format(verb="report") in result["reason"]
 
+    def test_a_relay_line_copied_back_with_the_notice_bullet_is_not_sent_again(self) -> None:
+        bulleted = "- **Scope:** staging only [^?]"
+        first = required(self.stop(bulleted, again=False, key="agent-one", delegate=True))
+        quoted = next(line for line in model_text(first).splitlines() if "Scope:" in line)
+        assert quoted.startswith("- "), "the notice lists each line as an item"
+        for attempt in range(3):
+            with self.subTest(attempt=attempt):
+                copied = f"{'- ' * attempt}{quoted}"
+                assert self.stop(copied, again=True, key="agent-one", delegate=True) is None
+
     def test_a_relay_line_written_later_reaches_the_delegate_without_a_block(self) -> None:
         self.stop(FIRST, again=False, key="agent-one", delegate=True)
         result = required(
