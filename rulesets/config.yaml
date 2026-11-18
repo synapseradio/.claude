@@ -13,7 +13,7 @@ sets:
   orchestration: agent-delegation delegate-prompt worktrees
   shell: writing-bash writing-bats
   skill-pointers: writing-prose comments writing-tests delegate-prompt worktrees writing-bash writing-bats
-  session: core.* orchestration.*
+  session: core.* orchestration.* skill-pointers.*
 skills:
   writing-bash: bash-style
   writing-bats: bats-testing
