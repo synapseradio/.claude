@@ -46,6 +46,14 @@
 !skills/
 !skills/update-claude-settings/
 !skills/update-claude-settings/**
+!skills/bash-style
+!skills/bats-testing
+!skills/comments
+!skills/delegate-prompt
+!skills/information-design
+!skills/prose
+!skills/testing-software
+!skills/worktrees
 
 !openspec/
 !openspec/config.yaml
