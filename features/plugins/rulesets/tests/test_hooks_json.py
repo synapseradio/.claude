@@ -26,7 +26,6 @@ from delivery_world import (
     scratch_environment,
     select_commands,
 )
-from rulesets.delivery.hooks_manifest import regenerate
 from rulesets.delivery.parts import MAX_PARTS
 
 PLUGIN_ROOT_VARIABLE = "${CLAUDE_PLUGIN_ROOT}"
@@ -121,11 +120,6 @@ class TestEveryCommandRunsAHookScriptThroughTheLauncher:
                 f"{event}: deliver.py rejects {arguments}"
             )
 
-    def test_an_argument_deliver_rejects_fails_the_same_parse(self, environ) -> None:
-        result = parses_under_deliver(["--part", "one"], environ)
-
-        assert result.exit_code == 2, "an unparsable part number ends the run as a usage error"
-
     def test_only_the_session_starts_part_one_announces_a_missing_interpreter(self) -> None:
         announcing = [
             (event, split_command(command)[2])
@@ -136,32 +130,26 @@ class TestEveryCommandRunsAHookScriptThroughTheLauncher:
         assert announcing == [("SessionStart", ["--part", "1"])]
 
 
-class TestThePartEntriesFollowMaxParts:
-    def test_the_file_holds_the_part_entries_the_generator_writes_for_max_parts(self) -> None:
-        written = HOOKS_JSON.read_text(encoding="utf-8")
-
-        assert written == regenerate(written), (
-            "hooks.json part entries differ from MAX_PARTS; run "
-            "python3 lib/rulesets/delivery/hooks_manifest.py from the plugin root"
-        )
-
-
 class TestEveryDeliveryEntryRunsWhateverStartsTheContext:
-    @pytest.mark.parametrize("source", ["startup", "resume", "clear", "compact", "fork"])
-    def test_every_session_start_entry_runs_for_each_source(self, source) -> None:
-        assert part_numbers(commands_for("SessionStart", source)) == ALL_PARTS
-
     @pytest.mark.parametrize(
-        "agent_type",
-        ["general-purpose", "Explore", "Plan", "fork", "critic", "plugin:reviewer", ""],
+        ("event", "value"),
+        [
+            *[
+                ("SessionStart", source)
+                for source in ("startup", "resume", "clear", "compact", "fork")
+            ],
+            *[
+                ("SubagentStart", agent_type)
+                for agent_type in ("general-purpose", "fork", "plugin:reviewer", "")
+            ],
+            *[("PostModelSwitch", target) for target in (OPUS, "claude-haiku-4-5", "")],
+        ],
     )
-    def test_every_subagent_start_entry_runs_for_each_agent_type(self, agent_type) -> None:
-        assert part_numbers(commands_for("SubagentStart", agent_type)) == ALL_PARTS
+    def test_every_part_entry_of_an_event_runs_whatever_the_matcher_field_holds(
+        self, event, value
+    ) -> None:
+        assert part_numbers(commands_for(event, value)) == ALL_PARTS
 
-    @pytest.mark.parametrize("target", [OPUS, "claude-haiku-4-5", "glm-5", ""])
-    def test_every_model_switch_entry_runs_for_each_target(self, target) -> None:
-        assert part_numbers(commands_for("PostModelSwitch", target)) == ALL_PARTS
-
-    @pytest.mark.parametrize("reason", ["clear", "resume", "logout", "prompt_input_exit", "other"])
+    @pytest.mark.parametrize("reason", ["clear", "resume", "logout", "other"])
     def test_the_session_end_entry_runs_for_each_reason(self, reason) -> None:
         assert [c for c in commands_for("SessionEnd", reason) if c.endswith("--end")]

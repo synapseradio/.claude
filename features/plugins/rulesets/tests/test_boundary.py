@@ -71,10 +71,8 @@ class TestTheTestsReadNoCorpusButTheirOwn:
     too the moment they edited a rule.
     """
 
-    def test_the_plugin_holds_tests_to_check(self) -> None:
-        assert suite_files(), "a hermeticity test that finds no test proves nothing"
-
     def test_no_test_resolves_a_path_above_the_plugin_root(self) -> None:
+        assert suite_files(), "a hermeticity test that finds no test proves nothing"
         offenders = {path.name: outward_parents(path) for path in suite_files()}
         offenders = {name: found for name, found in offenders.items() if found}
 
@@ -85,10 +83,8 @@ class TestTheTestsReadNoCorpusButTheirOwn:
 
 
 class TestTheImportsRunInward:
-    def test_the_plugin_holds_python_to_check(self) -> None:
-        assert sources(), "a boundary test that finds no source proves nothing"
-
     def test_no_module_imports_the_configuration_around_it(self) -> None:
+        assert sources(), "a boundary test that finds no source proves nothing"
         offenders = {
             path: [
                 name

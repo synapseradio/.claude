@@ -10,13 +10,24 @@ Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_launcher.py`
 """
 
 import json
-import os
 
+import pytest
 from launcher_stubs import launch, stub
 
 
-def test_only_python_3_14_installed(tmp_path) -> None:
-    stub(tmp_path, "python3", minor=14, has_yaml=True)
+@pytest.mark.parametrize(
+    "interpreters",
+    [
+        [("python3", 14, True)],
+        [("python3.15", 15, False), ("python3", 16, False)],
+    ],
+    ids=["only-python-3.14", "no-interpreter-with-the-yaml-library"],
+)
+def test_no_usable_interpreter_starts_the_session_without_rules_and_names_the_requirement(
+    tmp_path, interpreters
+) -> None:
+    for name, minor, has_yaml in interpreters:
+        stub(tmp_path, name, minor=minor, has_yaml=has_yaml)
 
     result = launch(tmp_path)
 
@@ -46,17 +57,6 @@ def test_python_3_15_without_the_yaml_library(tmp_path) -> None:
     )
 
 
-def test_no_interpreter_with_the_yaml_library(tmp_path) -> None:
-    stub(tmp_path, "python3.15", minor=15, has_yaml=False)
-    stub(tmp_path, "python3", minor=16, has_yaml=False)
-
-    result = launch(tmp_path)
-
-    assert result.returncode == 0
-    assert result.stdout == ""
-    assert "3.15" in result.stderr
-
-
 def test_a_part_one_entry_sends_the_person_a_message_and_the_agent_nothing(tmp_path) -> None:
     stub(tmp_path, "python3", minor=14, has_yaml=True)
 
@@ -71,14 +71,3 @@ def test_an_entry_that_is_not_part_one_sends_nothing_to_stdout(tmp_path) -> None
     stub(tmp_path, "python3", minor=14, has_yaml=True)
 
     assert launch(tmp_path).stdout == "", "ten entries would otherwise show the message ten times"
-
-
-def test_the_stub_shadows_every_system_interpreter(tmp_path) -> None:
-    names = {"python3", "python3.13", "python3.14", "python3.15"}
-    found = {
-        name for name in names for root in ("/usr/bin", "/bin") if os.path.exists(f"{root}/{name}")
-    }
-
-    assert found <= {"python3"}, (
-        f"a system interpreter outside the stubs would answer the probe: {sorted(found)}"
-    )

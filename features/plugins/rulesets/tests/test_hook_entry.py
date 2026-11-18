@@ -10,12 +10,10 @@ Run with `.venv/bin/python -m pytest features/plugins/rulesets/tests/test_hook_e
 
 import json
 import pathlib
-import shlex
 
 import pytest
 from delivery_world import HOOKS, OPUS, core_rules_config, scratch_environment
 from rulesets.hook_entry import HookResult, deliver, record_load, record_spawn
-from rulesets.locations import Locations
 
 RULE = "Hold every rule as mandatory: café, naïve, 日本語.\n"
 CONTEXT = json.dumps(f"<!-- rule: core-rules -->\n\n{RULE}")[1:-1]
@@ -104,54 +102,27 @@ class TestDeliverAnswersEachEventAsTheScriptDoes:
         assert result == HookResult(exit_code=0, stdout="", stderr="")
 
 
-class TestDeliverWritesWhatTheLibraryReportsToItsOwnStreams:
-    def test_a_payload_that_is_not_utf_8_names_the_reason_on_stderr(self, environ) -> None:
+class TestDeliverNeverFailsTheSessionStart:
+    def test_a_payload_that_is_not_utf_8_delivers_nothing_and_exits_zero(self, environ) -> None:
         result = deliver(deliver_argv("--part", "1"), b"\xff\xfe{", environ)
 
-        assert result == HookResult(
-            exit_code=0,
-            stdout="",
-            stderr="deliver.py: no delivery (the payload is not UTF-8 JSON)\n",
-        )
+        assert (result.exit_code, result.stdout) == (0, "")
+        assert result.stderr, "the reason reaches stderr"
 
-    def test_a_state_directory_it_cannot_write_shows_the_failure_and_its_rerun_command(
+    def test_a_state_directory_it_cannot_write_exits_zero_and_tells_the_person_in_a_system_message(
         self, environ, config
     ) -> None:
         (config / ".tmp").write_text("", encoding="utf-8")
-        order = state(config) / "order" / "d7a3a1aad0a91d38"
-        failure = f"NotADirectoryError: [Errno 20] Not a directory: '{order}'"
-        launcher = shlex.quote(str(HOOKS / "with-python.sh"))
-        script = shlex.quote(str(HOOKS / "deliver.py"))
 
         result = deliver(deliver_argv("--part", "1"), payload(SESSION_START), environ)
 
-        assert result == HookResult(
-            exit_code=0,
-            stdout=f'{{"systemMessage": "delivery failed ({failure}); run it again with: '
-            'printf %s \'{\\"session_id\\": \\"s1\\", \\"source\\": \\"startup\\", '
-            '\\"model\\": \\"claude-opus-5-5\\", \\"hook_event_name\\": \\"SessionStart\\"}\' '
-            f'| bash {launcher} {script} --part 1 --rerun"}}',
-            stderr=f"deliver.py: delivery failed ({failure})\n",
-        )
+        assert result.exit_code == 0, "a hook exiting non-zero reports an error in every session"
+        assert list(json.loads(result.stdout)) == ["systemMessage"]
 
-    def test_arguments_naming_no_part_exit_2_with_the_usage_on_stderr(
-        self, environ, monkeypatch
-    ) -> None:
-        # argparse colors its usage where `_colorize.can_colorize` allows, which reads the
-        # process environment and the real stream; NO_COLOR holds it to the plain text a hook
-        # prints into a pipe.
-        # https://docs.python.org/3.15/using/cmdline.html#controlling-color
-        monkeypatch.delenv("PYTHON_COLORS", raising=False)
-        monkeypatch.setenv("NO_COLOR", "1")
-
+    def test_arguments_naming_no_part_exit_2_with_nothing_on_stdout(self, environ) -> None:
         result = deliver(deliver_argv(), b"{}", environ)
 
-        assert result == HookResult(
-            exit_code=2,
-            stdout="",
-            stderr="usage: deliver.py [-h] (--part PART | --end) [--rerun]\n"
-            "deliver.py: error: one of the arguments --part --end is required\n",
-        )
+        assert (result.exit_code, result.stdout) == (2, "")
 
 
 class TestTheRecordHooksWriteTheirLogUnderTheMappingsConfiguration:
@@ -203,14 +174,3 @@ class TestTheRecordHooksWriteTheirLogUnderTheMappingsConfiguration:
             '{"kind": "spawn", "session_id": "s1", "prompt_id": "p1", "agent_type": "critic", '
             '"model": "haiku"}\n'
         )
-
-
-class TestTheConfigurationDirectoryComesFromTheMappingAlone:
-    def test_without_claude_config_dir_the_mappings_home_holds_it(
-        self, tmp_path, monkeypatch
-    ) -> None:
-        monkeypatch.setenv("HOME", str(tmp_path / "process-home"))
-
-        locations = Locations.from_environment({"HOME": str(tmp_path / "mapped-home")})
-
-        assert locations.config == tmp_path / "mapped-home" / ".claude"

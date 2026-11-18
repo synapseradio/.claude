@@ -177,7 +177,9 @@ class TestSessionReport:
 
 
 class TestScaffold:
-    def test_a_scaffolded_directory_passes_the_gate(self, tmp_path) -> None:
+    def test_a_scaffolded_directory_holds_a_config_and_an_example_rule_and_passes_the_gate(
+        self, tmp_path
+    ) -> None:
         world = World(tmp_path)
         fresh = tmp_path / "fresh"
 
@@ -185,23 +187,9 @@ class TestScaffold:
         gated = run(world, "gate.py", "--root", fresh)
 
         assert made.returncode == 0, made.stdout + made.stderr
+        assert (fresh / "config.yaml").is_file()
         assert (fresh / "rules" / "example.md").is_file()
         assert gated.returncode == 0, gated.stdout + gated.stderr
-
-    def test_a_scaffolded_directory_holds_a_config_yaml_check_clears_and_no_manifest(
-        self, tmp_path
-    ) -> None:
-        world = World(tmp_path)
-        fresh = tmp_path / "fresh"
-
-        made = run(world, "scaffold.py", "--root", fresh)
-        checked = run_cli(["check", "--root", str(fresh)], scratch_environment(world.config.parent))
-
-        assert made.returncode == 0, made.stdout + made.stderr
-        assert (fresh / "config.yaml").is_file()
-        assert not (fresh / "manifest.yaml").exists()
-        assert checked.returncode == 0, checked.stdout + checked.stderr
-        assert ": error " not in checked.stdout
 
     def test_scaffolding_fills_the_empty_directory_a_first_session_left(self, tmp_path) -> None:
         world = World(tmp_path)

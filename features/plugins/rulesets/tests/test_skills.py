@@ -70,57 +70,78 @@ class TestCheckHoldsEachPairing:
 
         assert findings(root) == []
 
-    def test_a_pairing_naming_a_skill_that_does_not_exist_is_an_error(
-        self, config_directory
-    ) -> None:
-        root = build(config_directory, PAIRED, {"writing": POINTER}, {})
-
-        assert findings(root) == [("pairing-unknown-skill", PairingSubject("writing"))]
-
-    def test_a_pairing_whose_skill_directory_holds_no_skill_file_is_an_error(
-        self, config_directory
-    ) -> None:
-        root = build(config_directory, PAIRED, {"writing": POINTER}, {"voice": None})
-
-        assert findings(root) == [("skill-file", SkillSubject("voice"))]
-
     @pytest.mark.parametrize(
-        "text",
+        ("config", "rules", "skills", "expected"),
         [
-            "Body with no frontmatter.\n",
-            "---\nname: [voice\n---\nBody.\n",
-            "---\nname: voice\n---\nBody.\n",
+            pytest.param(
+                PAIRED,
+                {"writing": POINTER},
+                {},
+                [("pairing-unknown-skill", PairingSubject("writing"))],
+                id="skill-does-not-exist",
+            ),
+            pytest.param(
+                PAIRED,
+                {"writing": POINTER},
+                {"voice": None},
+                [("skill-file", SkillSubject("voice"))],
+                id="skill-directory-holds-no-skill-file",
+            ),
+            pytest.param(
+                PAIRED,
+                {"writing": POINTER},
+                {"voice": "Body with no frontmatter.\n"},
+                [("skill-frontmatter", SkillSubject("voice"))],
+                id="no-frontmatter",
+            ),
+            pytest.param(
+                PAIRED,
+                {"writing": POINTER},
+                {"voice": "---\nname: [voice\n---\nBody.\n"},
+                [("skill-frontmatter", SkillSubject("voice"))],
+                id="frontmatter-unparsable",
+            ),
+            pytest.param(
+                PAIRED,
+                {"writing": POINTER},
+                {"voice": "---\nname: voice\n---\nBody.\n"},
+                [("skill-frontmatter", SkillSubject("voice"))],
+                id="no-description",
+            ),
+            pytest.param(
+                PAIRED,
+                {"writing": POINTER},
+                {"voice": SKILL_TEXT.replace("name: voice", "name: tone")},
+                [("skill-name", SkillSubject("voice"))],
+                id="name-differs-from-the-directory",
+            ),
+            pytest.param(
+                "defaults: writing\nskills:\n  writing@haiku: voice\n",
+                {"writing": POINTER},
+                {"voice": SKILL_TEXT},
+                [("pairing-shape", PairingSubject("writing@haiku"))],
+                id="pairing-a-variant",
+            ),
+            pytest.param(
+                "defaults: writing\nskills:\n  writing: voice tone\n",
+                {"writing": POINTER},
+                {"voice": SKILL_TEXT},
+                [("pairing-shape", PairingSubject("writing"))],
+                id="pairing-two-skills",
+            ),
         ],
-        ids=["no-frontmatter", "unparsable", "no-description"],
     )
-    def test_a_paired_skill_lacking_valid_frontmatter_is_an_error(
-        self, config_directory, text
+    def test_a_pairing_or_skill_that_cannot_load_is_an_error_naming_its_subject(
+        self, config_directory, config, rules, skills, expected
     ) -> None:
-        root = build(config_directory, PAIRED, {"writing": POINTER}, {"voice": text})
+        root = build(config_directory, config, rules, skills)
 
-        assert findings(root) == [("skill-frontmatter", SkillSubject("voice"))]
-
-    def test_a_skill_whose_frontmatter_name_differs_from_its_directory_is_an_error(
-        self, config_directory
-    ) -> None:
-        text = SKILL_TEXT.replace("name: voice", "name: tone")
-        root = build(config_directory, PAIRED, {"writing": POINTER}, {"voice": text})
-
-        assert findings(root) == [("skill-name", SkillSubject("voice"))]
+        assert findings(root) == expected
 
     def test_a_pairing_naming_a_rule_the_pool_lacks_is_an_error(self, config_directory) -> None:
         root = build(config_directory, PAIRED, {}, {"voice": SKILL_TEXT})
 
         assert ("pairing-unknown-rule", PairingSubject("writing")) in findings(root)
-
-    @pytest.mark.parametrize(
-        "entry", ["writing@haiku: voice", "writing: voice tone"], ids=["variant", "two-skills"]
-    )
-    def test_a_pairing_of_the_wrong_shape_is_an_error(self, config_directory, entry) -> None:
-        config = f"defaults: writing\nskills:\n  {entry}\n"
-        root = build(config_directory, config, {"writing": POINTER}, {"voice": SKILL_TEXT})
-
-        assert findings(root) == [("pairing-shape", PairingSubject(entry.split(":")[0]))]
 
     def test_a_paired_rule_file_that_never_names_its_skill_draws_a_warning(
         self, config_directory

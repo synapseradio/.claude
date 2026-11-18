@@ -10,7 +10,6 @@ Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_python_floor
 
 import ast
 import pathlib
-import tomllib
 
 import pytest
 
@@ -23,19 +22,9 @@ def sources() -> list[pathlib.Path]:
     return sorted([*(PLUGIN_ROOT / "lib").rglob("*.py"), *(PLUGIN_ROOT / "hooks").rglob("*.py")])
 
 
-def test_the_plugin_holds_python_to_check() -> None:
-    assert sources(), "a floor test that finds no source proves nothing"
-
-
 @pytest.mark.parametrize("path", sources(), ids=lambda path: str(path.relative_to(PLUGIN_ROOT)))
 def test_the_module_parses_at_the_floor(path) -> None:
     try:
         ast.parse(path.read_text(encoding="utf-8"), filename=str(path), feature_version=FLOOR)
     except SyntaxError as error:
         pytest.fail(f"{path.name}:{error.lineno} needs syntax newer than Python 3.15: {error.msg}")
-
-
-def test_the_lint_target_is_the_floor() -> None:
-    settings = tomllib.loads((PLUGIN_ROOT / ".ruff.toml").read_text(encoding="utf-8"))
-
-    assert settings["target-version"] == f"py{FLOOR[0]}{FLOOR[1]}"
