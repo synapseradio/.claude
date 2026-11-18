@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>REPLACE: the claim, as a sentence</title>
+<!--
+  Interactive explainer scaffold. One file, no network, opens from disk.
+  Replace every REPLACE marker, the `inputs` list and the `model` function.
+  Keep the order: claim, static picture, try-it controls, worked example, check, detail.
+-->
+<style>
+  :root {
+    --ink: #1a1a1a; --muted: #595959; --surface: #ffffff; --rule: #d0d0d0;
+    --accent: #0072b2; --context: #8c8c8c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #f2f2f2; --muted: #b3b3b3; --surface: #161616; --rule: #444444;
+      --accent: #56b4e9; --context: #8c8c8c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0 auto; padding: 1.5rem 1rem 4rem; max-width: 42rem;
+    font: 1.0625rem/1.55 system-ui, sans-serif; color: var(--ink); background: var(--surface);
+  }
+  h1 { font-size: 1.75rem; line-height: 1.2; margin: 0 0 0.5rem; }
+  h2 { font-size: 1.2rem; margin: 2.25rem 0 0.5rem; }
+  .lede { font-size: 1.15rem; margin: 0 0 1.5rem; }
+  .muted { color: var(--muted); font-size: 0.95rem; }
+  figure { margin: 1.5rem 0; }
+  figcaption { color: var(--muted); font-size: 0.95rem; margin-top: 0.4rem; }
+  svg { width: 100%; height: auto; display: block; }
+  svg text { fill: var(--ink); font: 13px system-ui, sans-serif; }
+  .axis { stroke: var(--rule); stroke-width: 1; }
+  .line-context { fill: none; stroke: var(--context); stroke-width: 2; stroke-dasharray: 5 4; }
+  .line-current { fill: none; stroke: var(--accent); stroke-width: 3; }
+  .control { display: grid; grid-template-columns: 1fr auto; gap: 0.25rem 1rem; margin: 1rem 0; }
+  .control input[type="range"] { grid-column: 1 / -1; width: 100%; min-height: 24px; accent-color: var(--accent); }
+  output { font-variant-numeric: tabular-nums; font-weight: 600; }
+  button {
+    font: inherit; min-height: 2.25rem; padding: 0.25rem 0.9rem; color: var(--ink);
+    background: transparent; border: 1px solid var(--muted); border-radius: 0.4rem; cursor: pointer;
+  }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .result { border-left: 4px solid var(--accent); padding: 0.25rem 0 0.25rem 0.9rem; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { padding: 0.3rem 0.6rem; border-bottom: 1px solid var(--rule); text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  details { margin: 0.75rem 0; }
+  summary { cursor: pointer; font-weight: 600; min-height: 24px; }
+  @media print {
+    .control, button { display: none; }
+    details { display: block; }
+    details > * { display: block; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>REPLACE: the claim, as a sentence a reader could repeat</h1>
+  <p class="lede">REPLACE: two or three sentences that give the whole point in words, for a reader who
+  stops here and never touches a control.</p>
+
+  <figure>
+    <svg id="chart" viewBox="0 0 640 320" role="img" aria-labelledby="chart-title chart-desc">
+      <title id="chart-title">REPLACE: chart type and message in one sentence</title>
+      <desc id="chart-desc">REPLACE: axes, range, and the comparison the chart makes. The table under
+      "The numbers" holds every value.</desc>
+    </svg>
+    <figcaption>REPLACE: measure, unit, and source. The dashed line shows the starting assumptions;
+    the solid line follows the controls below.</figcaption>
+  </figure>
+
+  <h2>Try it</h2>
+  <p>REPLACE: one sentence saying what to change and what to watch for.</p>
+  <form id="controls" aria-describedby="result"></form>
+  <p><button type="button" id="reset">Reset to the starting assumptions</button></p>
+  <p class="result" id="result" role="status" aria-live="polite"></p>
+
+  <h2>One case, step by step</h2>
+  <ol>
+    <li>REPLACE: start from a concrete case with real numbers.</li>
+    <li>REPLACE: apply the first step and show the intermediate value.</li>
+    <li>REPLACE: reach the result, then state the rule the case illustrates.</li>
+  </ol>
+
+  <h2>Check your understanding</h2>
+  <p>REPLACE: a question the reader can answer only by using the idea, such as a prediction about
+  a setting they have not tried.</p>
+  <details>
+    <summary>Show the answer</summary>
+    <p>REPLACE: the answer, and the reason. Invite the reader to confirm it with the controls.</p>
+  </details>
+
+  <h2>The numbers</h2>
+  <details>
+    <summary>Table of every value in the chart</summary>
+    <table id="data-table">
+      <thead><tr><th scope="col">REPLACE: step</th><th scope="col">Starting assumptions</th><th scope="col">Your settings</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </details>
+  <details>
+    <summary>Assumptions and limits</summary>
+    <p>REPLACE: what the model leaves out, where its inputs come from, and how uncertain they are.</p>
+  </details>
+</main>
+
+<script>
+"use strict";
+
+// REPLACE: one entry per assumption the reader may change. Keep to four or fewer.
+const inputs = [
+  { id: "rate", label: "Growth per step", unit: "%", min: 0, max: 20, step: 1, initial: 5 },
+  { id: "start", label: "Starting value", unit: "", min: 50, max: 500, step: 10, initial: 100 },
+];
+const STEPS = 12;
+
+// REPLACE: return one value per step for the given settings.
+function model(settings) {
+  const values = [];
+  for (let step = 0; step <= STEPS; step += 1) {
+    values.push(settings.start * Math.pow(1 + settings.rate / 100, step));
+  }
+  return values;
+}
+
+// REPLACE: the sentence that states the outcome of the current settings in words.
+function describe(settings, values, baseline) {
+  const last = values[values.length - 1];
+  const reference = baseline[baseline.length - 1];
+  const change = Math.round(((last - reference) / reference) * 100);
+  const direction = change === 0 ? "the same as" : change > 0 ? `${change}% above` : `${-change}% below`;
+  return `After ${STEPS} steps the value reaches ${format(last)}, ${direction} the starting assumptions.`;
+}
+
+const format = (value) => value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+const initialSettings = Object.fromEntries(inputs.map((input) => [input.id, input.initial]));
+const baseline = model(initialSettings);
+const form = document.getElementById("controls");
+const chart = document.getElementById("chart");
+const SVG = "http://www.w3.org/2000/svg";
+const AREA = { left: 56, right: 600, top: 20, bottom: 280 };
+
+for (const input of inputs) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "control";
+  wrapper.innerHTML =
+    `<label for="${input.id}">${input.label}</label>` +
+    `<output id="${input.id}-value" for="${input.id}"></output>` +
+    `<input type="range" id="${input.id}" min="${input.min}" max="${input.max}" step="${input.step}" value="${input.initial}">`;
+  form.append(wrapper);
+}
+
+function readSettings() {
+  return Object.fromEntries(inputs.map((input) => [input.id, Number(document.getElementById(input.id).value)]));
+}
+
+function element(name, attributes, text) {
+  const node = document.createElementNS(SVG, name);
+  for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function path(values, top) {
+  const x = (index) => AREA.left + (index / STEPS) * (AREA.right - AREA.left);
+  const y = (value) => AREA.bottom - (value / top) * (AREA.bottom - AREA.top);
+  return values.map((value, index) => `${index === 0 ? "M" : "L"}${x(index).toFixed(1)},${y(value).toFixed(1)}`).join(" ");
+}
+
+function draw() {
+  const settings = readSettings();
+  const values = model(settings);
+  const top = Math.max(...values, ...baseline) * 1.1;
+
+  for (const input of inputs) {
+    document.getElementById(`${input.id}-value`).textContent = `${settings[input.id]}${input.unit}`;
+  }
+  for (const node of chart.querySelectorAll(".drawn")) node.remove();
+  const drawn = element("g", { class: "drawn" });
+  drawn.append(
+    element("line", { class: "axis", x1: AREA.left, y1: AREA.bottom, x2: AREA.right, y2: AREA.bottom }),
+    element("line", { class: "axis", x1: AREA.left, y1: AREA.top, x2: AREA.left, y2: AREA.bottom }),
+    element("text", { x: AREA.left - 8, y: AREA.bottom + 4, "text-anchor": "end" }, "0"),
+    element("text", { x: AREA.left - 8, y: AREA.top + 4, "text-anchor": "end" }, format(top)),
+    element("text", { x: AREA.left, y: AREA.bottom + 20 }, "Step 0"),
+    element("text", { x: AREA.right, y: AREA.bottom + 20, "text-anchor": "end" }, `Step ${STEPS}`),
+    element("path", { class: "line-context", d: path(baseline, top) }),
+    element("path", { class: "line-current", d: path(values, top) }),
+  );
+  chart.append(drawn);
+
+  document.getElementById("result").textContent = describe(settings, values, baseline);
+  document.querySelector("#data-table tbody").innerHTML = values
+    .map((value, index) => `<tr><td>${index}</td><td>${format(baseline[index])}</td><td>${format(value)}</td></tr>`)
+    .join("");
+}
+
+form.addEventListener("input", draw);
+document.getElementById("reset").addEventListener("click", () => {
+  for (const input of inputs) document.getElementById(input.id).value = input.initial;
+  draw();
+});
+draw();
+</script>
+</body>
+</html>

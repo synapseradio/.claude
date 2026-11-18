@@ -1,0 +1,50 @@
+{
+	"question": "Did the checkout redesign reduce abandoned carts?",
+	"takeaway": "Abandonment fell from 71% to 58% in the four weeks after the redesign shipped.",
+	"audience": "general",
+	"medium": "static",
+	"form": "line",
+	"title": "Cart abandonment fell 13 points after the checkout redesign",
+	"subtitle": "Share of carts abandoned, weekly, all regions, weeks 20 to 36",
+	"data": {
+		"source": "Order events table, analytics warehouse",
+		"period": "Weeks 20 to 36",
+		"estimated": false
+	},
+	"encodings": [
+		{ "channel": "x", "field": "week", "type": "temporal" },
+		{
+			"channel": "y",
+			"field": "abandonment_rate",
+			"type": "quantitative",
+			"unit": "percent of carts"
+		}
+	],
+	"value_scale": {
+		"count": 1,
+		"baseline": 40,
+		"reason_not_zero": "The rate stays between 55% and 75%, and the change within that range is the message; the axis shows 40 to 80 with labelled ticks."
+	},
+	"series": {
+		"count": 1,
+		"highlight": [],
+		"labels": "direct"
+	},
+	"colour": {
+		"job": "none",
+		"palette": ["#0072B2"],
+		"background": "#FFFFFF",
+		"palette_checked": true
+	},
+	"annotations": ["Vertical rule at week 28, labelled 'Redesign shipped'"],
+	"uncertainty": {
+		"shown": false,
+		"as": "",
+		"meaning": ""
+	},
+	"text_alternative": {
+		"short": "Line chart: weekly cart abandonment drops from about 71% to 58% after the redesign in week 28.",
+		"long": "The vertical axis runs from 40% to 80%. From week 20 to week 27 the rate holds between 70% and 72%. The redesign ships in week 28. The rate falls each week until week 32 and then holds near 58% through week 36.",
+		"data_table": true
+	}
+}

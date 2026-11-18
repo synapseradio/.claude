@@ -1,0 +1,58 @@
+{
+	"question": "<the question the reader brings, in their words>",
+	"takeaway": "<the one sentence the reader should be able to repeat after looking>",
+	"audience": "general",
+	"medium": "static",
+	"form": "<bar | column | grouped-bar | stacked-bar | diverging-bar | histogram | area | stacked-area | line | slope | dot | dumbbell | strip | scatter | small-multiples | pie | donut | box | heatmap | map | flow | treemap | table | number>",
+	"title": "<the takeaway as a headline, or a neutral description where the reader explores>",
+	"subtitle": "<measure, unit, place and period>",
+	"data": {
+		"source": "<who measured it, and where it can be found>",
+		"period": "<the dates or period covered>",
+		"estimated": false
+	},
+	"encodings": [
+		{ "channel": "x", "field": "<field>", "type": "temporal" },
+		{
+			"channel": "y",
+			"field": "<field>",
+			"type": "quantitative",
+			"unit": "<unit>"
+		},
+		{ "channel": "colour", "field": "<field>", "type": "nominal" }
+	],
+	"value_scale": {
+		"count": 1,
+		"baseline": 0,
+		"reason_not_zero": ""
+	},
+	"series": {
+		"count": 1,
+		"highlight": [],
+		"labels": "direct"
+	},
+	"colour": {
+		"job": "<none | highlight | identity | magnitude | polarity>",
+		"palette": [],
+		"background": "#FFFFFF",
+		"second_cue": "<label | shape | pattern | position>",
+		"palette_checked": false
+	},
+	"annotations": [
+		"<the event or value the reader needs pointed out, with where it sits>"
+	],
+	"uncertainty": {
+		"shown": false,
+		"as": "",
+		"meaning": ""
+	},
+	"text_alternative": {
+		"short": "<chart type and message, in one sentence>",
+		"long": "<axes, range, the trend or comparison, and the outliers, in a short paragraph>",
+		"data_table": true
+	},
+	"interaction": {
+		"message_visible_without_interaction": true,
+		"keyboard_operable": true
+	}
+}

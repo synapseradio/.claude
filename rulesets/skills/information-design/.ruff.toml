@@ -1,0 +1,3 @@
+extend = "../../../.ruff.toml"
+# The scripts run on a stock machine, whose system Python may be 3.9.
+target-version = "py39"

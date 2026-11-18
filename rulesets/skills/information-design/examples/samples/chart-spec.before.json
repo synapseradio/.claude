@@ -1,0 +1,38 @@
+{
+	"question": "Did the checkout redesign reduce abandoned carts?",
+	"takeaway": "",
+	"audience": "general",
+	"medium": "interactive",
+	"form": "column",
+	"title": "Abandonment and revenue by week",
+	"data": {
+		"source": "",
+		"estimated": true
+	},
+	"encodings": [
+		{ "channel": "x", "field": "week", "type": "temporal" },
+		{ "channel": "y", "field": "abandonment_rate", "type": "quantitative" },
+		{ "channel": "y", "field": "revenue", "type": "quantitative" }
+	],
+	"value_scale": {
+		"count": 2,
+		"baseline": 50
+	},
+	"effects": ["3d"],
+	"series": {
+		"count": 2,
+		"labels": "legend"
+	},
+	"colour": {
+		"job": "identity",
+		"palette": ["#D62728", "#2CA02C"],
+		"background": "#FFFFFF"
+	},
+	"text_alternative": {
+		"short": ""
+	},
+	"interaction": {
+		"message_visible_without_interaction": false,
+		"keyboard_operable": false
+	}
+}
