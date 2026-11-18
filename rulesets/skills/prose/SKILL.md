@@ -1,7 +1,7 @@
 ---
 name: prose
 description: >-
-  Mandatory writing style for every piece of natural language a person or a model reads, at any length. Load it before you write, draft, edit, rewrite, tighten, or review any such text: a chat reply or status message, a report or summary, a pull request title or body, a commit message, a code comment or docstring, a documentation page or README, an error or log message, a ticket or issue, an email or chat note, a plan, a prompt or instructions for another agent. A one-line comment counts. It holds how to write for a reader who has only the page: name the reader's purpose, put the point first, give every reference a referent, cut each word the reader acts on nothing from, name who acts, and reread before sending. Use it whenever you are about to produce or improve words someone will read, and on requests such as "write", "draft", "reword", "rephrase", "summarize", "explain", "describe", "polish", "tighten this", "make this clearer", "fix the wording".
+  Load this before you write any text that a person or a model will read, at any length and in any place: a reply, a message, a note, a summary, a commit message, a comment, documentation, an error string, a plan, a prompt. Editing or reviewing existing text counts, and so does a single sentence or a three-line informal note; no text is too small or too casual. It holds the mandatory writing style: write for a reader who has only the page, put the point first, give every reference a referent, and cut each word the reader acts on nothing from. If your next output contains words someone will read, load this first.
 ---
 
 # Prose
