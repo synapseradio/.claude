@@ -61,6 +61,8 @@ source "${SCRIPT_DIR}/lib/command_words.sh"
 source "${SCRIPT_DIR}/lib/search_operands.sh"
 # shellcheck source=lib/decision.sh
 source "${SCRIPT_DIR}/lib/decision.sh"
+# shellcheck source=lib/secret_advice.sh
+source "${SCRIPT_DIR}/lib/secret_advice.sh"
 
 # Commands that read file contents from a path argument or redirect.
 readonly READ_CMDS='(cat|tac|less|more|head|tail|bat|xxd|od|strings|hexdump|grep|rg|ripgrep|sed|awk|jq|yq|nl|file|wc|md5sum|sha1sum|sha256sum|sha512sum|cksum|cp|mv|install|tar|zip|gzip|bzip2|xz|7z|openssl|base64|gpg|ssh-keygen|ssh-add)'
@@ -116,6 +118,10 @@ readonly ALL_PATH_PATTERNS="${SSH_PATH}|${AWS_PATH}|${GNUPG_PATH}|${KUBE_PATH}|$
 # default in force.
 readonly BANNED_READS_LEAF='warden/banned-reads.conf'
 
+# The label of the .env pattern. A refusal under it points at the non-secret
+# template such a file has; no other label names a file with one.
+readonly ENV_FILE_LABEL='.env / .env.local'
+
 # Set by decide_bash and decide_read, read by every check below.
 MODE=''
 SUBJECT=''
@@ -136,13 +142,17 @@ READ_HEREDOC=0
 #   $1 - human label for the path pattern that matched.
 #######################################
 deny() {
-  local label="$1" action
+  local label="$1" action advice
+  advice="$(secret_advice::test_set)"
   if [[ "${MODE}" == "path" ]]; then
     action='Read would open'
   else
     action='command would read'
   fi
-  decision::reach deny "Refused: ${action} a secret-shaped path (${label}). To learn which keys a project needs, read its non-secret template instead, such as .env.example, and to confirm a variable is loaded, test it: [ -n \"\${NAME:-}\" ] && echo set. If this is intentional, run it yourself."
+  if [[ "${label}" == "${ENV_FILE_LABEL}" ]]; then
+    advice="To learn which keys a project needs, read its non-secret template instead, such as .env.example. ${advice}"
+  fi
+  decision::reach deny "Refused: ${action} a secret-shaped path (${label}). ${advice} If this is intentional, run it yourself."
 }
 
 #######################################
@@ -258,7 +268,7 @@ check_every_pattern() {
     check_pattern '~/.gnupg' "${GNUPG_PATH}"
     check_pattern '~/.kube' "${KUBE_PATH}"
     check_pattern 'SSH private key' "${SSH_KEY_NAME}"
-    check_pattern '.env / .env.local' "${ENV_FILE}"
+    check_pattern "${ENV_FILE_LABEL}" "${ENV_FILE}"
     check_pattern 'private store in a dotfiles checkout' "${DOTFILES_PRIVATE}"
     check_pattern 'a file named for the secrets it holds' "${SECRETS_FILE}"
     check_pattern '.secrets directory' "${SECRETS_DIR}"

@@ -43,37 +43,49 @@ readonly URL_TOKEN='https?://[^[:space:]"'\''`]+'
 
 readonly ASK_REASON='This curl would send a request body or a file to a host outside loopback, which can carry local data off the machine. No URL shows in the command, so before it runs, state in the message the host it reaches and what the body or file holds, and confirm both are meant.'
 
-# The reason name_host_in_reason composed.
-ASK_HOST_REASON=''
+#######################################
+# Print the host of a URL as written: the text between the scheme and the
+# first slash, without any userinfo. A port, a query or a fragment before the
+# first slash stays in it.
+# Arguments:
+#   $1 - a URL carrying an http or https scheme.
+# Outputs:
+#   The host on stdout.
+#######################################
+url_host() {
+  local host="${1#*://}"
+  host="${host%%/*}"
+  printf '%s\n' "${host##*@}"
+}
 
 #######################################
 # Compose the reason for a curl that sends data to a host outside loopback,
 # naming the host. Only the host is quoted: a URL can carry a credential in
-# its userinfo or query.
-# Globals:
-#   ASK_HOST_REASON
+# its userinfo or query, so the URL is cut at its query or fragment before
+# the host is read.
 # Arguments:
 #   $1 - a URL carrying an http or https scheme.
+# Outputs:
+#   The reason on stdout.
 #######################################
 name_host_in_reason() {
-  local host="${1#*://}"
-  host="${host%%[/?#]*}"
-  host="${host##*@}"
-  ASK_HOST_REASON="This curl would send a request body or a file to ${host}, a host outside loopback, which can carry local data off the machine. Before it runs, state in the message what the body or file holds and confirm ${host} is the intended target. To test against your own machine, point it at localhost."
+  local host
+  host="$(url_host "${1%%[?#]*}")"
+  printf '%s\n' "This curl would send a request body or a file to ${host}, a host outside loopback, which can carry local data off the machine. Before it runs, state in the message what the body or file holds and confirm ${host} is the intended target. To test against your own machine, point it at localhost."
 }
 
 #######################################
-# Report whether a URL addresses the loopback interface.
+# Report whether a URL addresses the loopback interface. A query or fragment
+# written straight after the host is part of the host, so it does not read
+# as loopback.
 # Arguments:
 #   $1 - a URL carrying an http or https scheme.
 # Returns:
 #   0 when the host is loopback, 1 otherwise.
 #######################################
 is_loopback() {
-  local url="$1"
-  local host="${url#*://}"
-  host="${host%%/*}"
-  host="${host##*@}"
+  local host
+  host="$(url_host "$1")"
 
   [[ "${host}" =~ ^(localhost|127(\.[0-9]{1,3}){3}|0\.0\.0\.0|\[::1\]|[a-zA-Z0-9-]+\.localhost)(:[0-9]+)?$ ]]
 }
@@ -114,8 +126,7 @@ decide_bash() {
 
   for url in "${urls[@]}"; do
     if ! is_loopback "${url}"; then
-      name_host_in_reason "${url}"
-      decision::reach ask "${ASK_HOST_REASON}"
+      decision::reach ask "$(name_host_in_reason "${url}")"
       return 0
     fi
   done

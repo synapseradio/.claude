@@ -28,13 +28,8 @@ readonly SCRIPT_DIR
 source "${SCRIPT_DIR}/lib/command_words.sh"
 # shellcheck source=lib/decision.sh
 source "${SCRIPT_DIR}/lib/decision.sh"
-# shellcheck source=lib/reason_text.sh
-source "${SCRIPT_DIR}/lib/reason_text.sh"
 
 readonly DENIAL_REASON='eval parses its argument a second time, so the text that runs is not the text that was written. Write the step as a script file in the scratchpad and run that file, or run the command directly.'
-
-# The reason eval_reason composed.
-EVAL_REASON=''
 
 #######################################
 # Compose the reason for a denied eval, scoped to its argument where the
@@ -42,29 +37,27 @@ EVAL_REASON=''
 # Where the argument is built at run time (a variable or a substitution), the
 # reason says to print the text, read it, and run that.
 # Globals:
-#   EVAL_REASON
+#   DENIAL_REASON, CW_SPACE
 # Arguments:
 #   $1 - the whole command text.
 #   $2 - the eval program line, as the resolver prints it.
+# Outputs:
+#   The reason on stdout.
 #######################################
 eval_reason() {
-  local command="$1" line="$2" text span
-  EVAL_REASON="${DENIAL_REASON}"
+  local command="$1" line="$2" text
   text="${line#eval}"
-  text="$(reason_text::restore "${text# }")"
-  span="$(reason_text::span "${text}" 100)"
+  text="${text# }"
 
   if [[ "${command}" == *"\$("* || "${command}" == *'`'* ]]; then
-    EVAL_REASON="${DENIAL_REASON} The text eval runs comes from a substitution that runs first: run that inner command on its own, read what it prints, then run that text directly."
+    printf '%s\n' "${DENIAL_REASON} The text eval runs comes from a substitution that runs first: run that inner command on its own, read what it prints, then run that text directly."
   elif [[ "${text}" == *'$'* ]]; then
-    EVAL_REASON="${DENIAL_REASON} The text eval runs is built at run time (eval ${span}): print it with echo, read it, then run that command directly."
-  elif [[ -n "${text// /}" ]]; then
-    EVAL_REASON="${DENIAL_REASON} Here the argument is literal, so drop eval and run it directly: ${span}"
-    if ((${#text} > 100)); then
-      EVAL_REASON+=" (shortened here)."
-    fi
+    printf '%s\n' "${DENIAL_REASON} The text eval runs is built at run time (eval $(reason_text::quote "${text}" 100)): print it with echo, read it, then run that command directly."
+  elif [[ -n "${text//[ ${CW_SPACE}]/}" ]]; then
+    printf '%s\n' "${DENIAL_REASON} Here the argument is literal, so drop eval and run it directly: $(reason_text::quote "${text}" 100 ' (shortened here).')"
+  else
+    printf '%s\n' "${DENIAL_REASON}"
   fi
-  return 0
 }
 
 #######################################
@@ -82,9 +75,11 @@ decide_bash() {
     return 0
   fi
 
-  if line="$(command_words::first_line eval "${command}")"; then
-    eval_reason "${command}" "${line}"
-    decision::reach deny "${EVAL_REASON}"
+  if command_words::first_line eval "${command}" line; then
+    # The quoting helper is needed on a denial only.
+    # shellcheck source=lib/reason_text.sh
+    source "${SCRIPT_DIR}/lib/reason_text.sh"
+    decision::reach deny "$(eval_reason "${command}" "${line}")"
   fi
 }
 

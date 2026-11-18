@@ -74,6 +74,17 @@ setup() {
   assert_reason_contains 'sleep 30 holds the session'
 }
 
+@test "a denial shortens a long sleep line to forty characters" {
+  local long
+  long="$(printf 'x%.0s' {1..60})"
+  run_bash_hook "sleep ${long}"
+  assert_decision 'deny' 'a long sleep line'
+  [[ "${HOOK_REASON}" == "sleep ${long:0:34}... holds the session"* ]] || {
+    echo "unexpected reason: ${HOOK_REASON}" >&2
+    return 1
+  }
+}
+
 @test "a word containing sleep stays silent" {
   assert_silent 'grep -rn sleepy src/'
 }

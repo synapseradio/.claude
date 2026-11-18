@@ -224,6 +224,13 @@ setup() {
   assert_reason_contains '[ -n "${NAME:-}" ] && echo set'
 }
 
+@test "a denial of a key file gives the presence test and no template" {
+  run_bash_hook 'cat ~/.ssh/id_rsa'
+  assert_decision 'deny' 'cat ~/.ssh/id_rsa'
+  assert_reason_contains '[ -n "${NAME:-}" ] && echo set'
+  [[ "${HOOK_REASON}" != *'.env.example'* ]]
+}
+
 @test "reading a project file stays silent" {
   assert_silent 'cat README.md'
 }

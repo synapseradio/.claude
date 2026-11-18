@@ -139,6 +139,14 @@ setup() {
   assert_reason_contains 'drop eval and run it directly: ls | wc -l'
 }
 
+@test "a denial of eval with a long literal text says it shortened the text" {
+  local long
+  long="$(printf 'x%.0s' {1..120})"
+  run_bash_hook "eval '${long}'"
+  assert_decision 'deny' 'a long literal eval'
+  assert_reason_contains "directly: ${long:0:100}... (shortened here)."
+}
+
 @test "a denial of eval on a variable says to print the text and read it" {
   run_bash_hook 'eval $cmd'
   assert_decision 'deny' 'eval of a variable'

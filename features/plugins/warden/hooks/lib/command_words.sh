@@ -519,36 +519,24 @@ command_words::resolve() {
 }
 
 #######################################
-# Say whether the command text runs a program by a given name, whether bare
-# or with arguments.
+# Find the first program line the command text would run under a given name,
+# bare or with arguments, and store it in a variable of the caller's for a
+# reason that quotes it. It stores in place of printing, so the check that
+# every Bash call passes through starts no subshell for it.
 # Arguments:
 #   $1 - the program's name.
 #   $2 - the command text.
-# Returns:
-#   0 when a program line is the name or starts with the name and a space,
-#   1 otherwise.
-#######################################
-command_words::runs() {
-  command_words::first_line "$1" "$2" >/dev/null
-}
-
-#######################################
-# Print the first program line the command text would run under a given name,
-# bare or with arguments, for a reason that quotes it.
-# Arguments:
-#   $1 - the program's name.
-#   $2 - the command text.
-# Outputs:
-#   The program line on stdout, when there is one.
+#   $3 - the name of the caller's variable that receives the line, which
+#        must not be `word` or `candidate`.
 # Returns:
 #   0 when a program line is the name or starts with the name and a space,
 #   1 otherwise.
 #######################################
 command_words::first_line() {
-  local word="$1" line
-  while IFS= read -r line; do
-    if [[ "${line}" == "${word}" || "${line}" == "${word}"\ * ]]; then
-      printf '%s\n' "${line}"
+  local word="$1" candidate
+  while IFS= read -r candidate; do
+    if [[ "${candidate}" == "${word}" || "${candidate}" == "${word}"\ * ]]; then
+      printf -v "$3" '%s' "${candidate}"
       return 0
     fi
   done < <(command_words::resolve "$2")
