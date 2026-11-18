@@ -186,7 +186,7 @@ decide_bash() {
     if collect_bunx_args "${words[@]}"; then
       find_unpinned ${BUNX_ARGS[@]+"${BUNX_ARGS[@]}"}
       if [[ -n "${UNPINNED}" ]]; then
-        decision::reach deny "bunx runs ${UNPINNED} with no version, so it fetches whatever the registry serves at that moment and executes it. Run bunx at a pinned version or @latest: bunx <pkg>@<version>. Before it runs, state in the message: the package, the version the command pins, what it executes, and which installed tool falls short of the step."
+        decision::reach deny "bunx runs ${UNPINNED} with no version, so it fetches whatever the registry serves at that moment and executes it. Run bunx at a pinned version or @latest: bunx ${UNPINNED}@<version>. Before it runs, state in the message: the package, the version the command pins, what it executes, and which installed tool falls short of the step."
         return 0
       fi
     fi

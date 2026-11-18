@@ -61,15 +61,53 @@ readonly FIND_EXEC_PATTERN='[[:space:]]-(exec|execdir|ok|okdir)([[:space:]]|$)'
 # The rm lines collect_rm_line found.
 RM_LINES=()
 
+# The trash command trash_command built, empty when none reads reliably.
+TRASH_COMMAND=''
+
 #######################################
 # Record a deny decision.
 # Globals:
 #   DENIAL_REASON, GUARD_DECISION, GUARD_REASON
 # Arguments:
 #   $1 - what the guard found, appended to the reason.
+#   $2 - optional: the trash command to run in place of the rm.
 #######################################
 deny() {
-  decision::reach deny "${DENIAL_REASON} Held back: $1."
+  local instead=''
+  if [[ -n "${2:-}" ]]; then
+    instead=" Run instead: $2."
+  fi
+  decision::reach deny "${DENIAL_REASON} Held back: $1.${instead}"
+}
+
+#######################################
+# Build the trash command that stands in for the rm lines found. It is empty
+# where the operands cannot be read from the command text (a glob, a
+# variable, a tilde, a quote, a newline), where no operand names a path, or
+# where the command would run long.
+# Globals:
+#   RM_LINES, CW_NEWLINE, TRASH_COMMAND
+#######################################
+trash_command() {
+  local line operand command=trash found=0
+  TRASH_COMMAND=''
+  for line in "${RM_LINES[@]}"; do
+    while IFS= read -r operand; do
+      operand_problem "${operand}" >/dev/null || return 0
+      if [[ "${operand}" == *"'"* || "${operand}" == *"${CW_NEWLINE}"* ]]; then
+        return 0
+      fi
+      if [[ "${operand}" == *' '* ]]; then
+        command+=" '${operand}'"
+      else
+        command+=" ${operand}"
+      fi
+      found=1
+    done < <(rm_operands "${line}")
+  done
+  if ((found && ${#command} <= 300)); then
+    TRASH_COMMAND="${command}"
+  fi
 }
 
 #######################################
@@ -254,7 +292,10 @@ decide_bash() {
   case "${status}" in
   0) ;;
   2) deny 'the guard could not create a scratch file to judge with' ;;
-  *) deny "${GG_DETAIL:-git did not answer before the deadline}" ;;
+  *)
+    trash_command
+    deny "${GG_DETAIL:-git did not answer before the deadline}" "${TRASH_COMMAND}"
+    ;;
   esac
 }
 

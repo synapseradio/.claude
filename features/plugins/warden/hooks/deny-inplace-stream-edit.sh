@@ -42,7 +42,7 @@ source "${SCRIPT_DIR}/lib/decision.sh"
 
 readonly INPLACE_PATTERN='(^|[|;&(])[[:space:]]*([A-Za-z0-9_.-]+[[:space:]]+)?(g?sed[[:space:]]+(-[a-zA-Z0-9.]*i|--in-place)|awk[[:space:]]+-i[[:space:]]+inplace)'
 
-readonly DENIAL_REASON='An in-place stream edit rewrites the file without reporting a failed match, so a wrong pattern mangles the rest of it silently. Use Edit or Write instead: they match exactly and fail loudly on a wrong match. Read-only stream editing in a pipeline stays allowed.'
+readonly DENIAL_REASON='An in-place stream edit rewrites the file without reporting a failed match, so a wrong pattern mangles the rest of it silently. Use Edit or Write instead: they match exactly and fail loudly on a wrong match. For one mechanical change across many files, write a script in a real language such as Python that matches exact strings. Read-only stream editing in a pipeline stays allowed.'
 
 #######################################
 # Decide on a command the Bash tool proposes.

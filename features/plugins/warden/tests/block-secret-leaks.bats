@@ -206,6 +206,22 @@ nest_in_shell_c() {
   assert_denies $'bash <<\'EOF\'\nprintenv\nEOF'
 }
 
+@test "a denial for a secret variable names a presence test, not the variable" {
+  run_bash_hook 'echo $MY_API_KEY'
+  assert_decision 'deny' 'echo of a secret variable'
+  assert_reason_contains '[ -n "${NAME:-}" ] && echo set'
+  [[ "${HOOK_REASON}" != *MY_API_KEY* ]]
+}
+
+@test "a denial for printenv, env, or set names one variable instead" {
+  local command
+  for command in printenv env set; do
+    run_bash_hook "${command}"
+    assert_decision 'deny' "${command}"
+    assert_reason_contains 'Name the one variable you need'
+  done
+}
+
 @test "an envelope proposing printenv prints a PreToolUse denial" {
   assert_main_prints deny 'printenv would print env vars' \
     '{"tool_name":"Bash","tool_input":{"command":"printenv"}}'

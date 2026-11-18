@@ -529,9 +529,26 @@ command_words::resolve() {
 #   1 otherwise.
 #######################################
 command_words::runs() {
+  command_words::first_line "$1" "$2" >/dev/null
+}
+
+#######################################
+# Print the first program line the command text would run under a given name,
+# bare or with arguments, for a reason that quotes it.
+# Arguments:
+#   $1 - the program's name.
+#   $2 - the command text.
+# Outputs:
+#   The program line on stdout, when there is one.
+# Returns:
+#   0 when a program line is the name or starts with the name and a space,
+#   1 otherwise.
+#######################################
+command_words::first_line() {
   local word="$1" line
   while IFS= read -r line; do
     if [[ "${line}" == "${word}" || "${line}" == "${word}"\ * ]]; then
+      printf '%s\n' "${line}"
       return 0
     fi
   done < <(command_words::resolve "$2")

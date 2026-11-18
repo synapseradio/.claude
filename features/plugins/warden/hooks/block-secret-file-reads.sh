@@ -142,7 +142,7 @@ deny() {
   else
     action='command would read'
   fi
-  decision::reach deny "Refused: ${action} a secret-shaped path (${label}). If this is intentional, run it yourself."
+  decision::reach deny "Refused: ${action} a secret-shaped path (${label}). To learn which keys a project needs, read its non-secret template instead, such as .env.example, and to confirm a variable is loaded, test it: [ -n \"\${NAME:-}\" ] && echo set. If this is intentional, run it yourself."
 }
 
 #######################################

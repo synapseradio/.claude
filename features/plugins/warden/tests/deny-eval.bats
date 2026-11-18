@@ -133,6 +133,25 @@ setup() {
   assert_silent ''
 }
 
+@test "a denial of eval with literal text quotes it as the command to run" {
+  run_bash_hook "eval 'ls | wc -l'"
+  assert_decision 'deny' 'literal eval'
+  assert_reason_contains 'drop eval and run it directly: ls | wc -l'
+}
+
+@test "a denial of eval on a variable says to print the text and read it" {
+  run_bash_hook 'eval $cmd'
+  assert_decision 'deny' 'eval of a variable'
+  assert_reason_contains 'eval $cmd'
+  assert_reason_contains 'print it with echo'
+}
+
+@test "a denial of eval on a substitution says to run the inner command alone" {
+  run_bash_hook 'eval "$(ssh-agent -s)"'
+  assert_decision 'deny' 'eval of a substitution'
+  assert_reason_contains 'run that inner command on its own'
+}
+
 @test "an envelope proposing eval prints a PreToolUse denial" {
   assert_main_prints deny 'parses its argument a second time' \
     '{"tool_name":"Bash","tool_input":{"command":"eval ls"}}'

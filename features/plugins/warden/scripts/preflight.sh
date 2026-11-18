@@ -240,10 +240,6 @@ main() {
   check deny-eval.sh deny 'evals a string' 'eval "$(ssh-agent -s)"'
   check deny-eval.sh allow 'names eval as an argument' 'echo eval'
 
-  check deny-shell-c.sh deny 'runs a shell with -c' "bash -lc 'echo hi'"
-  check deny-shell-c.sh ask 'runs an interactive zsh -c' "zsh -ic 'spu'"
-  check deny-shell-c.sh allow 'counts matches with grep -c' 'grep -c eval f'
-
   check ask-git-amend.sh ask 'amends a commit' \
     'git -C /tmp/repo commit --amend --no-edit'
   check ask-git-amend.sh allow 'commits anew' 'git commit -m "fix: x"'

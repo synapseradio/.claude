@@ -217,6 +217,13 @@ setup() {
   [[ "${reason}" == *'Read would open'* ]]
 }
 
+@test "a denial points at a non-secret template and a presence test" {
+  run_bash_hook 'cat .env'
+  assert_decision 'deny' 'cat .env'
+  assert_reason_contains '.env.example'
+  assert_reason_contains '[ -n "${NAME:-}" ] && echo set'
+}
+
 @test "reading a project file stays silent" {
   assert_silent 'cat README.md'
 }

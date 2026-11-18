@@ -112,6 +112,12 @@ setup() {
   assert_denies "echo sed -i s/a/b/ notes.md"
 }
 
+@test "a denial names a script for one change across many files" {
+  run_bash_hook 'sed -i s/a/b/ notes.txt'
+  assert_decision 'deny' 'sed -i'
+  assert_reason_contains 'script in a real language'
+}
+
 @test "an envelope proposing sed -i prints a PreToolUse denial" {
   assert_main_prints deny 'Edit or Write' \
     '{"tool_name":"Bash","tool_input":{"command":"sed -i s/a/b/ notes.txt"}}'

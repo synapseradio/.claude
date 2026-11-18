@@ -68,6 +68,12 @@ setup() {
   [[ "${reason}" != *'waiting-on-processes'* ]]
 }
 
+@test "a denial quotes the sleep it found" {
+  run_bash_hook 'make build && sleep 30 && curl localhost'
+  assert_decision 'deny' 'a sleep after make'
+  assert_reason_contains 'sleep 30 holds the session'
+}
+
 @test "a word containing sleep stays silent" {
   assert_silent 'grep -rn sleepy src/'
 }

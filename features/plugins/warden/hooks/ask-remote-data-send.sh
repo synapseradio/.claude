@@ -41,7 +41,26 @@ readonly DATA_SEND_FLAG='(^|[[:space:]])(-[a-zA-Z]*[dFT][a-zA-Z]*([[:space:]]|=|
 
 readonly URL_TOKEN='https?://[^[:space:]"'\''`]+'
 
-readonly ASK_REASON='This curl would send a request body or a file to a host outside loopback, which can carry local data off the machine. Confirm the target and the payload before it runs.'
+readonly ASK_REASON='This curl would send a request body or a file to a host outside loopback, which can carry local data off the machine. No URL shows in the command, so before it runs, state in the message the host it reaches and what the body or file holds, and confirm both are meant.'
+
+# The reason name_host_in_reason composed.
+ASK_HOST_REASON=''
+
+#######################################
+# Compose the reason for a curl that sends data to a host outside loopback,
+# naming the host. Only the host is quoted: a URL can carry a credential in
+# its userinfo or query.
+# Globals:
+#   ASK_HOST_REASON
+# Arguments:
+#   $1 - a URL carrying an http or https scheme.
+#######################################
+name_host_in_reason() {
+  local host="${1#*://}"
+  host="${host%%[/?#]*}"
+  host="${host##*@}"
+  ASK_HOST_REASON="This curl would send a request body or a file to ${host}, a host outside loopback, which can carry local data off the machine. Before it runs, state in the message what the body or file holds and confirm ${host} is the intended target. To test against your own machine, point it at localhost."
+}
 
 #######################################
 # Report whether a URL addresses the loopback interface.
@@ -95,7 +114,8 @@ decide_bash() {
 
   for url in "${urls[@]}"; do
     if ! is_loopback "${url}"; then
-      decision::reach ask "${ASK_REASON}"
+      name_host_in_reason "${url}"
+      decision::reach ask "${ASK_HOST_REASON}"
       return 0
     fi
   done

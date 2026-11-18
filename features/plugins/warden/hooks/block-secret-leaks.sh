@@ -45,6 +45,11 @@ source "${SCRIPT_DIR}/lib/search_operands.sh"
 # shellcheck source=lib/decision.sh
 source "${SCRIPT_DIR}/lib/decision.sh"
 
+# What a refusal tells the agent to run instead. The message never repeats a
+# name or value from the command: a refusal only has the pattern to go on.
+readonly ADVICE_TEST_SET="To confirm a variable is set without printing it, test it: [ -n \"\${NAME:-}\" ] && echo set."
+readonly ADVICE_NAME_ONE="Name the one variable you need: echo \"\$NAME\" for one that is not a secret, or [ -n \"\${NAME:-}\" ] && echo set to check a secret one."
+
 readonly SECRET_WORD='(API_?KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE_?KEY|ACCESS_?KEY|AUTH_?TOKEN|SESSION_?TOKEN|BEARER)'
 
 # Commands whose primary purpose is emitting their arguments to stdout/stderr.
@@ -102,14 +107,14 @@ check_program() {
   ((${#words[@]} > 0)) || return 0
 
   if prints_secret "${words[@]}"; then
-    decision::reach deny "Refused: command would print an env var matching a secret pattern (API_KEY/TOKEN/SECRET/...). If this is intentional, run it yourself."
+    decision::reach deny "Refused: command would print an env var matching a secret pattern (API_KEY/TOKEN/SECRET/...). ${ADVICE_TEST_SET} If this is intentional, run it yourself."
     return 0
   fi
 
   # printenv: its sole purpose is showing env.
   for word in "${words[@]}"; do
     if [[ "${word}" == printenv ]]; then
-      decision::reach deny "Refused: printenv would print env vars to stdout. If this is intentional, run it yourself."
+      decision::reach deny "Refused: printenv would print env vars to stdout. ${ADVICE_NAME_ONE} If this is intentional, run it yourself."
       return 0
     fi
   done
@@ -120,13 +125,13 @@ check_program() {
     last="${word}"
   done
   if [[ "${last}" == env ]]; then
-    decision::reach deny "Refused: bare 'env' would dump every env var to stdout. If this is intentional, run it yourself."
+    decision::reach deny "Refused: bare 'env' would dump every env var to stdout. ${ADVICE_NAME_ONE} env CMD ARGS, which launches a command, stays allowed. If this is intentional, run it yourself."
     return 0
   fi
 
   # `set` with no args dumps every shell variable.
   if [[ "${words[0]}" == set ]] && { ((${#words[@]} == 1)) || [[ "${words[1]}" == '>'* ]]; }; then
-    decision::reach deny "Refused: bare 'set' would dump every shell variable. If this is intentional, run it yourself."
+    decision::reach deny "Refused: bare 'set' would dump every shell variable. ${ADVICE_NAME_ONE} If this is intentional, run it yourself."
   fi
 }
 
@@ -154,7 +159,7 @@ check_bare_env() {
 
   behind="$(command_words::emit_command "${head[@]}" "${BARE_SENTINEL}")"
   if [[ "${behind}" == "${BARE_SENTINEL}" ]]; then
-    decision::reach deny "Refused: bare 'env' would dump every env var to stdout. If this is intentional, run it yourself."
+    decision::reach deny "Refused: bare 'env' would dump every env var to stdout. ${ADVICE_NAME_ONE} env CMD ARGS, which launches a command, stays allowed. If this is intentional, run it yourself."
   fi
 }
 
@@ -172,20 +177,20 @@ check_raw_text() {
   if rg -q \
     "\b${OUTPUT_CMD}\b[^|;&]*\\\$\{?[A-Za-z_]*${SECRET_WORD}[A-Za-z_0-9]*" \
     <<<"${cmd}"; then
-    decision::reach deny "Refused: command would print an env var matching a secret pattern (API_KEY/TOKEN/SECRET/...). If this is intentional, run it yourself."
+    decision::reach deny "Refused: command would print an env var matching a secret pattern (API_KEY/TOKEN/SECRET/...). ${ADVICE_TEST_SET} If this is intentional, run it yourself."
     return 0
   fi
   if rg -q '\bprintenv\b' <<<"${cmd}"; then
-    decision::reach deny "Refused: printenv would print env vars to stdout. If this is intentional, run it yourself."
+    decision::reach deny "Refused: printenv would print env vars to stdout. ${ADVICE_NAME_ONE} If this is intentional, run it yourself."
     return 0
   fi
   bare='(^|[;&|`(])[[:space:]]*([A-Za-z0-9_.-]+[[:space:]]+)?'
   if rg -q "${bare}env[[:space:]]*(\||;|&|>|\$)" <<<"${cmd}"; then
-    decision::reach deny "Refused: bare 'env' would dump every env var to stdout. If this is intentional, run it yourself."
+    decision::reach deny "Refused: bare 'env' would dump every env var to stdout. ${ADVICE_NAME_ONE} env CMD ARGS, which launches a command, stays allowed. If this is intentional, run it yourself."
     return 0
   fi
   if rg -q "${bare}set[[:space:]]*(\||;|&|>|\$)" <<<"${cmd}"; then
-    decision::reach deny "Refused: bare 'set' would dump every shell variable. If this is intentional, run it yourself."
+    decision::reach deny "Refused: bare 'set' would dump every shell variable. ${ADVICE_NAME_ONE} If this is intentional, run it yourself."
   fi
 }
 

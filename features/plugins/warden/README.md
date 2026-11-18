@@ -33,7 +33,6 @@ Run these two commands in Claude Code, with the path of your copy of this reposi
 | `deny-rm` | Bash | An `rm` that would remove anything git cannot restore, or that follows another step of the same command | Refuses |
 | `deny-bulk-home-search` | Bash, Grep, Glob | A file search starting at the disk root, at the folder holding every home directory, or at your home directory itself | Refuses |
 | `deny-eval` | Bash | Running `eval` | Refuses |
-| `deny-shell-c` | Bash | Running `bash`, `sh`, `zsh`, `dash`, or `ksh` with `-c` | Refuses; asks for `zsh -ic` |
 | `ask-git-amend` | Bash | `git commit --amend` | Asks |
 | `deny-unsafe-soft-reset` | Bash | A `git reset --soft` that could lose work or rewrite published history; one over unpushed commits on a feature branch, as the command's first step, passes | Refuses |
 | `deny-unset-model` | Agent | A subagent spawn that names no model, unless it is a fork or its agent definition pins one, and a `critic` or `Plan` spawn on haiku | Refuses |

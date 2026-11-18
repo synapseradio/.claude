@@ -408,6 +408,22 @@ make_plain_dir() {
   assert_reason_contains "${PLAIN}/loose.txt"
 }
 
+@test "a denial names the trash command for the paths rm named" {
+  make_plain_dir
+  touch "${PLAIN}/loose.txt" "${PLAIN}/two words.txt"
+  run_bash_hook "rm -f ${PLAIN}/loose.txt '${PLAIN}/two words.txt'"
+  assert_decision 'deny' 'two files outside a repository'
+  assert_reason_contains "Run instead: trash ${PLAIN}/loose.txt '${PLAIN}/two words.txt'."
+}
+
+@test "a denial for a glob operand keeps the general trash form" {
+  make_plain_dir
+  run_bash_hook "rm ${PLAIN}/*.log"
+  assert_decision 'deny' 'a glob'
+  assert_reason_contains 'trash <path>'
+  [[ "${HOOK_REASON}" != *'Run instead'* ]]
+}
+
 @test "rm -rf of a directory outside any repository is denied" {
   make_plain_dir
   assert_denies "rm -rf ${PLAIN}"

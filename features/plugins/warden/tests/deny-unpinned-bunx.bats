@@ -132,7 +132,7 @@ setup() {
   reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
     <<<"${HOOK_OUTPUT}")"
   [[ "${reason}" == *'cowsay'* ]]
-  [[ "${reason}" == *'bunx <pkg>@<version>'* ]]
+  [[ "${reason}" == *'bunx cowsay@<version>'* ]]
   [[ "${reason}" == *'@latest'* ]]
   [[ "${reason}" == *'the package'* ]]
   [[ "${reason}" == *'the version the command pins'* ]]

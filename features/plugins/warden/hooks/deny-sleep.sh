@@ -25,6 +25,8 @@ readonly SCRIPT_DIR
 source "${SCRIPT_DIR}/lib/command_words.sh"
 # shellcheck source=lib/decision.sh
 source "${SCRIPT_DIR}/lib/decision.sh"
+# shellcheck source=lib/reason_text.sh
+source "${SCRIPT_DIR}/lib/reason_text.sh"
 
 readonly DENIAL_REASON='sleep holds the session on a guess at how long something takes. Run the command in the background with run_in_background set on the Bash call, do the work that does not depend on it, and end the turn: the harness resumes the session with a completion notice when the command exits. To read a log or a result, run a command that exits, once. To wait on something outside the session, such as a CI run, run the command that blocks on it, such as gh run watch, in the background the same way.'
 
@@ -36,15 +38,16 @@ readonly DENIAL_REASON='sleep holds the session on a guess at how long something
 #   $1 - the command.
 #######################################
 decide_bash() {
-  local command="$1"
+  local command="$1" line span
   decision::clear
 
   if [[ -z "${command}" ]]; then
     return 0
   fi
 
-  if command_words::runs sleep "${command}"; then
-    decision::reach deny "${DENIAL_REASON}"
+  if line="$(command_words::first_line sleep "${command}")"; then
+    span="$(reason_text::span "$(reason_text::restore "${line}")" 40)"
+    decision::reach deny "${span}${DENIAL_REASON#sleep}"
   fi
 }
 

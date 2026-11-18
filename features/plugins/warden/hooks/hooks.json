@@ -66,12 +66,6 @@
 					},
 					{
 						"type": "command",
-						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/deny-shell-c.sh\"",
-						"timeout": 5,
-						"statusMessage": "Checking the command for a shell run with -c"
-					},
-					{
-						"type": "command",
 						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-git-amend.sh\"",
 						"timeout": 5,
 						"statusMessage": "Checking the command for a commit amend"
