@@ -145,9 +145,10 @@ check its writer owes. A bare list reports the state and leaves the agent
 with nothing to do about it. Each output states what it found, then what to
 do now, in plain terms rather than as an out-of-band command, since the
 harness warns that `additionalContext` framed that way can read as an
-injection. Every output reaches the model, and a `systemMessage` carrying the
-same text shows it to the user too, so no output informs the user alone and
-every group, a second pass's included, states the act for the agent.
+injection. Every output reaches the model, and every output but the rule
+delivery carries the same text as a `systemMessage` that shows it to the user
+too, so no output informs the user alone and every group, a second pass's
+included, states the act for the agent.
 
 One constraint governs every generated string. The output is read by an agent
 on a machine whose toolset this plugin cannot know, so no generated line names
@@ -538,9 +539,10 @@ holds each form.
 
 Enforcement on its own would correct a model against something nothing taught
 it, so the teaching ships with it. `rule-text/epistemic-marks.md` holds the
-rule text, and `hooks/deliver-rule.py` hands it over at every start. Like
-every output, it also carries the same text as a `systemMessage`, which shows
-the user what the session was taught.
+rule text, and `hooks/deliver-rule.py` hands it over at every start. It is
+the one output with no `systemMessage`: the text is the same at every start,
+and a mirror would print the whole rule into the user's transcript each time.
+The user reads it in `rule-text/epistemic-marks.md`.
 
 On `SessionStart` the delivery entry in `hooks/hooks.json` has no matcher, so
 it runs on every source of a session start, compaction included. Injected

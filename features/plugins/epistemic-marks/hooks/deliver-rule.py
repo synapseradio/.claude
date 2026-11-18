@@ -19,7 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from epistemic_marks.delivery import rule_text
-from epistemic_marks.output import context
+from epistemic_marks.output import model_only_context
 
 
 def main() -> None:
@@ -34,7 +34,7 @@ def main() -> None:
     text = rule_text()
     if not text:
         sys.exit(0)
-    json.dump(context(event, text), sys.stdout)
+    json.dump(model_only_context(event, text), sys.stdout)
     sys.exit(0)
 
 

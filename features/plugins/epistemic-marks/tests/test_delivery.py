@@ -62,11 +62,11 @@ class TheHookDeliversOnEveryStart(unittest.TestCase):
         for token in MARKS:
             assert token in context
 
-    def test_the_user_sees_the_text_the_model_is_sent(self) -> None:
+    def test_the_user_never_sees_the_rule_text(self) -> None:
         code, out = run_deliver()
         assert code == 0
-        assert json.loads(out)["systemMessage"] == self.context_of(out), (
-            "a rule delivered to the model alone leaves the user unable to see what was taught"
+        assert "systemMessage" not in json.loads(out), (
+            "a systemMessage prints the whole rule text into the user's transcript"
         )
 
     def test_it_delivers_again_after_a_compaction(self) -> None:
