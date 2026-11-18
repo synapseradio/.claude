@@ -1,7 +1,7 @@
 ---
 name: prose
 description: >-
-  Load this before you write any text that a person or a model will read, at any length and in any place: a reply, a message, a note, a summary, a commit message, a comment, documentation, an error string, a plan, a prompt. Editing or reviewing existing text counts, and so does a single sentence or a three-line informal note; no text is too small or too casual. It holds the mandatory writing style: write for a reader who has only the page, put the point first, give every reference a referent, and cut each word the reader acts on nothing from. If your next output contains words someone will read, load this first.
+  Load this before you write any text that a person or a model will read, at any length and in any place. Your own reply counts: an answer to a question, an explanation, a summary of something you read, a report of what you did. So does every text you produce as an artifact: a message, a note, a commit message, a comment, documentation, an error string, a plan, a prompt. Editing or reviewing existing text counts, and so does a single sentence; no text is too small or too casual, and the task looking routine is no reason to skip it, because this style differs from default writing habits. It holds the mandatory writing style: write for a reader who has only the page, put the point first, give every reference a referent, and cut each word the reader acts on nothing from. Every task ends in words someone reads, so load this once at the start of any task.
 ---
 
 # Prose
