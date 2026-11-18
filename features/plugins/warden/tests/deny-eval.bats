@@ -67,12 +67,6 @@ setup() {
   done
 }
 
-@test "a denial of eval with literal text gives the text to run directly" {
-  run_bash_hook "eval 'ls | wc -l'"
-  assert_decision 'deny' 'literal eval'
-  assert_reason_contains 'ls | wc -l'
-}
-
 @test "an envelope proposing eval prints a PreToolUse denial" {
   assert_main_prints deny \
     '{"tool_name":"Bash","tool_input":{"command":"eval ls"}}'

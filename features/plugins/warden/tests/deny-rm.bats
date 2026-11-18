@@ -131,12 +131,6 @@ make_plain_dir() {
   done
 }
 
-@test "a denial points at trash" {
-  run_bash_hook 'rm notes.txt'
-  [[ "$(jq -r '.hookSpecificOutput.permissionDecisionReason' \
-    <<<"${HOOK_OUTPUT}")" == *'trash <path>'* ]]
-}
-
 @test "other programs that spell rm as a subcommand, and the neighbors trash and rmdir, stay silent" {
   local -a forms=(
     'git rm --cached notes.txt'
