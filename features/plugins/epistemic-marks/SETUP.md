@@ -50,7 +50,7 @@ Some steps happen inside the person's Claude Code session, which you cannot type
 
 2. Run `claude plugin details epistemic-marks@claude-root`.
 
-   The output contains `Hooks (5)  SessionStart, SubagentStart, PostToolBatch, Stop, SubagentStop`.
+   The output contains `Hooks (6)  SessionStart, SubagentStart, PreToolUse, PostToolBatch, Stop, SubagentStop`.
 
 ## 4. Hand over to the person
 
