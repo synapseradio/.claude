@@ -191,7 +191,6 @@ Keep `nohup`, a trailing `&`, and `disown` out of every command that backgrounds
 
 ### Git state
 
-Squash a branch with `wt -C <worktree> step squash <target>`.
 Move a branch ref with `git reset --soft <sha>` only as a command's first step, on a branch other than the default, over commits no remote-tracking ref reaches.
 Restore a path to a commit's state with `git checkout <sha> -- <path>`.
 Set work aside with a temporary commit.
@@ -450,9 +449,6 @@ Each delegate commits only its own paths and every file a formatter or linter ch
 Stage generated copies in the same commit as the source they derive from.
 Verify the staged set with `git diff --cached --name-only`, with a planning artifact in it only on the user's ask -> compose the message -> commit.
 Keep `--no-verify` out of every command.
-
-worktree
-  | you work in one made for the work = commit by those same steps through `git -C <worktree>`, naming the worktree by its absolute path, and leave `git -C <worktree> status --short` empty after each commit
 
 hook
   | it rejects = make the rejection the next task -> fix the cause -> commit anew

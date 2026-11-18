@@ -29,9 +29,6 @@ Keep `--no-verify` out of every command.
 skill step
   | it says review then commit = commit -> report the diff
 
-worktree
-  | you work in one made for the work = commit by those same steps through `git -C <worktree>`, naming the worktree by its absolute path, and leave `git -C <worktree> status --short` empty after each commit
-
 hook
   | it rejects = make the rejection the next task -> fix the cause -> commit anew
 

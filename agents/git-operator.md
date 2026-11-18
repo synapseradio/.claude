@@ -83,7 +83,7 @@ The angles are reuse and simplification and efficiency and altitude.
 3. Run `git fetch`.
 4. Run `git rev-list --left-right --count "<target>...<target>@{upstream}"` -> stop and report both counts where both are above zero.
 5. Rebase onto the target -> rerun the suite.
-6. Land with `wt merge <target>` -> where the target moved during the landing run steps 3 to 6 once more, stopping to report if it moves again.
+6. Land as the `worktrees` skill directs -> where the target moved during the landing run steps 3 to 6 once more, stopping to report if it moves again.
 
 To land a series of pull requests, push each branch on the approval your prompt states.
 Report each pull request as its full branch name with its full link, in the order they merge.
