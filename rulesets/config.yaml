@@ -13,6 +13,7 @@ sets:
   orchestration: agent-delegation delegate-prompt worktrees
   shell: writing-bash writing-bats
   skill-pointers: writing-prose comments writing-tests delegate-prompt worktrees writing-bash writing-bats
+  session: core.* orchestration.*
 skills:
   writing-bash: bash-style
   writing-bats: bats-testing
@@ -38,9 +39,7 @@ model haiku:
   kind any:
     exclude: comments claims resolving-input unasked-asides delegate-prompt
 kind session:
-  include: all.*
-  then:
-    exclude: source-listing
+  include: session.*
 kind delegate:
   include: delegate-report worktrees@delegate
 tools Bash:
