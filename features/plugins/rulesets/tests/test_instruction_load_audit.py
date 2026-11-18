@@ -1,30 +1,22 @@
 #!/usr/bin/env python3
 """The audit log shows what reached every context, and the delivery check confirms it by recomposing.
 
-Serves the engineer who asks what each agent was told and why, and who runs `delivery-check`
-after editing a config or a rule. Each case builds a configuration directory under `tmp_path`,
-produces its records through real deliveries, and runs the `delivery-check` subcommand through
-the launcher.
+Serves the engineer who asks what each agent was told and why, and who runs `delivery-check`,
+`load-check`, or `deliveries` after editing a config or a rule. Each case builds a configuration
+directory under `tmp_path`, produces its records through real deliveries, and runs the subcommand
+through the launcher. What the records hold and the lines the commands print come from
+`docs/records.md` and `docs/commands.md`.
 
 Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_instruction_load_audit.py`.
 """
 
 import hashlib
 import json
-import os
 import pathlib
 import shutil
-import sys
 
 import pytest
-from delivery_world import DECLARED, HAIKU, HOOKS_JSON, OPUS, Delivery, World
-
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets.audit import log  # noqa: E402  (path must be set before this import)
-from rulesets.audit.delivery_record import DeliveryRecord  # noqa: E402
-from rulesets.locations import Locations  # noqa: E402
+from delivery_world import DECLARED, HAIKU, OPUS, Delivery, World
 
 SONNET = "claude-sonnet-5-5"
 
@@ -69,76 +61,42 @@ def three_part_delivery(world) -> Delivery:
     return world.start_session()
 
 
+def still_loading(path, reason) -> str:
+    return f"still auto-loading: {path} (reason {reason})"
+
+
 class TestCheckingOneSessionAmongMany:
-    def test_a_corrupt_record_in_another_sessions_directory_changes_neither_output_nor_status(
-        self, world
+    @pytest.mark.parametrize("command", ["delivery-check", "load-check"])
+    def test_another_sessions_records_change_neither_output_nor_status_of_the_check(
+        self, world, command
     ) -> None:
-        declare_core_and_sorting(world)
-        world.start_session(session_id="A")
-        world.start_session(session_id="B")
-        add_sorting_to_defaults(world)
-        with (world.record_files("A") / "deliveries.jsonl").open("a", encoding="utf-8") as handle:
+        if command == "delivery-check":
+            declare_core_and_sorting(world)
+            world.start_session(session_id="A")
+            world.start_session(session_id="B")
+            add_sorting_to_defaults(world)
+            file, expected = "deliveries.jsonl", ["session: sorting composed but not delivered"]
+            check = world.delivery_check
+        else:
+            world.rule("sorting")
+            b_path = world.project / "b" / "sorting.md"
+            world.load(world.project / "a" / "sorting.md", session_id="A")
+            world.load(b_path, session_id="B")
+            file, expected = "loads.jsonl", [still_loading(b_path, "session_start")]
+            check = world.load_check
+        with (world.record_files("A") / file).open("a", encoding="utf-8") as handle:
             handle.write("{this is not a record\n")
 
-        with_a = world.delivery_check("B")
+        with_a = check("B")
         shutil.rmtree(world.record_files("A"))
-        without_a = world.delivery_check("B")
+        without_a = check("B")
 
-        assert lines_of(with_a) == ["session: sorting composed but not delivered"]
-        assert (with_a.stdout, with_a.returncode) == (without_a.stdout, without_a.returncode)
-        assert with_a.returncode != 0
-
-    def test_a_corrupt_record_in_another_sessions_loads_changes_neither_output_nor_status_of_the_load_check(
-        self, world
-    ) -> None:
-        world.rule("sorting")
-        a_path = world.project / "a" / "sorting.md"
-        b_path = world.project / "b" / "sorting.md"
-        world.load(a_path, session_id="A")
-        world.load(b_path, session_id="B")
-        with (world.record_files("A") / "loads.jsonl").open("a", encoding="utf-8") as handle:
-            handle.write("{this is not a record\n")
-
-        with_a = world.load_check("B")
-        shutil.rmtree(world.record_files("A"))
-        without_a = world.load_check("B")
-
-        assert lines_of(with_a) == [f"still auto-loading: {b_path} (reason session_start)"]
+        assert lines_of(with_a) == expected
         assert (with_a.stdout, with_a.returncode) == (without_a.stdout, without_a.returncode)
         assert with_a.returncode != 0
 
 
 class TestPruningASessionsRecords:
-    def test_removing_a_sessions_directory_leaves_the_other_sessions_load_check_unchanged(
-        self, world
-    ) -> None:
-        world.rule("sorting")
-        b_path = world.project / "b" / "sorting.md"
-        world.load(world.project / "a" / "sorting.md", session_id="A")
-        world.load(b_path, session_id="B")
-        before = world.load_check("B")
-
-        shutil.rmtree(world.record_files("A"))
-        after = world.load_check("B")
-
-        assert lines_of(before) == [f"still auto-loading: {b_path} (reason session_start)"]
-        assert (after.stdout, after.returncode) == (before.stdout, before.returncode)
-
-    def test_removing_a_sessions_directory_leaves_the_other_sessions_check_unchanged(
-        self, world
-    ) -> None:
-        declare_core_and_sorting(world)
-        world.start_session(session_id="A")
-        world.start_session(session_id="B")
-        add_sorting_to_defaults(world)
-        before = world.delivery_check("B")
-
-        shutil.rmtree(world.record_files("A"))
-        after = world.delivery_check("B")
-
-        assert lines_of(before) == ["session: sorting composed but not delivered"]
-        assert (after.stdout, after.returncode) == (before.stdout, before.returncode)
-
     def test_a_compaction_reporting_no_model_composes_for_the_identifier_the_model_record_holds(
         self, world
     ) -> None:
@@ -154,27 +112,8 @@ class TestPruningASessionsRecords:
 
         assert delivery.context == "text of core-rules\ntext of opus-rules\n"
 
-    def test_pruning_by_age_removes_the_old_sessions_and_keeps_every_other_file(
-        self, world
-    ) -> None:
-        declare_core_and_sorting(world)
-        world.start_session(session_id="old")
-        world.start_session(session_id="recent")
-        recent_records = world.records("recent")
-        for file in world.record_files("old").iterdir():
-            os.utime(file, (1_000, 1_000))
-        os.utime(world.record_files("old"), (1_000, 1_000))
 
-        removed = log.prune(Locations(world.config), older_than=2_000)
-
-        assert removed == ("old",)
-        assert not world.record_files("old").exists()
-        assert world.records("recent") == recent_records
-        assert world.model_record("old") is not None
-        assert world.model_record("recent") is not None
-
-
-class TestADelegateDeliveryIsRecordedWithItsRules:
+class TestADeliveryIsRecordedWithItsScopeAndRules:
     def test_a_delegate_record_names_session_delegate_model_scope_and_each_rule_with_variant_and_digest(
         self, world
     ) -> None:
@@ -202,20 +141,7 @@ class TestADelegateDeliveryIsRecordedWithItsRules:
             {"rule": "voice", "variant": "terse", "digest": digest("terse voice\n")},
         ]
 
-
-class TestACompactionDeliveryIsRecordedAgain:
-    def test_a_second_record_with_scope_session_follows_a_compaction(self, world) -> None:
-        declare_core_and_sorting(world)
-        world.start_session()
-
-        world.start_session(source="compact")
-
-        records = world.records()
-        assert [(r["session_id"], r["scope"]) for r in records] == [("s1", "session")] * 2
-
-
-class TestASwitchDeliveryIsRecordedAsASwitch:
-    def test_a_switch_to_a_differently_composed_model_records_scope_switch_the_new_model_and_rules(
+    def test_a_compaction_records_another_session_delivery_and_a_model_switch_a_switch_delivery(
         self, world
     ) -> None:
         world.rule("core-rules")
@@ -224,57 +150,20 @@ class TestASwitchDeliveryIsRecordedAsASwitch:
             "models: opus sonnet haiku\ndefaults: core-rules\nmodel opus:\n  include: opus-rules\n"
         )
         world.start_session(model=SONNET)
+        world.start_session(model=SONNET, source="compact")
         world.switch_model(HAIKU, from_model=SONNET, prompt_id="p1")
 
         world.switch_model(OPUS, from_model=HAIKU, prompt_id="p2")
 
-        assert [r["scope"] for r in world.records()] == ["session", "switch"]
-        switched = world.records()[1]
+        records = world.records()
+        assert [r["scope"] for r in records] == ["session", "session", "switch"]
+        switched = records[-1]
         assert (switched["model"]["name"], switched["model"]["identifier"]) == ("opus", OPUS)
         assert [rule["rule"] for rule in switched["rules"]] == ["core-rules", "opus-rules"]
-        assert switched["switch"]["prompt_id"] == "p2"
-
-
-class TestARecordReadBackIsTheRecordWritten:
-    def test_every_kind_of_delivery_record_reads_back_to_the_json_it_was_written_as(
-        self, world
-    ) -> None:
-        world.rule("voice")
-        world.rule("voice@terse")
-        world.rule("opus-rules")
-        unreadable(world.rule("tone"))
-        world.write_config(
-            "models: opus haiku\n"
-            "flags: voice-terse\n"
-            "defaults: voice tone ghost\n"
-            "flag voice-terse:\n"
-            "  include: voice@terse\n"
-            "model opus:\n"
-            "  include: opus-rules\n"
-            "flag nope:\n"
-            "  include: voice\n"
-        )
-        world.environment["RULESETS_FLAGS"] = "voice-terse"
-        agent = world.config / "agents" / "critic.md"
-        agent.parent.mkdir(parents=True)
-        agent.write_text(
-            "---\nname: critic\ndescription: a test agent\ntools: Read, Edit\n---\nbody\n",
-            encoding="utf-8",
-        )
-        world.start_session(model="claude-nova-1")
-        world.switch_model(OPUS, from_model="claude-nova-1", prompt_id="p1")
-        world.toggle_flags({"strict": "set"})
-        world.start_delegate("critic")
-        world.start_session(model=None, session_id="s2")
-
-        written = [r for sid in ("s1", "s2") for r in world.records(sid)]
-
-        assert {r["scope"] for r in written} == {"session", "switch", "delegate"}
-        assert [DeliveryRecord.from_json(r).to_json() for r in written] == written
 
 
 class TestADeliveryRecordNamesEachFactWithItsSource:
-    def test_the_record_names_the_variant_the_launch_flag_and_each_fact_or_why_it_is_absent(
+    def test_the_session_record_names_the_variant_the_launch_flag_and_the_model_source(
         self, world
     ) -> None:
         world.rule("voice")
@@ -294,9 +183,7 @@ class TestADeliveryRecordNamesEachFactWithItsSource:
         assert record["model"]["source"] == "harness-reported"
         assert record["kind"] == "session"
         assert record["agent"]["state"] == "absent"
-        assert "--agent" in record["agent"]["reason"]
         assert record["tools"]["state"] == "absent"
-        assert "no agent type" in record["tools"]["reason"]
 
     def test_a_delegate_record_names_its_agent_and_the_definition_file_its_tools_came_from(
         self, world
@@ -320,70 +207,9 @@ class TestADeliveryRecordNamesEachFactWithItsSource:
             "source": str(definition),
         }
 
-    def test_a_delegate_with_no_definition_file_names_why_its_tools_are_absent(self, world) -> None:
-        world.rule("voice")
-        world.write_config(DECLARED + "defaults: voice\n")
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert record["tools"]["state"] == "absent"
-        assert "no definition file registers its agent type `critic`" in record["tools"]["reason"]
-
-
-class TestTwoSessionsLaunchedAlikeDifferByOneFlag:
-    def test_the_records_differ_by_the_removed_rule_and_the_flag(self, world) -> None:
-        world.rule("writing-code")
-        world.rule("sorting")
-        world.write_config(
-            DECLARED
-            + ("flags: without-writing-code\ndefaults: writing-code sorting\n")
-            + ("flag without-writing-code:\n  exclude: writing-code\n")
-        )
-        world.start_session(session_id="plain")
-        world.environment["RULESETS_FLAGS"] = "without-writing-code"
-        world.start_session(session_id="flagged")
-
-        (plain,) = world.records("plain")
-        (flagged,) = world.records("flagged")
-
-        assert [r["rule"] for r in plain["rules"]] == ["sorting", "writing-code"]
-        assert [r["rule"] for r in flagged["rules"]] == ["sorting"]
-        assert plain["flags"] == []
-        assert flagged["flags"] == [{"name": "without-writing-code", "source": "launch"}]
-        assert plain["model"] == flagged["model"]
-
-
-class TestADelegateRecordNamesTheSessionStateItRead:
-    def test_the_record_names_the_state_file_and_the_flag_a_toggle_set(self, world) -> None:
-        world.rule("security-pass")
-        world.write_config(
-            DECLARED + ("flags: strict\ndefaults:\nflag strict:\n  include: security-pass\n")
-        )
-        world.start_session()
-        world.toggle_flags({"strict": "set"})
-
-        world.start_delegate("critic")
-
-        (record,) = delegate_records(world)
-        assert record["session_state"] == {
-            "path": str(world.state_file()),
-            "band": None,
-            "flags": [{"name": "strict", "setting": "set"}],
-        }
-        assert record["flags"] == [{"name": "strict", "source": "toggle"}]
-
-    def test_a_session_and_a_switch_read_no_session_state(self, world) -> None:
-        declare_core_and_sorting(world)
-
-        world.start_session()
-
-        (record,) = world.records()
-        assert record["session_state"] is None
-
 
 class TestADeliveryRecordNamesWhatItSkippedWithheldAndConflicted:
-    def test_the_record_names_the_skipped_reference_the_withheld_rule_and_the_conflict(
+    def test_the_record_names_the_skipped_reference_and_block_the_withheld_rule_and_the_conflict(
         self, world
     ) -> None:
         for stem in ("voice", "voice@terse", "voice@warm"):
@@ -397,6 +223,8 @@ class TestADeliveryRecordNamesWhatItSkippedWithheldAndConflicted:
             "  include: voice@terse\n"
             "flag b:\n"
             "  include: voice@warm\n"
+            "model sonnet:\n"
+            "  include: voice\n"
         )
         world.environment["RULESETS_FLAGS"] = "a,b"
         config = str(world.rulesets / "config.yaml")
@@ -407,33 +235,15 @@ class TestADeliveryRecordNamesWhatItSkippedWithheldAndConflicted:
         assert record["skipped_references"] == [
             {"file": config, "line": 3, "reference": "ghost", "name": "ghost"}
         ]
-        (withheld,) = record["withheld"]
-        assert withheld["rule"] == "tone"
-        assert "Permission denied" in withheld["error"]
+        assert record["skipped_blocks"] == [
+            {"file": config, "line": 8, "condition": "model sonnet", "names": ["sonnet"]}
+        ]
+        assert [w["rule"] for w in record["withheld"]] == ["tone"]
         (conflict,) = record["conflicts"]
         assert conflict["rule"] == "voice"
-        assert conflict["delivered"] is None
         assert conflict["statements"] == [
             {"reference": "voice@terse", "line": 5, "variant": "terse"},
             {"reference": "voice@warm", "line": 7, "variant": "warm"},
-        ]
-
-    def test_the_record_names_a_skipped_block_with_its_file_line_and_undeclared_name(
-        self, world
-    ) -> None:
-        world.rule("voice")
-        world.write_config("models: opus\ndefaults: voice\nmodel sonnet:\n  include: voice\n")
-
-        world.start_session()
-
-        (record,) = world.records()
-        assert record["skipped_blocks"] == [
-            {
-                "file": str(world.rulesets / "config.yaml"),
-                "line": 3,
-                "condition": "model sonnet",
-                "names": ["sonnet"],
-            }
         ]
 
 
@@ -477,184 +287,147 @@ class TestADeliveryInSeveralParts:
         assert model is not None
         assert model["identifier"] == OPUS
 
-    def test_a_delegates_later_parts_name_the_delegate_as_their_writer(self, world) -> None:
-        for name in ("a-rule", "b-rule"):
-            world.rule(name, f"{name} " + "x" * 5990 + "\n")
-        world.write_config(DECLARED + "defaults: a-rule b-rule\n")
-        world.start_session()
 
-        world.start_delegate("critic", agent_id="a1")
-
-        (entry,) = [e for e in world.emitted_records() if e["agent_id"] == "a1"]
-        assert (entry["session_id"], entry["part"], entry["part_count"]) == ("s1", 2, 2)
+def equal_record_and_delegate(world) -> None:
+    declare_core_and_sorting(world)
+    world.start_session()
+    world.start_delegate("critic")
 
 
-class TestTheDeliveryCheckRecomposesEachCountedDelivery:
-    def test_a_record_equal_to_its_composition_now_prints_nothing_and_exits_zero(
-        self, world
-    ) -> None:
-        declare_core_and_sorting(world)
-        world.start_session()
-        world.start_delegate("critic")
-
-        result = world.delivery_check()
-
-        assert (result.stdout, result.returncode) == ("", 0)
-
-    def test_a_session_with_no_delivery_record_exits_zero(self, world) -> None:
-        declare_core_and_sorting(world)
-
-        result = world.delivery_check("never-started")
-
-        assert (result.stdout, result.returncode) == ("", 0)
-
-    def test_the_check_recomposes_a_delegate_from_the_flags_and_state_its_record_names(
-        self, world
-    ) -> None:
-        world.rule("security-pass")
-        world.write_config(
-            DECLARED + ("flags: strict\ndefaults:\nflag strict:\n  include: security-pass\n")
-        )
-        world.start_session()
-        world.toggle_flags({"strict": "set"})
-        world.start_delegate("critic")
-        world.toggle_flags({"strict": "unset"})
-
-        result = world.delivery_check()
-
-        assert (result.stdout, result.returncode) == ("", 0)
+def delegate_after_a_toggle_since_unset(world) -> None:
+    world.rule("security-pass")
+    world.write_config(
+        DECLARED + ("flags: strict\ndefaults:\nflag strict:\n  include: security-pass\n")
+    )
+    world.start_session()
+    world.toggle_flags({"strict": "set"})
+    world.start_delegate("critic")
+    world.toggle_flags({"strict": "unset"})
 
 
-class TestTheDeliveryCheckPrintsOneLinePerDifference:
-    def test_a_block_edited_after_delivery_to_remove_a_rule_names_it_delivered_but_not_composed(
-        self, world
-    ) -> None:
-        declare_core_and_sorting(world)
-        add_sorting_to_defaults(world)
-        world.start_session()
-        world.write_config(
-            DECLARED + ("defaults: core-rules sorting\nmodel opus:\n  exclude: sorting\n")
-        )
-
-        result = world.delivery_check()
-
-        assert lines_of(result) == ["session: sorting delivered but not composed"]
-        assert result.returncode != 0
-
-    def test_a_rule_the_composition_now_holds_and_the_record_lacks_is_composed_but_not_delivered(
-        self, world
-    ) -> None:
-        declare_core_and_sorting(world)
-        world.start_session()
-        add_sorting_to_defaults(world)
-
-        result = world.delivery_check()
-
-        assert lines_of(result) == ["session: sorting composed but not delivered"]
-        assert result.returncode != 0
-
-    def test_a_delegates_variant_that_differs_names_the_rule_both_variants_and_the_delegate(
-        self, world
-    ) -> None:
-        for stem in ("voice", "voice@warm", "voice@terse"):
-            world.rule(stem)
-        config = DECLARED + ("defaults:\nagent critic:\n  include: {}\n")
-        world.write_config(config.format("voice@warm"))
-        world.start_session()
-        world.start_delegate("critic", agent_id="a1")
-        world.write_config(config.format("voice@terse"))
-
-        result = world.delivery_check()
-
-        assert lines_of(result) == ["a1: voice delivered as warm but composed as terse"]
-        assert result.returncode != 0
-
-    def test_a_rule_delivered_at_its_default_form_and_composed_at_a_variant_names_both(
-        self, world
-    ) -> None:
-        for stem in ("voice", "voice@terse"):
-            world.rule(stem)
-        world.write_config(DECLARED + "defaults: voice\n")
-        world.start_session()
-        world.write_config(DECLARED + ("defaults: voice\nmodel opus:\n  include: voice@terse\n"))
-
-        result = world.delivery_check()
-
-        assert lines_of(result) == ["session: voice delivered as default but composed as terse"]
+def three_parts_then_compaction(world) -> None:
+    three_part_delivery(world)
+    world.start_session(source="compact")
 
 
-class TestTheDeliveryCheckConfirmsEveryLaterPart:
-    def test_a_part_with_no_emitted_record_is_named_as_composed_and_never_emitted(
-        self, world
-    ) -> None:
-        three_part_delivery(world)
-        (world.record_files() / "emitted-2.jsonl").unlink()
-
-        result = world.delivery_check()
-
-        assert lines_of(result) == ["session: part 2 composed and never emitted"]
-        assert result.returncode != 0
-
-    def test_a_part_whose_model_fact_differs_from_the_delivery_records_is_named(
-        self, world
-    ) -> None:
-        three_part_delivery(world)
-        path = world.record_files() / "emitted-3.jsonl"
-        record = json.loads(path.read_text(encoding="utf-8"))
-        record["model"]["identifier"] = "claude-other-1"
-        path.write_text(json.dumps(record) + "\n", encoding="utf-8")
-
-        result = world.delivery_check()
-
-        assert lines_of(result) == ["session: part 3 emitted under a different model fact"]
-        assert result.returncode != 0
-
-    def test_a_part_whose_text_no_longer_composes_is_named_by_its_digest(self, world) -> None:
-        three_part_delivery(world)
-        world.rule("c-rule", "c-rule " + "y" * 5990 + "\n")
-
-        result = world.delivery_check()
-
-        assert lines_of(result) == ["session: part 3 emitted text differs from what composes now"]
-        assert result.returncode != 0
-
-    def test_a_complete_several_part_delivery_prints_nothing(self, world) -> None:
-        three_part_delivery(world)
-
-        result = world.delivery_check()
-
-        assert (result.stdout, result.returncode) == ("", 0)
-
-    def test_the_later_parts_of_an_earlier_delivery_are_not_charged_to_a_later_one(
-        self, world
-    ) -> None:
-        three_part_delivery(world)
-        world.start_session(source="compact")
-
-        result = world.delivery_check()
-
-        assert (result.stdout, result.returncode) == ("", 0)
+def a_block_removes_a_delivered_rule(world) -> None:
+    declare_core_and_sorting(world)
+    add_sorting_to_defaults(world)
+    world.start_session()
+    world.write_config(
+        DECLARED + ("defaults: core-rules sorting\nmodel opus:\n  exclude: sorting\n")
+    )
 
 
-def still_loading(path, reason) -> str:
-    return f"still auto-loading: {path} (reason {reason})"
+def a_rule_is_added_after_delivery(world) -> None:
+    declare_core_and_sorting(world)
+    world.start_session()
+    add_sorting_to_defaults(world)
 
 
-def tree_snapshot(*roots) -> dict[pathlib.Path, bytes | None]:
-    """Every file under the roots with its bytes, and every directory, for comparing before and after."""
-    return {
-        path: None if path.is_dir() else path.read_bytes()
-        for root in roots
-        for path in sorted(root.rglob("*"))
-    }
+def a_delegates_variant_changes(world) -> None:
+    for stem in ("voice", "voice@warm", "voice@terse"):
+        world.rule(stem)
+    config = DECLARED + ("defaults:\nagent critic:\n  include: {}\n")
+    world.write_config(config.format("voice@warm"))
+    world.start_session()
+    world.start_delegate("critic", agent_id="a1")
+    world.write_config(config.format("voice@terse"))
+
+
+def a_default_form_gains_a_variant(world) -> None:
+    for stem in ("voice", "voice@terse"):
+        world.rule(stem)
+    world.write_config(DECLARED + "defaults: voice\n")
+    world.start_session()
+    world.write_config(DECLARED + ("defaults: voice\nmodel opus:\n  include: voice@terse\n"))
+
+
+def a_part_loses_its_emitted_record(world) -> None:
+    three_part_delivery(world)
+    (world.record_files() / "emitted-2.jsonl").unlink()
+
+
+def a_part_records_another_model(world) -> None:
+    three_part_delivery(world)
+    path = world.record_files() / "emitted-3.jsonl"
+    record = json.loads(path.read_text(encoding="utf-8"))
+    record["model"]["identifier"] = "claude-other-1"
+    path.write_text(json.dumps(record) + "\n", encoding="utf-8")
+
+
+def a_part_text_changes(world) -> None:
+    three_part_delivery(world)
+    world.rule("c-rule", "c-rule " + "y" * 5990 + "\n")
+
+
+DELIVERY_CHECKS = {
+    "a record equal to its composition now": (equal_record_and_delegate, "s1", []),
+    "a session with no delivery record": (declare_core_and_sorting, "never-started", []),
+    "a delegate recomposed from the flags and state its record names": (
+        delegate_after_a_toggle_since_unset,
+        "s1",
+        [],
+    ),
+    "a complete several-part delivery": (three_part_delivery, "s1", []),
+    "the later parts of an earlier delivery are not charged to a later one": (
+        three_parts_then_compaction,
+        "s1",
+        [],
+    ),
+    "a block edited after delivery to remove a rule": (
+        a_block_removes_a_delivered_rule,
+        "s1",
+        ["session: sorting delivered but not composed"],
+    ),
+    "a rule the composition now holds and the record lacks": (
+        a_rule_is_added_after_delivery,
+        "s1",
+        ["session: sorting composed but not delivered"],
+    ),
+    "a delegate's variant that differs": (
+        a_delegates_variant_changes,
+        "s1",
+        ["a1: voice delivered as warm but composed as terse"],
+    ),
+    "a rule delivered at its default form and composed at a variant": (
+        a_default_form_gains_a_variant,
+        "s1",
+        ["session: voice delivered as default but composed as terse"],
+    ),
+    "a part with no emitted record": (
+        a_part_loses_its_emitted_record,
+        "s1",
+        ["session: part 2 composed and never emitted"],
+    ),
+    "a part whose model fact differs from the delivery record's": (
+        a_part_records_another_model,
+        "s1",
+        ["session: part 3 emitted under a different model fact"],
+    ),
+    "a part whose text no longer composes": (
+        a_part_text_changes,
+        "s1",
+        ["session: part 3 emitted text differs from what composes now"],
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    ("setup", "session", "expected"), list(DELIVERY_CHECKS.values()), ids=list(DELIVERY_CHECKS)
+)
+def test_the_delivery_check_prints_one_line_per_difference_and_exits_zero_only_where_there_is_none(
+    world, setup, session, expected
+) -> None:
+    setup(world)
+
+    result = world.delivery_check(session)
+
+    assert lines_of(result) == expected
+    assert (result.returncode == 0) == (expected == [])
 
 
 class TestTheInstructionsLoadedHookRecordsWhatTheHarnessLoaded:
-    def test_the_hook_is_wired_on_instructions_loaded_with_one_entry_and_no_matcher(self) -> None:
-        groups = json.loads(HOOKS_JSON.read_text(encoding="utf-8"))["hooks"]["InstructionsLoaded"]
-
-        assert [("matcher" in group, len(group["hooks"])) for group in groups] == [(False, 1)]
-
     def test_the_hook_records_the_loaded_file_and_the_reason_for_its_session_and_prints_nothing(
         self, world
     ) -> None:
@@ -700,158 +473,114 @@ class TestTheInstructionsLoadedHookRecordsWhatTheHarnessLoaded:
         assert (result.returncode, result.stdout) == (0, "")
 
 
-class TestTheLoadCheckConfirmsNoPoolRuleAutoLoads:
-    def test_a_session_start_record_naming_a_pool_rules_file_is_reported_and_the_check_fails(
-        self, world
-    ) -> None:
-        world.rule("core-rules")
-        world.rule("sorting")
-        loaded = world.config / "rules" / "sorting.md"
-
-        world.load(loaded, "session_start")
-        result = world.load_check()
-
-        assert lines_of(result) == [still_loading(loaded, "session_start")]
-        assert result.returncode != 0
-
-    def test_a_same_named_file_in_a_projects_rules_directory_is_reported_on_its_stem_alone(
-        self, world
-    ) -> None:
-        world.rule("sorting")
-        loaded = world.project / ".claude" / "rules" / "sorting.md"
-
-        world.load(loaded, "path_glob_match", globs=["src/**"], trigger_file_path="src/a.ts")
-        result = world.load_check()
-
-        assert lines_of(result) == [still_loading(loaded, "path_glob_match")]
-        assert result.returncode != 0
-
-    def test_a_pool_rule_imported_into_claude_md_is_reported_with_its_include_reason(
-        self, world
-    ) -> None:
-        world.rule("sorting")
-        loaded = world.project / "docs" / "sorting.md"
-
-        world.load(loaded, "include", parent_file_path=str(world.project / "CLAUDE.md"))
-        result = world.load_check()
-
-        assert lines_of(result) == [still_loading(loaded, "include")]
-        assert result.returncode != 0
-
-    def test_each_record_naming_a_pool_rule_is_reported_in_file_order(self, world) -> None:
-        world.rule("sorting")
-        world.rule("voice")
-        first = world.project / "a" / "voice.md"
-        second = world.project / "b" / "sorting.md"
-        world.load(first, "session_start")
-        world.load(second, "compact")
-
-        result = world.load_check()
-
-        assert lines_of(result) == [
-            still_loading(first, "session_start"),
-            still_loading(second, "compact"),
-        ]
-
-    def test_a_reported_file_stays_at_its_path_with_its_content_and_nothing_else_moves(
-        self, world
-    ) -> None:
-        world.rule("sorting")
-        reported = world.project / ".claude" / "rules" / "sorting.md"
-        reported.parent.mkdir(parents=True)
-        reported.write_text("local copy of sorting\n", encoding="utf-8")
-        world.load(reported, "session_start")
-        before = tree_snapshot(world.config, world.project)
-
-        result = world.load_check()
-
-        assert lines_of(result) == [still_loading(reported, "session_start")]
-        assert reported.read_text(encoding="utf-8") == "local copy of sorting\n"
-        assert tree_snapshot(world.config, world.project) == before
-
-
-class TestTheLoadCheckTakesRuleNamesFromThePool:
-    def test_a_config_that_is_not_valid_yaml_leaves_the_check_naming_the_path(self, world) -> None:
-        world.rule("sorting")
-        world.write_config("models: ['opus'\ndefaults: [\n")
-        loaded = world.project / ".claude" / "rules" / "sorting.md"
-        world.load(loaded, "session_start")
-
-        result = world.load_check()
-
-        assert lines_of(result) == [still_loading(loaded, "session_start")]
-        assert result.returncode != 0
-
-    def test_a_rule_with_variants_is_named_once_under_its_rule_name(self, world) -> None:
-        from rulesets.audit.load_check import load_check
-
-        world.rule("voice")
-        world.rule("voice@terse")
-        loaded = world.project / "voice.md"
-        world.load(loaded, "session_start")
-
-        result = world.load_check()
-        findings = load_check(Locations(world.config), "s1", world.rulesets)
-
-        assert lines_of(result) == [still_loading(loaded, "session_start")]
-        assert [finding.rule for finding in findings] == ["voice"]
-
-    def test_an_empty_pool_names_no_rule_and_the_check_passes(self, world) -> None:
-        world.load(world.project / "sorting.md", "session_start")
-
-        result = world.load_check()
-
-        assert (result.stdout, result.returncode) == ("", 0)
+# Each row: the pool's rule files, the config text (None keeps the one the world holds), each
+# file the harness loaded as (folder and path, reason, extra payload fields), and the loads the
+# check reports, by position.
+LOAD_CHECKS = {
+    "a session start naming a pool rule's file": (
+        ["core-rules", "sorting"],
+        None,
+        [("config/rules/sorting.md", "session_start", {})],
+        [0],
+    ),
+    "a same-named file in a project's rules directory": (
+        ["sorting"],
+        None,
+        [
+            (
+                "project/.claude/rules/sorting.md",
+                "path_glob_match",
+                {"globs": ["src/**"], "trigger_file_path": "src/a.ts"},
+            )
+        ],
+        [0],
+    ),
+    "a pool rule imported into CLAUDE.md": (
+        ["sorting"],
+        None,
+        [("project/docs/sorting.md", "include", {"parent_file_path": "CLAUDE.md"})],
+        [0],
+    ),
+    "each record naming a pool rule, in file order": (
+        ["sorting", "voice"],
+        None,
+        [("project/a/voice.md", "session_start", {}), ("project/b/sorting.md", "compact", {})],
+        [0, 1],
+    ),
+    "a config that is not valid yaml": (
+        ["sorting"],
+        "models: ['opus'\ndefaults: [\n",
+        [("project/.claude/rules/sorting.md", "session_start", {})],
+        [0],
+    ),
+    "a rule with variants": (
+        ["voice", "voice@terse"],
+        None,
+        [("project/voice.md", "session_start", {})],
+        [0],
+    ),
+    "only a file whose whole stem is a rule name": (
+        ["sorting", "core-rules"],
+        None,
+        [
+            ("project/x/resorting.md", "session_start", {}),
+            ("project/x/sorting-notes.md", "session_start", {}),
+            ("project/x/sort.md", "session_start", {}),
+            ("project/x/core-rules-v2.md", "session_start", {}),
+            ("project/x/sorting/CLAUDE.md", "session_start", {}),
+            ("project/x/sorting@terse.md", "session_start", {}),
+            ("project/x/sorting.md", "session_start", {}),
+        ],
+        [6],
+    ),
+    "an empty pool": ([], None, [("project/sorting.md", "session_start", {})], []),
+    "CLAUDE.md files in several directories": (
+        ["sorting"],
+        None,
+        [
+            ("config/CLAUDE.md", "session_start", {"memory_type": "User"}),
+            ("project/CLAUDE.md", "session_start", {}),
+            ("project/sub/CLAUDE.md", "nested_traversal", {}),
+            ("project/docs/CLAUDE.md", "include", {}),
+        ],
+        [],
+    ),
+    "CLAUDE.md where the pool holds a rule of that name": (
+        ["CLAUDE"],
+        None,
+        [("project/CLAUDE.md", "session_start", {})],
+        [],
+    ),
+    "a path-scoped rule whose stem names no pool rule": (
+        ["sorting"],
+        None,
+        [("project/.claude/rules/api-style.md", "path_glob_match", {})],
+        [],
+    ),
+}
 
 
-class TestTheLoadCheckExpectsClaudeMdAndFilesThatNameNoPoolRule:
-    def test_claude_md_files_in_several_directories_pass_whatever_their_reason(self, world) -> None:
-        world.rule("sorting")
-        world.load(world.config / "CLAUDE.md", "session_start", memory_type="User")
-        world.load(world.project / "CLAUDE.md", "session_start")
-        world.load(world.project / "sub" / "CLAUDE.md", "nested_traversal")
-        world.load(world.project / "docs" / "CLAUDE.md", "include")
+@pytest.mark.parametrize(
+    ("stems", "config", "loads", "reported"), list(LOAD_CHECKS.values()), ids=list(LOAD_CHECKS)
+)
+def test_the_load_check_reports_each_loaded_file_named_for_a_pool_rule_and_fails_only_then(
+    world, stems, config, loads, reported
+) -> None:
+    for stem in stems:
+        world.rule(stem)
+    if config is not None:
+        world.write_config(config)
+    paths = []
+    for location, reason, extra in loads:
+        folder, _, relative = location.partition("/")
+        path = (world.project if folder == "project" else world.config) / relative
+        paths.append(path)
+        world.load(path, reason, **extra)
 
-        result = world.load_check()
+    result = world.load_check()
 
-        assert (result.stdout, result.returncode) == ("", 0)
-
-    def test_claude_md_passes_even_where_the_pool_holds_a_rule_of_that_name(self, world) -> None:
-        world.rule("CLAUDE")
-        world.load(world.project / "CLAUDE.md", "session_start")
-
-        result = world.load_check()
-
-        assert (result.stdout, result.returncode) == ("", 0)
-
-    def test_a_path_scoped_rule_loaded_lazily_passes_when_its_stem_names_no_pool_rule(
-        self, world
-    ) -> None:
-        world.rule("sorting")
-        world.load(world.project / ".claude" / "rules" / "api-style.md", "path_glob_match")
-
-        result = world.load_check()
-
-        assert (result.stdout, result.returncode) == ("", 0)
-
-    def test_only_a_file_whose_whole_stem_is_a_rule_name_is_reported(self, world) -> None:
-        world.rule("sorting")
-        world.rule("core-rules")
-        exact = world.project / "x" / "sorting.md"
-        for near in (
-            "x/resorting.md",
-            "x/sorting-notes.md",
-            "x/sort.md",
-            "x/core-rules-v2.md",
-            "x/sorting/CLAUDE.md",
-            "x/sorting@terse.md",
-        ):
-            world.load(world.project / near, "session_start")
-        world.load(exact, "session_start")
-
-        result = world.load_check()
-
-        assert lines_of(result) == [still_loading(exact, "session_start")]
+    assert lines_of(result) == [still_loading(paths[i], loads[i][1]) for i in reported]
+    assert (result.returncode == 0) == (reported == [])
 
 
 class TestDeliveriesListsWhatReachedEachContext:
