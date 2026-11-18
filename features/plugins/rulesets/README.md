@@ -22,7 +22,7 @@ it starts. Every instruction is its own file, and one config file says who recei
 
 ## A small example
 
-Two rules and a three-line config:
+Two rules and a four-line config:
 
 ```text
 ~/.claude/rulesets/
@@ -33,6 +33,7 @@ Two rules and a three-line config:
 ```
 
 ```yaml
+models: haiku sonnet opus
 defaults: voice
 agent critic:
   include: review-checklist
@@ -44,7 +45,7 @@ agent critic:
 | an agent named `critic` | `voice`, `review-checklist` |
 | every other agent | `voice` |
 
-Asked "why did critic get review-checklist?", the plugin names line 3 of `config.yaml`.
+Asked "why did critic get review-checklist?", the plugin names line 4 of `config.yaml`.
 
 ## Get started
 
