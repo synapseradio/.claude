@@ -466,7 +466,6 @@
 			"Bash(pip config unset:*)",
 			"Bash(pipx install:*)",
 			"Bash(pipx run:*)",
-			"Bash(npx:*)",
 			"Bash(npm exec:*)",
 			"Bash(npm x:*)",
 			"Bash(npm create:*)",
