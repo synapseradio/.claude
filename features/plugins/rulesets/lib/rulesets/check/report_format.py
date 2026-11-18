@@ -12,6 +12,7 @@ from rulesets.check.findings import (
     FlagSubject,
     KeySubject,
     ModelSubject,
+    PairingSubject,
     ReferencesSubject,
     ReferenceSubject,
     Report,
@@ -19,6 +20,7 @@ from rulesets.check.findings import (
     RulesetsSubject,
     RulesetSubject,
     RuleSubject,
+    SkillSubject,
     Subject,
 )
 
@@ -63,6 +65,10 @@ def _describe_subject(subject: Subject) -> str:
             return "context " + ", ".join(named)
         case DirectorySubject(path):
             return f"directory `{path.name}`"
+        case SkillSubject(name):
+            return f"skill `{name}`"
+        case PairingSubject(rule):
+            return f"pairing of rule `{rule}`"
 
 
 def finding_line(finding: CheckError | CheckWarning) -> str:

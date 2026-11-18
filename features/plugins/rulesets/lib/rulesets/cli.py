@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Command line for the rulesets engine: `check`, `explain`, `adopt`, `compare`, `eject`, `estimate`, `render`, `split`, `toggle`, `delivery-check`, `load-check`, and `deliveries`.
+"""Command line for the rulesets engine: `check`, `explain`, `adopt`, `compare`, `eject`, `estimate`, `render`, `skills`, `split`, `toggle`, `delivery-check`, `load-check`, and `deliveries`.
 
 This module parses arguments, prints, and sets the exit status. Every finding comes from
 `rulesets.check.run`, and every line's wording from `rulesets.check.report_format`. An explanation comes from `rulesets.explain`, and
 a size estimate from `rulesets.estimate`. A toggle's
 change comes from `rulesets.session.toggle`, a delivery difference from
 `rulesets.audit.delivery_check`, a still auto-loading file from `rulesets.audit.load_check`, a
-delivery line from `rulesets.audit.deliveries`, ejected files from `rulesets.eject`, and a render
-from `rulesets.render`.
+delivery line from `rulesets.audit.deliveries`, ejected files from `rulesets.eject`, a render
+from `rulesets.render`, and a skill's link from `rulesets.skill_links`.
 """
 
 import argparse
@@ -46,6 +46,7 @@ from rulesets.session.toggle import (
     UnsetFlag,
     apply_toggle,
 )
+from rulesets.skill_links import personal_skills, skill_links, write_links
 from rulesets.source.directory import Present, RulesetsDirectory, read_directory
 from rulesets.source.pool import RENDER_DIRECTORY
 
@@ -165,6 +166,18 @@ def _build_parser() -> argparse.ArgumentParser:
     rendering.add_argument("--tools", action="append", default=[], help="a tool the context holds")
     rendering.add_argument("--flag", action="append", default=[], help="a flag the context holds")
     rendering.add_argument(
+        "--root", type=pathlib.Path, help="the rulesets directory; the configured one by default"
+    )
+    linking = commands.add_parser(
+        "skills",
+        help="print each skill's link in the personal skills folder; exit 1 where one is not linked",
+    )
+    linking.add_argument(
+        "--link",
+        action="store_true",
+        help="link each unlinked skill and remove each stale link; exit 1 only where one is blocked",
+    )
+    linking.add_argument(
         "--root", type=pathlib.Path, help="the rulesets directory; the configured one by default"
     )
     splitting = commands.add_parser(
@@ -332,6 +345,19 @@ def _render(arguments: argparse.Namespace, environ: Mapping[str, str]) -> int:
     return 0
 
 
+def _skills(arguments: argparse.Namespace, environ: Mapping[str, str]) -> int:
+    root = _existing_root(arguments.root, environ)
+    if root is None:
+        return _USAGE_ERROR
+    links = skill_links(root, personal_skills(Locations.from_environment(environ)))
+    if arguments.link:
+        write_links(links)
+    for link in links:
+        print(link.line(written=arguments.link))
+    failing = ("blocked",) if arguments.link else ("missing", "stale", "blocked")
+    return 1 if any(link.state in failing for link in links) else 0
+
+
 def _split(arguments: argparse.Namespace, environ: Mapping[str, str]) -> int:
     root = _existing_root(arguments.root, environ)
     if root is None:
@@ -371,6 +397,8 @@ def main(argv: Sequence[str] | None = None, environ: Mapping[str, str] = os.envi
         return _estimate(arguments, environ)
     if arguments.command == "render":
         return _render(arguments, environ)
+    if arguments.command == "skills":
+        return _skills(arguments, environ)
     if arguments.command == "split":
         return _split(arguments, environ)
     if arguments.command == "delivery-check":

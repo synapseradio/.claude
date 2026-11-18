@@ -15,6 +15,7 @@ from rulesets.check.findings import (
     CheckError,
     ConfigSubject,
     KeySubject,
+    PairingSubject,
     ReferencesSubject,
     ReferenceSubject,
     RulesetsSubject,
@@ -35,6 +36,7 @@ from rulesets.source.config import (
     WrongBlockShape,
     WrongKeyShape,
     WrongListShape,
+    WrongPairingShape,
     WrongRulesetShape,
 )
 from rulesets.source.expansion import (
@@ -57,6 +59,7 @@ _KEY_SHAPES: dict[DeclarationKey, str] = {
     "flags": f"must be flag names; {_WORDS}",
     "defaults": "must be references, or a mapping of `include` and `exclude`",
     "sets": "must be a mapping of ruleset names to references",
+    "skills": "must be a mapping of rule names to skill names",
 }
 
 _OLD_LAYOUT: dict[str, str] = {
@@ -152,6 +155,14 @@ def _shape_error(config: Config, problem: ShapeProblem) -> CheckError:
                 config.path,
                 line,
                 "a ruleset name holds no `.`, since a reference reads `.` as the end of a ruleset's name",
+            )
+        case WrongPairingShape(rule, line):
+            return CheckError(
+                "pairing-shape",
+                PairingSubject(rule),
+                config.path,
+                line,
+                "an entry of `skills` pairs one rule name, with no `@variant`, with one skill name",
             )
         case WrongBlockShape():
             return CheckError(

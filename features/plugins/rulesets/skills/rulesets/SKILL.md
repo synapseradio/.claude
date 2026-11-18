@@ -1,6 +1,6 @@
 ---
 name: rulesets
-description: Write, edit, inspect, and debug the rules a rulesets directory delivers to each session and delegate, and toggle what this session's next delegates receive. The directory holds a pool of rule files (rules/NAME.md, variants NAME@VARIANT.md) and a config.yaml of models, flags, defaults, named sets, and condition blocks. Use it to add, edit, rename, split, or remove a rule or variant; give a rule to one model, agent, tool, or flag, or withhold it; clear check errors and warnings; explain why a context got or missed a rule; preview what an edit changes across contexts; gate a commit; turn a flag on or off for the delegates started next; launch with RULESETS_FLAGS; read what a session or delegate received; find why no rules arrive; set up a first rulesets directory, adopt an old rules folder, or eject to plain files. Use it whenever a request touches the rules pool, the config, a rule variant, a ruleset flag, or which rules a delegate gets, even where it never says "rulesets".
+description: Write, edit, inspect, and debug the rules a rulesets directory delivers to each session and delegate, and toggle what this session's next delegates receive. The directory holds a pool of rule files (rules/NAME.md, variants NAME@VARIANT.md) and a config.yaml of models, flags, defaults, named sets, and condition blocks. Use it to add, edit, rename, split, or remove a rule or variant; give a rule to one model, agent, tool, or flag, or withhold it; clear check errors and warnings; explain why a context got or missed a rule; preview what an edit changes across contexts; gate a commit; turn a flag on or off for the delegates started next; launch with RULESETS_FLAGS; read what a session or delegate received; find why no rules arrive; set up a first rulesets directory, adopt an old rules folder, or eject to plain files; add a skill to the directory's skills/ folder, pair a rule with the skill that holds its body, and check or link skills so they load by name. Use it whenever a request touches the rules pool, the config, a rule variant, a ruleset flag, or which rules a delegate gets, even where it never says "rulesets".
 ---
 
 # Rulesets
@@ -97,6 +97,10 @@ they are.
 | 27 | Eject to plain files | [setup and migration](references/setup-and-migration.md) |
 | 28 | A directory holds an older config file and no `config.yaml` | [setup and migration](references/setup-and-migration.md) |
 | 29 | How many tokens each context's rules cost, and what an edit changes in them | [Estimate](#estimate) |
+| 30 | Add a skill | [skills](references/skills.md) |
+| 31 | Pair a rule with a skill, leaving the rule a pointer | [skills](references/skills.md) |
+| 32 | Check skills and link them so they load by name | [skills](references/skills.md) |
+| 33 | Remove a skill | [skills](references/skills.md) |
 
 ## The files
 
@@ -105,6 +109,7 @@ they are.
 | `ROOT/config.yaml` | which rules each context receives | you, `scaffold.py`, `CLI adopt` |
 | `ROOT/rules/` | the pool: `NAME.md` is a rule's default form, `NAME@VARIANT.md` a variant | you, `CLI split`, `scaffold.py`, `CLI adopt` |
 | `ROOT/references/` | files a rule may cite | you |
+| `ROOT/skills/` | skills, `NAME/SKILL.md` each, linked into `~/.claude/skills/` | you |
 | `ROOT/-render/` | composed renders for reading and editing, never read as rules | `CLI render`, `scaffold.py` |
 | `STATE/` | delivery records and toggle state | the plugin's hooks, `CLI toggle` |
 

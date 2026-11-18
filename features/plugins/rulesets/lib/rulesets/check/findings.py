@@ -96,6 +96,20 @@ class DirectorySubject:
     path: pathlib.Path
 
 
+@dataclasses.dataclass(frozen=True)
+class SkillSubject:
+    """A skill of the rulesets directory, by its directory name."""
+
+    name: str
+
+
+@dataclasses.dataclass(frozen=True)
+class PairingSubject:
+    """An entry of `skills`, by the rule it pairs."""
+
+    rule: str
+
+
 type Subject = (
     RuleSubject
     | RulePairSubject
@@ -110,6 +124,8 @@ type Subject = (
     | ConfigSubject
     | DirectorySubject
     | ContextSubject
+    | SkillSubject
+    | PairingSubject
 )
 
 type ErrorKind = Literal[
@@ -137,6 +153,12 @@ type ErrorKind = Literal[
     "variant-without-default",
     "unreadable-file",
     "oversize-body",
+    "pairing-shape",
+    "pairing-unknown-rule",
+    "pairing-unknown-skill",
+    "skill-file",
+    "skill-frontmatter",
+    "skill-name",
 ]
 
 type WarningKind = Literal[
@@ -147,6 +169,7 @@ type WarningKind = Literal[
     "dangling-reference",
     "external-reference",
     "too-many-parts",
+    "pointer-unnamed",
 ]
 
 

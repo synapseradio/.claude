@@ -15,6 +15,7 @@ The commands below run from the repository root. `$CLI` stands for
 rulesets/
   config.yaml      which rules each context receives
   rules/           the pool: one file per rule or variant
+  skills/          skills a rule points to: skills/<name>/SKILL.md, loadable as /<name>
   -render/         generated renders, written by `render`
 ```
 
@@ -29,6 +30,12 @@ rulesets/
   contexts its condition matches, or sets a variant for them. A new rule file reaches every main
   session through `include: all.*` under `kind session:`, with no config edit. To keep a rule from
   some contexts, add it under `exclude:` in a block.
+
+A rule whose body lives in a skill is a one-line pointer: its text names the skill in backticks,
+and `skills:` in `config.yaml` pairs the rule with the skill, as `writing-prose: prose`. Each
+variant of the rule carries the same pointer. A session start links each skill into
+`~/.claude/skills/`; `$CLI skills --root rulesets` previews the links, and `--link` writes them,
+from the main checkout only.
 
 The folder also holds the directories of the earlier tier layout, `default/`, `fable/`, `opus/`,
 `sonnet/`, `haiku/`, and `renders/`. The engine reads none of them, and `check`

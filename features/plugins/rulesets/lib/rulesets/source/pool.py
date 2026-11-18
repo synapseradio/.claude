@@ -16,6 +16,7 @@ import yaml
 
 from rulesets.documents import split_frontmatter
 from rulesets.source.marker import Marker, read_marker
+from rulesets.source.skills import SKILLS_DIRECTORY
 from rulesets.source.text_file import UnreadableFile, read_text_file
 
 _POOL_DIRECTORY = "rules"
@@ -172,14 +173,16 @@ def read_pool(root: pathlib.Path) -> Pool:
     """Read `rules/` of one rulesets directory.
 
     A file's rule is its stem up to the first `@`, and the rest of the stem is its variant.
-    The `references/` and `-render/` folders beside the pool are reserved and read as nothing.
+    The `references/`, `skills/`, and `-render/` folders beside the pool are reserved and read as
+    nothing.
     """
     pool_directory = root / _POOL_DIRECTORY
     stray = [
         entry
         for entry in (sorted(root.iterdir()) if root.is_dir() else ())
         if entry.is_dir()
-        and entry.name not in (_POOL_DIRECTORY, REFERENCES_DIRECTORY, RENDER_DIRECTORY)
+        and entry.name
+        not in (_POOL_DIRECTORY, REFERENCES_DIRECTORY, SKILLS_DIRECTORY, RENDER_DIRECTORY)
     ]
     defaults: dict[str, PoolFile] = {}
     variants: dict[str, dict[str, PoolFile]] = {}

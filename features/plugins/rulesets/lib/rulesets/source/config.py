@@ -1,6 +1,7 @@
 """Read `config.yaml` into its declarations and blocks, keeping the file line of every word.
 
-The keys `models`, `flags`, `defaults`, and `sets` hold what their names say; every other
+The keys `models`, `flags`, `defaults`, and `sets` hold what their names say, and `skills` pairs
+rules with skills; every other
 top-level key is a block keyed by its condition. A block nests further blocks, and its `then`
 holds a second list under the same condition; this module flattens each into a Block whose
 condition joins every enclosing condition with `and`. A key of the wrong shape holds nothing and
@@ -27,9 +28,9 @@ _NULL_TAG = "tag:yaml.org,2002:null"
 _WORD = re.compile(r"\S+")
 _CONDITION_TOKEN = re.compile(r"[()]|[^\s()]+")
 
-type DeclarationKey = Literal["models", "flags", "defaults", "sets"]
+type DeclarationKey = Literal["models", "flags", "defaults", "sets", "skills"]
 
-DECLARATION_KEYS: tuple[DeclarationKey, ...] = ("models", "flags", "defaults", "sets")
+DECLARATION_KEYS: tuple[DeclarationKey, ...] = ("models", "flags", "defaults", "sets", "skills")
 BLOCK_LIST_KEYS = ("include", "exclude")
 THEN_KEY = "then"
 
@@ -54,6 +55,15 @@ class Block:
     key: str
     condition: str
     references: tuple[Reference, ...]
+
+
+@dataclasses.dataclass(frozen=True)
+class Pairing:
+    """A rule paired with the skill that holds its body: an entry of `skills`."""
+
+    rule: str
+    skill: str
+    line: int
 
 
 @dataclasses.dataclass(frozen=True)
@@ -93,6 +103,14 @@ class DottedRulesetName:
     """A set whose name holds a `.`, which a reference reads as the end of a set's name."""
 
     ruleset: str
+    line: int
+
+
+@dataclasses.dataclass(frozen=True)
+class WrongPairingShape:
+    """An entry of `skills` whose key is no plain rule name or whose value is not one skill name."""
+
+    rule: str
     line: int
 
 
@@ -138,6 +156,7 @@ type ShapeProblem = (
     | WrongRulesetShape
     | ReservedRulesetDeclared
     | DottedRulesetName
+    | WrongPairingShape
     | WrongListShape
     | WrongBlockShape
     | DuplicateKey
@@ -160,7 +179,7 @@ class Config:
     """The declarations and blocks of a config. A key that is missing or the wrong shape holds nothing.
 
     `problems` holds the shape problems found while reading. `defaults` is None where the key
-    is not written.
+    is not written. `pairings` holds each well-formed entry of `skills`, in file order.
     """
 
     path: pathlib.Path
@@ -170,6 +189,7 @@ class Config:
     rulesets: Mapping[str, Ruleset]
     blocks: tuple[Block, ...]
     problems: tuple[ShapeProblem, ...]
+    pairings: tuple[Pairing, ...] = ()
 
     def spreadable(self) -> dict[str, tuple[Reference, ...]]:
         """Each list a spread can name, by name: the declared sets and `defaults`."""
@@ -378,6 +398,29 @@ def _read_sets(reader: _Reader, value: yaml.Node, line: int) -> dict[str, Rulese
     return rulesets
 
 
+def _read_pairings(reader: _Reader, value: yaml.Node, line: int) -> tuple[Pairing, ...]:
+    if _is_null(value):
+        return ()
+    if not isinstance(value, yaml.MappingNode):
+        reader.problems.append(WrongKeyShape("skills", line))
+        return ()
+    pairs, duplicates = _unique_pairs(value, reader._text)
+    reader.problems.extend(duplicates)
+    pairings: list[Pairing] = []
+    for rule, rule_node, skill_node in pairs:
+        written = _line(rule_node)
+        skills = (
+            [word for word, _ in _words(skill_node, reader._text)]
+            if isinstance(skill_node, yaml.ScalarNode)
+            else []
+        )
+        if "@" in rule or not isinstance(rule_node, yaml.ScalarNode) or len(skills) != 1:
+            reader.problems.append(WrongPairingShape(rule, written))
+            continue
+        pairings.append(Pairing(rule, skills[0], written))
+    return tuple(pairings)
+
+
 def parse_config(text: str, path: pathlib.Path) -> Config:
     """Parse a config, keeping the file line of every key, declaration, block, and word.
 
@@ -389,6 +432,7 @@ def parse_config(text: str, path: pathlib.Path) -> Config:
     flags: tuple[str, ...] = ()
     defaults: Ruleset | None = None
     rulesets: dict[str, Ruleset] = {}
+    pairings: tuple[Pairing, ...] = ()
 
     document = yaml.MappingNode("tag:yaml.org,2002:map", _top_level(text, path))
     pairs, duplicates = _unique_pairs(document, text)
@@ -412,6 +456,8 @@ def parse_config(text: str, path: pathlib.Path) -> Config:
                     defaults = Ruleset("defaults", line, references)
             case "sets":
                 rulesets = _read_sets(reader, value, line)
+            case "skills":
+                pairings = _read_pairings(reader, value, line)
             case "when" | "rulesets":
                 reader.problems.append(OldLayoutKey(name, line))
             case _:
@@ -425,6 +471,7 @@ def parse_config(text: str, path: pathlib.Path) -> Config:
         rulesets=rulesets,
         blocks=tuple(reader.blocks),
         problems=tuple(reader.problems),
+        pairings=pairings,
     )
 
 

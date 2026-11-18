@@ -82,6 +82,11 @@
 						"type": "command",
 						"timeout": 5,
 						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/deliver.py\" --part 16"
+					},
+					{
+						"type": "command",
+						"timeout": 5,
+						"command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/with-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/link-skills.py\""
 					}
 				]
 			}

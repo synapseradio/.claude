@@ -11,10 +11,12 @@ from rulesets.check.findings import CheckError, CheckWarning, Report
 from rulesets.check.inclusion_check import inclusion_warnings
 from rulesets.check.part_count_check import check_part_count
 from rulesets.check.pool_check import pool_errors, pool_warnings
+from rulesets.check.skill_check import pairing_errors, pointer_warnings, skill_errors
 from rulesets.source.config import OLD_CONFIG_FILE, ConfigParseError, read_config
 from rulesets.source.directory import read_directory
 from rulesets.source.expansion import Expander
 from rulesets.source.pool import read_pool
+from rulesets.source.skills import read_skills
 
 
 def check(root: pathlib.Path) -> Report:
@@ -24,6 +26,7 @@ def check(root: pathlib.Path) -> Report:
     skipped while the checks of the rule files still run.
     """
     pool = read_pool(root)
+    skills = read_skills(root)
     directory = read_directory(root)
     errors: list[CheckError] = []
     warnings: list[CheckWarning] = []
@@ -38,8 +41,11 @@ def check(root: pathlib.Path) -> Report:
         errors.extend(config_errors(config, expander))
         warnings.extend(inclusion_warnings(config, pool, expander))
         errors.extend(check_conflicts(directory))
+        errors.extend(pairing_errors(config, pool, skills))
+        warnings.extend(pointer_warnings(config, pool))
     warnings.extend(check_part_count(directory))
     errors.extend(pool_errors(pool))
+    errors.extend(skill_errors(skills))
     warnings.extend(pool_warnings(pool))
     warnings.extend(cross_reference_warnings(pool))
     return Report(errors=tuple(errors), warnings=tuple(warnings))

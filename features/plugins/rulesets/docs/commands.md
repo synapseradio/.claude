@@ -12,6 +12,7 @@ requires it.
 | `estimate` | Prints each context's characters, words, and estimated tokens, and the change since a snapshot. Always exits 0. |
 | `render` | Writes the composed text one context receives, or the whole render tree. |
 | `render --check` | Writes nothing. Exits 1 where the render tree on disk differs from what `render` writes. |
+| `skills` | Prints each skill's link in `~/.claude/skills/`; with `--link`, links each skill and removes each stale link. |
 | `split` | Writes each section of an edited render back to the rule file it came from. |
 | `eject` | Writes the base context as one plain file per rule. |
 | `adopt` | Maps a tier corpus or a plain rules folder to a new rulesets directory and compares what the two deliver. |
@@ -43,6 +44,11 @@ rule"; a bare word is no mention), a stray directory, a file path a rule cites t
 does not hold (a path with a `<placeholder>` segment is no citation), a context whose rules need
 more parts than a delivery carries, and a rule file that opens on a marker for another rule or
 another form of its own. A warning never fails the run. A clean directory prints nothing.
+
+For skills, errors include a skill folder with no `SKILL.md`, a `SKILL.md` whose frontmatter is
+missing, unparsable, or without a `description`, a frontmatter `name` other than the folder's, a
+skill named `synced`, a `skills` entry of the wrong shape, and a pairing whose rule or skill does
+not exist. A file of a paired rule whose text never names its skill in backticks draws a warning.
 
 ## explain
 
@@ -100,6 +106,22 @@ $CLI render --check --root ~/.claude/rulesets
 
 Writes nothing, names each file under `-render/` that differs from what `render` would write, and
 exits 1 if any does.
+
+## skills
+
+```bash
+$CLI skills
+$CLI skills --link
+```
+
+Prints one line per skill under `skills/`: `linked` where `~/.claude/skills/<name>` links to it,
+`unlinked` where nothing stands there, and `blocked` where another file, folder, or link stands
+there. It also prints each link in `~/.claude/skills/` that points into `skills/` at a skill no
+longer there, as `stale`. Without `--link` it writes nothing and exits 1 where any skill is
+unlinked, blocked, or stale. With `--link` it creates each missing link, removes each stale one,
+and exits 1 only where a skill is blocked; it leaves a blocking entry as it stands. Each link is
+relative, as `../rulesets/skills/<name>`. Under `CLAUDE_CONFIG_DIR`, the links go into `skills/`
+under that path. The session-start hook runs the same link step.
 
 ## split
 

@@ -13,6 +13,8 @@
 - A **block** is a condition paired with one list of references. It applies in each context where
   the condition holds.
 - A **flag** is a declared name that a launch or a toggle sets.
+- A **skill** is a Claude Code skill kept in the rulesets directory, at `skills/<name>/SKILL.md`.
+  A **pairing** makes a rule the short pointer to a skill that holds its body.
 - A **model** is a declared Claude model name, such as `opus`.
 - A **context** is the main session or one delegate, at one delivery.
 - A **delivery** is one context receiving its rules. A **part** is one group of whole rule bodies
@@ -32,6 +34,9 @@ rulesets/
     voice@terse.md     the variant `terse` of `voice`
   -render/             generated renders, written by `render`
   references/          files a rule may cite, kept with the directory
+  skills/              skills, one folder each, loadable by name in every session
+    voice-guide/
+      SKILL.md         the skill's frontmatter and body; other files may sit beside it
 ```
 
 A rule's name is its file name up to any `@`, and holds no `.`. Every rule has a default form,
@@ -74,9 +79,33 @@ agent critic thinkies:
 - `defaults` is the list that applies in every context, at the lowest precedence.
 - `sets` names reusable lists. A set's name holds no `.`, and `defaults`, `all`, `rules`, and `none`
   are reserved.
+- `skills` pairs rules with skills; [Skills](#skills) covers it.
 - Every other top-level key is a block, and the key is its condition.
 
-Each of `models`, `flags`, `defaults`, and `sets` appears at most once.
+Each of `models`, `flags`, `defaults`, `sets`, and `skills` appears at most once.
+
+### Skills
+
+A skill under `skills/` loads by name in every session, as `/<name>` and through the Skill tool,
+whether or not a rule points to it. At each session start the plugin links each one into
+`~/.claude/skills/`, where Claude Code finds personal skills; [Delivery](delivery.md) covers the
+link. A skill's `SKILL.md` opens on frontmatter that holds a `description`, which says when the
+skill loads, and a `name`, where written, equal to the folder's name.
+
+`skills` maps a rule name to the skill that holds the rule's body:
+
+```yaml
+skills:
+  voice: voice-guide
+```
+
+The rule stays in the pool and reaches contexts through the config as before; its text shrinks to
+a pointer that names the skill in backticks, as `` `voice-guide` ``. The pairing covers the rule's
+default form and every variant, so a key is a rule name with no `@variant`, and its value is one
+skill name. A pairing changes no delivery. `check` holds it: a pairing whose rule the pool lacks,
+whose skill folder is missing or holds no `SKILL.md`, or whose skill's frontmatter is missing,
+unparsable, without a `description`, or naming another skill is an error, and a file of the paired
+rule that never names its skill in backticks draws a warning.
 
 ### Lists
 

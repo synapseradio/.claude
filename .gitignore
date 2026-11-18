@@ -46,8 +46,6 @@
 !skills/
 !skills/update-claude-settings/
 !skills/update-claude-settings/**
-!skills/prose/
-!skills/prose/**
 
 !openspec/
 !openspec/config.yaml

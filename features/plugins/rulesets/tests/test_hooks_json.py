@@ -31,7 +31,7 @@ from rulesets.delivery.parts import MAX_PARTS
 PLUGIN_ROOT_VARIABLE = "${CLAUDE_PLUGIN_ROOT}"
 LAUNCHER_WORD = f"{PLUGIN_ROOT_VARIABLE}/hooks/with-python.sh"
 SCRIPT_PREFIX = f"{PLUGIN_ROOT_VARIABLE}/hooks/"
-RECORD_SCRIPTS = {"record-load.py", "record-spawn.py"}
+NO_ARGUMENT_SCRIPTS = {"record-load.py", "record-spawn.py", "link-skills.py"}
 ALL_PARTS = [str(number) for number in range(1, MAX_PARTS + 1)]
 
 # A fork's conversation already holds its rules, so `deliver.py` answers it with nothing once
@@ -112,7 +112,7 @@ class TestEveryCommandRunsAHookScriptThroughTheLauncher:
     ) -> None:
         _, script, arguments = split_command(command)
 
-        if script in RECORD_SCRIPTS:
+        if script in NO_ARGUMENT_SCRIPTS:
             assert arguments == [], f"{event}: {script} takes no arguments, given {arguments}"
         else:
             assert script == "deliver.py", f"{event} runs an unknown script {script}"

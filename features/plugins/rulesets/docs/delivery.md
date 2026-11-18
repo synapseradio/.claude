@@ -39,6 +39,13 @@ same rules at the same variants as the rules last delivered, it delivers nothing
 different rules, it delivers them, and the earlier rules remain in the conversation above them; the
 plugin cannot retract text it already delivered.
 
+A session start also links each skill of the rulesets directory into `~/.claude/skills/`, the
+folder Claude Code reads personal skills from, so each loads by name, as `/<name>` and through
+the Skill tool. Claude Code follows a symlinked skill folder there and picks up a new link in the
+running session. The step creates each missing link and removes each link into `skills/` whose
+skill is gone. Where another file, folder, or link already stands at a skill's name, it leaves
+that entry, links nothing there, and shows you a message naming it.
+
 Three further hooks deliver nothing. A `PreToolUse` hook on the `Agent` tool records each spawn and
 the model its caller names, if any. An `InstructionsLoaded` hook records each instruction file the harness
 loaded. A `SessionEnd` hook ends the session's toggles. The records feed the checks in [Commands](commands.md).
