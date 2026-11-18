@@ -121,6 +121,14 @@ def test_a_bats_suite_takes_its_held_slots_as_jobs(sb) -> None:
     assert pair(args, "--jobs", "2"), f"shell/tests holds two bats files: {args}"
 
 
+def test_a_parallel_bats_suite_runs_each_files_tests_in_sequence(sb) -> None:
+    result = sb.run("test", "shell", extra_env={"VERIFY_SLOTS": "8"})
+
+    assert result.returncode == 0, f"exit {result.returncode}: {result.stderr}"
+    args = sb.calls("bats")[0]["args"]
+    assert "--no-parallelize-within-files" in args, args
+
+
 def test_the_pool_sits_under_home_cache_when_xdg_cache_home_is_unset(sb) -> None:
     """https://specifications.freedesktop.org/basedir-spec/latest/ names $HOME/.cache as the default."""
     del sb.env["XDG_CACHE_HOME"]

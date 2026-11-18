@@ -11,6 +11,8 @@
 # rm as an argument, inside a quoted string, in a comment, and in a
 # here-document body. The second group builds scratch git repositories and
 # covers what the guard decides from git's view of each operand.
+# deny-rm-command.bats covers rm's place in the command, git failing, and
+# the envelope.
 
 # The single-quoted command texts below are the input under test, so their
 # $ and backticks must stay literal (SC2016). bats reads BATS_TEST_TIMEOUT,
@@ -22,6 +24,7 @@ BATS_TEST_TIMEOUT=10
 setup_file() {
   export FIXTURE="${BATS_FILE_TMPDIR}/repo"
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  load "${BATS_TEST_DIRNAME}/deny-rm-fixture.bash"
   export HOME="${BATS_FILE_TMPDIR}/home"
   mkdir -p "${HOME}"
   isolate_git_config
@@ -30,51 +33,10 @@ setup_file() {
 
 setup() {
   load "${BATS_TEST_DIRNAME}/hook-helper.bash"
+  load "${BATS_TEST_DIRNAME}/deny-rm-fixture.bash"
   load_guard deny-rm
   isolate_home
   isolate_git_config
-}
-
-#######################################
-# Build, once for the file, a scratch repository whose every file is
-# committed and unchanged.
-# Globals:
-#   FIXTURE
-#######################################
-build_fixture() {
-  git init -q -b main "${FIXTURE}"
-  mkdir -p "${FIXTURE}/dir/sub" "${FIXTURE}/sub"
-  printf 'one\n' >"${FIXTURE}/tracked.txt"
-  printf 'two\n' >"${FIXTURE}/other.txt"
-  printf 'three\n' >"${FIXTURE}/a b.txt"
-  printf 'four\n' >"${FIXTURE}/-x"
-  printf 'five\n' >"${FIXTURE}/dir/one.txt"
-  printf 'six\n' >"${FIXTURE}/dir/sub/two.txt"
-  printf 'seven\n' >"${FIXTURE}/sub/inner.txt"
-  printf '*.log\n__pycache__/\n' >"${FIXTURE}/.gitignore"
-  git -C "${FIXTURE}" add -A
-  git -C "${FIXTURE}" commit -q -m seed
-}
-
-#######################################
-# Give this case its own copy of the file's scratch repository.
-# Globals:
-#   FIXTURE, REPO, BATS_TEST_TMPDIR
-#######################################
-make_repo() {
-  REPO="${BATS_TEST_TMPDIR}/repo"
-  cp -R "${FIXTURE}" "${REPO}"
-}
-
-#######################################
-# Make a directory that sits in no repository.
-# Globals:
-#   PLAIN, BATS_TEST_TMPDIR
-#######################################
-make_plain_dir() {
-  PLAIN="${BATS_TEST_TMPDIR}/plain"
-  mkdir -p "${PLAIN}"
-  printf 'loose\n' >"${PLAIN}/loose.txt"
 }
 
 @test "rm is denied in each spelling" {
@@ -372,87 +334,4 @@ make_plain_dir() {
   for form in "${forms[@]}"; do
     assert_denies "${form}"
   done
-}
-
-@test "rm at each command position is judged by the rule" {
-  make_repo
-  printf 'new\n' >"${REPO}/new.txt"
-  local template
-  for template in '@ && true' '@ || false' '@; true' '@ | cat' $'@\necho go' \
-    '(@)' 'echo $(@)' '{ @; }' "bash -c '@'"; do
-    assert_silent "${template//@/rm ${REPO}/tracked.txt}"
-    assert_denies "${template//@/rm ${REPO}/new.txt}"
-  done
-}
-
-@test "rm behind each wrapper word is judged by the rule" {
-  make_repo
-  printf 'new\n' >"${REPO}/new.txt"
-  local wrapper
-  for wrapper in 'sudo' 'sudo -u root' 'command' 'env' 'env LC_ALL=C' 'exec' 'nohup' 'time'; do
-    assert_silent "${wrapper} rm ${REPO}/tracked.txt"
-    assert_denies "${wrapper} rm ${REPO}/new.txt"
-  done
-}
-
-@test "rm after another step is denied, even on a clean tracked file" {
-  make_repo
-  local -a forms=(
-    "mkdir ${REPO}/d && echo x > ${REPO}/d/f && rm -r ${REPO}/d"
-    "echo x >> ${REPO}/tracked.txt && rm ${REPO}/tracked.txt"
-    "npm run build && rm -rf ${REPO}/dir"
-    "> ${REPO}/tracked.txt && rm ${REPO}/tracked.txt"
-    "true; rm ${REPO}/tracked.txt"
-    "false || rm ${REPO}/tracked.txt"
-    "echo x | rm ${REPO}/tracked.txt"
-    "sleep 1 & rm ${REPO}/tracked.txt"
-    $'echo go\n'"rm ${REPO}/tracked.txt"
-    "if true; then rm ${REPO}/tracked.txt; fi"
-    "for f in a b; do rm ${REPO}/tracked.txt; done"
-    "(echo x > ${REPO}/f; rm ${REPO}/f)"
-    "(true; rm ${REPO}/tracked.txt)"
-    "echo \$(echo x >> ${REPO}/tracked.txt; rm ${REPO}/tracked.txt)"
-    "echo \`true; rm ${REPO}/tracked.txt\`"
-    "true; echo \$(rm ${REPO}/tracked.txt)"
-    "bash -c 'echo x >> ${REPO}/tracked.txt && rm ${REPO}/tracked.txt'"
-    "true && sh -c 'rm ${REPO}/tracked.txt'"
-    "true && sudo rm ${REPO}/tracked.txt"
-    "rm ${REPO}/tracked.txt; echo x > ${REPO}/f; rm ${REPO}/f"
-    "rm ${REPO}/tracked.txt; true; rm ${REPO}/other.txt"
-  )
-  local form
-  for form in "${forms[@]}"; do
-    assert_denies "${form}"
-  done
-}
-
-@test "a later rm is denied on its own operand after an earlier rm" {
-  make_repo
-  printf 'new\n' >"${REPO}/new.txt"
-  assert_denies "rm ${REPO}/tracked.txt && rm ${REPO}/new.txt"
-}
-
-@test "rm is denied when git does not answer before the deadline" {
-  make_repo
-  local stubs="${BATS_TEST_TMPDIR}/stubs"
-  mkdir -p "${stubs}"
-  printf '#!/bin/bash\nexec sleep 10\n' >"${stubs}/git"
-  chmod +x "${stubs}/git"
-  PATH="${stubs}:${PATH}" WARDEN_RM_DEADLINE=1 \
-    assert_denies "rm ${REPO}/tracked.txt"
-}
-
-@test "rm is denied when git is not installed" {
-  make_repo
-  local stubs="${BATS_TEST_TMPDIR}/stubs"
-  mkdir -p "${stubs}"
-  printf '#!/bin/bash\nexit 127\n' >"${stubs}/git"
-  chmod +x "${stubs}/git"
-  PATH="${stubs}:${PATH}" assert_denies "rm ${REPO}/tracked.txt"
-}
-
-@test "an envelope proposing rm from a directory outside git prints a PreToolUse denial" {
-  make_plain_dir
-  assert_main_prints deny \
-    "{\"tool_name\":\"Bash\",\"cwd\":\"${PLAIN}\",\"tool_input\":{\"command\":\"rm loose.txt\"}}"
 }

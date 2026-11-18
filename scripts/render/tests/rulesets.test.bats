@@ -8,6 +8,7 @@ export BATS_TEST_TIMEOUT=10
 setup_file() {
   load '../../tests/test_helper'
   build_fixture_repo_once
+  build_stub_once
 }
 
 setup() {

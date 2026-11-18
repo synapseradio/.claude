@@ -13,7 +13,7 @@
 # rotate-secrets.sh against secrets.sh, .secrets.baseline against
 # .secrets, secrets.env.example against secrets.env, and .envrc against
 # .env. A guard that denied the left-hand side of any pair would be turned
-# off within a day.
+# off within a day. block-secret-file-reads-search.bats covers grep and rg.
 
 # Single quotes are intentional throughout: the guard has to receive the
 # literal text, never its expansion (SC2016).
@@ -164,46 +164,6 @@ setup() {
 @test "a tool the guard does not cover stays silent" {
   run_hook_envelope '{"tool_name":"Write","tool_input":{"file_path":".env"}}'
   assert_no_decision 'a Write of .env'
-}
-
-@test "a grep or rg pattern that names a secret path stays silent" {
-  local -a forms=(
-    'grep -rn id_rsa /x'
-    'rg -l .env /x'
-    'grep -rn "id_rsa" /x'
-    'rg -n -i secrets.env docs'
-    'grep -e id_rsa /x'
-    'grep -rne id_rsa /x'
-    'grep --regexp=id_rsa /x'
-    'rg --regexp .env /x'
-    'rg -n -e .env -e id_rsa /x'
-    'rg -g "*.md" -A 3 id_rsa /x'
-    'cat notes.txt | grep -m 1 id_rsa'
-  )
-  local form
-  for form in "${forms[@]}"; do
-    assert_silent "${form}"
-  done
-}
-
-@test "a file operand of grep or rg is still checked" {
-  local -a forms=(
-    'grep foo ~/.ssh/id_rsa'
-    'grep -rn id_rsa ~/.ssh/'
-    'rg foo .env'
-    'grep -e foo -e bar ~/.ssh/id_rsa'
-    'sudo grep foo ~/.ssh/id_rsa'
-    'ssh host grep foo ~/.ssh/id_rsa'
-    'grep -f ~/.ssh/id_rsa x'
-    'grep --file=~/.ssh/id_rsa x'
-    'rg --file ~/.ssh/id_rsa x'
-    'grep -f .env /x'
-    'rg --files ~/.ssh/'
-  )
-  local form
-  for form in "${forms[@]}"; do
-    assert_denies "${form}"
-  done
 }
 
 @test "an envelope proposing a secret read prints a PreToolUse denial" {

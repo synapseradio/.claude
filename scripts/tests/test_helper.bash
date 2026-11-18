@@ -8,7 +8,7 @@
 # Globals:
 #   BATS_TEST_TMPDIR
 #   HOME, TMPDIR, XDG_*, GIT_CONFIG_GLOBAL, GIT_CONFIG_NOSYSTEM (set)
-#   CALL_LOG, STUB_BIN, PATH (set)
+#   CALL_LOG, STUB_BIN, STUB_BODIES, PATH (set)
 # Arguments:
 #   None
 #######################################
@@ -34,8 +34,8 @@ setup_sandbox_test_env() {
   export CALL_LOG="${BATS_TEST_TMPDIR}/calls.log"
   : >"${CALL_LOG}"
   STUB_BIN="${BATS_TEST_TMPDIR}/bin"
-  export STUB_BIN
-  mkdir -p "${STUB_BIN}"
+  export STUB_BIN STUB_BODIES="${BATS_TEST_TMPDIR}/stub-bodies"
+  mkdir -p "${STUB_BIN}" "${STUB_BODIES}"
   export PATH="${STUB_BIN}:${PATH}"
 }
 
@@ -50,27 +50,44 @@ write_git_config() {
 }
 
 #######################################
-# Write a stub that appends "<name> <args>" to CALL_LOG, then runs the body
-# read from STDIN. The file is not yet executable.
-# Arguments:
-#   The command name.
+# Write the one executable every stub in this file links to, and run it once.
+# It appends "<name> <args>" to CALL_LOG, then sources the body the case
+# wrote for the name it was called by. macOS scans each newly written
+# executable on its first exec, about a quarter second each and slower still
+# while other processes queue for the same scan; a link to a file already run
+# skips it:
+# https://lapcatsoftware.com/articles/2024/2/3.html
+# Call from setup_file.
+# Globals:
+#   BATS_FILE_TMPDIR
+#   STUB_EXEC (set, exported)
 #######################################
-write_stub_file() {
-  local name="$1" body
-  IFS= read -r -d '' body || true
-  printf '%s\n%s\n%s' '#!/bin/bash' \
-    "printf '%s\\n' \"${name} \$*\" >>\"\${CALL_LOG}\"" \
-    "${body}" >"${STUB_BIN}/${name}"
+build_stub_once() {
+  export STUB_EXEC="${BATS_FILE_TMPDIR}/stub"
+  cat >"${STUB_EXEC}" <<'EOF'
+#!/bin/bash
+stub_name="${0##*/}"
+printf '%s\n' "${stub_name} $*" >>"${CALL_LOG}"
+# shellcheck source=/dev/null
+source "${STUB_BODIES}/${stub_name}"
+EOF
+  chmod +x "${STUB_EXEC}"
+  CALL_LOG=/dev/null STUB_BODIES="${BATS_FILE_TMPDIR}/no-bodies" \
+    "${STUB_EXEC}" >/dev/null 2>&1 || true
 }
 
 #######################################
-# Write an executable stub; see write_stub_file.
+# Put a stub named for a command on PATH: it appends "<name> <args>" to
+# CALL_LOG, then runs the body read from STDIN.
+# Globals:
+#   STUB_BIN, STUB_BODIES, STUB_EXEC
 # Arguments:
 #   The command name.
 #######################################
 write_stub() {
-  write_stub_file "$1"
-  chmod +x "${STUB_BIN}/$1"
+  local name="$1"
+  cat >"${STUB_BODIES}/${name}"
+  ln -sf "${STUB_EXEC:?build_stub_once runs in setup_file}" "${STUB_BIN}/${name}"
 }
 
 #######################################
@@ -107,26 +124,25 @@ refute_logged() {
 #   None
 #######################################
 stub_toolchain() {
-  write_stub_file bun <<'EOF'
+  write_stub bun <<'EOF'
 if [[ "${1:-}" == install ]]; then
   if (( ${BUN_STATUS:-0} != 0 )); then exit "${BUN_STATUS}"; fi
   mkdir -p node_modules/.bin
   : >node_modules/.bin/biome
 fi
 EOF
-  write_stub_file uv <<'EOF'
+  write_stub uv <<'EOF'
 if [[ "${1:-}" == sync ]]; then
   mkdir -p .venv/bin
   : >.venv/bin/python
 fi
 EOF
-  write_stub_file brew <<'EOF'
+  write_stub brew <<'EOF'
 if [[ "${1:-} ${2:-}" == "bundle check" ]]; then exit "${BREW_CHECK_STATUS:-0}"; fi
 EOF
-  write_stub_file claude <<'EOF'
+  write_stub claude <<'EOF'
 exit 0
 EOF
-  chmod +x "${STUB_BIN}/bun" "${STUB_BIN}/uv" "${STUB_BIN}/brew" "${STUB_BIN}/claude"
 }
 
 #######################################

@@ -62,6 +62,35 @@ isolate_git_config() {
 }
 
 #######################################
+# Put a git first on PATH whose first call hangs until release_hung_git and
+# whose every later call fails at once. A guard that gives up on git at its
+# deadline leaves the call running, and bats holds the case open until every
+# process holding the case's descriptors exits:
+# https://bats-core.readthedocs.io/en/stable/gotchas.html#background-tasks-prevent-the-test-run-from-terminating-when-finished
+# Globals:
+#   BATS_TEST_TMPDIR, PATH
+#######################################
+stub_hung_git() {
+  local stubs="${BATS_TEST_TMPDIR}/stubs" hung="${BATS_TEST_TMPDIR}/hung-git"
+  mkdir -p "${stubs}"
+  printf '#!/bin/bash\nif mkdir %q 2>/dev/null; then\n  echo "$$" >%q/pid\n  exec sleep 10\nfi\nexit 1\n' \
+    "${hung}" "${hung}" >"${stubs}/git"
+  chmod +x "${stubs}/git"
+  export PATH="${stubs}:${PATH}"
+}
+
+#######################################
+# End the git call stub_hung_git left hanging, if any.
+# Globals:
+#   BATS_TEST_TMPDIR
+#######################################
+release_hung_git() {
+  local pid_file="${BATS_TEST_TMPDIR}/hung-git/pid"
+  [[ -f "${pid_file}" ]] || return 0
+  kill "$(<"${pid_file}")" 2>/dev/null || true
+}
+
+#######################################
 # Record whether nounset and pipefail are on, for restore_shell_options. It
 # sets globals in place of printing, so no subshell hides the options it reads.
 # Globals:

@@ -62,7 +62,10 @@ def pytest_command(paths: list[str], k: str | None, workers: int) -> list[str]:
 def bats_command(paths: list[str], k: str | None, workers: int) -> list[str]:
     command = ["bats", "--formatter", "tap", *progress.extra_argv("bats")]
     if workers > 1:
-        command += ["--jobs", str(workers)]
+        # Files run in parallel and each file's tests in sequence: bats hands a
+        # file's tests to its slots by polling once a second while they are full.
+        # https://github.com/bats-core/bats-core/blob/v1.14.0/lib/bats-core/semaphore.bash#L98
+        command += ["--jobs", str(workers), "--no-parallelize-within-files"]
     if k is not None:
         command += ["--filter", re.escape(k)]
     return [*command, *paths]
