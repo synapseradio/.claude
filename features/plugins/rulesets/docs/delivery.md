@@ -16,8 +16,8 @@ same bytes.
 
 A delivery splits into parts. One hook entry carries one part, and a part holds whole rule bodies up
 to 9,000 characters, counting each rule's marker and blank line. A rule never splits across parts.
-A delivery carries at most 16 parts; a rule that would need a seventeenth part is left out, and
-`check` warns about the context. A rule whose body and marker pass 9,000 characters on their own is
+A delivery carries at most `MAX_PARTS` parts, the constant in `lib/rulesets/delivery/parts.py`; a
+rule that would need a part past that count is left out, and `check` warns about the context. A rule whose body and marker pass 9,000 characters on their own is
 a `check` error, and delivery withholds it.
 
 A delegate composes from its own facts: its model, its agent type, and the flags that hold. The

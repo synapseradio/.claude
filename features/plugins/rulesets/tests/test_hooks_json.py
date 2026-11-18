@@ -26,6 +26,7 @@ from delivery_world import (
     scratch_environment,
     select_commands,
 )
+from rulesets.delivery.hooks_manifest import regenerate
 from rulesets.delivery.parts import MAX_PARTS
 
 PLUGIN_ROOT_VARIABLE = "${CLAUDE_PLUGIN_ROOT}"
@@ -133,6 +134,16 @@ class TestEveryCommandRunsAHookScriptThroughTheLauncher:
         ]
 
         assert announcing == [("SessionStart", ["--part", "1"])]
+
+
+class TestThePartEntriesFollowMaxParts:
+    def test_the_file_holds_the_part_entries_the_generator_writes_for_max_parts(self) -> None:
+        written = HOOKS_JSON.read_text(encoding="utf-8")
+
+        assert written == regenerate(written), (
+            "hooks.json part entries differ from MAX_PARTS; run "
+            "python3 lib/rulesets/delivery/hooks_manifest.py from the plugin root"
+        )
 
 
 class TestEveryDeliveryEntryRunsWhateverStartsTheContext:
