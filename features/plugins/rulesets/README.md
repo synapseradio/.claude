@@ -8,6 +8,8 @@ it starts. Every instruction is its own file, and one config file says who recei
 - **One home for every instruction.** Each rule is a Markdown file in `~/.claude/rulesets/rules/`.
 - **Rules sent where they help.** A rule can go to every session and agent, to one model, to one
   agent, or to any session you start with a flag.
+- **Two versions of a rule, one switch apart.** A rule can hold an alternative wording, and a flag
+  picks it, so the same task runs under each version for you to compare.
 - **An answer to "why did it get that?"** The plugin records what each session and agent received,
   and can point to the config line that decided each rule.
 - **Long guidance loaded on demand.** A rule can be a one-line pointer to a skill kept beside it,
@@ -38,6 +40,34 @@ agent critic:
 | every other agent | `voice` |
 
 Asked "why did critic get review-checklist?", the plugin names line 3 of `config.yaml`.
+
+## Trying two versions of a rule
+
+Put the alternative wording beside the rule, with the version's name after an `@`:
+
+```text
+rules/
+  voice.md         Answer in plain words, point first.
+  voice@terse.md   Answer in one sentence.
+```
+
+Declare a flag and let it pick the version:
+
+```yaml
+flags: terse
+defaults: voice
+flag terse:
+  include: voice@terse
+```
+
+| Start Claude Code with | Every session and agent receives |
+| --- | --- |
+| `claude` | `voice` |
+| `RULESETS_FLAGS=terse claude` | `voice@terse` |
+
+Inside a running session, `/rulesets:rulesets flag terse` switches the agents it starts from then on,
+while the main session keeps what it already received. Each session's record names the version it
+received and where its flags came from, so every run stays tied to its version.
 
 ## Get started
 
