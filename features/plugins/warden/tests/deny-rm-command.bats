@@ -25,10 +25,6 @@ setup() {
   isolate_git_config
 }
 
-teardown() {
-  release_hung_git
-}
-
 @test "rm at each command position is judged by the rule" {
   make_repo
   printf 'new\n' >"${REPO}/new.txt"

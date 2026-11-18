@@ -28,10 +28,6 @@ setup() {
   copy_fixture
 }
 
-teardown() {
-  release_hung_git
-}
-
 @test "a soft reset to a commit that is not an ancestor of HEAD is denied" {
   git -C "${WORK}" checkout -q -b elsewhere main
   commit_file elsewhere

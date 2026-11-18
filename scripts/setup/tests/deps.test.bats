@@ -6,6 +6,8 @@
 
 export BATS_TEST_TIMEOUT=10
 
+bats_require_minimum_version 1.5.0
+
 setup_file() {
   load '../../tests/test_helper'
   build_fixture_repo_once

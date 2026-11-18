@@ -116,7 +116,8 @@ git_guard::scan_programs() {
 
 #######################################
 # Run a function with a deadline. The function's stdout goes to a scratch
-# file, read back as GG_DETAIL; its stderr and stdin are closed.
+# file, read back as GG_DETAIL; its stderr and stdin are closed. At the
+# deadline the function's whole process group is killed, its children too.
 # Globals:
 #   GG_DETAIL
 # Arguments:
@@ -130,21 +131,27 @@ git_guard::scan_programs() {
 #######################################
 git_guard::run_with_deadline() {
   local seconds="$1" prefix="$2" judge="$3" result_file worker watcher status=0
+  local monitor_was_on=0
   shift 3
   GG_DETAIL=''
 
   result_file="$(mktemp "${TMPDIR:-/tmp}/${prefix}.XXXXXX")" || return 2
+  # Monitor mode gives each background job its own process group, led by the
+  # job's PID, so a negative PID in kill reaches the job's whole tree.
+  [[ "$-" == *m* ]] && monitor_was_on=1
+  set -m
   "${judge}" "$@" >"${result_file}" 2>/dev/null </dev/null &
   worker=$!
   (
     sleep "${seconds}"
-    kill "${worker}"
+    kill -- "-${worker}"
   ) >/dev/null 2>&1 </dev/null &
   watcher=$!
   wait "${worker}" 2>/dev/null || status=$?
-  kill "${watcher}" >/dev/null 2>&1 || true
+  kill -- "-${watcher}" >/dev/null 2>&1 || true
   # Reaping the killed watcher here keeps bash 3.2's job notice off stderr.
   wait "${watcher}" 2>/dev/null || true
+  ((monitor_was_on)) || set +m
   GG_DETAIL="$(<"${result_file}")"
   command rm -f "${result_file}"
 
