@@ -1,14 +1,53 @@
 # rulesets
 
-Compose the rules each Claude Code session and delegate receives, from one pool of rule files and
-one config, `config.yaml`. A rule is a text file. The config says which rules reach which context: every
-context, one model, one agent, or any session where you set a flag. The plugin delivers the result
-through hooks and records what it delivered, so you can read back what any context received.
-Skills kept in the rulesets directory load by name in every session, and a rule can shrink to a
-pointer at the skill that holds its body.
+rulesets lets you choose which instructions reach each Claude Code session and each helper agent
+it starts. Every instruction is its own file, and one config file says who receives which.
 
-[INSTALL.md](INSTALL.md) covers installing the plugin. The pages below cover what it does and how
-to drive it.
+## What you get
+
+- **One home for every instruction.** Each rule is a Markdown file in `~/.claude/rulesets/rules/`.
+- **Rules sent where they help.** A rule can go to every session and agent, to one model, to one
+  agent, or to any session you start with a flag.
+- **An answer to "why did it get that?"** The plugin records what each session and agent received,
+  and can point to the config line that decided each rule.
+- **Long guidance loaded on demand.** A rule can be a one-line pointer to a skill kept beside it,
+  so the full text loads only when the work calls for it.
+
+## A small example
+
+Two rules and a three-line config:
+
+```text
+~/.claude/rulesets/
+  config.yaml
+  rules/
+    voice.md              Answer in plain words, point first.
+    review-checklist.md   Check every changed line against the spec before approving.
+```
+
+```yaml
+defaults: voice
+agent critic:
+  include: review-checklist
+```
+
+| Who | Receives |
+| --- | --- |
+| the main session | `voice` |
+| an agent named `critic` | `voice`, `review-checklist` |
+| every other agent | `voice` |
+
+Asked "why did critic get review-checklist?", the plugin names line 3 of `config.yaml`.
+
+## Get started
+
+[Installing rulesets](INSTALL.md) walks through the install and the first session, which creates
+an empty `~/.claude/rulesets` for you to fill.
+
+From then on, the `rulesets` skill does the work from inside a session: type `/rulesets:rulesets`,
+or ask in words, such as "add a rule for my delegates" or "why did this delegate get that rule".
+
+## Reference pages
 
 | Page | Read it when |
 | --- | --- |
@@ -16,6 +55,3 @@ to drive it.
 | [The rulesets directory and config](docs/config.md) | you write a rule, a variant, a set, a flag, a condition block, or a skill and its pairing, or need to know which statement wins |
 | [Commands](docs/commands.md) | you run `check`, `explain`, `render`, `skills`, `split`, `eject`, `adopt`, `compare`, the session record commands, or a toggle |
 | [Where records live](docs/records.md) | you read or prune what a session received |
-
-The `rulesets` skill drives all of this from a session: type `/rulesets:rulesets`, or ask in words,
-such as "add a rule for my delegates" or "why did this delegate get that rule".
