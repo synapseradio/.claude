@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """Check reports every illegal state of a rulesets directory as an error with its subject.
 
 The check serves the engineer who edits a config or a rule file and runs check before
@@ -11,7 +11,7 @@ line to open, and one run reports every error together. Each case builds its rul
 under `tmp_path`; message wording is not asserted, since only the kind, subject, file, and line
 are promised.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_check_errors.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_check_errors.py`.
 """
 
 import pathlib

@@ -1,6 +1,6 @@
 """Tests for the passes after a block: a mark shown to the user ends the reply, a new one is sent back.
 
-    python3 -m unittest discover -s tests -p test_later_passes.py -v
+    uv run --no-project --python 3.14 python -m unittest discover -s tests -p test_later_passes.py -v
 
 README.md: a reply ending on a mark is sent back once, a mark left after the
 rewrite is shown to the user and the reply ends, and a delegate leaves its

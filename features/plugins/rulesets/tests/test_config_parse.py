@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """A config.yaml using every reserved key delivers what it says, and a missing or unreadable one delivers every rule.
 
 `docs/config.md` names the reserved keys (`models`, `flags`, `defaults`, `sets`, and condition
@@ -8,7 +8,7 @@ directory under `tmp_path` and reads what a context receives. The line each key,
 block is read at is asserted through the `check` errors in `test_check_errors.py`, and nesting
 and `then` through `test_ruleset_composition.py`.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_config_parse.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_config_parse.py`.
 """
 
 import pathlib

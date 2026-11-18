@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """A rulesets directory holds a pool of rule files that reach a context only through a list.
 
 Serves the person who writes rules and lists and the engineer who reads check output: the pool
@@ -8,7 +8,7 @@ Each case builds a configuration directory under `tmp_path` and runs the hook en
 `hooks/hooks.json` wires, as the harness runs them, then reads what they deliver and what `check`
 prints. The promises come from `docs/config.md` and `docs/delivery.md`.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_rules_directories.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_rules_directories.py`.
 """
 
 import json

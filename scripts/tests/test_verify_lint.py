@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """What `scripts/verify/cli.py lint` runs, under the real job manifest.
 
 Each case copies `scripts/verify/jobs.toml` into a scratch tree laid out like

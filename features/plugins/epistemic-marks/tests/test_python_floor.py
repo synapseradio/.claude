@@ -1,6 +1,6 @@
 """Every module the hooks run parses under Python 3.14.
 
-    python3 -m unittest tests.test_python_floor -v
+    uv run --no-project --python 3.14 python -m unittest tests.test_python_floor -v
 
 README.md names Python 3.14 as the floor. The launcher runs the hooks under a
 3.14 interpreter that uv provisions, so a module using newer syntax fails at

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """A session's model fact comes from the first source that names an identifier.
 
 Serves the person who launches a session: the harness's reported model, then `ANTHROPIC_MODEL`,
@@ -6,7 +6,7 @@ then `ANTHROPIC_DEFAULT_MODEL`, then the model the session recorded in `models/<
 (`docs/records.md`). The first string stands, claimed or not. A switch takes its target. The
 environment reaches each case as a mapping, so no test reads the real one.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_session_facts.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_session_facts.py`.
 """
 
 import pathlib

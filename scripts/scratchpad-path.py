@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.15"
+# dependencies = []
+# ///
 """Print the scratchpad path for a working file, timestamped from the clock.
 
     scratchpad-path.py <slug>
@@ -21,12 +25,12 @@ from datetime import datetime
 from pathlib import Path
 
 
-def git(*args):
+def git(*args: str) -> str | None:
     result = subprocess.run(["git", *args], capture_output=True, text=True, check=False)
     return result.stdout.strip() if result.returncode == 0 else None
 
 
-def main():
+def main() -> None:
     if len(sys.argv) != 2 or not sys.argv[1].strip():
         sys.exit("usage: scratchpad-path.py <slug>")
     slug = sys.argv[1].strip()

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """The `check` command prints every error and warning of one run and fails only on an error.
 
 The command serves the person who edits a rulesets directory and runs check before trusting a
@@ -8,7 +8,7 @@ error stands. Each case builds its rulesets directory under `tmp_path` and calls
 line's `main` in-process; one case runs `cli.py` as a script, since its subject is the script's
 process starting outside the library's directory.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_cli_check.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_cli_check.py`.
 """
 
 import os

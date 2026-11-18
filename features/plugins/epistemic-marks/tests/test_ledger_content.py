@@ -1,6 +1,6 @@
 """Contract test for the reported-lines record: it discloses no conversation text.
 
-    python3 -m unittest discover -s tests -p test_ledger_content.py -v
+    uv run --no-project --python 3.14 python -m unittest discover -s tests -p test_ledger_content.py -v
 
 README.md promises that the record holds a fingerprint of each line and never
 its text. The record can land in a directory shared with other users.

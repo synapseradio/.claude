@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """What `scripts/verify/cli.py test` starts, what it prints, and how it exits.
 
 The runner programs are stubs (see `verify_fixtures`) that record their argv

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """What the person running `just test` sees on screen and what pipes and hooks read.
 
 The plain display prints one line per fact; the live display

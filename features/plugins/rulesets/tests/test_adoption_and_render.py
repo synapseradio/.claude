@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """A person sees their composed rules as plain files and hands them to a tool that knows no rulesets.
 
 Serves the person who leaves the engine, edits through a composed view, or gates a push on a
@@ -7,7 +7,7 @@ current render tree. Each case builds a rulesets directory under `tmp_path`, run
 it prints. Expected values come from `docs/commands.md` and the fixture files, never from the
 engine's own composition.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_adoption_and_render.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_adoption_and_render.py`.
 """
 
 import hashlib

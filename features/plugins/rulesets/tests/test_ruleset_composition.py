@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """A context receives the rules its applying lists leave on, each at the variant they settle.
 
 The composition serves the engineer who writes a config and the person whose agents receive
@@ -8,7 +8,7 @@ conflicts and layout problems that make a composition surprising. Each case buil
 directory under `tmp_path` and composes a context from named facts. The orderings come from
 `docs/config.md`, "Which statement wins", and the check findings from `docs/commands.md`.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_ruleset_composition.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_ruleset_composition.py`.
 """
 
 import pathlib

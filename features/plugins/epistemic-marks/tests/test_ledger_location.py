@@ -1,6 +1,6 @@
 """Contract test for where the batch pass keeps its record of reported lines.
 
-    python3 -m unittest discover -s tests -p test_ledger_location.py -v
+    uv run --no-project --python 3.14 python -m unittest discover -s tests -p test_ledger_location.py -v
 
 README.md names three locations, in order: VERIFY_MARKS_STATE_DIR, then
 `verify-marks` under CLAUDE_PLUGIN_DATA, then `epistemic-marks-verify-marks`

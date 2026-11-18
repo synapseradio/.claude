@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.15"
+# dependencies = []
+# ///
 """Stop hook: retain the main session's closing message after a turn that did online research.
 
 The PostToolUse research hook leaves a marker named for the session when the main session
@@ -26,7 +30,7 @@ from hindsight_retain import repo_name
 TURN_MARKERS = Path(tempfile.gettempdir()) / "hindsight-research-turn"
 
 
-def main():
+def main() -> None:
     payload = json.load(sys.stdin)
     session = payload.get("session_id")
     if payload.get("stop_hook_active") or not session:

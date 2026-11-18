@@ -1,6 +1,6 @@
 """Tests for the denied-route check of the verify-marks Stop pass, run from the plugin root.
 
-    python3 -m unittest discover -s tests -p test_denied_route.py -v
+    uv run --no-project --python 3.14 python -m unittest discover -s tests -p test_denied_route.py -v
 
 The story: an agent's fetch for a source is denied by a permission check, and
 the agent marks the claim in place of the source without trying another

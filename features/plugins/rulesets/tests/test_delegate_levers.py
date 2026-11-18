@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """The levers that reroute a delegate's model fact.
 
 Serves the person who runs delegates under a forced or inherited model. Two force levers
@@ -6,7 +6,7 @@ Serves the person who runs delegates under a forced or inherited model. Two forc
 override the caller's and the definition's models for every agent type alike, and the built-in
 Explore and Plan agents follow the same order as any other type.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_delegate_levers.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_delegate_levers.py`.
 """
 
 import pytest

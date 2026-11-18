@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """Check warns about what is legal but probably not meant, and a warning never fails a check.
 
 The check serves the engineer who edits rule files and a config. `docs/commands.md` lists what
@@ -9,7 +9,7 @@ a stray directory, a file path a rule cites that the directory does not hold (a 
 or another form of its own. Each warning names its kind, subject, file, and line, and leaves the
 errors empty. Each case builds its rulesets directory under `tmp_path`.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_check_warnings.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_check_warnings.py`.
 """
 
 import pathlib

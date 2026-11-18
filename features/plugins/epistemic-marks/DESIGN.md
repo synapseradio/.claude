@@ -607,7 +607,7 @@ it could not tell the two apart.
 From the plugin directory, with Python 3.14 or later:
 
 ```sh
-python3 -m unittest discover -s tests -q
+uv run --no-project --python 3.14 python -m unittest discover -s tests -q
 ```
 
 The tests need only the standard library and read nothing outside the plugin.

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """How `progress.parser_for` turns one framework output line at a time into events.
 
 Each sample under `progress_samples/` is the real output of a three-test scratch

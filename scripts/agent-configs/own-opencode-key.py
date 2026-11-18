@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.15
+#!/usr/bin/env -S uv run --frozen
 """Own the `instructions` key inside opencode's hand-written `opencode.json`.
 
 opencode's `instructions` array lists rule files rather than holding their

@@ -1,11 +1,11 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """A context receives its rules by hook, as rule text only, and the person hears of problems.
 
 Serves the person whose sessions and delegates start with rules, and the engineer who reads the
 delivery record afterwards. Each case builds a configuration directory under `tmp_path` and runs
 the hook entries that `hooks/hooks.json` wires for an event, as the harness runs them.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_ruleset_delivery.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_ruleset_delivery.py`.
 """
 
 import hashlib

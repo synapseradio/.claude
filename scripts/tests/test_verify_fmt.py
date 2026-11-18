@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """`scripts/verify/cli.py fmt`, `verify`, and `list --json` against a scratch repository.
 
 fmt resolves its scope to files and hands them to treefmt, or hands treefmt

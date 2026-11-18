@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """How `fair_shares` divides the machine's worker slots among the suites of one run.
 
 Every suite gets at least one slot and at most the workers it wants; the slots

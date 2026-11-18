@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """Tests for the config-projection jobs under `scripts/agent-configs/`.
 
 Run with `uv run --frozen pytest -p no:cacheprovider scripts/tests/test_config_projection.py`.

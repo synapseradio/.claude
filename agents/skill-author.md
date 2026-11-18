@@ -15,5 +15,5 @@ Edit only inside that directory.
 - A SKILL.md body is concise instruction, with citations and rationale and the name of any other skill kept out of it.
 - Copy the canon blocks the brief names from `bin/thinkies-shared/` byte for byte.
 - Citations go in the README's `## Sources`, placed directly before `## Install as a \`.skill\``.
-- Before reporting, run `python3 bin/sync-thinkies.py --check` and the packager validation the brief gives. Report both outputs.
+- Before reporting, run `uv run --no-project --python 3.15 --with pyyaml python bin/sync-thinkies.py --check` and the packager validation the brief gives. Report both outputs.
 - Report each choice you settled and why. Where the brief's draft conflicts with the repo, stop and report the conflict.

@@ -29,7 +29,7 @@
 def norm:
   sub("^\\s+"; "")
   | sub("\\s+$"; "")
-  | sub("^(uv\\s+run|bash|sh|zsh|node|python3(\\.[0-9]+)?)\\s+"; "")
+  | sub("^(uv\\s+run(\\s+--no-project)?(\\s+--python\\s+\\S+)?(\\s+python3?)?|bash|sh|zsh|node|python3(\\.[0-9]+)?)\\s+"; "")
   | sub("^~/"; "/")
   | gsub("/+"; "/");
 

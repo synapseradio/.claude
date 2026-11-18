@@ -1,6 +1,6 @@
 """Tests for the verify-marks hook on a mark in a reply, a delegate report, and an open turn.
 
-    python3 -m unittest discover -s tests -p test_verify_marks.py -v
+    uv run --no-project --python 3.14 python -m unittest discover -s tests -p test_verify_marks.py -v
 
 Each test drives the entrypoint through stdin the way the harness does, with
 every fixture built in a temporary directory under an isolated environment.

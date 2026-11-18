@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """A list of references in config.yaml delivers the rules `docs/config.md` says it names.
 
 `docs/config.md` fixes the reference forms (`voice`, `voice@terse`, `review.voice`,
@@ -9,7 +9,7 @@ as a mapping of rule name to variant (None: the default form). A reference that 
 nothing is skipped while the rest of its list applies (`docs/delivery.md`), and a word in an older
 form draws a `check` error that names the form to write instead (`docs/config.md`).
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_references.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_references.py`.
 """
 
 import pathlib

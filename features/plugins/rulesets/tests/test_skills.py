@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """A rulesets directory delivers its skills by name, and check holds each pairing of a rule with a skill.
 
 Serves the person who moves a rule's body into `skills/<name>/SKILL.md` and leaves the rule as a

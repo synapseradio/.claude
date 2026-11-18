@@ -1,6 +1,6 @@
 """Tests for what the hooks do about a guess written in words, on every surface.
 
-    python3 -m unittest discover -s tests -p test_guess_hooks.py -v
+    uv run --no-project --python 3.14 python -m unittest discover -s tests -p test_guess_hooks.py -v
 
 README.md lists what counts as a guess in words and what passes: wording of
 doubt, a status written as a sentence or a label, and a sentence building on a

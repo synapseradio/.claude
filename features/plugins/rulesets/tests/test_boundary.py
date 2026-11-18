@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """Nothing in this plugin imports the configuration around it.
 
 The plugin installs on its own, into a cache directory where no `scripts/`

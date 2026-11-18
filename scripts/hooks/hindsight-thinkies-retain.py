@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.15"
+# dependencies = []
+# ///
 """Stop hook: retain the turn's thinkies output into me::thinkies and the repo's bank.
 
 A turn counts as thinkies output when it ran the Skill tool on a thinkies:* skill,
@@ -12,6 +16,8 @@ import contextlib
 import json
 import re
 import sys
+from collections.abc import Iterator
+from typing import Any
 
 from hindsight_retain import repo_name, retain
 
@@ -19,7 +25,7 @@ MAX_CHARS = 60_000
 SLASH = re.compile(r"<command-name>/(thinkies:[\w-]+)</command-name>")
 
 
-def entries(path):
+def entries(path: str) -> Iterator[dict[str, Any]]:
     with open(path, encoding="utf-8") as handle:
         for line in handle:
             try:
@@ -28,7 +34,7 @@ def entries(path):
                 continue
 
 
-def is_prompt(entry):
+def is_prompt(entry: dict[str, Any]) -> bool:
     """A user entry the person typed, as opposed to a tool result or meta injection."""
     return (
         entry.get("type") == "user"
@@ -37,7 +43,7 @@ def is_prompt(entry):
     )
 
 
-def last_turn(path):
+def last_turn(path: str) -> list[dict[str, Any]]:
     turn = []
     for entry in entries(path):
         if is_prompt(entry):
@@ -46,7 +52,7 @@ def last_turn(path):
     return turn
 
 
-def thinkies_output(turn):
+def thinkies_output(turn: list[dict[str, Any]]) -> tuple[str, str | None, str] | None:
     """(skill, anchor id, text) for the turn's thinkies run, or None."""
     skill = anchor = None
     texts = []
@@ -68,7 +74,7 @@ def thinkies_output(turn):
     return (skill, anchor, text) if skill and text else None
 
 
-def main():
+def main() -> None:
     payload = json.load(sys.stdin)
     if payload.get("stop_hook_active"):
         return

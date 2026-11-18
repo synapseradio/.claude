@@ -1,6 +1,6 @@
 r"""The `estimate` command prints each context's size and estimated tokens, and the change since a snapshot.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_estimate.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_estimate.py`.
 
 The fixture pool holds rules `alpha` and `beta`. One context's composed text is
 `<!-- rule: alpha -->\nalpha beta gamma\n` (38 characters), a line break, then

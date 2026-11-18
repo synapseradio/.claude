@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """One splitter decides where a markdown file's frontmatter block begins and ends.
 
 The renderer reading a rule body, the pool reader scoping a rule file, and the agent
@@ -6,7 +6,7 @@ definition reader all open a file the same way, so a file ending its block with 
 newline, with Windows line endings, or with spaces after the fence reads as having
 frontmatter in all of them or in none. Each case builds its text inline.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_documents.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_documents.py`.
 """
 
 import pytest

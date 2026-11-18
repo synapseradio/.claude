@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rewrites the `deliver.py --part N` entries of `hooks/hooks.json` from `MAX_PARTS`.
 
-Run `python3 lib/rulesets/delivery/hooks_manifest.py` from the plugin root after changing
+Run `uv run --frozen features/plugins/rulesets/lib/rulesets/delivery/hooks_manifest.py` from the repository root after changing
 `MAX_PARTS`. Every other entry and the file's tab indentation stay as they are.
 """
 

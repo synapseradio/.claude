@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """The audit log shows what reached every context, and the delivery check confirms it by recomposing.
 
 Serves the engineer who asks what each agent was told and why, and who runs `delivery-check`,
@@ -7,7 +7,7 @@ directory under `tmp_path`, produces its records through real deliveries, and ru
 through the launcher. What the records hold and the lines the commands print come from
 `docs/records.md` and `docs/commands.md`.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_instruction_load_audit.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_instruction_load_audit.py`.
 """
 
 import hashlib

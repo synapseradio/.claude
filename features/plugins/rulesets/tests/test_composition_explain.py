@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """Explain and check tell a rule author what the engine will deliver and what it will not.
 
 Serves the rule author who asks why an agent did or did not receive a rule, and who runs check
@@ -7,7 +7,7 @@ before trusting a delivery. Each case builds its rulesets directory under `tmp_p
 and reads what they print or receive. Expected values come from `docs/commands.md` and the
 fixture files, never from the engine's own composition.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_composition_explain.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_composition_explain.py`.
 """
 
 import pathlib

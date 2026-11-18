@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """The pool delivers a rule under its file name up to any `@`, and delivers nothing by existing.
 
 `docs/config.md` says a rule's name is its file name up to any `@`, a variant file
@@ -7,7 +7,7 @@ the engine never reads `references/` or `-render/` as rules. The warnings and er
 layout draws are asserted in `test_check_warnings.py` and `test_check_errors.py`. Each case
 builds its rulesets directory under `tmp_path`.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_config_pool.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_config_pool.py`.
 """
 
 import pathlib

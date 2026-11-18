@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """Which suites and test files `scripts/verify/cli.py test` selects for each scope.
 
 A wrong selection hands an agent a pass for code no test ran, so each rule

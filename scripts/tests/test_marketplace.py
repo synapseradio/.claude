@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """Every feature packaged as a plugin is one this marketplace can install.
 
 A plugin reaches a session only once the marketplace lists it and the listing

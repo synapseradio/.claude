@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """Tests for `scripts/agent-configs/translate-for-opencode.py`.
 
 Run with `.venv/bin/python -m pytest scripts/tests/test_translate_for_opencode.py`.

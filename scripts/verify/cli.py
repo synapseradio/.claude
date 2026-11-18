@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """Entry point behind `just test`, `lint`, `fmt`, `verify`, and `suites`.
 
     cli.py test|lint|fmt|verify [paths...] [--diff [BASE] | --prepush] [--lang L,...]

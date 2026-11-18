@@ -181,7 +181,8 @@ Applied to a string, in this order:
 
 1. Trim leading and trailing whitespace.
 2. Strip a leading interpreter word and the whitespace after it: `bash`,
-   `sh`, `zsh`, `node`, `python3`, `python3.N`, or `uv run`.
+   `sh`, `zsh`, `node`, `python3`, `python3.N`, or `uv run` with its `--no-project` and
+   `--python <version>` options and a `python` word after them.
 3. Rewrite a leading `~/` to `/`.
 4. Collapse every run of `/` to a single `/`.
 
@@ -190,7 +191,7 @@ definition. Read it before implementing the merge by hand.
 
 Normalization is what makes `//tmp` a corrupted spelling of `/tmp` rather
 than a legitimate variant-only addition, and what maps a bare
-`verify-marks.py` command onto base's `python3.15`-prefixed form, so the
+`verify-marks.py` command onto base's `uv run --no-project --python 3.15 python`-prefixed form, so the
 variant gains the interpreter through `Corrected` instead of through a human
 answering a question. It pairs nothing across the permission lists, which is
 correct: `WebFetch` is a corruption of nothing and reaches

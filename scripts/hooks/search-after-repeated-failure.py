@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.15"
+# dependencies = []
+# ///
 """PostToolUse and PostToolUseFailure hook: a lookup once a tool call fails.
 
 Hands back the lookup that rules/search-tools.md, under "A failure buys a

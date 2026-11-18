@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.15"
+# dependencies = []
+# ///
 """SubagentStop hook: retain a thinkies subagent's final report into Hindsight.
 
 The report is retained to the global bank and, inside a git repository, to
@@ -23,13 +27,13 @@ OPENING_LINES = 5
 SKILL = re.compile(r"\bthinkies:([\w-]+)")
 
 
-def skill_named(report):
+def skill_named(report) -> str | None:
     """The thinkies skill named in the report's first lines, or None."""
     match = SKILL.search("\n".join(report.splitlines()[:OPENING_LINES]))
     return f"thinkies:{match.group(1)}" if match else None
 
 
-def main():
+def main() -> None:
     payload = json.load(sys.stdin)
     report = payload.get("last_assistant_message") or ""
     if payload.get("agent_type") != "thinkies" or payload.get("stop_hook_active"):

@@ -1,6 +1,6 @@
 """Contract tests for what the plugin delivers into a session, run from the plugin root.
 
-    python3 -m unittest discover -s tests -p test_delivery.py -v
+    uv run --no-project --python 3.14 python -m unittest discover -s tests -p test_delivery.py -v
 
 README.md promises rule text at every session start and subagent start, from
 a plugin that reads none of the user's configuration, teaching the four marks

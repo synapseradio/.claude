@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.15"
+# dependencies = []
+# ///
 """PostToolUse hook: retain a research note into the session's Hindsight bank.
 
 A Markdown file whose frontmatter sets `kind: research` is retained under the
@@ -32,13 +36,13 @@ from hindsight_research_bank import STRATEGY_NAME, ensure_strategy, request, res
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 
 
-def parse_frontmatter(text):
+def parse_frontmatter(text: str) -> dict[str, str | list[str]]:
     """Reads the flat keys and string lists this hook needs from YAML frontmatter."""
     match = FRONTMATTER.match(text)
     if not match:
         return {}
-    fields = {}
-    current_list = None
+    fields: dict[str, str | list[str]] = {}
+    current_list: list[str] | None = None
     for line in match.group(1).splitlines():
         item = re.match(r"^\s+-\s+(.*)$", line)
         if item and current_list is not None:
@@ -61,7 +65,7 @@ def parse_frontmatter(text):
     return fields
 
 
-def retain(bank, path, text, fields):
+def retain(bank, path, text, fields) -> None:
     entities = fields.get("entities") or []
     if isinstance(entities, str):
         entities = [entities]
@@ -79,7 +83,7 @@ def retain(bank, path, text, fields):
     request("POST", f"/v1/default/banks/{bank}/memories", {"items": [item], "async": True})
 
 
-def main():
+def main() -> None:
     payload = json.load(sys.stdin)
     file_path = (payload.get("tool_input") or {}).get("file_path") or ""
     if not file_path.endswith(".md"):

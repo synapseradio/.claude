@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """Tests for the shared library at `scripts/agent-configs/projection.py`.
 
 Run with `.venv/bin/python -m pytest scripts/tests/test_projection.py`.

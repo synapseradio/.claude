@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """Tests for the prep-plan skill's `scripts/detect-tools.py`.
 
 Run with `uv run --frozen pytest scripts/tests/test_prep_plan_detect_tools.py`.

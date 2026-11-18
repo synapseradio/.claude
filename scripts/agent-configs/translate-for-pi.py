@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.15
+#!/usr/bin/env -S uv run --frozen
 """Project agent definitions and installed skills onto pi's own format.
 
 pi reads one context file per directory and offers no second mechanism for

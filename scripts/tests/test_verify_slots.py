@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """The machine-wide slot pool that caps how many workers every worktree's runs start.
 
 The pool is `$XDG_CACHE_HOME/claude-verify/slots/slot-0..N-1` with N from

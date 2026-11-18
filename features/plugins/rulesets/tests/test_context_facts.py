@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """A context carries facts, and a block's condition tests them.
 
 Serves the person who writes a config keyed on model, agent, tools, flag, and session
@@ -7,7 +7,7 @@ receive the result: a declared model name claims the identifiers it prefixes, a 
 rank of its highest fact, an unclaimed model tests false, and a missing fact makes no block keyed
 on it apply. The cases run the hook entries over a configuration directory under `tmp_path`.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_context_facts.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_context_facts.py`.
 """
 
 import json

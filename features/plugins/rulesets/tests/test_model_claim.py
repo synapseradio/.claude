@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """A declared model name claims the identifiers the harness reports for it.
 
 Serves the person who writes a config: they declare model names in `models`, write
@@ -8,7 +8,7 @@ claims `claude-n` and every identifier that continues it with `-` or `[`, the lo
 where two claim one identifier, and an identifier no name claims tests false in every `model`
 condition. Every case passes its own `models` list, since the engine holds no model name.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_model_claim.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_model_claim.py`.
 """
 
 import pytest

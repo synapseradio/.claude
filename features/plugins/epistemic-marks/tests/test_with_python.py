@@ -2,7 +2,7 @@
 
 Hook commands name the launcher instead of an interpreter directly. Run from the plugin root:
 
-    python3 -m unittest discover -s tests -p test_with_python.py -v
+    uv run --no-project --python 3.14 python -m unittest discover -s tests -p test_with_python.py -v
 
 The launcher hands every hook script to `uv run --python 3.14 --no-project`.
 Most tests put a mock `uv` in a temporary directory that becomes the child

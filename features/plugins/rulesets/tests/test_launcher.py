@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """The hook launcher runs delivery only on Python 3.15 or later with pyyaml.
 
 A person's machine may hold several interpreters, and the newest one on the
@@ -6,7 +6,7 @@ path decides whether their sessions start with rules. Each case puts stub
 interpreters on `PATH`, each answering the launcher's probe as one real
 interpreter would, and runs `hooks/with-python.sh` as a hook command does.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_launcher.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_launcher.py`.
 """
 
 import json

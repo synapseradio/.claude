@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.15
+#!/usr/bin/env -S uv run --frozen
 """Project agent definitions onto opencode's own format.
 
 `AGENTS.md` carries the `CLAUDE.md` preamble alone: opencode reads the

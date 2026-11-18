@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """A delegate's model fact comes from the first of four sources that names a string.
 
 Serves the person who spawns delegates (`docs/delivery.md`, "What it delivers, and to whom"):
@@ -9,7 +9,7 @@ takes the oldest spawn of its type that no earlier delegate took, and keeps it w
 Agent definitions, spawn records, and the parent's record sit under `tmp_path`, and the
 environment reaches each case as a mapping.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_delegate_facts.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_delegate_facts.py`.
 """
 
 import pytest

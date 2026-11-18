@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """Each hook's entry function, called in-process, answers as its script answers.
 
 Serves every session the plugin delivers rules to: a hook script is one call of its entry

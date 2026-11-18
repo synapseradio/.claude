@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.15"
+# dependencies = []
+# ///
 """SubagentStop hook: retain a delegate's research report into the session's Hindsight bank.
 
 A spider or perspectives:consultant report always counts as research. Any other delegate's
@@ -13,7 +17,9 @@ import json
 import subprocess
 import sys
 import urllib.error
+from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import Any
 
 # Run under `python -I`, which leaves the script's directory off sys.path.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -25,7 +31,7 @@ HERE = Path(__file__).resolve().parent
 RESEARCH_AGENTS = {"spider", "perspectives:consultant"}
 
 
-def load_is_research():
+def load_is_research() -> Callable[[str, dict[str, Any]], bool]:
     spec = importlib.util.spec_from_file_location(
         "hindsight_research_retain", HERE / "hindsight-research-retain.py"
     )
@@ -34,7 +40,7 @@ def load_is_research():
     return module.is_research
 
 
-def tool_calls(transcript_path):
+def tool_calls(transcript_path: str) -> Iterator[tuple[str, dict[str, Any]]]:
     with open(transcript_path, encoding="utf-8") as handle:
         for line in handle:
             try:
@@ -48,7 +54,7 @@ def tool_calls(transcript_path):
                     yield block.get("name", ""), block.get("input") or {}
 
 
-def did_research(payload):
+def did_research(payload: dict[str, Any]) -> bool:
     if payload.get("agent_type") in RESEARCH_AGENTS:
         return True
     transcript = payload.get("agent_transcript_path")
@@ -58,7 +64,7 @@ def did_research(payload):
     return any(is_research(tool, tool_input) for tool, tool_input in tool_calls(transcript))
 
 
-def main():
+def main() -> None:
     payload = json.load(sys.stdin)
     report = payload.get("last_assistant_message") or ""
     if payload.get("stop_hook_active") or not report.strip():

@@ -1,11 +1,11 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """Every module the hooks run parses under Python 3.15.
 
 The launcher accepts any interpreter from 3.15 up, so a module using syntax
 newer than 3.15 fails at the first hook run on a machine whose newest Python is
 3.15, and that session starts with no rules.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_python_floor.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_python_floor.py`.
 """
 
 import ast

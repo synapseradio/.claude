@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """A block's condition tests the facts of a context and nothing else.
 
 `docs/config.md` fixes the language: a condition combines fact tests with `and`, `or`, `not`, and
@@ -8,7 +8,7 @@ model that is neither; `not` binds tighter than `and`, and `and` tighter than `o
 holds in every session and delegate; and a test of a project, a file, or an environment variable
 is a `check` error. Contexts are built in memory, so the evaluation cases touch no disk.
 
-Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_conditions.py`.
+Run with `uv run --frozen pytest features/plugins/rulesets/tests/test_conditions.py`.
 """
 
 import pytest

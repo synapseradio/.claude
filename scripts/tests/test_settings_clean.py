@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --frozen
 """No hook this repository's settings file names belongs to a plugin.
 
 Claude Code runs hooks from the settings files and from every installed
