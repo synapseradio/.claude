@@ -16,7 +16,7 @@ sets:
 skills:
   writing-prose: prose
   comments: comments
-  writing-tests: tests
+  writing-tests: testing-software
   delegate-prompt: delegate-prompt
   worktrees: worktrees
 

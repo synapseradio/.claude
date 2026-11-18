@@ -1,5 +1,5 @@
 ---
-name: tests
+name: testing-software
 description: >-
   Load this before you write, change, delete, run, or judge any test, in any language or runner, or ask another agent to. One added case, one changed assertion, and one run of an existing suite each count, however routine. It holds the mandatory rules for which behaviors get a test and which get none, the questions a test answers before it is written, how to judge a test by reading it, and what a passing run does and does not let you claim.
 ---
