@@ -292,6 +292,37 @@ DEFINITION_LOCATIONS = [
         None,
         id="a plugin that is not installed pins nothing",
     ),
+    pytest.param(
+        lambda s: s.define(s.install_plugin() / "agents", "rev.md", "model: opus"),
+        {"agent_type": "kit:rev"},
+        "opus",
+        id="a plugin definition with no name goes by its filename",
+    ),
+    *[
+        pytest.param(
+            lambda s, front=front: s.define(s.config / "agents", "claude-code-guide.md", front),
+            {"agent_type": "claude-code-guide"},
+            "haiku",
+            id=f"a user file with {why} registers nothing, so the built-in pin stands",
+        )
+        for why, front in [
+            ("no name", "model: opus\ndescription: finds the guide"),
+            ("no description", "name: claude-code-guide\nmodel: opus"),
+            ("an empty description", "name: claude-code-guide\nmodel: opus\ndescription: "),
+            ("frontmatter that does not parse", "name: [unclosed"),
+        ]
+    ],
+    *[
+        pytest.param(
+            lambda s, name=name: s.define(
+                s.config / "agents", "agent.md", f"name: {name}\nmodel: opus\ndescription: d"
+            ),
+            {"agent_type": name},
+            None,
+            id=f"a file named {label} registers under no name",
+        )
+        for label, name in [("with a leading dash", "-guide"), ("past 256 characters", "x" * 257)]
+    ],
 ]
 
 

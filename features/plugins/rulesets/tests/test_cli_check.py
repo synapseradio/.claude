@@ -89,6 +89,20 @@ class TestCheckPrintsEveryFindingAndFailsOnlyOnAnError:
         assert "[never-included]" in result.stdout
         assert "[cross-reference]" in result.stdout
 
+    def test_an_error_and_a_warning_of_one_run_are_both_printed_and_the_exit_is_one(
+        self, tmp_path
+    ) -> None:
+        root = build(tmp_path, "defaults: ghost\n", stems=["unused"])
+
+        result = check(root)
+
+        assert result.returncode == 1
+        config = root / "config.yaml"
+        assert sorted(findings_of(result)) == [
+            (f"{config}:1", "error", "undeclared-reference"),
+            (str(root / "rules" / "unused.md"), "warning", "never-included"),
+        ]
+
     def test_a_clean_directory_prints_nothing_and_exits_zero(self, tmp_path) -> None:
         root = build(tmp_path, "defaults: all.*\n", stems=["voice", "voice@terse"])
 
