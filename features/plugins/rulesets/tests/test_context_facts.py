@@ -30,16 +30,6 @@ def world(tmp_path) -> World:
     return World(tmp_path)
 
 
-def pin_agent_model(world, agent, model) -> None:
-    """An agent definition under the configuration directory that pins its model."""
-    path = world.config / "agents" / f"{agent}.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        f"---\nname: {agent}\ndescription: a test agent\nmodel: {model}\n---\nbody\n",
-        encoding="utf-8",
-    )
-
-
 def received(delivery, stems) -> list[str]:
     """The stems whose body the delivery carries, in the order given."""
     return [stem for stem in stems if f"text of {stem}\n" in delivery.context]
@@ -71,7 +61,7 @@ class TestFactKindsAndTheirRanks:
             "session abc123:\n"
             "  include: sorting\n"
         )
-        pin_agent_model(world, "critic", "haiku")
+        world.user_agent("critic", "haiku")
         world.environment["RULESETS_FLAGS"] = "strict"
 
         delivery = world.start_delegate("critic", session_id="abc123")
@@ -87,7 +77,7 @@ class TestFactKindsAndTheirRanks:
             "model haiku and agent critic:\n"
             "  include: security-pass\n"
         )
-        pin_agent_model(world, "critic", "haiku")
+        world.user_agent("critic", "haiku")
 
         delivery = world.start_delegate("critic")
 
@@ -122,7 +112,7 @@ class TestEachFactKindHasADefinedValue:
     def test_a_delegate_on_a_claimed_model_has_the_model_agent_and_kind_facts(self, world) -> None:
         world.rule("voice")
         world.write_config("models: haiku\ndefaults: voice\n")
-        pin_agent_model(world, "critic", "haiku")
+        world.user_agent("critic", "haiku")
 
         world.start_delegate("critic")
 
@@ -354,10 +344,6 @@ def parent_runs(world, identifier) -> None:
     path.write_text(json.dumps({"identifier": identifier}) + "\n", encoding="utf-8")
 
 
-def delegate_records(world) -> list[dict]:
-    return [record for record in world.records() if record["scope"] == "delegate"]
-
-
 def model_of(record) -> tuple[str, str]:
     """The identifier and the source a delegate record names for its model."""
     return record["model"]["identifier"], record["model"]["source"]
@@ -531,7 +517,7 @@ class TestSeveralMatchingPerSpawnRecordsNamingDifferentModels:
 
         assert received(first, ["voice", "terse"]) == ["voice", "terse"]
         assert received(second, ["voice", "terse"]) == ["voice"]
-        records = delegate_records(world)
+        records = world.delegate_records()
         assert [model_of(record) for record in records] == [
             ("haiku", "per-spawn"),
             ("opus", "per-spawn"),
@@ -549,7 +535,7 @@ class TestSeveralMatchingPerSpawnRecordsNamingDifferentModels:
         for agent_id in ("a1", "a2", "a3"):
             world.start_delegate("critic", agent_id=agent_id)
 
-        first, second, third = delegate_records(world)
+        first, second, third = world.delegate_records()
         assert (ambiguity_notices(first), ambiguity_notices(second)) == ([], [])
         assert model_of(third) == (SONNET_IDENTIFIER, "parent-record")
         (ambiguous,) = ambiguity_notices(third)
@@ -594,7 +580,7 @@ class TestAProjectDefinitionWinsOverTheHomeOne:
 
         delivery = world.start_delegate("scout", cwd=str(project))
 
-        (record,) = delegate_records(world)
+        (record,) = world.delegate_records()
         assert model_of(record) == ("haiku", "definition-pin")
         assert received(delivery, ["reading", "editing"]) == ["reading"]
 
@@ -609,7 +595,7 @@ class TestTheDeliveryRecordNamesEachFactsSource:
 
         world.start_delegate("critic")
 
-        (record,) = delegate_records(world)
+        (record,) = world.delegate_records()
         assert model_of(record) == ("opus", "per-spawn")
         assert record["model"]["name"] == "opus"
         assert record["agent"] == {"state": "named", "name": "critic"}
@@ -774,7 +760,7 @@ class TestAToggleUnsetMidSession:
 
         assert received(earlier, ["voice@terse", "voice"]) == ["voice@terse"]
         assert received(later, ["voice@terse", "voice"]) == ["voice"]
-        first, second = delegate_records(world)
+        first, second = world.delegate_records()
         assert first["flags"] == [{"name": "voice-terse", "source": "launch"}]
         assert second["flags"] == []
 

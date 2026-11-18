@@ -238,6 +238,14 @@ class World:
             return []
         return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
 
+    def delegate_records(self, session_id: str = "s1") -> list[dict]:
+        """The delivery records written for delegates."""
+        return [record for record in self.records(session_id) if record["scope"] == "delegate"]
+
+    def withheld_rules(self, session_id: str = "s1") -> list[str]:
+        """The rule stems each delivery record lists as withheld, in record order."""
+        return [w["rule"] for record in self.records(session_id) for w in record["withheld"]]
+
     def emitted_records(self, session_id: str = "s1") -> list[dict]:
         """The `emitted` records every later part of the session wrote, by part number."""
         files = sorted(self.record_files(session_id).glob("emitted-*.jsonl"))

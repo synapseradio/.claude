@@ -18,6 +18,7 @@ import pytest
 import yaml
 from delivery_world import (
     DECLARED,
+    HAIKU,
     HOOKS_JSON,
     MAX_PARTS,
     OPUS,
@@ -96,7 +97,7 @@ class TestEveryContextReceivesItsRulesByHook:
 
         assert delivery.context == "Hold every rule as mandatory.\n"
         if listed_tools:
-            (record,) = delegate_records(world)
+            (record,) = world.delegate_records()
             assert record["tools"]["state"] == listed_tools, "the delegate read the definition"
         assert definition.read_bytes() == definition_bytes
 
@@ -521,10 +522,6 @@ def tree_of(root) -> dict[pathlib.Path, bytes]:
     return {p.relative_to(root): p.read_bytes() for p in sorted(root.rglob("*")) if p.is_file()}
 
 
-def delegate_records(world) -> list[dict]:
-    return [r for r in world.records() if r["scope"] == "delegate"]
-
-
 class TestAPreToolUseHookRecordsTheModelACallerNamesForOneSpawn:
     def test_the_recording_hook_is_wired_on_the_agent_tool_alone(self) -> None:
         groups = json.loads(HOOKS_JSON.read_text(encoding="utf-8"))["hooks"]["PreToolUse"]
@@ -546,7 +543,7 @@ class TestAPreToolUseHookRecordsTheModelACallerNamesForOneSpawn:
 
         assert (recorded.returncode, recorded.stdout) == (0, "")
         assert delivery.context == "text of core-rules\ntext of terse-rules\n"
-        (record,) = delegate_records(world)
+        (record,) = world.delegate_records()
         assert (record["model"]["name"], record["model"]["source"]) == ("haiku", "per-spawn")
 
     def test_the_recording_hooks_and_the_delegate_start_alter_no_prompt_and_the_hooks_print_no_rule_text(
@@ -613,7 +610,7 @@ class TestTheActionNoneLeavesANoticeThatTheContextReceivedNothing:
         delivery = world.start_delegate()
 
         assert delivery.context == ""
-        (record,) = delegate_records(world)
+        (record,) = world.delegate_records()
         (notice,) = [n["subject"] for n in record["notices"] if n["shown"]]
         assert "received nothing" in notice
         assert "fail" not in notice.lower()
@@ -723,7 +720,7 @@ class TestADelegateReceivesAllItsRulesAtItsStart:
             "b-rule NEW x",
             "c-rule NEW x",
         ]
-        (first_record, _) = delegate_records(world)
+        (first_record, _) = world.delegate_records()
         assert (
             first_record["rules"][0]["digest"]
             == hashlib.sha256(running.part_texts[1].encode()).hexdigest()
@@ -989,7 +986,7 @@ class TestTermsOfDelivery:
 
         delivery = world.start_delegate("critic")
 
-        (record,) = delegate_records(world)
+        (record,) = world.delegate_records()
         (line,) = record["rules"]
         body = (world.rulesets / "rules" / "voice@terse.md").read_bytes()
         assert body == b"terse voice", "the variant file ends without a newline"
@@ -999,7 +996,6 @@ class TestTermsOfDelivery:
 
 
 SONNET = "claude-sonnet-5-5"
-HAIKU = "claude-haiku-4-5"
 TIERS = "models: opus sonnet haiku\n"
 
 

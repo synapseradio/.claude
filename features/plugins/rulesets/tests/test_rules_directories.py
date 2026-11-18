@@ -51,10 +51,6 @@ def every_context(world: World) -> list[Delivery]:
     return deliveries
 
 
-def withheld_rules(world: World) -> list[str]:
-    return [w["rule"] for record in world.records() for w in record["withheld"]]
-
-
 def launch_with(world: World, flags: str | None) -> None:
     """Set the flags a launch sets through `RULESETS_FLAGS`, or none."""
     if flags is None:
@@ -112,7 +108,7 @@ class TestAPoolRuleWhoseNameHoldsADotIsACheckError:
         assert (severity, kind, path.name) == ("error", "rule-name", "voice.short.md")
         assert "`voice.short.md`" in message
         assert delivery.context == "the voice\n"
-        assert withheld_rules(world) == ["voice.short"]
+        assert world.withheld_rules() == ["voice.short"]
 
 
 class TestALaunchSetsTheFlagsItsBlocksKeyOn:
@@ -190,7 +186,7 @@ class TestThePoolHoldsEveryRuleFile:
         ((severity, kind, _, _, _),) = found
         assert (severity, kind) == ("error", "variant-without-default")
         assert delivery.context == "text of voice\n"
-        assert withheld_rules(world) == ["tone"]
+        assert world.withheld_rules() == ["tone"]
 
 
 class TestAPoolFileDeliversNothingByBeingThere:
@@ -328,7 +324,7 @@ class TestARuleIsUnconditionalText:
         assert {f.path.name for f in found} == {"scoped.md", "modeled.md", "broken.md"}
         assert [f.kind for f in found if f.path.name == "broken.md"] == ["frontmatter-unparsable"]
         assert delivery.context == "plain text\n"
-        assert sorted(withheld_rules(world)) == ["broken", "modeled", "scoped"]
+        assert sorted(world.withheld_rules()) == ["broken", "modeled", "scoped"]
 
     def test_prose_describing_when_a_rule_applies_is_delivered_as_plain_text_with_no_finding(
         self, world, capsys

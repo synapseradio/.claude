@@ -30,10 +30,6 @@ def digest(text) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def delegate_records(world) -> list[dict]:
-    return [r for r in world.records() if r["scope"] == "delegate"]
-
-
 def lines_of(result) -> list[str]:
     return result.stdout.splitlines()
 
@@ -128,7 +124,7 @@ class TestADeliveryIsRecordedWithItsScopeAndRules:
 
         world.start_delegate("critic", agent_id="a1")
 
-        (record,) = delegate_records(world)
+        (record,) = world.delegate_records()
         assert (record["session_id"], record["agent_id"], record["scope"]) == (
             "s1",
             "a1",
@@ -199,7 +195,7 @@ class TestADeliveryRecordNamesEachFactWithItsSource:
 
         world.start_delegate("critic")
 
-        (record,) = delegate_records(world)
+        (record,) = world.delegate_records()
         assert record["agent"] == {"state": "named", "name": "critic"}
         assert record["tools"] == {
             "state": "listed",

@@ -722,10 +722,6 @@ def world(tmp_path) -> World:
     return World(tmp_path)
 
 
-def withheld_rules(world) -> list[str]:
-    return [w["rule"] for record in world.records() for w in record["withheld"]]
-
-
 class TestDeliverySkipsEachBlockAndCycleThatCarriesAnError:
     @pytest.mark.parametrize(
         ("config", "context"),
@@ -766,7 +762,7 @@ class TestDeliverySkipsEachBlockAndCycleThatCarriesAnError:
         delivery = world.start_session()
 
         assert delivery.context == "".join(f"text of {stem}\n" for stem in context.split())
-        assert withheld_rules(world) == []
+        assert world.withheld_rules() == []
 
 
 class TestAWarningWithholdsNothing:
@@ -778,4 +774,4 @@ class TestAWarningWithholdsNothing:
         delivery = world.start_session()
 
         assert delivery.context == "Follow sorting before you list items\ntext of sorting\n"
-        assert withheld_rules(world) == []
+        assert world.withheld_rules() == []

@@ -16,15 +16,14 @@ import pathlib
 import sys
 
 import pytest
+from delivery_world import OPUS
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 
 from rulesets.facts.model import fact as model_fact  # noqa: E402
 
-OPUS = "claude-opus-5-5"
 SONNET = "claude-sonnet-5"
-HAIKU = "claude-haiku-4-5"
 NOVA = "claude-nova-1"
 DEFAULT_VARIABLE = "CLAUDE_CODE_SUBAGENT_MODEL"
 

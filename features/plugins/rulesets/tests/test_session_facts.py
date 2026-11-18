@@ -13,6 +13,7 @@ import pathlib
 import sys
 
 import pytest
+from delivery_world import HAIKU, OPUS
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
@@ -23,8 +24,6 @@ from rulesets.facts.model import record as model_record  # noqa: E402
 from rulesets.facts.model import session as session_model  # noqa: E402
 
 MODELS = ["opus", "sonnet", "haiku", "fable"]
-OPUS = "claude-opus-5-5"
-HAIKU = "claude-haiku-4-5"
 NOVA = "claude-nova-1"
 
 

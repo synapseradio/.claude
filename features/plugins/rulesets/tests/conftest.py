@@ -10,7 +10,6 @@ sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
 from rulesets import spawn_log  # noqa: E402  (path must be set before this import)
 from rulesets.facts.model import delegate as delegate_model  # noqa: E402
 from rulesets.facts.model import record as model_record  # noqa: E402
-from rulesets.facts.model.agent import AgentModel  # noqa: E402
 from rulesets.facts.model.fact import ModelFact, ModelResolution  # noqa: E402
 
 DECLARED_MODELS = ["opus", "sonnet", "haiku", "fable"]
@@ -100,46 +99,6 @@ class Scene:
         return self.resolve(agent_type, **kwargs).fact
 
 
-class ReadSpy(dict):
-    """An environment that remembers each name the engine asked it for."""
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.reads: set[str] = set()
-
-    def get(self, key, default=None) -> object:
-        self.reads.add(key)
-        return super().get(key, default)
-
-    def __getitem__(self, key) -> object:
-        self.reads.add(key)
-        return super().__getitem__(key)
-
-    def __contains__(self, key) -> bool:
-        self.reads.add(key)
-        return super().__contains__(key)
-
-
 @pytest.fixture
 def scene(tmp_path) -> Scene:
     return Scene(tmp_path)
-
-
-@pytest.fixture
-def read_spy() -> type[ReadSpy]:
-    """The environment class that records which names the engine reads."""
-    return ReadSpy
-
-
-@pytest.fixture
-def definition_reads(monkeypatch) -> list[str]:
-    """The agent types whose definitions a delegate's model fact looked up, in order."""
-    reads: list[str] = []
-    look_up = delegate_model.agent_model
-
-    def recording(agent_type, cwd, config_dir) -> AgentModel:
-        reads.append(agent_type)
-        return look_up(agent_type, cwd, config_dir)
-
-    monkeypatch.setattr(delegate_model, "agent_model", recording)
-    return reads

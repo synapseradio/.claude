@@ -9,25 +9,13 @@ Explore and Plan agents follow the same order as any other type.
 Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_delegate_levers.py`.
 """
 
-import pathlib
-import sys
-
 import pytest
-
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets.facts.model import fact as model_fact  # noqa: E402  (path must be set first)
-from test_delegate_facts import DEFAULT_VARIABLE, HAIKU, NOVA, OPUS, SONNET  # noqa: E402
+from delivery_world import HAIKU, OPUS
+from test_delegate_facts import DEFAULT_VARIABLE, NOVA, SONNET, standing
 
 SUBAGENT_FORCE = "CLAUDE_CODE_SUBAGENT_MODEL_FORCE"
 COORDINATOR_FORCE = "CLAUDE_CODE_COORDINATOR_FORCE_WORKER_INHERIT_MODEL"
 FABLE = "claude-fable-5"
-
-
-def standing(fact) -> tuple[str | None, str | None]:
-    """The identifier a fact holds and the declared name that claims it, `None` where absent."""
-    return getattr(fact, "identifier", None), model_fact.claimed_name(fact)
 
 
 @pytest.mark.parametrize("lever", [SUBAGENT_FORCE, COORDINATOR_FORCE])
