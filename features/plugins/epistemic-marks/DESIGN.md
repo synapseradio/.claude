@@ -406,6 +406,39 @@ Its notice also reported without asking for anything, so it spurred no
 action. Whether a sentence carries weight, and whether a delegate owed
 citations at all, are judgments. The rule text now carries that obligation.
 
+## A denied fetch
+
+A permission check that denies a fetch closes one route to a source, and the
+source stays where it was. A delegate that met such a denial cited a bundled
+local copy of the docs and marked the gap, while another fetch tool in its
+toolset would have read the live page, and later in the session did. The
+rule text now sends the writer down every other route in reach before a mark
+may stand in the source's place, and has the caller resolve such a mark rather
+than relay it.
+
+No hook can list every route a machine offers, so `epistemic_marks/routes.py`
+holds the floor the transcript can show. The Stop and SubagentStop passes
+block when the turn's last fetch was denied on its first try, a source mark
+follows it, and no other fetch came after the denial. A fetch is a tool whose
+name says fetch, extract, scrape, crawl or browse, or a shell command that
+runs curl, wget or tvly or names a URL. A denial is the tool-result text the
+auto mode classifier or a permission rule writes.
+
+**It blocks on every pass while it holds.** A block that fired once would
+let a reply that reopened on the same mark pass the second time, which is the
+step the incident took. Trying a second route is the one act that ends it,
+and the turn's block cap bounds the rest.
+
+**A second try ends it, whatever its result.** Past the second route the
+duty to try every route, and to name each one tried, sits in the rule text. A
+hook that kept blocking until some fetch succeeded would block a turn whose
+every route is truly closed until the cap ran out.
+
+**A person's refusal never matches.** A refused tool call writes "The user
+doesn't want to proceed with this tool use" to the transcript, which the
+denial pattern leaves alone, so no block sends the writer around a person's
+no.
+
 ## What a SubagentStop hook can hand back
 
 Nothing a `SubagentStop` hook returns reaches the parent session. The hook

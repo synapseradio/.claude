@@ -55,7 +55,7 @@ VOCABULARY = (
         ),
         carry=(
             "Keep each claim below marked. Open your report on it, stating the "
-            "evidence it waits on and the lookup you already tried."
+            "evidence it waits on, and each route to it you tried and how it failed."
         ),
     ),
     Mark(

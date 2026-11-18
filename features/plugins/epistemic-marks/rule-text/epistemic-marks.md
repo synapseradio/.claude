@@ -72,7 +72,7 @@ Sorted: The editor builds these files without that config [?]. That drops the No
 </example>
 
 Hold every step that rests on a [?] or [.?] claim until you resolve the mark, a delegated task or a recommendation included.
-Where no check is in reach, stop that line of work and open your reply or report on the marked claim.
+Where every route to a check has failed, stop that line of work and open your reply or report on the marked claim, naming each route you tried and how it failed.
 
 ### Citing and relaying
 
@@ -108,3 +108,18 @@ Describe every unchecked claim in words naming its owner, in place of ownerless 
 
 Where a sentence is about a mark rather than a claim under one, write the mark's name such as "the unsourced mark" with the token left out.
 Say in the same sentence what became of it.
+
+### A route that fails
+
+A route is one way of reaching a source: a fetch tool, a command form, a read of a file.
+A route that a permission check denies, or that is blocked or fails, closes that route alone and leaves the source unread.
+
+failed route
+  | the user refused the call = ask the user before reaching that source by another route
+  | otherwise = reach the same source by every other route in reach, such as another fetch tool or another command form, before you mark the claim
+
+Let a mark stand in place of a source only once every route in reach to that source has failed, and name beside the mark each route you tried and how it failed.
+Hold a copy of the source, a local or bundled copy included, as a different source, and keep reaching for the source itself.
+
+relayed mark
+  | a delegate's report marks a claim because a route to its source was denied or blocked or failed = reach that source yourself by every route in reach and put it in place of the mark, in place of relaying the mark

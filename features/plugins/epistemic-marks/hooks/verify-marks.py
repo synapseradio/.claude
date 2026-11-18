@@ -56,7 +56,8 @@ from epistemic_marks.ledger import (
 from epistemic_marks.marks import RELAY_MARKS
 from epistemic_marks.messages import Mode, build_context, build_denial, build_findings
 from epistemic_marks.output import block, context, deny
-from epistemic_marks.scan import batch_transcript, last_turn_text
+from epistemic_marks.routes import denied_routes
+from epistemic_marks.scan import batch_transcript, last_turn_entries, last_turn_text, text_blocks
 
 # The most blocks one turn draws from this hook. The harness overrides the
 # next block after eight consecutive continuations, per
@@ -114,8 +115,19 @@ def run_stop(payload, delegate) -> None:
     # A later pass judges the reply rewritten after the block. The earlier
     # messages of the turn hold the superseded draft, whose lines the rewrite
     # already answered, so only the rewrite is read.
-    if transcript and Path(transcript).exists() and not again:
-        texts = last_turn_text(transcript) + texts
+    entries = last_turn_entries(transcript) if transcript and Path(transcript).exists() else []
+    if not again:
+        drafted = [
+            text
+            for entry in entries
+            if entry.get("type") == "assistant"
+            for text in text_blocks(entry.get("message", {}))
+        ]
+        texts = drafted + texts
+    # A fetch a permission check denied, where a mark followed with no other
+    # route tried, blocks on every pass while it holds: trying a second route
+    # is the one act that ends it, and the turn's block cap bounds the rest.
+    routes = denied_routes(entries, reply, drafts=not again)
     lines_by_mark, wording, mentions = unchecked_claims(texts)
     carried = (
         {token: lines_by_mark.pop(token) for token in RELAY_MARKS if token in lines_by_mark}
@@ -168,7 +180,7 @@ def run_stop(payload, delegate) -> None:
         if not opens_on(reply, flat(listed), marked):
             standing = listed
 
-    owed = bool(fresh or wording or standing)
+    owed = bool(fresh or wording or standing or routes)
     newly = flat(fresh, new_mentions, new_relay)
     if newly or owed:
         if recordable or prepare(directory):
@@ -183,7 +195,9 @@ def run_stop(payload, delegate) -> None:
     event = "SubagentStop" if delegate else "Stop"
     if owed:
         mode = Mode.CAPPED if capped else Mode.BLOCK
-        message = build_findings(mode, fresh, new_relay, delegate, wording, standing, new_mentions)
+        message = build_findings(
+            mode, fresh, new_relay, delegate, wording, standing, new_mentions, routes
+        )
         emit(context(event, message) if capped else block(message))
     # A mention claims nothing and a relayed line is the caller's to settle,
     # so neither blocks. additionalContext still hands each one to the model

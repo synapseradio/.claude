@@ -67,7 +67,7 @@ def _turn_state_path(directory, transcript_path) -> Path:
 def _load_turn_start(path) -> int:
     try:
         data = json.loads(path.read_text())
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return 0
     offset = data.get("turn_start_offset") if isinstance(data, dict) else None
     return offset if isinstance(offset, int) and offset >= 0 else 0
@@ -81,7 +81,17 @@ def _save_turn_start(path, offset) -> None:
 
 
 def last_turn_text(transcript_path) -> list[str]:
-    """Assistant text blocks since the most recent real user message.
+    """Assistant text blocks since the most recent real user message."""
+    return [
+        text
+        for entry in last_turn_entries(transcript_path)
+        if entry.get("type") == "assistant"
+        for text in text_blocks(entry.get("message", {}))
+    ]
+
+
+def last_turn_entries(transcript_path) -> list[dict]:
+    """The assistant entries and tool results since the most recent real user message, in order.
 
     Rescans only the bytes written since the transcript's last confirmed
     turn boundary, not the whole file. That boundary is a byte offset
@@ -126,8 +136,8 @@ def last_turn_text(transcript_path) -> list[str]:
                 if is_real_user_entry(entry):
                     turn = []
                     boundary = position
-                elif entry.get("type") == "assistant":
-                    turn.extend(text_blocks(entry.get("message", {})))
+                elif entry.get("type") in {"assistant", "user"}:
+                    turn.append(entry)
     except OSError:
         return []
 
@@ -274,7 +284,7 @@ def marked_lines(blocks) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
     lines = [line for block in blocks for line in block.splitlines()]
     found = {mark: [] for mark in MARKS}
     named = {mark: [] for mark in MARKS}
-    for line, (prose, mentioned) in zip(lines, claim_lines(lines)):
+    for line, (prose, mentioned) in zip(lines, claim_lines(lines), strict=True):
         stripped = line.strip()
         for mark in MARKS:
             if mark in prose and stripped not in found[mark]:

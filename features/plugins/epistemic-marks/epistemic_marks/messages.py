@@ -122,6 +122,21 @@ BLOCK_LEAD = (
 
 MENTION_HEADING = "Naming a mark in code rather than claiming under it, so left unchecked:"
 
+# The heading and act for a fetch a permission check denied, where a mark
+# followed with no other route tried. The denial closes one route; the act
+# sends the writer down the others before a mark may stand.
+DENIED_ROUTE_HEADING = (
+    "A fetch for a source was denied, and a mark followed with no other route tried:"
+)
+DENIED_ROUTE_ACT = (
+    "A denial closes the route below, not the source. Reach the same source now "
+    "by another route in reach, such as another fetch tool or another command "
+    "form, and put that source in place of the mark. A local or bundled copy is "
+    "a different source, never a stand-in for this one. Where every route in "
+    "reach fails, keep the mark and name beside it each route you tried and how "
+    "it failed."
+)
+
 # The act for a mention, which no mark record can carry: a mention is exempt
 # by its form, and only the writer knows whether the line also claims.
 MENTION_ACT = (
@@ -172,6 +187,13 @@ def _mention_part(mentions) -> str:
     return f"{MENTION_HEADING}\n{MENTION_ACT}\n\n" + _listing(mentions)
 
 
+def _denied_route_part(routes) -> str:
+    """The denied-route group: its heading, its act, then the denied fetches."""
+    return f"{DENIED_ROUTE_HEADING}\n{DENIED_ROUTE_ACT}\n" + "\n".join(
+        f"- {route}" for route in routes
+    )
+
+
 class Mode(StrEnum):
     """What a pass does with its findings: block on them, carry them past the cap, or report them."""
 
@@ -188,6 +210,7 @@ def build_findings(
     wording=None,
     standing=None,
     mentions=None,
+    routes=None,
 ) -> str:
     """The message a Stop pass returns for what it found.
 
@@ -211,6 +234,9 @@ def build_findings(
     which a later pass found still marked and not yet opened on, keyed by
     mark. `mentions` holds the lines naming a mark rather than claiming
     under it, which ride in the message so the model reads them with it.
+    `routes` holds each fetch a permission check denied where a mark followed
+    with no other route tried, and leads the message, since the mark it sits
+    over waits on that route.
     """
     verb = "report" if delegate else "reply"
     if mode is Mode.NOTICE:
@@ -219,6 +245,8 @@ def build_findings(
             parts.append(f"{SURVIVING_HEADING}\n\n" + _sections(lines_by_mark, MARK_CARRY))
     else:
         parts = _resolving(lines_by_mark, wording)
+    if routes:
+        parts.insert(0, _denied_route_part(routes))
     if standing:
         parts.append(STANDING_HEADING.format(verb=verb) + "\n\n" + _sections(standing, MARK_CARRY))
     if carried:
