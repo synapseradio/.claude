@@ -655,34 +655,6 @@ rungs
   | the publisher answers = cite it, and read artifact only to check a publisher claim a decision rests on
   | otherwise = read artifact
 
-<!-- rule: shell-scripts -->
-## shell-scripts
-
-For every shell script and every shell startup file you write or review, optimize for a script that runs what its writer named and reads like every other script here.
-
-- the guide: `~/.claude/references/bash-style-guide.md`, a distillation of Google's at <https://google.github.io/styleguide/shellguide.html>, the one source of every script's conventions
-
-Read the guide in full before writing or reviewing bash, and follow it.
-Write every script in bash, opening each executable on `#!/bin/bash`.
-Quote every value the shell would otherwise re-expand.
-Hold every list in an array.
-Check every step's status, in the form the guide gives.
-Write every script to run on the oldest bash its target machines resolve such as macOS /bin/bash 3.2, a script opening on `#!/usr/bin/env bash` included.
-
-script
-  | it needs a data structure beyond a string, an array, or an associative array = write it in another language
-  | it needs control flow beyond a branch, a loop, and a function call = write it in another language
-  | it runs only under a newer bash, such as in CI alone = keep old-bash guards out of it and its tests
-
-In a file zsh sources, probe for a function with `declare -f <name>`, with `declare -F` and `typeset -F` kept out.
-Test a file both shells source by writing a scratchpad script that sources it, then running that script with `zsh <script>` and with `bash <script>`.
-
-name file
-  | it is a script = kebab-case
-  | otherwise = the name the guide gives
-
-Resolve an ambiguous choice toward the convention the surrounding scripts hold, and treat consistency as no ground for keeping an outdated convention.
-
 <!-- rule: sorting -->
 ## sorting
 

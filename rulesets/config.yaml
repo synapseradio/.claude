@@ -1,6 +1,6 @@
 ---
 models: opus sonnet haiku fable
-defaults: core.* shell.*
+defaults: core.*
 sets:
   core: core-rules determinism-over-tokens sorting reporting reasoning-guidelines ask-user-before-assuming user-approval user-out-of-artifacts exact-edits scratchpad waiting-on-processes
   reasoning: claims
@@ -11,7 +11,6 @@ sets:
   dialogue: resolving-input inquiring asking-questions
   planning: writing-plans handoff persistent-memory
   orchestration: agent-delegation delegate-prompt worktrees
-  bash: shell-scripts
   shell: writing-bash writing-bats
   skill-pointers: writing-prose comments writing-tests delegate-prompt worktrees writing-bash writing-bats
 skills:
@@ -41,11 +40,11 @@ model haiku:
 kind session:
   include: all.*
   then:
-    exclude: shell-scripts source-listing
+    exclude: source-listing
 kind delegate:
   include: delegate-report worktrees@delegate
 tools Bash:
-  include: bash-commands
+  include: bash-commands shell.*
 
 agent orchestrator:
   include: reasoning.* lookup.* prose.* resolving-input
@@ -86,7 +85,7 @@ agent software-implementer software-refiner:
 agent software-tester:
   include: lookup.* git.* comments
 agent shell-scripter:
-  include: bash.* lookup.* git.* comments
+  include: shell.* lookup.* git.* comments
 agent software-implementer software-refiner software-tester shell-scripter:
   not model haiku:
     include: code.*
