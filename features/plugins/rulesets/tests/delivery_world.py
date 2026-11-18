@@ -14,11 +14,17 @@ import pathlib
 import re
 import shlex
 import subprocess
-import sys
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 
+from rulesets import cli
 from rulesets.delivery.parts import MAX_PARTS
+from rulesets.hook_entry import (
+    HookResult,
+    deliver,
+    record_load,
+    record_spawn,
+)
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 HOOKS = PLUGIN_ROOT / "hooks"
@@ -28,15 +34,6 @@ DELIVER = HOOKS / "deliver.py"
 TOGGLE_SKILL = PLUGIN_ROOT / "skills" / "rulesets" / "SKILL.md"
 CLI = PLUGIN_ROOT / "lib" / "rulesets" / "cli.py"
 
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets import cli  # noqa: E402  (path must be set before this import)
-from rulesets.hook_entry import (  # noqa: E402
-    HookResult,
-    deliver,
-    record_load,
-    record_spawn,
-)
 
 OPUS = "claude-opus-5-5"
 HAIKU = "claude-haiku-4-5"

@@ -12,7 +12,6 @@ import hashlib
 import json
 import pathlib
 import shutil
-import sys
 
 import pytest
 import yaml
@@ -23,25 +22,15 @@ from delivery_world import (
     MAX_PARTS,
     OPUS,
     Delivery,
-    World,
     delivered,
 )
 from launcher_stubs import launch, stub
-
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets.locations import Locations  # noqa: E402  (path must be set before this import)
-from rulesets.session.state import (  # noqa: E402
+from rulesets.locations import Locations
+from rulesets.session.state import (
     Band,
     SessionState,
     write_state,
 )
-
-
-@pytest.fixture
-def world(tmp_path) -> World:
-    return World(tmp_path)
 
 
 class TestEveryContextReceivesItsRulesByHook:

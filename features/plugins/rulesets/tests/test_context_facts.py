@@ -12,22 +12,11 @@ Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_context_fact
 
 import json
 import pathlib
-import sys
 
 import pytest
-from delivery_world import DECLARED, World
-
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets.check.report_format import report_lines  # noqa: E402
-from rulesets.check.run import check  # noqa: E402
-
-
-@pytest.fixture
-def world(tmp_path) -> World:
-    return World(tmp_path)
+from delivery_world import DECLARED
+from rulesets.check.report_format import report_lines
+from rulesets.check.run import check
 
 
 def received(delivery, stems) -> list[str]:

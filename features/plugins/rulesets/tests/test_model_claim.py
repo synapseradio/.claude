@@ -11,16 +11,9 @@ condition. Every case passes its own `models` list, since the engine holds no mo
 Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_model_claim.py`.
 """
 
-import pathlib
-import sys
-
 import pytest
-
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets.facts.model import claim as model_claim  # noqa: E402  (path must be set first)
-from rulesets.facts.model import fact as model_fact  # noqa: E402
+from rulesets.facts.model import claim as model_claim
+from rulesets.facts.model import fact as model_fact
 
 DECLARED = ["opus", "sonnet", "haiku", "fable", "opus-4-8", "opus-4-8[1m]"]
 WITHOUT_1M = [name for name in DECLARED if name != "opus-4-8[1m]"]

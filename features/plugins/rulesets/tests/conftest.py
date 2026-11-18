@@ -1,16 +1,12 @@
 import json
 import pathlib
-import sys
 
 import pytest
-
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets import spawn_log  # noqa: E402  (path must be set before this import)
-from rulesets.facts.model import delegate as delegate_model  # noqa: E402
-from rulesets.facts.model import record as model_record  # noqa: E402
-from rulesets.facts.model.fact import ModelFact, ModelResolution  # noqa: E402
+from delivery_world import World
+from rulesets import spawn_log
+from rulesets.facts.model import delegate as delegate_model
+from rulesets.facts.model import record as model_record
+from rulesets.facts.model.fact import ModelFact, ModelResolution
 
 DECLARED_MODELS = ["opus", "sonnet", "haiku", "fable"]
 
@@ -24,6 +20,11 @@ def isolated_config_directory(monkeypatch, tmp_path_factory) -> None:
     a configuration directory of its own sets one over this.
     """
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path_factory.mktemp("config")))
+
+
+@pytest.fixture
+def world(tmp_path) -> World:
+    return World(tmp_path)
 
 
 class Scene:

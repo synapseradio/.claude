@@ -12,16 +12,9 @@ environment reaches each case as a mapping.
 Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_delegate_facts.py`.
 """
 
-import pathlib
-import sys
-
 import pytest
 from delivery_world import OPUS
-
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets.facts.model import fact as model_fact  # noqa: E402
+from rulesets.facts.model import fact as model_fact
 
 SONNET = "claude-sonnet-5"
 NOVA = "claude-nova-1"

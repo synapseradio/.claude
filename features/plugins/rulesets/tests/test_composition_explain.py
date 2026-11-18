@@ -17,7 +17,7 @@ import sys
 from typing import NamedTuple
 
 import pytest
-from delivery_world import DECLARED, World
+from delivery_world import DECLARED
 
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
 CLI = PLUGIN_ROOT / "lib" / "rulesets" / "cli.py"
@@ -715,11 +715,6 @@ class TestCheckReportsCrossReferenceAndLayoutWarnings:
         for finding, (_, _, holder, named) in zip(found, expected, strict=True):
             assert finding.severity == "warning"
             assert finding.message.index(f"`{holder}`") < finding.message.index(f"`{named}`")
-
-
-@pytest.fixture
-def world(tmp_path) -> World:
-    return World(tmp_path)
 
 
 class TestDeliverySkipsEachBlockAndCycleThatCarriesAnError:

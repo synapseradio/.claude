@@ -14,28 +14,17 @@ Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_rules_direct
 import json
 import pathlib
 import re
-import sys
 from typing import NamedTuple
 
 import pytest
 from delivery_world import Delivery, World
 from delivery_world import delivered as under_marker
-
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets import spawn_log  # noqa: E402  (path must be set before this import)
-from rulesets.cli import main  # noqa: E402
-from rulesets.locations import Locations  # noqa: E402
-from rulesets.session.state import Band, SessionState, write_state  # noqa: E402
+from rulesets import spawn_log
+from rulesets.cli import main
+from rulesets.locations import Locations
+from rulesets.session.state import Band, SessionState, write_state
 
 MODELS = "models: opus sonnet haiku\n"
-
-
-@pytest.fixture
-def world(tmp_path) -> World:
-    return World(tmp_path)
 
 
 def every_context(world: World) -> list[Delivery]:

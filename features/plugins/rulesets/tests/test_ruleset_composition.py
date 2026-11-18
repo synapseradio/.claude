@@ -13,23 +13,17 @@ Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_ruleset_comp
 
 import pathlib
 import re
-import sys
 from typing import NamedTuple
 
 import pytest
 from delivery_world import DECLARED, OPUS, World
-
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets import spawn_log  # noqa: E402
-from rulesets.cli import main  # noqa: E402
-from rulesets.compose.composition import compose  # noqa: E402
-from rulesets.facts.context import ABSENT, Facts  # noqa: E402
-from rulesets.locations import Locations  # noqa: E402
-from rulesets.session.state import Band, SessionState, read_state, write_state  # noqa: E402
-from rulesets.source.directory import read_directory  # noqa: E402
+from rulesets import spawn_log
+from rulesets.cli import main
+from rulesets.compose.composition import compose
+from rulesets.facts.context import ABSENT, Facts
+from rulesets.locations import Locations
+from rulesets.session.state import Band, SessionState, read_state, write_state
+from rulesets.source.directory import read_directory
 
 
 def build(tmp_path, config, rules) -> pathlib.Path:

@@ -16,14 +16,9 @@ import pathlib
 import shutil
 
 import pytest
-from delivery_world import DECLARED, HAIKU, OPUS, Delivery, World
+from delivery_world import DECLARED, HAIKU, OPUS, Delivery
 
 SONNET = "claude-sonnet-5-5"
-
-
-@pytest.fixture
-def world(tmp_path) -> World:
-    return World(tmp_path)
 
 
 def digest(text) -> str:

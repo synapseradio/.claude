@@ -10,18 +10,13 @@ Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_session_fact
 """
 
 import pathlib
-import sys
 
 import pytest
 from delivery_world import HAIKU, OPUS
-
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets import spawn_log  # noqa: E402  (path must be set before this import)
-from rulesets.facts.model import fact as model_fact  # noqa: E402
-from rulesets.facts.model import record as model_record  # noqa: E402
-from rulesets.facts.model import session as session_model  # noqa: E402
+from rulesets import spawn_log
+from rulesets.facts.model import fact as model_fact
+from rulesets.facts.model import record as model_record
+from rulesets.facts.model import session as session_model
 
 MODELS = ["opus", "sonnet", "haiku", "fable"]
 NOVA = "claude-nova-1"

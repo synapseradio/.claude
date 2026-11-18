@@ -9,16 +9,8 @@ frontmatter in all of them or in none. Each case builds its text inline.
 Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_documents.py`.
 """
 
-import pathlib
-import sys
-
 import pytest
-
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets.documents import parse_document  # noqa: E402
+from rulesets.documents import parse_document
 
 
 @pytest.mark.parametrize(

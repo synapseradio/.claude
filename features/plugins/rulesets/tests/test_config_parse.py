@@ -12,19 +12,13 @@ Run with `python3.15 -m pytest features/plugins/rulesets/tests/test_config_parse
 """
 
 import pathlib
-import sys
 
 import pytest
-
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[1]
-
-sys.path.insert(0, str(PLUGIN_ROOT / "lib"))
-
-from rulesets.check.run import check  # noqa: E402  (path must be set before this import)
-from rulesets.compose.composition import compose  # noqa: E402
-from rulesets.facts.context import ABSENT, Facts  # noqa: E402
-from rulesets.session.state import SessionState  # noqa: E402
-from rulesets.source.directory import read_directory  # noqa: E402
+from rulesets.check.run import check
+from rulesets.compose.composition import compose
+from rulesets.facts.context import ABSENT, Facts
+from rulesets.session.state import SessionState
+from rulesets.source.directory import read_directory
 
 
 def build(tmp_path, text, stems) -> pathlib.Path:
