@@ -26,14 +26,6 @@ def _write(path: pathlib.Path, text: str) -> pathlib.Path:
     return path
 
 
-PREAMBLE = "# Preamble\n\nPlay."
-
-
-def _body(stem: str, body: str) -> str:
-    return f"<!-- rule: {stem} -->\n\n## {stem}\n\n{body}"
-
-
-ALPHA = _body("alpha", "Alpha holds.")
 HOME = pathlib.Path.home()
 
 AGENT_BODY = "Scout {\n  Options {\n    budget: 1..200 = 40\n  }\n}\n"

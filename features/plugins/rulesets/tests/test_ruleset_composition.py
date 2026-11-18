@@ -452,8 +452,7 @@ class TestABodyLongerThanThePartBudgetIsACheckError:
         assert (severity, kind, path) == ("error", "oversize-body", root / "rules" / f"{name}.md")
         assert delivery.context == "".join(f"text of {other}\n" for other in others)
         assert f"`{name}`" in delivery.message
-        (record,) = world.records()
-        assert [w["rule"] for w in record["withheld"]] == [name]
+        assert world.withheld_rules() == [name]
 
 
 class TestCheckWarnsAboutPartCount:

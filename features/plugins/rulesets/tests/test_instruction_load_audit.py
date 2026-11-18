@@ -234,7 +234,7 @@ class TestADeliveryRecordNamesWhatItSkippedWithheldAndConflicted:
         assert record["skipped_blocks"] == [
             {"file": config, "line": 8, "condition": "model sonnet", "names": ["sonnet"]}
         ]
-        assert [w["rule"] for w in record["withheld"]] == ["tone"]
+        assert world.withheld_rules() == ["tone"]
         (conflict,) = record["conflicts"]
         assert conflict["rule"] == "voice"
         assert conflict["statements"] == [
