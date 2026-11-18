@@ -1,6 +1,6 @@
 ---
 models: opus sonnet haiku fable
-defaults: core.*
+defaults: core.* shell.*
 sets:
   core: core-rules determinism-over-tokens sorting reporting reasoning-guidelines ask-user-before-assuming user-approval user-out-of-artifacts exact-edits scratchpad waiting-on-processes
   reasoning: claims
@@ -12,8 +12,11 @@ sets:
   planning: writing-plans handoff persistent-memory
   orchestration: agent-delegation delegate-prompt worktrees
   bash: shell-scripts
-  skill-pointers: writing-prose comments writing-tests delegate-prompt worktrees
+  shell: writing-bash writing-bats
+  skill-pointers: writing-prose comments writing-tests delegate-prompt worktrees writing-bash writing-bats
 skills:
+  writing-bash: bash-style
+  writing-bats: bats-testing
   writing-prose: prose
   comments: comments
   writing-tests: testing-software
