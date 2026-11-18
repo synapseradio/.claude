@@ -1,7 +1,7 @@
 ---
 name: comments
 description: >-
-  Load this before you write or edit source code that has a comment near the change or gains one, in any language and at any size: a line or block comment, a docstring or doc comment, a TODO, a file header. Writing, rewording, moving, removing, or reviewing a comment counts, and so does changing one line of code beside a comment you leave untouched, since the edit can leave that comment restating or contradicting the code. It holds the mandatory rules for where each piece of knowledge belongs (the code, a name, a type, a test, a doc, the commit, or a comment), which nearby comments an edit removes, and how to word, link, and size a comment. If the code you are about to touch has a comment in or beside it, or your change would add one, load this first; a one-line comment counts.
+  Load this before you write or edit source code that has a comment near the change or gains one, in any language: a line or block comment, a docstring, a TODO, a file header. Changing one line of code beside a comment you leave untouched counts, and so does a one-line comment. It holds the mandatory rules for where each piece of knowledge belongs (code, a name, a type, a test, a doc, the commit, or a comment), which nearby comments an edit removes, and how to word and size a comment.
 ---
 
 # Comments

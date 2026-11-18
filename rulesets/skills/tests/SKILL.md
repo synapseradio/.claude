@@ -1,7 +1,7 @@
 ---
 name: tests
 description: >-
-  Load this first whenever a test is part of what you are about to do, in any language or runner and at any size: writing or adding a test case, editing or deleting one, updating an expected value, running a test file or a suite, reading what a run reports, or judging whether code is tested. One added case, one changed assertion, and one run of an existing suite each count, and the task looking routine is no reason to skip it, because these rules differ from common testing habits and change which tests you write and what a passing run lets you claim. It holds the mandatory rules for which behaviors get a test and which get none, the questions each test answers before it is written, how to judge a test by reading it, what a test run does and does not show, and where mocks sit. Load it too before you write a prompt that asks another agent for any of this. If you are about to open, create, or execute a test file, stop and load this first.
+  Load this before you write, change, delete, run, or judge any test, in any language or runner, or ask another agent to. One added case, one changed assertion, and one run of an existing suite each count, however routine. It holds the mandatory rules for which behaviors get a test and which get none, the questions a test answers before it is written, how to judge a test by reading it, and what a passing run does and does not let you claim.
 ---
 
 # Tests

@@ -1,7 +1,7 @@
 ---
 name: delegate-prompt
 description: >-
-  Load this before you write the prompt for any other agent, at any length and through any spawning tool: a sub-agent, a worker, a fork of yourself, a background agent, a workflow stage, several agents in parallel. A one-line prompt counts, and so does a prompt for a read or a search, and so does a prompt you draft for someone else to send. It holds the mandatory prompt template and the rules for what to settle before the spawn, which files the delegate may change, how to state done, when the delegate stops and reports, and how much to state for each model tier. If your next action starts an agent or composes text another agent will receive as its instructions, load this first.
+  Load this before you write the prompt for any other agent, through any spawning tool: a sub-agent, a worker, a fork, a background agent, a workflow stage. A one-line prompt counts, as do a prompt for a read or a search and one you draft for someone else to send. It holds the mandatory prompt template and the rules for what to settle before the spawn, which files the delegate may change, how to state done, and how much to state for each model tier.
 ---
 
 # Delegate prompt
