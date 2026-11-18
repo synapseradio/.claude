@@ -16,6 +16,7 @@ skills:
   writing-prose: prose
   comments: comments
   writing-tests: tests
+  delegate-prompt: delegate-prompt
 
 model sonnet:
   include: agent-delegation@sonnet
