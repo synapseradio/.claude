@@ -14,6 +14,7 @@ sets:
   bash: shell-scripts
 skills:
   writing-prose: prose
+  comments: comments
 
 model sonnet:
   include: agent-delegation@sonnet
