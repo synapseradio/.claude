@@ -146,25 +146,19 @@ EOF
 }
 
 #######################################
-# Write the rulesets CLI launcher into a fixture repository as a stub that logs
-# its arguments. RULESETS_CHECK_STATUS and RULESETS_RENDER_CHECK_STATUS set the
-# exit status of `check` and of `render --check`.
+# Stub uv so a rulesets CLI run logs its arguments to CALL_LOG.
+# RULESETS_CHECK_STATUS and RULESETS_RENDER_CHECK_STATUS set the exit status of
+# `check` and of `render --check`.
 # Arguments:
-#   The fixture repository.
+#   None
 #######################################
 stub_rulesets_cli() {
-  local repo="$1"
-  local stub="${repo}/features/plugins/rulesets/hooks/with-python.sh"
-  mkdir -p "${stub%/*}"
-  cat >"${stub}" <<'EOF'
-#!/bin/bash
-printf '%s\n' "with-python $*" >>"${CALL_LOG}"
-case "$2 $3" in
+  write_stub uv <<'EOF'
+case "$4 $5" in
   "check --root") exit "${RULESETS_CHECK_STATUS:-0}" ;;
   "render --check") exit "${RULESETS_RENDER_CHECK_STATUS:-0}" ;;
 esac
 EOF
-  chmod +x "${stub}"
 }
 
 #######################################

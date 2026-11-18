@@ -4,13 +4,13 @@
 # its rendered copy agree.
 
 #######################################
-# Run the rulesets CLI through its launcher, from the checkout's root.
+# Run the rulesets CLI in the repository's uv environment, from the
+# checkout's root.
 # Arguments:
 #   The CLI's arguments.
 #######################################
 render::rulesets_cli() {
-  bash features/plugins/rulesets/hooks/with-python.sh \
-    features/plugins/rulesets/lib/rulesets/cli.py "$@"
+  uv run --frozen features/plugins/rulesets/lib/rulesets/cli.py "$@"
 }
 
 #######################################

@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 #
 # `render.sh render` and `render.sh check` call the rulesets CLI through its
-# launcher. The launcher is a stub that logs its arguments to CALL_LOG.
+# uv. uv is a stub that logs its arguments to CALL_LOG.
 
 export BATS_TEST_TIMEOUT=10
 
@@ -14,13 +14,13 @@ setup_file() {
 setup() {
   load '../../tests/test_helper'
   RENDER="${BATS_TEST_DIRNAME}/../../render.sh"
-  CLI='with-python features/plugins/rulesets/lib/rulesets/cli.py'
+  CLI='uv run --frozen features/plugins/rulesets/lib/rulesets/cli.py'
 }
 
-# Start a fixture repository with the stubbed launcher and enter it.
+# Start a fixture repository with uv stubbed and enter it.
 enter_repo() {
   enter_fixture_repo repo
-  stub_rulesets_cli "${BATS_TEST_TMPDIR}/repo"
+  stub_rulesets_cli
 }
 
 @test "render renders the rulesets root" {
