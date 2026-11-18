@@ -1,7 +1,7 @@
 ---
 name: delegate-prompt
 description: >-
-  Mandatory template and directives for every prompt you compose for another agent, at any length. Load it before you write the prompt for any spawn through any spawning tool: an Agent or Task tool call, a sub-agent or worker, a fork of yourself, a stage of a workflow or a workflow script that starts agents, a background agent, or several agents run in parallel. A one-line prompt counts, and so does a prompt for a read or a search. It holds the prompt template (the Effort line, the welcome, Perspective, Task, Context, Tooling, Constraints, Checks, Invitations, Failures), which decisions to settle before the spawn, how to name the files the delegate may change and where its output goes, how to name the point where it stops and reports, and how much to state for a haiku, a sonnet, or an opus delegate. Use it whenever you are about to delegate, spawn, fork, dispatch, hand off, or brief an agent, and on requests such as "spawn an agent", "delegate this", "hand this to a sub-agent", "use a subagent", "run these in parallel", "fork this", "kick off a workflow", "brief a worker", "write the prompt for the agent".
+  Mandatory template and directives for every prompt you compose for another agent, at any length. Load it before you write the prompt for any spawn through any spawning tool: an Agent or Task tool call, a sub-agent or worker, a fork of yourself, a stage of a workflow or a workflow script that starts agents, a background agent, or several agents run in parallel. A one-line prompt counts, and so does a prompt for a read or a search. It holds the prompt template (the Effort line, the welcome, Perspective, Task, Context, Tooling, Constraints, Definition of Done, Invitations, Failures), which decisions to settle before the spawn, how to name the files the delegate may change and where its output goes, how to state the definition of done, the conditions at which the delegate stops and reports, and how much to state for a haiku, a sonnet, or an opus delegate. Use it whenever you are about to delegate, spawn, fork, dispatch, hand off, or brief an agent, and on requests such as "spawn an agent", "delegate this", "hand this to a sub-agent", "use a subagent", "run these in parallel", "fork this", "kick off a workflow", "brief a worker", "write the prompt for the agent".
 ---
 
 # Delegate prompt
@@ -38,7 +38,6 @@ Keep out of every prompt any request that the delegate judge its own result or a
 State every cost in tokens, calls, or wait and keep time units out.
 Set how much the delegate thinks through the effort level alone.
 Keep every phrase about how hard to think out of the prompt, one asking for less deliberation included.
-Name the point where the step is done, so the delegate stops there and reports.
 
 ## Template
 
@@ -74,9 +73,11 @@ You are [model family and identifier]. [a welcome for this spawn, glad the deleg
 [each act a capable delegate would take on its own that collides with agents running beside it or with the orchestration, named as one to leave undone, such as a push, a check or formatter run over files beyond its own, an edit to a file another agent owns, or a turn ended while a command it started still runs in the background]
 [where the delegate commits, that every change a formatter or linter makes, in a file beyond its own too, stays as the tool left it and goes into its commit, unreverted and unadjusted by hand]
 
-## Checks
+## Definition of Done
 
-[each check to run before reporting, with its command and passing result, each run in the foreground and, where other agents run beside it, covering only the files it changes]
+[each condition that marks the step done, stated as a property of the result; each check among them with its command and passing result, run in the foreground and, where other agents run beside it, covering only the files the delegate changes]
+
+Once all of these hold, report and stop.
 
 ## Invitations
 
