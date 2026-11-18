@@ -184,6 +184,18 @@ CAUSES = (
     r"\bthe\s+reason\s+(?:is|was)\b",
 )
 
+# An instruction to say a cause, at the start of a sentence or an option. A
+# carried question lists the answers its asker would have offered, and one
+# can tell the answerer to name the cause. The writer states none there, so
+# the clause reads as an instruction rather than a diagnosis. A writer's own
+# "I'd say the cause is" has a subject before the verb and is not matched.
+OFFERED_CAUSE = re.compile(
+    r"(?:^\W*|\(\w\)\s+|[:;]\s+)"
+    r"(?:say|state|claim|assert|confirm|report|write|name)\s+(?:that\s+)?"
+    r"the\s+(?:(?:root\s+)?(?:cause|culprit)|reason)\s+(?:is|was)\b",
+    re.IGNORECASE,
+)
+
 # A statement laid on the user. Their words go unmarked only where a reader
 # can find them, so the report of one needs the quotation beside it.
 _SAY = r"(?:said|stated|noted|mentioned|confirmed|reported|explained|pointed out|told (?:me|us))"
@@ -277,7 +289,7 @@ def guessed_lines(blocks: list[str]) -> tuple[dict[str, list[str]], dict[str, li
             continues = False
             hedged = bool(HEDGE.search(masked) or OPENING_HEDGE.match(opening))
             builds = resting_ground and bool(RESTING.match(opening))
-            diagnoses = bool(DIAGNOSIS.search(masked))
+            diagnoses = bool(DIAGNOSIS.search(OFFERED_CAUSE.sub(" ", masked)))
             marked = any(mark in masked for mark in MARKS)
             covered = marked or bool(CITATION.search(raw))
             mentioned = _named_marks(masked)

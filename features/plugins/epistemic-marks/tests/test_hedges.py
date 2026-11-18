@@ -268,6 +268,31 @@ class ACauseStatedFlatIsFound(unittest.TestCase):
             with self.subTest(line=line):
                 assert found(line) == {}
 
+    def test_an_option_that_offers_a_cause_to_say_is_no_diagnosis(self) -> None:
+        # A carried question lists the answers its asker would have offered,
+        # and one of them tells the answerer to name the cause. The writer
+        # states no cause there.
+        for line in (
+            "(b) Say the cause is something else, and name it.",
+            "(b) Say the cause is something else, such as a lockfile or runner change, and name it.",
+            "Offer these options. (a) Pin the key. (b) State that the root cause was the runner.",
+            "Options: (a) Pin the key; (b) Say the reason is a runner change.",
+        ):
+            with self.subTest(line=line):
+                assert found(line) == {}
+
+    def test_a_cause_stated_flatly_beside_an_option_is_still_found(self) -> None:
+        cause = "The cause is a cache key that stopped matching."
+        for line in (
+            cause,
+            f"(b) {cause}",
+            f"(a) Pin the key. (b) Say the cause is something else. {cause}",
+            "(b) Say the cause is something else, and the build failed because the key stopped matching.",
+        ):
+            with self.subTest(line=line):
+                assert CAUSE in found(line)
+        assert found(f"(b) Say the cause is something else. {cause}") == {CAUSE: [cause]}
+
     def test_a_sentence_building_on_a_flat_cause_is_found(self) -> None:
         cause = "The test fails because two tests share a temp directory."
         assert found(f"{cause} That would explain the order dependence.") == {
