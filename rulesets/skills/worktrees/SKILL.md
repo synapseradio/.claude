@@ -168,3 +168,11 @@ Run `bash <skill directory>/scripts/which-tool.sh` once, with `<skill directory>
 tool
   | it prints `wt` = use the wt steps above, and use no command from `references/without-wt.md` and no `git worktree remove`, whatever stops a wt command, a hook awaiting approval included, since only wt runs the repository's worktree hooks and config
   | it prints `git` = read `<skill directory>/references/without-wt.md` in full -> follow it in place of the wt steps it names
+
+## References
+
+reference
+  | a command in your plan has a wt equivalent you do not know, or you need a `wt step`, `wt prune`, `wt organize`, or alias flag = read `<skill directory>/references/wt-commands.md` in full
+  | branches build on each other, a stack needs creating, rebasing, restacking, retargeting, or submitting, or a rebase stopped = read `<skill directory>/references/stacks.md` in full
+  | you spawn or brief agents that change files, own a lane agent's landing, or clean up or delete worktrees and branches = read `<skill directory>/references/lane-practice.md` in full
+  | you commit, squash, or set work aside inside a worktree = read `<skill directory>/references/git-commit-in-worktree.md` in full
