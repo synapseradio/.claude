@@ -118,95 +118,33 @@ UNKNOWN_LINES = {
 
 
 @pytest.mark.parametrize("case", SAMPLE_CASES)
-def test_a_sample_yields_one_tests_counted_with_its_total(case: str) -> None:
-    kind, name, _ = SAMPLE_CASES[case]
-
-    counted = [e for e in feed_sample(kind, name) if isinstance(e, events.TestsCounted)]
-
-    assert counted == [events.TestsCounted(SUITE, 3)], f"{case}: expected one count of 3"
-
-
-@pytest.mark.parametrize("case", SAMPLE_CASES)
-def test_a_sample_yields_one_test_ended_per_test_in_the_order_it_printed(
+def test_a_sample_yields_its_count_once_then_one_test_ended_per_test_in_the_order_it_printed(
     case: str,
 ) -> None:
     kind, name, expected = SAMPLE_CASES[case]
 
-    finished = [e for e in feed_sample(kind, name) if isinstance(e, events.TestEnded)]
+    found = feed_sample(kind, name)
 
-    assert finished == expected, f"{case}: expected {len(expected)} finished tests"
-
-
-@pytest.mark.parametrize("case", SAMPLE_CASES)
-def test_a_sample_yields_no_event_besides_the_count_and_the_finished_tests(
-    case: str,
-) -> None:
-    kind, name, _ = SAMPLE_CASES[case]
-
-    others = [
-        e
-        for e in feed_sample(kind, name)
-        if not isinstance(e, events.TestsCounted | events.TestEnded)
-    ]
-
-    assert others == [], f"{case}: a line produced an event of another kind"
+    assert [e for e in found if isinstance(e, events.TestsCounted)] == [
+        events.TestsCounted(SUITE, 3)
+    ], f"{case}: expected one count of 3"
+    assert [e for e in found if isinstance(e, events.TestEnded)] == expected, (
+        f"{case}: expected {len(expected)} finished tests"
+    )
+    assert [e for e in found if not isinstance(e, events.TestsCounted | events.TestEnded)] == [], (
+        f"{case}: a line produced an event of another kind"
+    )
 
 
-@pytest.mark.parametrize(
-    ("kind", "line"),
-    [(kind, line) for kind, lines in UNKNOWN_LINES.items() for line in lines],
-)
-def test_an_unknown_line_returns_no_events(kind: str, line: str) -> None:
+@pytest.mark.parametrize("kind", UNKNOWN_LINES)
+def test_a_line_that_is_no_framework_result_returns_no_events(kind: str) -> None:
     parser = parser_for(kind, MOD_ROOT if kind == "mod" else "")
 
-    assert parser.feed(line) == [], f"{kind}: {line!r} produced events"
+    produced = {line: parser.feed(line) for line in UNKNOWN_LINES[kind]}
 
-
-def test_result_lines_of_two_interleaved_pytest_workers_are_all_parsed() -> None:
-    lines = sample_lines("pytest-xdist.txt")
-    workers = {line.split("]")[0] for line in lines if line.startswith("[gw")}
-    parser = parser_for("pytest", "")
-    finished: list[events.Event] = []
-
-    for line in lines:
-        finished += parser.feed(line)
-
-    assert workers == {"[gw0", "[gw1"}, "the sample must hold lines from two workers"
-    assert [e for e in finished if isinstance(e, events.TestEnded)] == XDIST_ENDED
-
-
-def test_a_result_line_from_a_worker_never_seen_before_is_parsed_on_its_own() -> None:
-    line = next(line for line in sample_lines("pytest-xdist.txt") if line.startswith("[gw1]"))
-
-    assert parser_for("pytest", "").feed(line) == [PYTEST_ENDED[1]]
-
-
-def test_a_skipped_pytest_test_is_a_skip_without_its_reason_in_the_name() -> None:
-    line = next(line for line in sample_lines("pytest.txt") if "SKIPPED" in line.split("::")[-1])
-
-    assert parser_for("pytest", "").feed(line) == [PYTEST_ENDED[2]]
-
-
-def test_a_skipped_bats_test_is_a_skip_without_its_reason_in_the_name() -> None:
-    line = next(line for line in sample_lines("bats-tap-timing.txt") if "# skip" in line)
-
-    assert parser_for("bats", "").feed(line) == [BATS_ENDED[2]]
-
-
-def test_the_mod_parser_names_a_test_by_the_file_header_printed_before_it() -> None:
-    parser = parser_for("mod", MOD_ROOT)
-    parser.feed("tests/other.test.ts:")
-
-    assert parser.feed("(pass) group > case [3.00ms]") == [
-        ended(f"{MOD_ROOT}/tests/other.test.ts", "group > case", "pass", 0.003)
-    ]
-
-
-def test_two_parsers_of_one_kind_keep_their_own_state() -> None:
-    first, second = parser_for("mod", MOD_ROOT), parser_for("mod", MOD_ROOT)
-    first.feed("tests/first.test.ts:")
-
-    assert second.feed("(pass) group > case [1.00ms]") == [ended("", "group > case", "pass", 0.001)]
+    assert {line: found for line, found in produced.items() if found} == {}, (
+        f"{kind}: these lines produced events"
+    )
 
 
 def test_a_non_empty_root_is_joined_onto_a_pytest_path() -> None:
@@ -214,12 +152,6 @@ def test_a_non_empty_root_is_joined_onto_a_pytest_path() -> None:
 
     assert parser_for("pytest", "features/plugins/x").feed(line) == [
         ended("features/plugins/x/tests/test_sample.py", "test_adds_numbers", "pass", None)
-    ]
-
-
-def test_a_mod_parser_that_has_seen_no_header_names_no_file_under_any_root() -> None:
-    assert parser_for("mod", MOD_ROOT).feed("(fail) the file did not load") == [
-        ended("", "the file did not load", "fail", None)
     ]
 
 

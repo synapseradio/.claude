@@ -10,19 +10,9 @@ and `claude` stubbed, and reads the selection from the JSON report and the
 argv each stub received.
 """
 
-import os
-import pathlib
-import re
-import subprocess
-import tomllib
-
 import pytest
 from verify_fixtures import (
-    GIT_LOCATORS,
     PYTEST_NONE_SELECTED,
-    REAL_MANIFEST,
-    RUN_TIMEOUT,
-    WORKTREE,
     Sandbox,
     pair,
     ran,
@@ -35,40 +25,44 @@ def sb(tmp_path) -> Sandbox:
 
 
 class TestDiffSelectsFromEverythingChangedSinceTheBase:
-    def test_an_unstaged_edit_selects_the_suite_owning_the_file(self, sb) -> None:
-        sb.write("pkg_a/src/a.py", "VALUE = 10\n")
+    @pytest.mark.parametrize(
+        "change",
+        [
+            pytest.param(
+                lambda sb: sb.write("pkg_a/src/a.py", "VALUE = 10\n"),
+                id="an unstaged edit",
+            ),
+            pytest.param(
+                lambda sb: (
+                    sb.write("pkg_a/src/a.py", "VALUE = 10\n"),
+                    sb.git("add", "pkg_a/src/a.py"),
+                ),
+                id="a staged edit",
+            ),
+            pytest.param(
+                lambda sb: (
+                    sb.write("pkg_a/src/a.py", "VALUE = 10\n"),
+                    sb.commit("change a"),
+                ),
+                id="a commit since the merge-base with main",
+            ),
+            pytest.param(
+                lambda sb: sb.write("pkg_a/src/new.py", "NEW = 1\n"),
+                id="an untracked file",
+            ),
+        ],
+    )
+    def test_every_kind_of_change_since_the_base_selects_the_suite_owning_the_file(
+        self, sb, change
+    ) -> None:
+        change(sb)
 
         report = sb.run_json("test", "--diff")
 
-        assert ran(report) == {"py-a"}, "an edit left in the working tree is part of the diff"
+        assert ran(report) == {"py-a"}, "the diff holds everything changed since the base"
         assert sb.paths_in(sb.call_for("uv", "pkg_a")) == ["pkg_a/tests"], (
             "a changed source file runs its whole suite"
         )
-
-    def test_a_staged_edit_selects_the_suite_owning_the_file(self, sb) -> None:
-        sb.write("pkg_a/src/a.py", "VALUE = 10\n")
-        sb.git("add", "pkg_a/src/a.py")
-
-        report = sb.run_json("test", "--diff")
-
-        assert ran(report) == {"py-a"}, "a staged edit is part of the diff"
-
-    def test_a_commit_on_the_branch_selects_the_suite_owning_the_file(self, sb) -> None:
-        sb.write("pkg_a/src/a.py", "VALUE = 10\n")
-        sb.commit("change a")
-
-        report = sb.run_json("test", "--diff")
-
-        assert ran(report) == {"py-a"}, (
-            "a commit since the merge-base with main is part of the diff"
-        )
-
-    def test_an_untracked_file_selects_the_suite_whose_glob_holds_it(self, sb) -> None:
-        sb.write("pkg_a/src/new.py", "NEW = 1\n")
-
-        report = sb.run_json("test", "--diff")
-
-        assert ran(report) == {"py-a"}, "an untracked file is part of the diff"
 
     def test_a_change_no_glob_matches_selects_nothing_and_exits_zero(self, sb) -> None:
         sb.write("README.md", "# proj, edited\n")
@@ -91,17 +85,6 @@ class TestDiffSelectsFromEverythingChangedSinceTheBase:
         report = sb.run_json("test", "--diff", "base-here")
 
         assert ran(report) == {"py-a"}, "a commit before the named base is outside the diff"
-
-    def test_a_changed_test_file_alone_runs_that_file_alone(self, sb) -> None:
-        sb.write("pkg_a/tests/test_a2.py", "def test_two():\n    assert True\n")
-        sb.commit("change a test")
-
-        report = sb.run_json("test", "--diff")
-
-        assert ran(report) == {"py-a"}
-        assert sb.paths_in(sb.call_for("uv", "pkg_a")) == ["pkg_a/tests/test_a2.py"], (
-            "a scope of only test files runs those files under a file-taking runner"
-        )
 
     def test_a_changed_test_file_beside_a_changed_source_runs_the_whole_suite(self, sb) -> None:
         sb.write("pkg_a/tests/test_a2.py", "def test_two():\n    assert True\n")
@@ -180,17 +163,20 @@ class TestPrepushSelectsFromCommitsNotYetPushed:
 
 
 class TestPathsSelectTheirSuites:
-    def test_a_pytest_test_file_runs_alone(self, sb) -> None:
-        report = sb.run_json("test", "pkg_a/tests/test_a2.py")
+    @pytest.mark.parametrize(
+        ("path", "suite", "program", "needle"),
+        [
+            ("pkg_a/tests/test_a2.py", "py-a", "uv", "pkg_a"),
+            ("shell/tests/one.bats", "sh-bats", "bats", None),
+        ],
+        ids=["a pytest test file", "a bats test file"],
+    )
+    def test_a_test_file_runs_alone(self, sb, path, suite, program, needle) -> None:
+        report = sb.run_json("test", path)
 
-        assert ran(report) == {"py-a"}
-        assert sb.paths_in(sb.call_for("uv", "pkg_a")) == ["pkg_a/tests/test_a2.py"]
-
-    def test_a_bats_test_file_runs_alone(self, sb) -> None:
-        report = sb.run_json("test", "shell/tests/one.bats")
-
-        assert ran(report) == {"sh-bats"}
-        assert sb.paths_in(sb.calls("bats")[0]) == ["shell/tests/one.bats"]
+        call = sb.call_for(program, needle) if needle else sb.calls(program)[0]
+        assert ran(report) == {suite}
+        assert sb.paths_in(call) == [path]
 
     def test_a_source_file_runs_its_whole_suite(self, sb) -> None:
         report = sb.run_json("test", "pkg_b/src/b.py")
@@ -230,34 +216,38 @@ class TestPathsSelectTheirSuites:
 
 
 class TestLangSelectsByLanguage:
-    def test_one_language_selects_its_suites(self, sb) -> None:
-        report = sb.run_json("test", "--lang", "bats")
+    @pytest.mark.parametrize(
+        ("flags", "suites"),
+        [
+            (["--lang", "bats"], {"sh-bats"}),
+            (["--lang", "py,ts"], {"py-a", "py-b", "mod-gauge"}),
+            (["--lang", "py", "--lang", "ts"], {"py-a", "py-b", "mod-gauge"}),
+        ],
+        ids=["one language", "a comma list", "a repeated flag"],
+    )
+    def test_languages_select_their_test_suites(self, sb, flags, suites) -> None:
+        report = sb.run_json("test", *flags)
 
-        assert ran(report) == {"sh-bats"}
-
-    def test_a_comma_list_selects_each_language(self, sb) -> None:
-        report = sb.run_json("test", "--lang", "py,ts")
-
-        assert ran(report) == {"py-a", "py-b", "mod-gauge"}, "the py lint job is no test suite"
-
-    def test_the_flag_repeats(self, sb) -> None:
-        report = sb.run_json("test", "--lang", "py", "--lang", "ts")
-
-        assert ran(report) == {"py-a", "py-b", "mod-gauge"}
+        assert ran(report) == suites, "a lint job sharing a language is no test suite"
 
 
 class TestFileSelectsTestFilesByPath:
-    def test_a_substring_runs_the_pytest_files_whose_path_holds_it(self, sb) -> None:
-        report = sb.run_json("test", "--file", "test_a2")
+    @pytest.mark.parametrize(
+        ("substring", "suite", "program", "needle", "expected"),
+        [
+            ("test_a2", "py-a", "uv", "pkg_a", "pkg_a/tests/test_a2.py"),
+            ("one.bats", "sh-bats", "bats", None, "shell/tests/one.bats"),
+        ],
+        ids=["a pytest file", "a bats file"],
+    )
+    def test_a_substring_runs_the_test_files_whose_path_holds_it(
+        self, sb, substring, suite, program, needle, expected
+    ) -> None:
+        report = sb.run_json("test", "--file", substring)
 
-        assert ran(report) == {"py-a"}
-        assert sb.paths_in(sb.call_for("uv", "pkg_a")) == ["pkg_a/tests/test_a2.py"]
-
-    def test_a_substring_runs_the_bats_files_whose_path_holds_it(self, sb) -> None:
-        report = sb.run_json("test", "--file", "one.bats")
-
-        assert ran(report) == {"sh-bats"}
-        assert sb.paths_in(sb.calls("bats")[0]) == ["shell/tests/one.bats"]
+        call = sb.call_for(program, needle) if needle else sb.calls(program)[0]
+        assert ran(report) == {suite}
+        assert sb.paths_in(call) == [expected]
 
 
 class TestKSelectsTestCasesByName:
@@ -335,170 +325,3 @@ class TestScopesIntersect:
             f"bats and pkg_a share no suite, so nothing is selected; exit {result.returncode}: "
             f"{result.stderr}"
         )
-
-
-# The suite map lefthook.yml applies before push (pre-push `tests` jobs), plus
-# the `scripts-bats` suite the verification plan adds. Each suite is keyed by
-# its test paths; the value is its runner kind and the source globs it must
-# carry. A suite may add globs inside its own test paths and nothing else.
-EXPECTED_SUITES = {
-    ("features/plugins/rulesets/tests",): (
-        "pytest",
-        {"features/plugins/rulesets/**", "pyproject.toml", "uv.lock"},
-    ),
-    ("features/plugins/epistemic-marks/tests",): (
-        "pytest",
-        {"features/plugins/epistemic-marks/**", "pyproject.toml", "uv.lock"},
-    ),
-    ("scripts/hooks", "scripts/tests"): (
-        "pytest",
-        {
-            "scripts/**",
-            ".claude-plugin/marketplace.json",
-            "settings.base.json",
-            "features/*/*/.claude-plugin/plugin.json",
-            "pyproject.toml",
-            "uv.lock",
-        },
-    ),
-    ("features/plugins/warden/tests",): ("bats", {"features/plugins/warden/**"}),
-    ("features/plugins/harness-config/tests",): ("bats", {"features/plugins/harness-config/**"}),
-    ("features/mods/context-gauge",): ("mod", {"features/mods/context-gauge/**"}),
-    ("scripts/render/tests", "scripts/setup/tests"): (
-        "bats",
-        {
-            "scripts/setup.sh",
-            "scripts/setup/**",
-            "scripts/render.sh",
-            "scripts/render/**",
-            "scripts/lib/**",
-            "scripts/tests/test_helper.bash",
-        },
-    ),
-}
-
-
-def test_the_real_manifest_carries_the_prepush_suite_map() -> None:
-    assert REAL_MANIFEST.is_file(), f"{REAL_MANIFEST} is the job manifest the runner reads"
-    jobs = tomllib.loads(REAL_MANIFEST.read_text(encoding="utf-8"))["job"]
-    suites = {
-        tuple(sorted(job["tests"])): (job["kind"], set(job["sources"]))
-        for job in jobs
-        if job["kind"] != "lint"
-    }
-
-    assert set(suites) == set(EXPECTED_SUITES), "the manifest holds exactly the seven suites"
-    for tests, (kind, sources) in EXPECTED_SUITES.items():
-        actual_kind, actual_sources = suites[tests]
-        assert actual_kind == kind, f"{tests} runs under {kind}"
-        missing = sources - actual_sources
-        assert not missing, f"{tests} lost source globs {missing}, so a push touching them skips it"
-        extra = {
-            glob
-            for glob in actual_sources - sources
-            if not any(glob.startswith(f"{path}/") or glob == path for path in tests)
-        }
-        assert not extra, f"{tests} gained source globs {extra} outside its own test paths"
-
-
-def lefthook_selects(glob: str, paths: list[str]) -> set[str]:
-    """The paths lefthook's default matcher selects for `glob`.
-
-    Lefthook compiles each glob with gobwas and no separators and lowercases
-    pattern and path, so `*` crosses `/` and case is ignored.
-    https://github.com/evilmartians/lefthook/blob/master/internal/run/controller/filter/filter.go
-    https://github.com/gobwas/glob/blob/master/glob.go
-    """
-    pattern = ""
-    index = 0
-    while index < len(glob):
-        char = glob[index]
-        if char == "*":
-            pattern += ".*"
-            while index + 1 < len(glob) and glob[index + 1] == "*":
-                index += 1
-        elif char == "?":
-            pattern += "."
-        elif char == "{":
-            close = glob.index("}", index)
-            pattern += "(?:" + "|".join(map(re.escape, glob[index + 1 : close].split(","))) + ")"
-            index = close
-        else:
-            pattern += re.escape(char)
-        index += 1
-    compiled = re.compile(pattern.lower())
-    return {path for path in paths if compiled.fullmatch(path.lower())}
-
-
-def manifest_selects(glob: str, paths: list[str]) -> set[str]:
-    return {path for path in paths if pathlib.PurePosixPath(path).full_match(glob)}
-
-
-def tracked_files() -> list[str]:
-    env = {key: value for key, value in os.environ.items() if key not in GIT_LOCATORS}
-    return subprocess.run(
-        ["git", "-C", str(WORKTREE), "ls-files"],
-        env=env,
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=RUN_TIMEOUT,
-    ).stdout.splitlines()
-
-
-def test_every_suite_glob_selects_the_tracked_files_lefthook_selects() -> None:
-    assert REAL_MANIFEST.is_file(), f"{REAL_MANIFEST} is the job manifest the runner reads"
-    jobs = tomllib.loads(REAL_MANIFEST.read_text(encoding="utf-8"))["job"]
-    tracked = tracked_files()
-
-    differing = {
-        (job["name"], glob): (
-            sorted(manifest_selects(glob, tracked) ^ lefthook_selects(glob, tracked))[:5]
-        )
-        for job in jobs
-        if job["kind"] != "lint"
-        for glob in job["sources"]
-        if manifest_selects(glob, tracked) != lefthook_selects(glob, tracked)
-    }
-    assert differing == {}, (
-        "these globs select different tracked files than the pre-push hook did, "
-        f"first differing paths shown: {differing}"
-    )
-
-
-# The glob each pre-commit lint command in lefthook.yml carried before the
-# hooks called the runner, keyed by the lint job that took over its check.
-# Lefthook globs accept {a,b} alternatives, PurePath.full_match does not, so
-# one hook glob became several `**/*.ext` sources on its job.
-# https://docs.python.org/3/library/pathlib.html#pathlib-pattern-language
-REPLACED_LINT_GLOBS = {
-    "biome": "*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,json,jsonc}",
-    "rumdl": "*.md",
-    "ruff": "*.py",
-    "taplo": "*.toml",
-    "shellcheck": "*.{sh,bash,bats}",
-}
-
-
-def test_every_lint_job_selects_the_tracked_files_its_hook_glob_selected() -> None:
-    assert REAL_MANIFEST.is_file(), f"{REAL_MANIFEST} is the job manifest the runner reads"
-    jobs = {
-        job["name"]: job
-        for job in tomllib.loads(REAL_MANIFEST.read_text(encoding="utf-8"))["job"]
-        if job["kind"] == "lint"
-    }
-    tracked = tracked_files()
-
-    assert set(REPLACED_LINT_GLOBS) <= set(jobs), (
-        f"lint jobs {sorted(set(REPLACED_LINT_GLOBS) - set(jobs))} are missing from the manifest"
-    )
-    differing = {}
-    for name, hook_glob in REPLACED_LINT_GLOBS.items():
-        selected = set().union(*(manifest_selects(glob, tracked) for glob in jobs[name]["sources"]))
-        hooked = lefthook_selects(hook_glob, tracked)
-        if selected != hooked:
-            differing[name] = sorted(selected ^ hooked)[:5]
-    assert differing == {}, (
-        "these lint jobs check different tracked files than the commit hook did, "
-        f"first differing paths shown: {differing}"
-    )

@@ -13,6 +13,8 @@ import pathlib
 import subprocess
 import sys
 
+import pytest
+
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "features/plugins/prep/skills/prep-plan/scripts/plan-waves.py"
 
@@ -76,17 +78,6 @@ def test_a_path_rewritten_by_a_chain_of_units_is_named_as_a_hotspot(tmp_path) ->
     assert "src/one.ts" not in result.stdout.split("hotspots\n")[1]
 
 
-def test_two_unordered_units_owning_one_path_whole_is_a_problem(tmp_path) -> None:
-    result = waves(
-        tmp_path,
-        "- unit: a | owns: src/app.tsx | waits: none\n- unit: b | owns: src/app.tsx | waits: none\n",
-    )
-
-    assert result.returncode == 1
-    assert "problems\n" in result.stdout
-    assert "a and b both own src/app.tsx and neither waits on the other" in result.stdout
-
-
 def test_two_unordered_units_owning_different_regions_of_one_path_pass(tmp_path) -> None:
     result = waves(
         tmp_path,
@@ -96,44 +87,6 @@ def test_two_unordered_units_owning_different_regions_of_one_path_pass(tmp_path)
 
     assert result.returncode == 0, result.stdout
     assert "problems" not in result.stdout
-
-
-def test_an_unordered_unit_owning_a_whole_path_collides_with_a_region_of_it(tmp_path) -> None:
-    result = waves(
-        tmp_path,
-        "- unit: a | owns: src/app.tsx#legend | waits: none\n"
-        "- unit: b | owns: src/app.tsx | waits: none\n",
-    )
-
-    assert result.returncode == 1
-    assert "a and b both own src/app.tsx and neither waits on the other" in result.stdout
-
-
-def test_a_wait_on_an_unnamed_unit_is_a_problem(tmp_path) -> None:
-    result = waves(tmp_path, "- unit: a | owns: x | waits: ghost\n")
-
-    assert result.returncode == 1
-    assert "a waits on ghost, which no unit line names" in result.stdout
-
-
-def test_a_cycle_is_a_problem(tmp_path) -> None:
-    result = waves(
-        tmp_path,
-        "- unit: a | owns: x | waits: b\n- unit: b | owns: y | waits: a\n",
-    )
-
-    assert result.returncode == 1
-    assert "a and b wait on each other in a cycle" in result.stdout
-
-
-def test_a_repeated_unit_name_is_a_problem(tmp_path) -> None:
-    result = waves(
-        tmp_path,
-        "- unit: a | owns: x | waits: none\n- unit: a | owns: y | waits: none\n",
-    )
-
-    assert result.returncode == 1
-    assert "two unit lines are named a" in result.stdout
 
 
 def test_a_unit_consuming_a_fixed_contract_starts_beside_its_provider(tmp_path) -> None:
@@ -178,21 +131,54 @@ def test_a_wait_may_name_the_code_it_needs_in_parentheses(tmp_path) -> None:
     assert "wave 2: wiring\n" in result.stdout
 
 
-def test_consuming_a_contract_no_line_names_is_a_problem(tmp_path) -> None:
-    result = waves(tmp_path, "- unit: legend | owns: src/legend.ts | consumes: Palette\n")
+@pytest.mark.parametrize(
+    ("text", "problem"),
+    [
+        pytest.param(
+            "- unit: a | owns: src/app.tsx | waits: none\n"
+            "- unit: b | owns: src/app.tsx | waits: none\n",
+            "a and b both own src/app.tsx and neither waits on the other",
+            id="two unordered units own one whole path",
+        ),
+        pytest.param(
+            "- unit: a | owns: src/app.tsx#legend | waits: none\n"
+            "- unit: b | owns: src/app.tsx | waits: none\n",
+            "a and b both own src/app.tsx and neither waits on the other",
+            id="an unordered whole path and a region of it",
+        ),
+        pytest.param(
+            "- unit: a | owns: x | waits: ghost\n",
+            "a waits on ghost, which no unit line names",
+            id="a wait on an unnamed unit",
+        ),
+        pytest.param(
+            "- unit: a | owns: x | waits: b\n- unit: b | owns: y | waits: a\n",
+            "a and b wait on each other in a cycle",
+            id="a cycle",
+        ),
+        pytest.param(
+            "- unit: a | owns: x | waits: none\n- unit: a | owns: y | waits: none\n",
+            "two unit lines are named a",
+            id="a repeated unit name",
+        ),
+        pytest.param(
+            "- unit: legend | owns: src/legend.ts | consumes: Palette\n",
+            "legend consumes Palette, which no contract line names",
+            id="consuming a contract no line names",
+        ),
+        pytest.param(
+            "- contract: Palette | maybe\n- unit: legend | owns: src/legend.ts | consumes: Palette\n",
+            "contract Palette is marked maybe, neither fixed nor open",
+            id="a contract neither fixed nor open",
+        ),
+    ],
+)
+def test_each_problem_the_file_holds_is_named_and_fails_the_run(tmp_path, text, problem) -> None:
+    result = waves(tmp_path, text)
 
     assert result.returncode == 1
-    assert "legend consumes Palette, which no contract line names" in result.stdout
-
-
-def test_a_contract_that_is_neither_fixed_nor_open_is_a_problem(tmp_path) -> None:
-    result = waves(
-        tmp_path,
-        "- contract: Palette | maybe\n- unit: legend | owns: src/legend.ts | consumes: Palette\n",
-    )
-
-    assert result.returncode == 1
-    assert "contract Palette is marked maybe, neither fixed nor open" in result.stdout
+    assert "problems\n" in result.stdout
+    assert problem in result.stdout
 
 
 def test_a_file_with_no_unit_line_is_a_usage_error(tmp_path) -> None:

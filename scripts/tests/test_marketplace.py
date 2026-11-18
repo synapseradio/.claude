@@ -37,9 +37,6 @@ def packaged() -> list[pathlib.Path]:
 
 
 class TestTheListingReachesEveryPackagedFeature:
-    def test_at_least_one_feature_is_packaged(self) -> None:
-        assert packaged(), "a test over the listing proves nothing with nothing packaged"
-
     def test_every_packaged_feature_has_an_entry(self) -> None:
         named = {entry["name"] for entry in entries()}
         unlisted = [

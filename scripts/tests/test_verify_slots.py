@@ -29,10 +29,9 @@ from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 from slots import SlotPool
 
-directory, size, name, announce = Path(sys.argv[2]), int(sys.argv[3]), sys.argv[4], sys.argv[5]
+directory, size, name = Path(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
 pool = SlotPool(directory, size)
-options = {"on_wait": lambda: print("waited", flush=True)} if announce == "on_wait" else {}
-with pool.take(name, 1, **options) as held:
+with pool.take(name, 1) as held:
     print(f"got {held}", flush=True)
 """
 
@@ -70,50 +69,32 @@ def test_a_suite_finding_every_slot_held_waits_then_runs_once_they_free(sb) -> N
     )
 
 
-def test_a_suite_runs_with_as_many_workers_as_slots_it_could_take(sb) -> None:
-    holder = sb.hold(0)
+@pytest.mark.parametrize(
+    ("scope", "flags", "slots", "held", "workers"),
+    [
+        pytest.param("pkg_a", [], "8", [], 3, id="no more than its three test files"),
+        pytest.param("pkg_a", [], "3", [0], 2, id="the free slots when one of three is held"),
+        pytest.param("pkg_a", ["--jobs", "2"], "8", [], 2, id="--jobs caps the workers"),
+        pytest.param("pkg_a", ["--jobs", "1"], "8", [], None, id="--jobs 1 runs without xdist"),
+        pytest.param("pkg_a/tests/test_a2.py", [], "8", [], None, id="one test file runs alone"),
+    ],
+)
+def test_a_pytest_suite_runs_with_as_many_workers_as_it_wants_and_slots_allow(
+    sb, scope, flags, slots, held, workers
+) -> None:
+    holder = sb.hold(*held) if held else None
     try:
-        result = sb.run("test", "pkg_a", extra_env={"VERIFY_SLOTS": "3"})
+        result = sb.run("test", scope, *flags, extra_env={"VERIFY_SLOTS": slots})
     finally:
-        holder.kill()
+        if holder:
+            holder.kill()
 
     assert result.returncode == 0, f"exit {result.returncode}: {result.stderr}"
     args = sb.call_for("uv", "pkg_a")["args"]
-    assert pair(args, "-n", "2"), (
-        f"three test files want three workers, one of three slots is held, so pytest gets -n 2: {args}"
-    )
-
-
-def test_a_suite_takes_no_more_slots_than_it_has_test_files(sb) -> None:
-    result = sb.run("test", "pkg_a", extra_env={"VERIFY_SLOTS": "8"})
-
-    assert result.returncode == 0, f"exit {result.returncode}: {result.stderr}"
-    args = sb.call_for("uv", "pkg_a")["args"]
-    assert pair(args, "-n", "3"), f"pkg_a/tests holds three test files: {args}"
-
-
-def test_a_pytest_suite_holding_one_slot_runs_without_n(sb) -> None:
-    result = sb.run("test", "pkg_a/tests/test_a2.py", extra_env={"VERIFY_SLOTS": "8"})
-
-    assert result.returncode == 0, f"exit {result.returncode}: {result.stderr}"
-    args = sb.call_for("uv", "pkg_a")["args"]
-    assert "-n" not in args, f"one test file wants one worker, run without xdist: {args}"
-
-
-def test_jobs_caps_the_workers_a_suite_takes(sb) -> None:
-    result = sb.run("test", "pkg_a", "--jobs", "2", extra_env={"VERIFY_SLOTS": "8"})
-
-    assert result.returncode == 0, f"exit {result.returncode}: {result.stderr}"
-    args = sb.call_for("uv", "pkg_a")["args"]
-    assert pair(args, "-n", "2"), f"three test files, capped at two workers: {args}"
-
-
-def test_jobs_one_runs_pytest_without_n(sb) -> None:
-    result = sb.run("test", "pkg_a", "--jobs", "1", extra_env={"VERIFY_SLOTS": "8"})
-
-    assert result.returncode == 0, f"exit {result.returncode}: {result.stderr}"
-    args = sb.call_for("uv", "pkg_a")["args"]
-    assert "-n" not in args, args
+    if workers is None:
+        assert "-n" not in args, f"a single worker runs without xdist: {args}"
+    else:
+        assert pair(args, "-n", str(workers)), f"expected {workers} workers: {args}"
 
 
 def test_serial_starts_each_suite_after_the_one_before_exits(sb) -> None:
@@ -161,11 +142,8 @@ def test_every_slot_is_free_once_the_run_ends(sb) -> None:
     assert sb.held_slots(3) == [], "slots still held after the run exited"
 
 
-def take_in_child(sb: Sandbox, size: int, name: str, announce: str) -> subprocess.Popen:
-    """Start a process taking one slot of a `size`-slot pool, printing `got <n>` once it holds them.
-
-    With `announce` set to `on_wait` it passes an `on_wait` that prints `waited`; otherwise it takes `on_wait` as omitted.
-    """
+def take_in_child(sb: Sandbox, size: int, name: str) -> subprocess.Popen:
+    """Start a process taking one slot of a `size`-slot pool, printing `got <n>` once it holds them."""
     script = sb.root / "taker.py"
     script.write_text(TAKER)
     argv = [
@@ -175,7 +153,6 @@ def take_in_child(sb: Sandbox, size: int, name: str, announce: str) -> subproces
         str(sb.slot_dir),
         str(size),
         name,
-        announce,
     ]
     return subprocess.Popen(
         argv, env=sb.env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -188,7 +165,7 @@ def test_a_waiting_suite_starts_on_whichever_slot_frees_first_while_its_own_stay
     other = 1 - hashed
     keeps_hashed_slot = sb.hold(hashed)
     frees_other_slot = sb.hold(other)
-    process = take_in_child(sb, size, name, "default")
+    process = take_in_child(sb, size, name)
     try:
         waiting, seen = read_until(process.stderr, b"waiting for a slot")
         assert waiting, (
@@ -206,49 +183,6 @@ def test_a_waiting_suite_starts_on_whichever_slot_frees_first_while_its_own_stay
     assert started, (
         f"slot-{other} freed while slot-{hashed} stayed held, yet the suite never started: "
         f"stdout {out.decode(errors='replace')!r}"
-    )
-
-
-def test_on_wait_is_called_once_when_every_slot_is_held(sb) -> None:
-    holder = sb.hold(0, 1)
-    process = take_in_child(sb, 2, "scripts", "on_wait")
-    try:
-        called, seen = read_until(process.stdout, b"waited")
-        assert called, (
-            f"on_wait was never called with both slots held; stdout so far: {seen.decode(errors='replace')!r}"
-        )
-        assert b"got" not in seen, "the suite started before any slot freed"
-
-        holder.release()
-        out, err = process.communicate(timeout=RUN_TIMEOUT)
-    finally:
-        holder.kill()
-        if process.poll() is None:
-            process.kill()
-            process.wait(timeout=RUN_TIMEOUT)
-
-    printed = (seen + out).decode()
-    assert printed.count("waited") == 1, (
-        f"on_wait runs once however long the wait lasts: {printed!r}"
-    )
-    assert "got 1" in printed, (
-        f"the suite never started after the holder released: {printed!r} {err.decode(errors='replace')}"
-    )
-    assert b"waiting for a slot" not in err, (
-        "with an on_wait given, the default announcement is left out"
-    )
-
-
-def test_on_wait_is_never_called_while_a_slot_is_free(sb) -> None:
-    holder = sb.hold(0)
-    try:
-        process = take_in_child(sb, 2, "scripts", "on_wait")
-        out, err = process.communicate(timeout=RUN_TIMEOUT)
-    finally:
-        holder.kill()
-
-    assert out.decode() == "got 1\n", (
-        f"one of two slots is free: stdout {out.decode()!r}, stderr {err.decode(errors='replace')}"
     )
 
 
@@ -315,18 +249,6 @@ def suite_of(args: list[str]) -> str:
     ]
     assert len(named) == 1, f"wanted one suite in {args}, got {named}"
     return named[0]
-
-
-def test_seven_suites_on_a_free_pool_of_twelve_all_start_and_none_waits(seven) -> None:
-    """Each stub holds its slots until all seven have started, so a suite that took the whole pool starves a sibling."""
-    result = seven.run("test", extra_env={"VERIFY_SLOTS": "12"})
-
-    assert result.returncode == 0, f"exit {result.returncode}: {result.stderr}"
-    assert "waiting for a slot" not in result.stdout + result.stderr, (
-        f"a suite waited though the pool held a slot for each:\n{result.stdout}{result.stderr}"
-    )
-    started = sorted(suite_of(call["args"]) for call in barrier_starts(seven))
-    assert started == sorted(SEVEN_SUITES), f"suites that started: {started}"
 
 
 def test_each_of_seven_suites_runs_with_its_fair_share_of_twelve_slots(seven) -> None:

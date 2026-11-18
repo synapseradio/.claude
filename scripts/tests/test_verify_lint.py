@@ -57,24 +57,29 @@ def progs(sb) -> set[str]:
 
 
 class TestFileTakingJobsGetOnlyTheirInScopeFiles:
-    def test_a_python_file_reaches_ruff_check_with_the_safe_fixer(self, sb) -> None:
-        result = lint(sb, "app/main.py")
+    @pytest.mark.parametrize(
+        ("path", "program", "needle", "fix_flag"),
+        [
+            ("app/main.py", "uv", "ruff", "--fix"),
+            ("docs/guide.md", "uv", "rumdl", "--fix"),
+            ("web/app.ts", "biome", None, "--write"),
+            ("data/x.json", "biome", None, "--write"),
+            ("conf/b.toml", "taplo", None, None),
+            ("bin/run.sh", "uv", "shellcheck_fix.py", None),
+        ],
+        ids=["python", "markdown", "typescript", "json", "toml", "shell"],
+    )
+    def test_each_file_type_reaches_its_linter_and_that_linter_alone(
+        self, sb, path, program, needle, fix_flag
+    ) -> None:
+        result = lint(sb, path)
 
-        assert progs(sb) == {"uv"}, [call["args"] for call in sb.calls()]
-        call = sb.calls("uv")[0]
-        assert call["args"][:5] == ["run", "--frozen", "ruff", "check", "--fix"], call["args"]
-        assert "--unsafe-fixes" not in call["args"], "only safe fixes apply"
-        assert sb.paths_in(call) == ["app/main.py"]
+        call = sb.call_for(program, needle) if needle else sb.calls(program)[0]
+        assert sb.paths_in(call) == [path], "the linter gets the file it was handed"
+        if fix_flag:
+            assert fix_flag in call["args"], "the linter applies its safe fixes"
+        assert len(sb.calls()) == 1, "no other program runs for this file"
         find_line(result.stdout.splitlines(), r"PASS \S+ \(.*\)")
-
-    def test_markdown_reaches_rumdl_check_with_its_fixer(self, sb) -> None:
-        lint(sb, "docs/guide.md")
-
-        markdown = sb.call_for("uv", "rumdl")
-        assert markdown["args"][:5] == ["run", "--frozen", "rumdl", "check", "--fix"], markdown[
-            "args"
-        ]
-        assert sb.paths_in(markdown) == ["docs/guide.md"]
 
     def test_yaml_reaches_no_lint_job(self, sb) -> None:
         result = lint(sb, "conf/a.yaml")
@@ -82,35 +87,10 @@ class TestFileTakingJobsGetOnlyTheirInScopeFiles:
         assert "no lint job covers the given files" in result.stdout + result.stderr
         assert sb.calls() == [], "yamlfmt lays YAML out; no linter checks it"
 
-    def test_typescript_and_json_reach_biome_check_with_safe_writes(self, sb) -> None:
-        lint(sb, "web/app.ts", "data/x.json")
+    def test_typescript_outside_the_context_gauge_project_runs_no_tsc(self, sb) -> None:
+        lint(sb, "web/app.ts")
 
-        args = sb.calls("biome")[0]["args"]
-        assert args[0] == "check", args
-        assert "--no-errors-on-unmatched" in args and "--files-ignore-unknown=true" in args, args
-        assert "--write" in args, args
-        assert "--unsafe" not in args, "only safe fixes apply"
-        assert set(sb.paths_in(sb.calls("biome")[0])) == {"web/app.ts", "data/x.json"}
         assert sb.calls("tsc") == [], "web/app.ts is outside the context-gauge project"
-
-    def test_toml_reaches_taplo_check(self, sb) -> None:
-        lint(sb, "conf/b.toml")
-
-        call = sb.calls("taplo")[0]
-        assert call["args"][0] == "check", call["args"]
-        assert sb.paths_in(call) == ["conf/b.toml"]
-
-    def test_shell_reaches_the_shellcheck_fixer(self, sb) -> None:
-        lint(sb, "bin/run.sh")
-
-        call = sb.call_for("uv", "shellcheck_fix.py")
-        assert call["args"][:4] == [
-            "run",
-            "--frozen",
-            "python",
-            "scripts/verify/shellcheck_fix.py",
-        ], call["args"]
-        assert sb.paths_in(call) == ["bin/run.sh"]
 
     def test_no_scope_lints_every_tracked_file_and_no_untracked_one(self, sb) -> None:
         sb.write("scratch.py", "UNTRACKED = 1\n")
@@ -213,25 +193,15 @@ class TestFixingJobs:
         assert indented_block(lines, index) == ["app/main.py", "top.py"], lines
         assert lines[-1].startswith("verify: 1 passed, 0 failed"), lines[-1]
 
-    def test_a_fixer_that_changes_nothing_reports_nothing_fixed(self, sb) -> None:
-        result = lint(sb, "app/main.py")
-
-        assert "fixed" not in result.stdout, result.stdout
-
-    def test_a_file_outside_the_handed_files_is_not_reported(self, sb) -> None:
+    def test_only_the_handed_files_a_fixer_changed_are_reported_per_job(self, sb) -> None:
         ruff_rewrites(sb, "app/main.py", "top.py")
 
-        report = sb.run_json("lint", "app/main.py")
-
-        assert report["suites"][0]["fixed"] == ["app/main.py"], report["suites"][0]
-
-    def test_json_carries_the_fixed_list_of_every_job(self, sb) -> None:
-        ruff_rewrites(sb, "app/main.py", "top.py")
-
-        report = sb.run_json("lint", "app/main.py", "top.py", "conf/b.toml")
+        report = sb.run_json("lint", "app/main.py", "conf/b.toml")
 
         fixed = {suite["name"]: suite["fixed"] for suite in report["suites"]}
-        assert fixed == {"ruff": ["app/main.py", "top.py"], "taplo": []}, fixed
+        assert fixed == {"ruff": ["app/main.py"], "taplo": []}, (
+            "top.py was not handed to the fixer, so it is not this run's fix to report"
+        )
 
     def test_no_more_than_twenty_fixed_paths_print(self, sb) -> None:
         for number in range(25):

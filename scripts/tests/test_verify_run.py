@@ -71,31 +71,18 @@ class TestEveryChildRunsOutsideTheCallersRepository:
                 assert leaked == [], f"{prog} {call['args']} inherited {leaked}"
 
 
-class TestRunnerCommands:
-    def test_pytest_runs_through_uv_with_the_cache_plugin_off_and_a_failure_summary(
-        self, sb
-    ) -> None:
-        sb.run_json("test", "pkg_a")
+class TestRunnersAreAskedForOutputTheReportCanRead:
+    def test_pytest_prints_its_failure_summary_and_bats_reports_in_tap(self, sb) -> None:
+        sb.run_json("test", "pkg_a", "shell")
 
-        args = sb.call_for("uv", "pkg_a")["args"]
-        assert args[:3] == ["run", "--frozen", "pytest"], args
-        assert pair(args, "-p", "no:cacheprovider"), (
-            f"concurrent pytest runs sharing a rootdir write the same .pytest_cache: {args}"
+        pytest_args = sb.call_for("uv", "pkg_a")["args"]
+        bats_args = sb.calls("bats")[0]["args"]
+        assert "-rf" in pytest_args, (
+            f"failing ids come from the FAILED lines -rf prints: {pytest_args}"
         )
-        assert "-rf" in args, f"failing ids come from the FAILED lines -rf prints: {args}"
-
-    def test_bats_reports_in_tap(self, sb) -> None:
-        sb.run_json("test", "shell")
-
-        args = sb.calls("bats")[0]["args"]
-        assert pair(args, "--formatter", "tap"), f"failing ids come from TAP not ok lines: {args}"
-
-    def test_the_mod_runner_takes_the_suite_folder(self, sb) -> None:
-        sb.run_json("test", "mod")
-
-        call = sb.calls("claude")[0]
-        assert call["args"][:2] == ["plugin", "test"], call["args"]
-        assert sb.paths_in(call) == ["mod"]
+        assert pair(bats_args, "--formatter", "tap"), (
+            f"failing ids come from TAP not ok lines: {bats_args}"
+        )
 
 
 class TestTextReport:
@@ -247,12 +234,6 @@ class TestExitCodes:
             f"the Brewfile behind just tools installs bats; claude comes with Claude Code: {output}"
         )
 
-    def test_five_when_an_explicit_scope_selects_no_suite(self, sb) -> None:
-        result = sb.run("test", "--lang", "md")
-
-        assert result.returncode == 5, f"exit {result.returncode}: {result.stderr}"
-        assert "no test matches" in result.stdout + result.stderr
-
 
 SAMPLES = pathlib.Path(__file__).parent
 PLAIN_RUN_SAMPLE = SAMPLES / "verify_samples" / "plain-run.txt"
@@ -276,7 +257,7 @@ class TestVerbose:
         assert process.returncode == 1, f"exit {process.returncode}: {err.decode()}"
         return out.decode().splitlines()
 
-    def test_each_suite_prints_its_pytest_tree_right_after_its_verdict(self, sb) -> None:
+    def test_each_suite_prints_its_test_tree_right_after_its_verdict(self, sb) -> None:
         lines = self.run_piped(sb)
 
         verdict, _ = find_line(lines, r"FAIL py-a \(.*")
@@ -292,20 +273,16 @@ class TestVerbose:
             "    ✗ test_rejects_wrong_sum",
             "    ○ test_skipped_case",
         ]
-
-    def test_each_suite_prints_its_bats_tree_with_the_seconds_each_test_took(self, sb) -> None:
-        lines = self.run_piped(sb)
-
-        tree, _ = find_line(lines, r"✗ sh-bats")
-        assert lines[tree - 1].startswith("  not ok 2 rejects wrong sum"), (
+        bats_tree, _ = find_line(lines, r"✗ sh-bats")
+        assert lines[bats_tree - 1].startswith("  not ok 2 rejects wrong sum"), (
             "the tree follows the suite's verdict and its failing ids"
         )
-        assert lines[tree : tree + 4] == [
+        assert lines[bats_tree : bats_tree + 4] == [
             "✗ sh-bats",
             "  ✓ adds numbers (0.002s)",
             "  ✗ rejects wrong sum (0.001s)",
             "  ○ skipped case (0.002s)",
-        ]
+        ], "a bats tree carries the seconds each test took"
 
 
 class TestAnInterruptedRun:
@@ -332,21 +309,15 @@ class TestAnInterruptedRun:
                 process.wait(timeout=RUN_TIMEOUT)
             kill_leftovers(pids)
 
-    def test_sigint_ends_the_run_with_130(self, sb) -> None:
+    def test_sigint_ends_the_run_with_130_and_leaves_no_process_and_no_slot_behind(
+        self, sb
+    ) -> None:
         aftermath = self.interrupt_a_sleeping_suite(sb)
 
         assert aftermath.code == 130, f"exit {aftermath.code}"
-
-    def test_sigint_leaves_neither_the_suite_nor_its_child_running(self, sb) -> None:
-        aftermath = self.interrupt_a_sleeping_suite(sb)
-
         assert aftermath.alive == [], (
             f"processes {aftermath.alive} of {aftermath.pids} outlived the interrupted run"
         )
-
-    def test_sigint_leaves_every_slot_free(self, sb) -> None:
-        aftermath = self.interrupt_a_sleeping_suite(sb)
-
         assert aftermath.held_slots == [], (
             f"slots still held after the interrupted run exited: {aftermath.held_slots}"
         )

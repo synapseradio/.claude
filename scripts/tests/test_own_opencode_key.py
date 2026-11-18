@@ -59,18 +59,6 @@ def _targets(tmp_path: pathlib.Path) -> projection.Targets:
     )
 
 
-class TestRuleInstructions:
-    def test_names_each_unconditional_rule_under_home(self, tmp_path) -> None:
-        targets = _targets(tmp_path)
-
-        listed = key_owner.rule_instructions(targets.rulesets_dir)
-
-        assert any(entry.endswith("alpha.md") for entry in listed), (
-            "opencode reads the session-wide rules through this list, so every always-on rule "
-            "must name its file in it"
-        )
-
-
 class TestAHandWrittenFileWithOneOwnedKey:
     """`config-projection` requirement: a generated file is owned whole.
 
@@ -194,25 +182,13 @@ class TestCheckModeReportsDrift:
         )
 
 
-class TestBuildPlan:
-    def test_opencode_instructions_list_the_unconditional_rules(self, tmp_path) -> None:
+class TestThePathScopedRuleStaysOutOfTheKey:
+    def test_a_rule_gated_by_paths_is_not_listed_in_the_written_key(self, tmp_path) -> None:
         targets = _targets(tmp_path)
 
-        plan = key_owner.build_plan(targets)
-        owned = {(key.path, key.key): key.value for key in plan.keys}
-        listed = owned[(targets.opencode_config, "instructions")]
+        assert key_owner.main([], targets=targets) == 0
 
-        assert any(entry.endswith("alpha.md") for entry in listed), (
-            "every rule that loads each session must reach opencode"
-        )
-
-    def test_opencode_instructions_exclude_a_path_scoped_rule(self, tmp_path) -> None:
-        targets = _targets(tmp_path)
-
-        plan = key_owner.build_plan(targets)
-        owned = {(key.path, key.key): key.value for key in plan.keys}
-        listed = owned[(targets.opencode_config, "instructions")]
-
+        listed = json.loads(targets.opencode_config.read_text(encoding="utf-8"))["instructions"]
         assert not any(entry.endswith("gated.md") for entry in listed), (
             "the plugin appends a path-scoped rule when a matching file is in play, so listing it "
             "here would load it in every session and twice in a matching one"

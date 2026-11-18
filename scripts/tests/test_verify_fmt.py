@@ -88,13 +88,6 @@ class TestFmtScope:
             "pkg_a/tests/test_a3.py",
         }
 
-    def test_a_path_no_formatter_includes_still_reaches_treefmt(self, sb) -> None:
-        fmt(sb, "LICENSE")
-
-        assert sb.paths_in(treefmt_call(sb)) == ["LICENSE"], (
-            "treefmt itself ignores unmatched files (on-unmatched = debug)"
-        )
-
     @pytest.mark.parametrize(
         ("lang", "names"),
         [

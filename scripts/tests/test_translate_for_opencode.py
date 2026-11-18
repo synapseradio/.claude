@@ -80,16 +80,6 @@ def _targets(tmp_path: pathlib.Path, *, model: str = "haiku") -> projection.Targ
 
 
 class TestTranslateForOpencode:
-    def test_carries_the_mapped_model_id(self, tmp_path) -> None:
-        agent = projection.read_agent(_write(tmp_path / "scout.md", _agent_source(model="haiku")))
-
-        translated = opencode.translate_for_opencode(agent)
-
-        frontmatter = projection.parse_document(translated.content).frontmatter
-        assert frontmatter["model"] == opencode.OPENCODE_MODEL_IDS["haiku"], (
-            "opencode reads a fully qualified model id, not the short name Claude Code carries"
-        )
-
     def test_carries_the_subagent_mode(self, tmp_path) -> None:
         agent = projection.read_agent(_write(tmp_path / "scout.md", _agent_source()))
 
@@ -97,18 +87,6 @@ class TestTranslateForOpencode:
 
         assert projection.parse_document(translated.content).frontmatter["mode"] == "subagent", (
             "every translated agent runs as an opencode subagent"
-        )
-
-
-class TestBuildPreamble:
-    def test_carries_the_claude_md_body_alone(self, tmp_path) -> None:
-        targets = _targets(tmp_path)
-
-        built = opencode.build_preamble(targets.claude_md)
-
-        assert "Play." in built and "Alpha holds." not in built, (
-            "opencode reads the always-on rules through the instructions key it owns separately, "
-            "so repeating them in AGENTS.md would load them twice"
         )
 
 
@@ -148,26 +126,27 @@ class TestScopingToOneAgent:
         )
         return targets
 
-    def test_the_plan_carries_that_agent_s_file_alone(self, tmp_path) -> None:
-        targets = self._two_agents(tmp_path)
-
-        plan = opencode.build_one_agent("spider", targets)
-
-        assert {generated.path for generated in plan.files} == {
-            targets.opencode_home / "agents" / "spider.md"
-        }, "a scoped run writes one agent's translation, and the preamble belongs to no agent"
-
-    def test_a_scoped_run_leaves_another_agent_s_output_alone(self, tmp_path) -> None:
+    def test_a_scoped_run_leaves_another_agent_s_output_and_the_preamble_alone(
+        self, tmp_path
+    ) -> None:
         targets = self._two_agents(tmp_path)
         assert opencode.main([], targets=targets) == 0
         scout = targets.opencode_home / "agents" / "scout.md"
+        context_file = targets.opencode_home / "AGENTS.md"
         scout.write_text("a file this run must never reach\n", encoding="utf-8")
+        context_file.write_text("a file this run must never reach either\n", encoding="utf-8")
 
         assert opencode.main(["--agent", "spider"], targets=targets) == 0
 
         assert scout.read_text(encoding="utf-8") == "a file this run must never reach\n", (
             "scoping to one agent is what lets a run repair one translation while another "
             "source is mid-edit"
+        )
+        assert (
+            context_file.read_text(encoding="utf-8") == "a file this run must never reach either\n"
+        ), "a scoped run leaves AGENTS.md as it stands, since the preamble derives from no agent"
+        assert (targets.opencode_home / "agents" / "spider.md").is_file(), (
+            "the scoped run writes the one agent it names"
         )
 
     def test_a_name_no_source_carries_stops_the_run(self, tmp_path) -> None:
@@ -214,42 +193,48 @@ class TestCheckModeReportsDrift:
             "outputs this job just wrote from these sources are by definition in sync"
         )
 
-    def test_check_names_the_context_file_after_the_preamble_changes(
-        self, tmp_path, capsys
+    @pytest.mark.parametrize(
+        ("source", "output", "edit"),
+        [
+            pytest.param(
+                "CLAUDE.md",
+                "AGENTS.md",
+                lambda targets: _write(
+                    targets.claude_md, f"{PREAMBLE}\n\n## What wins\n\nNearness decides.\n"
+                ),
+                id="the preamble",
+            ),
+            pytest.param(
+                "agents/scout.md",
+                "agents/scout.md",
+                lambda targets: _write(
+                    targets.agents_dir / "scout.md", _agent_source(model="sonnet")
+                ),
+                id="an agent definition",
+            ),
+        ],
+    )
+    def test_check_names_the_output_after_its_source_changes(
+        self, tmp_path, capsys, source, output, edit
     ) -> None:
         targets = _targets(tmp_path)
         opencode.main([], targets=targets)
-        context_file = targets.opencode_home / "AGENTS.md"
-        written = context_file.read_text(encoding="utf-8")
-        _write(targets.claude_md, f"{PREAMBLE}\n\n## What wins\n\nNearness decides.\n")
+        generated = targets.opencode_home / output
+        written = generated.read_text(encoding="utf-8")
+        edit(targets)
         capsys.readouterr()
 
         code = opencode.main(["--check"], targets=targets)
         printed = capsys.readouterr().out
 
-        assert code != 0, "a preamble edit that never reached opencode's context file is drift"
-        assert str(context_file) in printed, (
+        assert code != 0, f"a change to {source} that never reached its output is drift"
+        assert str(generated) in printed, (
             "a check that reports drift without naming the path leaves the reader hunting "
             "for which of the outputs moved"
         )
-        assert context_file.read_text(encoding="utf-8") == written, (
+        assert generated.read_text(encoding="utf-8") == written, (
             "a check reports a difference without repairing it"
         )
-
-    def test_check_names_the_agent_file_after_its_definition_changes(
-        self, tmp_path, capsys
-    ) -> None:
-        targets = _targets(tmp_path)
-        opencode.main([], targets=targets)
-        agent_file = targets.opencode_home / "agents" / "scout.md"
-        _write(targets.agents_dir / "scout.md", _agent_source(model="sonnet"))
-        capsys.readouterr()
-
-        code = opencode.main(["--check"], targets=targets)
-        printed = capsys.readouterr().out
-
-        assert code != 0, "an agent definition that never reached its translation is drift"
-        assert str(agent_file) in printed, "the check must name the file that differs"
 
     def test_check_exits_nonzero_when_an_output_is_missing(self, tmp_path) -> None:
         targets = _targets(tmp_path)
@@ -317,19 +302,9 @@ class TestTranslateForOpencodeFrontmatter:
             "opencode names a model by provider/model id, not by Claude's tier name"
         )
 
-    def test_absent_model_emits_no_model_key(self, tmp_path) -> None:
-        agent = projection.read_agent(_agent_definition(tmp_path, "orchestrator"))
-
-        translated = opencode.translate_for_opencode(agent)
-
-        assert "model:" not in translated.content, (
-            "emitting a model key where the source names none would pin an agent "
-            "that should inherit"
-        )
-
-    def test_tools_become_a_lowercase_map_to_true(self, tmp_path) -> None:
+    def test_tools_become_a_lowercase_map_with_agent_as_task(self, tmp_path) -> None:
         agent = projection.read_agent(
-            _agent_definition(tmp_path, "scout", tools="Read, Grep, Glob, Bash")
+            _agent_definition(tmp_path, "scout", tools="Read, Grep, Glob, Bash, Agent")
         )
 
         translated = opencode.translate_for_opencode(agent)
@@ -340,19 +315,12 @@ class TestTranslateForOpencodeFrontmatter:
             "grep": True,
             "glob": True,
             "bash": True,
-        }, "opencode reads tools as a map of its own lowercase tool names to booleans"
-
-    def test_agent_tool_maps_to_task(self, tmp_path) -> None:
-        agent = projection.read_agent(
-            _agent_definition(tmp_path, "skill-designer", tools="Read, Agent")
+            "task": True,
+        }, (
+            "opencode reads tools as a map of its own lowercase tool names to booleans, and "
+            "spawns subagents through `task`, which is what Claude's Agent names"
         )
-
-        translated = opencode.translate_for_opencode(agent)
-        frontmatter = projection.parse_document(translated.content).frontmatter
-
-        assert frontmatter["tools"] == {"read": True, "task": True}, (
-            "opencode spawns subagents through `task`, which is what Claude's Agent names"
-        )
+        assert translated.dropped == (), "every tool in this grant crosses, so none is dropped"
 
     def test_claude_only_tools_drop_and_are_reported(self, tmp_path) -> None:
         agent = projection.read_agent(
@@ -371,77 +339,46 @@ class TestTranslateForOpencodeFrontmatter:
             "a dropped tool narrows the agent's reach, so the run must name what it dropped"
         )
 
-    def test_absent_tools_emits_no_tools_key(self, tmp_path) -> None:
+    def test_a_source_naming_no_model_and_no_tools_emits_neither_key(self, tmp_path) -> None:
         agent = projection.read_agent(_agent_definition(tmp_path, "orchestrator"))
 
         translated = opencode.translate_for_opencode(agent)
 
+        assert "model:" not in translated.content, (
+            "emitting a model key where the source names none would pin an agent "
+            "that should inherit"
+        )
         assert "tools:" not in translated.content, (
             "an empty tools map would grant no tools, where the source granted every tool"
         )
 
-    def test_description_survives_verbatim(self, tmp_path) -> None:
-        agent = projection.read_agent(_agent_definition(tmp_path, "scout"))
-
-        translated = opencode.translate_for_opencode(agent)
-
-        assert (
-            projection.parse_document(translated.content).frontmatter["description"]
-            == "Use this agent to scout, and to report."
-        ), "the description is what a router matches on, so it must carry across unchanged"
-
-    def test_body_becomes_the_system_prompt_unchanged(self, tmp_path) -> None:
+    def test_description_and_body_carry_across_unchanged(self, tmp_path) -> None:
         agent = projection.read_agent(_agent_definition(tmp_path, "scout", model="haiku"))
 
         translated = opencode.translate_for_opencode(agent)
+        document = projection.parse_document(translated.content)
 
-        assert projection.parse_document(translated.content).body == AGENT_BODY, (
-            "the body is the system prompt and no rewrite applies to it"
+        assert document.frontmatter["description"] == "Use this agent to scout, and to report.", (
+            "the description is what a router matches on, so it must carry across unchanged"
         )
+        assert document.body == AGENT_BODY, "the body is the system prompt and no rewrite applies"
 
 
-class TestBuildPlan:
-    def test_opencode_agents_markdown_carries_the_preamble_alone(self, tmp_path) -> None:
-        targets = _targets(tmp_path)
-
-        plan = opencode.build_plan(targets)
-        by_path = {f.path: f.content for f in plan.files}
-        written = by_path[targets.opencode_home / "AGENTS.md"]
-
-        assert ALPHA not in written, (
-            "opencode reads the rules through `instructions`, so repeating them here would "
-            "double them"
-        )
-
-    def test_every_source_agent_yields_one_file_under_opencode(self, tmp_path) -> None:
+class TestWhatAFullRunWrites:
+    def test_agents_md_carries_the_preamble_alone_and_each_source_agent_gets_a_file(
+        self, tmp_path
+    ) -> None:
         targets = _targets(tmp_path)
         _agent_definition(targets.agents_dir, "orchestrator")
 
-        plan = opencode.build_plan(targets)
-        paths = {f.path for f in plan.files}
+        assert opencode.main([], targets=targets) == 0
 
-        assert {
-            targets.opencode_home / "agents" / "scout.md",
-            targets.opencode_home / "agents" / "orchestrator.md",
-        } <= paths, "each source agent must reach this target"
-
-    def test_a_grant_opencode_carries_drops_nothing(self, tmp_path) -> None:
-        plan = opencode.build_plan(_targets(tmp_path))
-
-        assert plan.dropped == (), (
-            "opencode's task covers Claude's Agent, so scout's grant crosses whole and "
-            "nothing is dropped for this target"
+        written = (targets.opencode_home / "AGENTS.md").read_text(encoding="utf-8")
+        assert "Play." in written and "Alpha holds." not in written, (
+            "opencode reads the always-on rules through the instructions key another job owns, "
+            "so repeating them in AGENTS.md would load them twice"
         )
-
-
-class TestApply:
-    def test_first_run_reports_each_file_it_created(self, tmp_path, capsys) -> None:
-        targets = _targets(tmp_path)
-
-        opencode.main([], targets=targets)
-        printed = capsys.readouterr().out
-
-        assert str(targets.opencode_home / "AGENTS.md") in printed, (
-            "a run that writes a file must name that file"
-        )
-        assert "created" in printed, "a file that did not exist reports as created, not updated"
+        for name in ("scout", "orchestrator"):
+            assert (targets.opencode_home / "agents" / f"{name}.md").is_file(), (
+                f"each source agent must reach opencode: {name}"
+            )

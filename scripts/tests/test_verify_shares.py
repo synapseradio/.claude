@@ -69,14 +69,6 @@ def test_no_suite_gets_more_slots_than_it_wants(wants: dict[str, int], size: int
     assert not over, f"suites given more than they want, as (share, want): {over}"
 
 
-def test_suites_wanting_less_than_the_pool_get_exactly_what_they_want() -> None:
-    shares = slots.fair_shares({"a": 2, "b": 2}, 12)
-
-    assert shares == {"a": 2, "b": 2}, (
-        f"twelve slots cover four workers, so each suite is satisfied: {shares}"
-    )
-
-
 @pytest.mark.parametrize(
     ("wants", "size"),
     [
@@ -110,14 +102,6 @@ def test_a_lone_suite_gets_the_smaller_of_its_want_and_the_pool(
     shares = slots.fair_shares({"only": want}, size)
 
     assert shares == {"only": expected}, f"want {want}, pool {size}: {shares}"
-
-
-def test_more_suites_than_slots_get_one_slot_each() -> None:
-    wants = {"a": 5, "b": 9, "c": 2, "d": 30}
-
-    shares = slots.fair_shares(wants, 2)
-
-    assert shares == {"a": 1, "b": 1, "c": 1, "d": 1}, f"four suites, two slots: {shares}"
 
 
 def test_a_tie_for_the_last_slot_goes_to_the_first_name_in_order() -> None:

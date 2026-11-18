@@ -20,6 +20,8 @@ import subprocess
 import sys
 import tempfile
 
+import pytest
+
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "features/plugins/prep/skills/prep-plan/scripts/detect-tools.py"
 REAL_GIT = shutil.which("git")
@@ -234,28 +236,39 @@ def test_a_package_file_without_scripts_is_no_task_runner(tmp_path) -> None:
     assert report["jobs"]["task_runner"] == []
 
 
-def test_tracker_commands_are_found_and_the_remote_shows_only_its_host(tmp_path) -> None:
+def test_tracker_commands_are_found_with_the_remote_host_as_evidence(tmp_path) -> None:
     machine = Machine(tmp_path)
     stand_in(machine.bin, "gh")
     stand_in(machine.bin, "acli")
-    machine.git("remote", "add", "origin", "https://someone:hunter2@github.com/org/project.git")
-
-    report, raw = machine.detect()
-
-    assert report["repository"]["remote_host"] == "github.com"
-    assert tools(report["jobs"]["tracker"]) == ["gh", "acli"]
-    assert report["jobs"]["tracker"][0]["evidence"] == ["gh on PATH", "origin is on github.com"]
-    assert "hunter2" not in raw
-    assert "someone" not in raw
-
-
-def test_an_ssh_remote_shows_its_host(tmp_path) -> None:
-    machine = Machine(tmp_path)
-    machine.git("remote", "add", "origin", "git@gitlab.example.org:org/project.git")
+    machine.git("remote", "add", "origin", "https://github.com/org/project.git")
 
     report, _ = machine.detect()
 
-    assert report["repository"]["remote_host"] == "gitlab.example.org"
+    assert tools(report["jobs"]["tracker"]) == ["gh", "acli"]
+    assert report["jobs"]["tracker"][0]["evidence"] == ["gh on PATH", "origin is on github.com"]
+
+
+@pytest.mark.parametrize(
+    ("url", "host", "secrets"),
+    [
+        (
+            "https://someone:hunter2@github.com/org/project.git",
+            "github.com",
+            ("someone", "hunter2"),
+        ),
+        ("git@gitlab.example.org:org/project.git", "gitlab.example.org", ()),
+    ],
+    ids=["https with credentials", "ssh"],
+)
+def test_the_remote_shows_only_its_host(tmp_path, url, host, secrets) -> None:
+    machine = Machine(tmp_path)
+    machine.git("remote", "add", "origin", url)
+
+    report, raw = machine.detect()
+
+    assert report["repository"]["remote_host"] == host
+    for secret in secrets:
+        assert secret not in raw
 
 
 def test_outside_a_repository_there_is_no_repository_and_task_runners_are_still_found(
