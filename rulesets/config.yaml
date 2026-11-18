@@ -12,6 +12,7 @@ sets:
   planning: writing-plans handoff persistent-memory
   orchestration: agent-delegation delegate-prompt worktrees
   bash: shell-scripts
+  skill-pointers: writing-prose comments writing-tests delegate-prompt worktrees
 skills:
   writing-prose: prose
   comments: comments
