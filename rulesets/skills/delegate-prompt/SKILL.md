@@ -64,7 +64,7 @@ You are [model family and identifier]. [a welcome for this spawn, glad the deleg
 
 [only where the step needs a particular tool or skill]
 [the environment, and the tools and skills it must or may use]
-[each skill you loaded that bears on the task, by exact name, to load through the Skill tool]
+[each skill whose listed description claims part of the delegate's work, by exact name, for the delegate to load through the Skill tool before that work; where the delegate has no Skill tool, each such skill's `SKILL.md` path for it to read in full]
 [no limits on its allowed tools]
 
 ## Constraints

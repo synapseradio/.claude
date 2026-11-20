@@ -1,14 +1,14 @@
 ---
 name: bats-testing
 description: >-
-  Load this before you write, change, run, or judge a bats test or any test of bash code, or brief another agent to. It holds the mandatory bats practice: run and its checks, assertions, isolation, stubs, setup, parallel runs, and forms that pass falsely.
+  Load this before you write, change, run, or judge a bats test or any test of bash code. A prompt that hands such work to another agent names this skill for that agent to load. It holds the mandatory bats practice: run and its checks, assertions, isolation, stubs, setup, parallel runs, and forms that pass falsely.
 ---
 
 # Bats testing
 
 For every bats test and every test of bash code you write, change, run, or judge, optimize for a case that fails only when the behavior it names breaks, touches nothing outside its own temporary directory, and adds no wait the behavior does not need.
 
-This binds every `.bats` file, every helper a suite loads, and every prompt that asks a delegate for work on one.
+This binds every `.bats` file, every helper a suite loads, and everyone who works on one. A prompt that hands work on one to another agent names `bats-testing` for that agent to load.
 
 ## Notation
 

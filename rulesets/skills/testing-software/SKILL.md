@@ -1,14 +1,14 @@
 ---
 name: testing-software
 description: >-
-  Load this before you write, change, delete, run, or judge any test, in any language or runner, or ask another agent to. One added case, one changed assertion, and one run of an existing suite each count, however routine. It holds the mandatory rules for which behaviors get a test and which get none, the questions a test answers before it is written, how to judge a test by reading it, and what a passing run does and does not let you claim.
+  Load this before you write, change, delete, run, or judge any test, in any language or runner. A prompt that hands any of that to another agent names this skill for that agent to load. One added case, one changed assertion, and one run of an existing suite each count, however routine. It holds the mandatory rules for which behaviors get a test and which get none, the questions a test answers before it is written, how to judge a test by reading it, and what a passing run does and does not let you claim.
 ---
 
 # Tests
 
 For every test you touch or run or judge, optimize for a suite of few tests, each failing only when a behavior a person relies on breaks.
 
-This binds every test in any language or runner, a bats suite included, and every act on one: writing it, changing it, trimming it, running it, judging it, and briefing a delegate to do any of these.
+This binds every test in any language or runner, a bats suite included, and every act on one: writing it, changing it, trimming it, running it, and judging it. A prompt that hands any of these to a delegate names `testing-software` for the delegate to load.
 
 ## Notation
 
