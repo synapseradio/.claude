@@ -222,6 +222,35 @@ class APromptHandingADelegateAGuessIsDenied(HookCase):
             with self.subTest(text=text):
                 assert self.prompt(text) is None, "an instruction is no guess"
 
+    def test_a_claim_handed_over_as_unchecked_with_its_check_passes(self) -> None:
+        for sentence in (
+            "A prior search found the two schema paths in steps 2 and 3; "
+            "they are unverified until you open them.",
+            "A prior search found the schema paths named above; "
+            "they are unverified until you open them.",
+            "The three file names in step 1 remain unverified until you have read each one.",
+            "Grep matched the config key in two files; both hits are unverified, "
+            "so open each file before you edit it.",
+            "The line numbers above are unverified: read each line before you quote it.",
+            "The flag's default arrived from a teammate and is untested until you run the CLI.",
+        ):
+            with self.subTest(sentence=sentence):
+                text = f"## Steps\n\n1. Open each path below and confirm it.\n\n{sentence}\n"
+                assert self.prompt(text) is None, "the sentence hands the check to the delegate"
+
+    def test_a_claim_left_standing_beside_its_status_is_denied(self) -> None:
+        for sentence in (
+            "The cache is probably stale; it is unverified until you check it.",
+            "The handler in src/app.ts crashes because the session token is null.",
+            "The config key `retries` exists in settings.yaml and is unverified.",
+            "The config key `retries` exists in settings.yaml; it is untested so far.",
+            "The config key `retries` exists in settings.yaml; it is unverified until the "
+            "next release.",
+        ):
+            with self.subTest(sentence=sentence):
+                text = f"## Steps\n\n1. Raise the retry count.\n\n{sentence}\n"
+                assert sentence in self.reason_of(self.prompt(text))
+
 
 class TheWiringCoversEverySurface(unittest.TestCase):
     def setUp(self) -> None:

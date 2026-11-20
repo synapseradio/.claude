@@ -45,6 +45,11 @@ _READING = (
 _CHECK = r"(?:check(?:ed)?|verif(?:y|ied)|confirm(?:ed)?|test(?:ed)?)"
 _NOT_DONE = r"(?:haven't|have not|hadn't|didn't|did not|couldn't|could not|not yet)"
 _IT = r"(?:it|this|that|these|those|them|any of (?:it|this|that))"
+_READER_CHECKS = rf"(?:{_CHECK}|open(?:ed)?|read|run|ran|inspect(?:ed)?)"
+_HANDOFF = (
+    rf"\s+until\s+you(?:'ve|\s+have)?\s+{_READER_CHECKS}\b"
+    rf"|\s*(?:[;:—\u2013]|,?\s+so)\s+{_READER_CHECKS}\b"
+)
 
 HEDGES = (
     # A stance verb in the first person.
@@ -69,7 +74,10 @@ HEDGES = (
     r"\b(?:is|are|was|were)\s+(?:all\s+|both\s+|just\s+|only\s+|still\s+)?(?:an?\s+|my\s+)?"
     r"(?:guess(?:es|work)?|hunch(?:es)?|assumptions?|hypothes[ei]s|theor(?:y|ies))\b",
     r"\b(?:unconfirmed|speculative|speculation|guesswork|conjecture)\b",
-    r"\b(?:is|are|was|were|remains?|still|as yet|so far|currently)\s+(?:unverified|untested)\b",
+    # "They are unverified until you open them" hands the check to the reader,
+    # where "the key exists and is unverified" leaves the claim standing.
+    r"\b(?:is|are|was|were|remains?|still|as yet|so far|currently)\s+(?:unverified|untested)\b"
+    rf"(?!{_HANDOFF})",
     # An adverb or adjective of doubt.
     r"\b(?:probably|presumably|plausibly|supposedly|seemingly|apparently|conceivably"
     r"|possibly|perhaps|maybe|(?:un)?likely|ostensibly|allegedly|reportedly|purportedly"

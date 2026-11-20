@@ -60,6 +60,7 @@
 			"Grep",
 			"TaskCreate",
 			"Bash",
+			"Bash(man *)",
 			"Skill",
 			"mcp__tavily__tavily_search",
 			"mcp__tavily__tavily_extract",
